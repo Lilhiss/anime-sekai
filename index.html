@@ -290,6 +290,12 @@ h1 .hi{color:var(--accent)}
 @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}
 
+/* MP COUNTDOWN */
+.mp-countdown-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+.mp-countdown-num{font-family:'Lilita One',cursive;font-size:120px;color:var(--accent);line-height:1;animation:countPop .9s ease-out forwards}
+.mp-countdown-label{font-size:16px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+@keyframes countPop{0%{transform:scale(1.4);opacity:0}30%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.8)}}
+.fb-auto-next{font-family:'Lilita One',cursive;font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;min-width:80px;text-align:center}
 /* LEADERBOARD */
 .lb-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .lb-tab.active{background:var(--accent);color:#fff}
@@ -670,7 +676,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               <div class="fb-pts" id="mpFbPts"></div>
             </div>
           </div>
-          <button class="next-btn" id="mpNextBtn" onclick="mpNextQuestion()"><i class="ti ti-arrow-right" style="font-size:14px"></i> Next</button>
+          <div class="fb-auto-next" id="mpAutoNext"></div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px">
@@ -680,6 +686,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- MP COUNTDOWN OVERLAY -->
+  <div class="mp-countdown-overlay" id="mpCountdownOverlay" style="display:none">
+    <div class="mp-countdown-num" id="mpCountdownNum">3</div>
+    <div class="mp-countdown-label" id="mpCountdownLabel">Get ready!</div>
   </div>
 
   <!-- MULTIPLAYER RESULTS -->
@@ -1362,6 +1374,118 @@ function submitReport(){
   setTimeout(()=>{document.getElementById('reportDrop').classList.remove('open');btn.textContent='Submit report';btn.disabled=false},2000);
 }
 
+// ── SUPABASE REALTIME ─────────────────────────────────────────
+let rtChannel=null;
+let isHost=false;
+let mpAutoNextInterval=null;
+
+async function rtCreateLobby(){
+  const {data,error}=await sb.from('lobbies').insert({
+    code:lobbyCode,host_id:currentUserId,format:lobbyFormat,mode:lobbyMode,status:'waiting'
+  }).select().single();
+  if(error){console.error('Create lobby error:',error);return}
+  await sb.from('lobby_players').insert({
+    lobby_id:data.id,user_id:currentUserId,username:currentUser,
+    color:accentHex[currentColor],is_host:true,score:0,lives:3
+  });
+  isHost=true;
+  rtSubscribe(data.id);
+}
+
+async function rtJoinLobby(code){
+  const {data:lobby}=await sb.from('lobbies').select('*').eq('code',code).eq('status','waiting').single();
+  if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false}
+  const {error}=await sb.from('lobby_players').insert({
+    lobby_id:lobby.id,user_id:currentUserId,username:currentUser,
+    color:accentHex[currentColor],is_host:false,score:0,lives:3
+  });
+  if(error){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. You may already be in this lobby.');return false}
+  isHost=false;lobbyCode=code;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
+  selectedFormat=lobby.format;selectedMode=lobby.mode;
+  rtSubscribe(lobby.id);
+  return true;
+}
+
+function rtSubscribe(lobbyId){
+  if(rtChannel)rtChannel.unsubscribe();
+  rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
+  rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},()=>{
+    rtRefreshPlayers(lobbyId);
+  });
+  rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
+    selectedFormat=payload.format;selectedMode=payload.mode;
+    lobbyFormat=payload.format;lobbyMode=payload.mode;
+    lobbyPlayers=payload.players;
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+    prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
+    lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
+    document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
+    document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+    _origGoStep('mp-quiz');renderMPHUD();
+    mpShowCountdown(()=>{if(isHost)mpHostFetchAndBroadcast();});
+  });
+  rtChannel.on('broadcast',{event:'question'},({payload})=>{
+    currentQData=payload.qData;qIndex=payload.qIndex;
+    document.getElementById('mpQLoading').style.display='none';
+    mpShowQuestion(payload.qData);renderMPHUD();
+  });
+  rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
+    const p=lobbyPlayers.find(lp=>lp.name===payload.name);
+    if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||false;}
+    renderMPScoreboard();
+  });
+  rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
+    hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
+    mpShowCountdown(()=>{if(isHost)mpHostFetchAndBroadcast();});
+  });
+  rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
+    lobbyPlayers=payload.players;mpEndGame();
+  });
+  rtChannel.subscribe();
+}
+
+async function rtRefreshPlayers(lobbyId){
+  const {data}=await sb.from('lobby_players').select('*').eq('lobby_id',lobbyId);
+  if(!data)return;
+  lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
+  renderLobbyRoom();
+}
+
+async function mpHostFetchAndBroadcast(){
+  document.getElementById('mpQLoading').style.display='flex';
+  const qData=await fetchQuestion();
+  currentQData=qData;
+  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex}});
+}
+
+function mpShowCountdown(onDone){
+  const overlay=document.getElementById('mpCountdownOverlay');
+  const numEl=document.getElementById('mpCountdownNum');
+  const lblEl=document.getElementById('mpCountdownLabel');
+  overlay.style.display='flex';
+  let count=3;
+  numEl.textContent=count;lblEl.textContent='Get ready!';
+  numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='';
+  const tick=setInterval(()=>{
+    count--;
+    if(count<=0){clearInterval(tick);overlay.style.display='none';onDone();return;}
+    numEl.textContent=count;
+    numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
+  },1000);
+}
+
+function mpStartAutoNext(onDone){
+  clearInterval(mpAutoNextInterval);
+  let t=5;
+  const el=document.getElementById('mpAutoNext');
+  if(el)el.textContent=`Next in ${t}s`;
+  mpAutoNextInterval=setInterval(()=>{
+    t--;
+    if(el)el.textContent=t>0?`Next in ${t}s`:'';
+    if(t<=0){clearInterval(mpAutoNextInterval);onDone();}
+  },1000);
+}
+
 // ── LEADERBOARD ──────────────────────────────────────────────
 let lbTab='global';
 function switchLbTab(tab){
@@ -1419,20 +1543,28 @@ goStep=function(name){
 let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race';
 function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
 function createLobby(){
-  if(!currentUser){goStep('signin');return}
-  lobbyCode=generateCode();lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor]}];
+  if(!currentUser){choosePath('create');return}
+  lobbyCode=generateCode();
+  lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor],eliminated:false}];
   lobbyFormat=selectedFormat;lobbyMode=selectedMode;
+  isHost=true;
   goStep('lobby-room');
+  if(currentUserId)rtCreateLobby();
 }
-function joinLobby(){
+async function joinLobby(){
   const code=document.getElementById('lobbyCodeInput').value.trim().toUpperCase();
   if(code.length<4){showErr('lobbyJoinErr','lobbyJoinErrMsg','Please enter a valid lobby code.');return}
-  if(!currentUser){goStep('signin');return}
-  lobbyCode=code;
-  lobbyPlayers=[
-    {name:'OtakuKing',score:0,lives:3,isHost:true,color:'#f472b6'},
-    {name:currentUser,score:0,lives:3,isHost:false,color:accentHex[currentColor]},
-  ];
+  if(!currentUser){choosePath('join');return}
+  if(currentUserId){
+    const ok=await rtJoinLobby(code);
+    if(!ok)return;
+  } else {
+    lobbyCode=code;
+    lobbyPlayers=[
+      {name:'Host',score:0,lives:3,isHost:true,color:'#f472b6'},
+      {name:currentUser,score:0,lives:3,isHost:false,color:accentHex[currentColor]},
+    ];
+  }
   goStep('lobby-room');
 }
 function renderLobbyRoom(){
@@ -1469,14 +1601,18 @@ function setLobbyMode(mode,el){
   setTimeout(()=>goStep('lobby-room'),300);
 }
 function startLobbyGame(){
+  if(!isHost)return;
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
-  // Hot Potato state
   hpActiveIdx=0;
-  document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
-  document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
-  _origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers}});
+  } else {
+    document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
+    document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+    _origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();
+  }
 }
 
 // ── HOT POTATO STATE ─────────────────────────────────────────
@@ -1642,19 +1778,40 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   const isHP=lobbyMode==='potato';
   document.getElementById('mpFbPts').textContent=correct&&!isHP?'+10 points added to your score':isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
   applyTheme();
+  // Broadcast updated player state
+  const me=lobbyPlayers.find(p=>p.name===currentUser);
+  if(me&&rtChannel){
+    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false}});
+  }
+  // Auto-advance — only host drives the flow
+  mpStartAutoNext(()=>{
+    if(!isHost)return;
+    if(isHP){
+      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+      const remaining=hpActivePlayers();
+      if(remaining.length<=1){
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        else mpEndGame();return;
+      }
+    } else {
+      if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+    }
+    qIndex++;
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
+    else{mpLoadQuestion();}
+  });
 }
 
 function mpNextQuestion(){
+  // Offline fallback only
   qIndex++;
   const isHP=lobbyMode==='potato';
   if(isHP){
-    // Advance potato to next non-eliminated player
     hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-    while(lobbyPlayers[hpActiveIdx].eliminated){
-      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-    }
-    const remaining=hpActivePlayers();
-    if(remaining.length<=1){mpEndGame();return;}
+    while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+    if(hpActivePlayers().length<=1){mpEndGame();return;}
   } else {
     if(selectedMode==='survival'&&lives<=0){mpEndGame();return}
     if(selectedMode==='race'&&score>=100){mpEndGame();return}
@@ -1662,8 +1819,31 @@ function mpNextQuestion(){
   mpLoadQuestion();
 }
 
+async function mpLoadQuestion(){
+  answered=false;
+  document.getElementById('mpFeedbackBar').style.display='none';
+  document.getElementById('mpAnswersGrid').innerHTML='';
+  document.getElementById('mpQuestionText').style.display='none';
+  document.getElementById('mpQLoading').style.display='flex';
+  renderMPHUD();
+  if(lobbyMode==='potato'){
+    const active=hpActivePlayer();
+    const isMyTurn=active.name===currentUser;
+    document.getElementById('mpQLoading').querySelector('.q-loading-text').textContent=
+      isMyTurn?'Your turn! Loading question…':active.name+"'s turn…";
+  }
+  // Only fetch if offline — realtime uses mpHostFetchAndBroadcast
+  if(!rtChannel){
+    const qData=prefetchedQuestion||await fetchQuestion();
+    prefetchedQuestion=null;currentQData=qData;
+    mpShowQuestion(qData);
+    fetchQuestion().then(q=>{prefetchedQuestion=q});
+  }
+}
+
 function mpEndGame(){
-  clearInterval(timerInterval);
+  clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
+  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   const isHP=lobbyMode==='potato';
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
   const sorted=isHP
@@ -1678,9 +1858,7 @@ function mpEndGame(){
     const isMe=p.name===currentUser;
     const row=document.createElement('div');row.className='standing-row';
     if(isMe)row.style.borderColor='var(--accent)';
-    const rightCol=isHP
-      ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
-      :`<div class="lb-score">${p.score} pts</div>`;
+    const rightCol=isHP?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`:`<div class="lb-score">${p.score} pts</div>`;
     row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${isHP?(p.eliminated?'Eliminated':'Survived'):(getRank(p.score).emoji+' '+getRank(p.score).title)}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
