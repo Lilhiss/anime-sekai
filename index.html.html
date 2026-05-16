@@ -1,0 +1,1692 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0e1a;--bg2:#1a1828;--bg3:#252336;--border:#2e2b45;--border2:#3d3960;
+  --text:#e8e4f0;--muted:#9990b8;--faint:#2a2745;--accent:#a78bfa;--accent-soft:#1e1c2e;
+  --orb1:#a78bfa1a;--orb2:#60a5fa10;--orb3:#f472b60d;--card-bg:#1a182899;--card-border:#2e2b45cc;
+}
+[data-theme="dark"][data-color="sakura"]{--accent:#f472b6;--accent-soft:#2a1020;--bg:#1a0e14;--bg2:#261520;--bg3:#32202c;--border:#4a2a3a;--border2:#6b3a50;--text:#f5e4ec;--muted:#c08090;--faint:#3a1828;--orb1:#f472b620;--card-bg:#26152099;--card-border:#4a2a3acc}
+[data-theme="dark"][data-color="ocean"]{--accent:#38bdf8;--accent-soft:#0a1525;--bg:#0a0f1e;--bg2:#0f1a2e;--bg3:#162440;--border:#1e3050;--border2:#2a4570;--text:#dceeff;--muted:#6a9ac0;--faint:#0e2040;--orb1:#38bdf820;--card-bg:#0f1a2e99;--card-border:#1e3050cc}
+[data-theme="dark"][data-color="ember"]{--accent:#fb923c;--accent-soft:#1f1008;--bg:#1a0e08;--bg2:#261508;--bg3:#332010;--border:#4a2e15;--border2:#6b4520;--text:#ffeedd;--muted:#c09060;--faint:#2e1808;--orb1:#fb923c20;--card-bg:#26150899;--card-border:#4a2e15cc}
+[data-theme="dark"][data-color="forest"]{--accent:#4ade80;--accent-soft:#081008;--bg:#080f0a;--bg2:#0f1a10;--bg3:#162418;--border:#1e3520;--border2:#2a5030;--text:#d4f0d8;--muted:#60a070;--faint:#0e2010;--orb1:#4ade8020;--card-bg:#0f1a1099;--card-border:#1e3520cc}
+[data-theme="dark"][data-color="rose"]{--accent:#e879f9;--accent-soft:#1a0818;--bg:#180d15;--bg2:#221520;--bg3:#2e1e2a;--border:#452040;--border2:#6a3060;--text:#f8e0f5;--muted:#b878b0;--faint:#280d25;--orb1:#e879f920;--card-bg:#22152099;--card-border:#452040cc}
+[data-theme="light"]{--bg:#f0eeff;--bg2:#fff;--bg3:#e6e0ff;--border:#d4ccf5;--border2:#b8aee8;--text:#1a1535;--muted:#6b5fa8;--faint:#d4ccf5;--accent:#7c5cbf;--accent-soft:#ede9ff;--card-bg:#ffffffbb;--card-border:#d4ccf5cc}
+[data-theme="light"][data-color="sakura"]{--accent:#be185d;--accent-soft:#fce7f3;--bg:#fff0f6;--bg2:#fff;--bg3:#ffe0ef;--border:#f9b8d4;--border2:#f090bc;--text:#2d0f1e;--muted:#a0506e;--faint:#f9b8d4;--card-bg:#ffffffbb;--card-border:#f9b8d4cc}
+[data-theme="light"][data-color="ocean"]{--accent:#1d4ed8;--accent-soft:#eff6ff;--bg:#f0f7ff;--bg2:#fff;--bg3:#ddeeff;--border:#bdd9fe;--border2:#90bffd;--text:#0c1e40;--muted:#4a6a96;--faint:#bdd9fe;--card-bg:#ffffffbb;--card-border:#bdd9fecc}
+[data-theme="light"][data-color="ember"]{--accent:#c2410c;--accent-soft:#fff7ed;--bg:#fff5ee;--bg2:#fff;--bg3:#ffe5d0;--border:#fdc8a0;--border2:#fba070;--text:#1c0700;--muted:#905030;--faint:#fdc8a0;--card-bg:#ffffffbb;--card-border:#fdc8a0cc}
+[data-theme="light"][data-color="forest"]{--accent:#166534;--accent-soft:#f0fdf4;--bg:#f0faf2;--bg2:#fff;--bg3:#dcf0e0;--border:#b8ddbf;--border2:#88c490;--text:#0a1e0e;--muted:#3a6840;--faint:#b8ddbf;--card-bg:#ffffffbb;--card-border:#b8ddbfcc}
+[data-theme="light"][data-color="rose"]{--accent:#9d174d;--accent-soft:#fdf4ff;--bg:#fdf0ff;--bg2:#fff;--bg3:#f5d8ff;--border:#e4b8f8;--border2:#d090f0;--text:#1a0820;--muted:#8a4090;--faint:#e4b8f8;--card-bg:#ffffffbb;--card-border:#e4b8f8cc}
+
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s;overflow-x:hidden}
+.scene{min-height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0}
+.orb1{width:500px;height:500px;background:var(--orb1);top:-120px;left:-120px}
+.orb2{width:400px;height:400px;background:var(--orb2);top:60px;right:-100px}
+.orb3{width:360px;height:360px;background:var(--orb3);bottom:-60px;left:35%}
+.dots-bg{position:absolute;inset:0;background-image:radial-gradient(circle,var(--faint) 1px,transparent 1px);background-size:30px 30px;opacity:.6;pointer-events:none;z-index:0}
+
+nav{display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:var(--card-bg);border-bottom:1px solid var(--card-border);backdrop-filter:blur(14px);position:relative;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;user-select:none;cursor:pointer}
+.logo-mark{width:38px;height:38px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:16px;flex-shrink:0;transition:opacity .2s}
+.logo:hover .logo-mark{opacity:.85}
+.logo-name{font-family:'Lilita One',cursive;font-size:21px;color:var(--text)}
+.logo-name span{color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:8px}
+.ghost-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s,color .2s,border-color .2s}
+.ghost-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.primary-btn{background:var(--accent);border:1px solid var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .2s}
+.primary-btn:hover{opacity:.85}
+.ctrl-wrap{position:relative}
+.drop{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:13px;padding:8px;min-width:215px;z-index:400;box-shadow:0 8px 32px #0009}
+.drop.open{display:block}
+.drop-section{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:8px 12px 4px}
+.drop-row{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-radius:8px;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;font-family:'Nunito',sans-serif}
+.drop-row:hover{background:var(--bg3)}
+.drop-row-left{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--text)}
+.dot-sm{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.drop-check{font-size:13px;color:var(--accent);opacity:0}
+.drop-row.active .drop-check{opacity:1}
+.drop-sep{height:1px;background:var(--border);margin:6px 0}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+.toggle-label{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px}
+.tog{width:38px;height:22px;border-radius:99px;background:var(--border2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;border:none;padding:0}
+.tog.on{background:var(--accent)}
+.tog::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s}
+.tog.on::after{transform:translateX(16px)}
+
+.page{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px 32px;position:relative;z-index:1;gap:28px}
+.page.active{display:flex}
+h1{font-family:'Lilita One',cursive;font-size:clamp(28px,4vw,44px);color:var(--text);letter-spacing:.5px;line-height:1.1;text-align:center}
+h1 .hi{color:var(--accent)}
+.step-eyebrow{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.back-btn{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border2);color:var(--muted);font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;padding:4px 10px;border-radius:7px;cursor:pointer;transition:all .2s;text-transform:none;letter-spacing:0}
+.back-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* LANDING — bigger cards */
+.entry-wrap{display:flex;flex-direction:column;align-items:center;gap:32px;width:100%;max-width:560px}
+.entry-logo-mark{width:80px;height:80px;border-radius:22px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:36px;margin:0 auto 16px;box-shadow:0 0 48px var(--orb1)}
+.entry-title{font-family:'Lilita One',cursive;font-size:clamp(36px,6vw,58px);color:var(--text);text-align:center;line-height:1.05}
+.entry-title span{color:var(--accent)}
+.entry-sub{font-size:15px;color:var(--muted);margin-top:8px;text-align:center}
+.entry-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%}
+.entry-card{background:var(--card-bg);border:2px solid var(--border);border-radius:22px;padding:36px 28px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
+.entry-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 12px 36px #0006}
+.entry-card-icon{width:68px;height:68px;border-radius:20px;background:var(--accent-soft);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--accent);transition:all .2s}
+.entry-card:hover .entry-card-icon{background:var(--accent);color:#fff;border-color:var(--accent)}
+.entry-card-title{font-family:'Lilita One',cursive;font-size:22px;color:var(--text);letter-spacing:.3px}
+.entry-card-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* FORMS */
+.form-wrap{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px}
+.form-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 24px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:14px}
+.form-label{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.optional-tag{font-size:10px;font-weight:700;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:1px 7px}
+.form-input{width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--muted);font-weight:400}
+.form-hint{font-size:11px;color:var(--muted);margin-top:-6px}
+.form-err{font-size:12px;color:#f87171;display:none;align-items:center;gap:5px;font-weight:700}
+.form-err.show{display:flex}
+.form-submit{font-family:'Lilita One',cursive;font-size:16px;background:var(--accent);border:none;padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:opacity .2s,transform .15s}
+.form-submit:hover{opacity:.88;transform:translateY(-1px)}
+.form-footer{text-align:center;font-size:12px;color:var(--muted)}
+.form-footer a{color:var(--accent);text-decoration:none;font-weight:700;cursor:pointer}
+.privacy-note{display:flex;align-items:flex-start;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.5}
+.privacy-note i{color:var(--accent);flex-shrink:0;margin-top:1px}
+
+/* FORMAT & MODE */
+.fmt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
+.fmt-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:24px 20px;cursor:pointer;transition:all .22s;position:relative;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:10px}
+.fmt-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
+.fmt-card-icon{width:46px;height:46px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--accent)}
+.fmt-card-title{font-family:'Lilita One',cursive;font-size:16px;color:var(--text)}
+.fmt-card-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.fmt-card-arrow{position:absolute;top:18px;right:18px;font-size:16px;color:var(--border2);transition:color .2s,transform .2s}
+.fmt-card:hover .fmt-card-arrow{color:var(--accent);transform:translateX(3px)}
+.mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
+.mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:12px}
+.mode-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
+.mode-icon{width:52px;height:52px;border-radius:14px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--accent)}
+.mode-title{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
+.mode-desc{font-size:12px;color:var(--muted);line-height:1.55}
+.mode-tag{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 11px;font-size:11px;font-weight:800;color:var(--accent);width:fit-content}
+
+/* QUIZ */
+.quiz-wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:20px}
+.quiz-hud{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hud-left{display:flex;align-items:center;gap:14px}
+.hud-score{font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)}
+.hud-score-label{font-size:11px;color:var(--muted);margin-top:-2px}
+.hud-lives{display:flex;gap:5px}
+.life{font-size:20px;color:var(--accent);transition:opacity .3s}
+.life.lost{opacity:.2}
+.hud-right{display:flex;align-items:center;gap:10px}
+.q-count{font-size:13px;font-weight:700;color:var(--muted)}
+.timer-wrap{height:8px;background:var(--bg3);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.timer-bar{height:100%;border-radius:99px;background:var(--accent);transition:width .1s linear,background .5s}
+.timer-bar.warn{background:#fbbf24}
+.timer-bar.danger{background:#f87171}
+.q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 24px;backdrop-filter:blur(10px)}
+.q-meta{margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
+.q-text{font-family:'Lilita One',cursive;font-size:clamp(16px,2.5vw,22px);color:var(--text);line-height:1.4}
+.q-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0}
+.spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.q-loading-text{font-size:13px;color:var(--muted);font-weight:700}
+.q-loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ans{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
+.ans:hover:not(.locked){border-color:var(--accent);transform:translateY(-2px)}
+.ans.correct{border-color:#4ade80;background:#4ade8015}
+.ans.wrong{border-color:#f87171;background:#f8717115}
+.ans.locked{cursor:default;transform:none}
+.ans-key{width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:13px;color:var(--muted);flex-shrink:0;transition:all .2s}
+.ans.correct .ans-key{background:#4ade80;border-color:#4ade80;color:#0f0e1a}
+.ans.wrong .ans-key{background:#f87171;border-color:#f87171;color:#0f0e1a}
+.ans-text{font-size:14px;font-weight:700;color:var(--text);line-height:1.35}
+.feedback{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-radius:13px;background:var(--card-bg);border:1px solid var(--card-border);backdrop-filter:blur(8px);flex-wrap:wrap}
+.feedback.correct-fb{border-color:#4ade80;background:#4ade8010}
+.feedback.wrong-fb{border-color:#f87171;background:#f8717110}
+.fb-left{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0}
+.fb-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.fb-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text)}
+.fb-answer{font-size:13px;font-weight:700;margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fb-answer-label{color:var(--muted);font-weight:600;font-size:12px}
+.fb-answer-val{color:#4ade80;font-weight:800;font-size:14px}
+.fb-your-ans{color:#f87171;font-weight:700;font-size:12px;text-decoration:line-through;margin-top:2px}
+.fb-pts{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
+.next-btn{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:10px 22px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:opacity .2s,transform .15s;white-space:nowrap;flex-shrink:0;align-self:center}
+.next-btn:hover{opacity:.88;transform:translateY(-1px)}
+.type-wrap{grid-column:1/-1;display:flex;flex-direction:column;gap:10px}
+.type-input-row{display:flex;gap:10px}
+.type-input{flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;outline:none;transition:border-color .2s}
+.type-input:focus{border-color:var(--accent)}
+.type-input::placeholder{color:var(--muted);font-weight:400}
+.type-input.correct-input{border-color:#4ade80;background:#4ade8010}
+.type-input.wrong-input{border-color:#f87171;background:#f8717110}
+.type-submit{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:12px 20px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:opacity .2s}
+.type-submit:hover{opacity:.85}
+.alias-hint{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.report-link{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 13px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s}
+.report-link:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.report-drop{display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-top:8px}
+.report-drop.open{display:block}
+.report-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.report-opt{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .15s}
+.report-opt:hover{background:var(--bg3);color:var(--text)}
+.report-opt input{accent-color:var(--accent)}
+.report-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:12px;resize:none;margin-bottom:10px;outline:none}
+.report-textarea:focus{border-color:var(--accent)}
+.report-submit{font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;background:var(--accent);border:none;padding:7px 16px;border-radius:8px;cursor:pointer;transition:opacity .2s}
+.report-submit:hover{opacity:.85}
+.user-pill{display:flex;align-items:center;gap:7px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 12px 5px 6px;font-size:13px;font-weight:700;color:var(--accent)}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'Lilita One',cursive;color:#fff}
+
+/* RESULTS */
+.results-wrap{width:100%;max-width:680px;display:flex;flex-direction:column;gap:18px}
+.rank-hero{background:var(--card-bg);border:1px solid var(--card-border);border-radius:22px;padding:36px 28px;backdrop-filter:blur(10px);text-align:center;position:relative;overflow:hidden}
+.rank-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,var(--accent)18,transparent 70%);pointer-events:none}
+.rank-badge-wrap{position:relative;display:inline-block;margin-bottom:16px}
+.rank-badge{width:90px;height:90px;border-radius:50%;background:var(--accent-soft);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto;position:relative;z-index:1}
+.rank-glow{position:absolute;inset:-8px;border-radius:50%;background:var(--accent);opacity:.15;filter:blur(12px)}
+.rank-title{font-family:'Lilita One',cursive;font-size:clamp(22px,4vw,34px);color:var(--text);margin-bottom:6px}
+.rank-title span{color:var(--accent)}
+.rank-sub{font-size:14px;color:var(--muted);line-height:1.6;max-width:360px;margin:0 auto 20px}
+.score-display{display:inline-flex;align-items:baseline;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:10px 24px}
+.score-big{font-family:'Lilita One',cursive;font-size:48px;color:var(--accent);line-height:1}
+.score-unit{font-size:16px;font-weight:800;color:var(--muted)}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat-card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:16px;backdrop-filter:blur(8px);text-align:center}
+.stat-val{font-family:'Lilita One',cursive;font-size:24px;color:var(--accent)}
+.stat-label{font-size:11px;font-weight:700;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.action-btn{font-family:'Lilita One',cursive;font-size:15px;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;border:none}
+.action-btn.primary{background:var(--accent);color:#fff}
+.action-btn.primary:hover{opacity:.88;transform:translateY(-2px)}
+.action-btn.secondary{background:var(--bg2);border:1.5px solid var(--border2);color:var(--text)}
+.action-btn.secondary:hover{background:var(--accent);border-color:var(--accent);color:#fff;transform:translateY(-2px)}
+.recap-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.recap-title{font-family:'Lilita One',cursive;font-size:16px;color:var(--text)}
+.recap-toggle{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:5px 12px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s}
+.recap-toggle:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.recap-list{display:flex;flex-direction:column;gap:10px}
+.recap-item{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:14px 16px;backdrop-filter:blur(8px);display:flex;align-items:flex-start;gap:12px}
+.recap-item.correct{border-color:#4ade8055}
+.recap-item.wrong{border-color:#f8717155}
+.recap-q{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.4}
+.recap-ans{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.correct-ans{color:#4ade80;font-weight:700}
+.wrong-ans{color:#f87171;font-weight:700;text-decoration:line-through}
+.recap-num{width:22px;height:22px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:11px;color:var(--muted);flex-shrink:0;margin-top:1px}
+
+/* PROFILE PAGE */
+.profile-wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:18px}
+.profile-hero{background:var(--card-bg);border:1px solid var(--card-border);border-radius:22px;padding:32px 28px;backdrop-filter:blur(10px);position:relative;overflow:hidden}
+.profile-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 0% 50%,var(--accent)12,transparent 65%);pointer-events:none}
+.profile-hero-inner{display:flex;align-items:center;gap:24px;position:relative;z-index:1;flex-wrap:wrap}
+.profile-avatar-wrap{position:relative;flex-shrink:0}
+.profile-avatar{width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:36px;border:3px solid var(--border2)}
+.profile-avatar-ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent);opacity:.4}
+.profile-info{flex:1;min-width:0}
+.profile-username{font-family:'Lilita One',cursive;font-size:28px;color:var(--text);letter-spacing:.3px}
+.profile-tag{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:12px;font-weight:800;color:var(--accent);margin-top:6px}
+.profile-since{font-size:12px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:5px}
+.profile-edit-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:8px 16px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;align-self:flex-start}
+.profile-edit-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.profile-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.p-stat{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:16px 12px;backdrop-filter:blur(8px);text-align:center}
+.p-stat-val{font-family:'Lilita One',cursive;font-size:26px;color:var(--accent);letter-spacing:.3px}
+.p-stat-label{font-size:11px;font-weight:700;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+
+.profile-section-title{font-family:'Lilita One',cursive;font-size:16px;color:var(--text);margin-bottom:12px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.profile-section-title i{color:var(--accent)}
+
+/* RANK PROGRESS */
+.rank-progress-card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px;backdrop-filter:blur(8px)}
+.rank-progress-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.rank-current{display:flex;align-items:center;gap:10px}
+.rank-emoji-sm{font-size:28px}
+.rank-name-sm{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
+.rank-pts-sm{font-size:12px;color:var(--muted);margin-top:2px}
+.rank-next{font-size:12px;color:var(--muted);text-align:right}
+.rank-next strong{color:var(--text);font-weight:700}
+.progress-bar-wrap{height:10px;background:var(--bg3);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.progress-bar-fill{height:100%;border-radius:99px;background:var(--accent);transition:width 1s ease}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+
+/* HISTORY */
+.history-list{display:flex;flex-direction:column;gap:10px}
+.history-item{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:14px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:14px}
+.history-icon{width:40px;height:40px;border-radius:11px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--accent);flex-shrink:0}
+.history-info{flex:1;min-width:0}
+.history-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px}
+.history-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.history-score{font-family:'Lilita One',cursive;font-size:20px;color:var(--accent);flex-shrink:0}
+.history-rank{font-size:12px;color:var(--muted);flex-shrink:0;text-align:right}
+
+/* BADGES */
+.badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px}
+.badge-card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:16px 12px;text-align:center;backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;gap:8px}
+.badge-card.locked{opacity:.4;filter:grayscale(.8)}
+.badge-emoji{font-size:28px}
+.badge-name{font-size:11px;font-weight:800;color:var(--text)}
+.badge-desc{font-size:10px;color:var(--muted);line-height:1.4}
+
+/* PLAY AGAIN CTA */
+.profile-cta{background:var(--accent-soft);border:1px solid var(--border2);border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.profile-cta-text{font-family:'Lilita One',cursive;font-size:17px;color:var(--text)}
+.profile-cta-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.profile-cta-btn{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:12px 24px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:opacity .2s,transform .15s;white-space:nowrap}
+.profile-cta-btn:hover{opacity:.88;transform:translateY(-1px)}
+
+.confetti-piece{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+.slide-in{animation:slideIn .35s ease both}
+@keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}
+
+/* LEADERBOARD */
+.lb-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.lb-tab.active{background:var(--accent);color:#fff}
+.lb-list{display:flex;flex-direction:column;gap:10px}
+.lb-row{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px 18px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:14px;transition:border-color .2s}
+.lb-row:hover{border-color:var(--accent)}
+.lb-rank{font-family:'Lilita One',cursive;font-size:18px;color:var(--muted);width:28px;text-align:center;flex-shrink:0}
+.lb-rank.gold{color:#fbbf24}.lb-rank.silver{color:#94a3b8}.lb-rank.bronze{color:#fb923c}
+.lb-avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:16px;flex-shrink:0}
+.lb-info{flex:1;min-width:0}
+.lb-name{font-size:14px;font-weight:800;color:var(--text)}
+.lb-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.lb-score{font-family:'Lilita One',cursive;font-size:20px;color:var(--accent);flex-shrink:0}
+.lb-empty{text-align:center;padding:48px 24px;color:var(--muted)}
+/* LOBBY */
+.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px}
+.lobby-player-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;flex-shrink:0}
+.lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1}
+.lobby-player-badge{font-size:11px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 10px;color:var(--accent)}
+.lobby-host-crown{font-size:14px;color:#fbbf24}
+/* MP SCOREBOARD */
+.mp-score-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .2s}
+.mp-score-row.me{background:var(--accent-soft);border:1px solid var(--border2)}
+.mp-score-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:12px;flex-shrink:0}
+.mp-score-name{font-size:12px;font-weight:800;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-score-pts{font-family:'Lilita One',cursive;font-size:14px;color:var(--accent)}
+/* FINAL STANDINGS */
+.standing-row{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:13px}
+.standing-pos{font-family:'Lilita One',cursive;font-size:22px;width:32px;text-align:center;flex-shrink:0}
+
+footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;z-index:10;backdrop-filter:blur(12px)}
+.foot-left{font-size:12px;color:var(--muted)}
+.foot-links{display:flex;gap:18px}
+.foot-link{font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;transition:color .2s}
+.foot-link:hover{color:var(--accent)}
+@media(max-width:600px){nav{padding:12px 16px}.entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}.stat-row,.profile-stats{grid-template-columns:1fr 1fr}.badges-grid{grid-template-columns:repeat(3,1fr)}.profile-hero-inner{flex-direction:column;text-align:center}footer{padding:12px 16px}.entry-card{padding:22px 16px}.entry-wrap{max-width:100%}#page-mp-quiz>div{grid-template-columns:1fr}}
+</style>
+
+<div class="scene">
+  <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+  <div class="dots-bg"></div>
+
+  <nav>
+    <div class="logo" onclick="goStep('landing')">
+      <div class="logo-mark" id="logoMark">AS</div>
+      <span class="logo-name">Anime <span>Sekai</span></span>
+    </div>
+    <div class="nav-right" id="navRight">
+      <div class="ctrl-wrap" id="themeWrap">
+        <button class="ghost-btn" onclick="toggleDrop()">
+          <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
+          <span id="tlabel">Midnight</span>
+          <i class="ti ti-chevron-down" style="font-size:13px"></i>
+        </button>
+        <div class="drop" id="drop">
+          <div class="drop-section">Mode</div>
+          <div class="toggle-row"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
+          <div class="drop-sep"></div>
+          <div class="drop-section">Color</div>
+          <button class="drop-row active" onclick="setColor('midnight','#a78bfa','Midnight',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#a78bfa"></span>Midnight</div><i class="ti ti-check drop-check"></i></button>
+          <button class="drop-row" onclick="setColor('sakura','#f472b6','Sakura',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#f472b6"></span>Sakura</div><i class="ti ti-check drop-check"></i></button>
+          <button class="drop-row" onclick="setColor('ocean','#38bdf8','Ocean',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#38bdf8"></span>Ocean</div><i class="ti ti-check drop-check"></i></button>
+          <button class="drop-row" onclick="setColor('ember','#fb923c','Ember',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#fb923c"></span>Ember</div><i class="ti ti-check drop-check"></i></button>
+          <button class="drop-row" onclick="setColor('forest','#4ade80','Forest',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#4ade80"></span>Forest</div><i class="ti ti-check drop-check"></i></button>
+          <button class="drop-row" onclick="setColor('rose','#e879f9','Rose',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#e879f9"></span>Rose</div><i class="ti ti-check drop-check"></i></button>
+        </div>
+      </div>
+      <button class="ghost-btn" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <button class="ghost-btn" onclick="pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+      <button class="primary-btn" id="signinBtn" onclick="choosePath('solo')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+    </div>
+  </nav>
+
+  <!-- LANDING -->
+  <div class="page active" id="page-landing">
+    <div class="entry-wrap slide-in">
+      <div style="text-align:center">
+        <div class="entry-logo-mark" id="entryLogoMark">AS</div>
+        <div class="entry-title">Anime <span>Sekai</span></div>
+        <div class="entry-sub">Test your anime knowledge — how far will you go?</div>
+      </div>
+      <div class="entry-cards" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="entry-card" onclick="choosePath('solo')">
+          <div class="entry-card-icon"><i class="ti ti-brain"></i></div>
+          <div class="entry-card-title">Test Your Knowledge</div>
+          <div class="entry-card-desc">Solo quiz — pick a format and mode, then see how far you can go.</div>
+        </div>
+        <div class="entry-card" onclick="choosePath('create')">
+          <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
+          <div class="entry-card-title">Create Lobby</div>
+          <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
+        </div>
+        <div class="entry-card" onclick="choosePath('join')">
+          <div class="entry-card-icon"><i class="ti ti-door-enter"></i></div>
+          <div class="entry-card-title">Join Lobby</div>
+          <div class="entry-card-desc">Got a code from a friend? Jump straight into their game.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH GATE -->
+  <div class="page" id="page-auth">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> <span id="authEyebrow">How do you want to play?</span></div>
+      <h1 id="authTitle">Jump <span class="hi">in</span></h1>
+    </div>
+    <!-- Mode picker -->
+    <div id="authModePicker" class="slide-in" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:420px">
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('guest')">
+        <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-user"></i></div>
+        <div>
+          <div class="entry-card-title" style="font-size:16px">Play as Guest</div>
+          <div class="entry-card-desc" style="font-size:12px;margin-top:2px">Pick a username and jump straight in. No account needed.</div>
+        </div>
+        <i class="ti ti-chevron-right" style="font-size:18px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+      </div>
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('signin')">
+        <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-lock-open"></i></div>
+        <div>
+          <div class="entry-card-title" style="font-size:16px">Sign In</div>
+          <div class="entry-card-desc" style="font-size:12px;margin-top:2px">Log in to save scores, track your rank and earn badges.</div>
+        </div>
+        <i class="ti ti-chevron-right" style="font-size:18px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+      </div>
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('register')">
+        <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-user-plus"></i></div>
+        <div>
+          <div class="entry-card-title" style="font-size:16px">Create Account</div>
+          <div class="entry-card-desc" style="font-size:12px;margin-top:2px">New here? Sign up to save your progress permanently.</div>
+        </div>
+        <i class="ti ti-chevron-right" style="font-size:18px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+      </div>
+    </div>
+    <!-- Guest form -->
+    <div id="authGuest" style="display:none;width:100%;max-width:420px" class="slide-in">
+      <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
+      <div class="form-card">
+        <div>
+          <label class="form-label">Username</label>
+          <input class="form-input" id="guestName" type="text" placeholder="e.g. ShinobiMaster99" maxlength="20" oninput="clearErr('guestErr')">
+          <div class="form-hint" style="margin-top:6px">3–20 characters, no spaces.</div>
+          <div class="form-err" id="guestErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="guestErrMsg"></span></div>
+        </div>
+        <button class="form-submit" id="guestSubmitBtn" onclick="submitGuest()"><i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena</button>
+      </div>
+    </div>
+    <!-- Sign in form -->
+    <div id="authSignin" style="display:none;width:100%;max-width:420px" class="slide-in">
+      <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
+      <div class="form-card">
+        <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" oninput="clearErr('signinErr')"></div>
+        <div><label class="form-label">Password</label><input class="form-input" id="siPass" type="password" placeholder="••••••••" oninput="clearErr('signinErr')"></div>
+        <div class="form-err" id="signinErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="signinErrMsg"></span></div>
+        <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
+      </div>
+      <div class="form-footer" style="margin-top:10px">No account? <a onclick="showAuthMode('register')">Create one</a></div>
+    </div>
+    <!-- Register form -->
+    <div id="authRegister" style="display:none;width:100%;max-width:420px" class="slide-in">
+      <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
+      <div class="form-card">
+        <div><label class="form-label">Username</label><input class="form-input" id="regUser" type="text" placeholder="YourUsername" maxlength="20" oninput="clearErr('regErr')"><div class="form-hint" style="margin-top:6px">3–20 characters, no spaces.</div></div>
+        <div><label class="form-label">Password</label><input class="form-input" id="regPass" type="password" placeholder="Choose a strong password" oninput="clearErr('regErr')"></div>
+        <div>
+          <label class="form-label">Email <span class="optional-tag">Optional</span></label>
+          <input class="form-input" id="regEmail" type="email" placeholder="you@example.com" oninput="clearErr('regErr')">
+          <div class="privacy-note" style="margin-top:8px"><i class="ti ti-shield-lock" style="font-size:15px"></i><span>Only used for password recovery. Skip it if you prefer — but lost passwords can't be recovered without one.</span></div>
+        </div>
+        <div class="form-err" id="regErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="regErrMsg"></span></div>
+        <button class="form-submit" id="regSubmitBtn" onclick="submitRegister()"><i class="ti ti-user-plus" style="font-size:16px"></i> Create Account</button>
+      </div>
+      <div class="form-footer" style="margin-top:10px">Already have an account? <a onclick="showAuthMode('signin')">Sign in</a></div>
+    </div>
+  </div>
+
+  <!-- FORMAT -->
+  <div class="page" id="page-format">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow">Choose your format</div>
+      <h1>Test your <span class="hi">anime</span> knowledge</h1>
+    </div>
+    <div class="fmt-grid slide-in">
+      <div class="fmt-card" onclick="selectFormat('mc')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-list"></i></div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
+      <div class="fmt-card" onclick="selectFormat('type')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-keyboard"></i></div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
+      <div class="fmt-card" onclick="selectFormat('img')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-photo"></i></div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
+      <div class="fmt-card" onclick="selectFormat('char')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-user-circle"></i></div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
+    </div>
+  </div>
+
+  <!-- MODE -->
+  <div class="page" id="page-mode">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Choose your mode</div>
+      <h1>How do you want to <span class="hi">play</span>?</h1>
+    </div>
+    <div class="mode-grid slide-in">
+      <div class="mode-card" onclick="startQuiz('race')"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> +10 pts per correct answer</div></div>
+      <div class="mode-card" onclick="startQuiz('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="page" id="page-quiz">
+    <div class="quiz-wrap">
+      <div class="quiz-hud">
+        <div class="hud-left">
+          <div><div class="hud-score" id="scoreDisplay">0 pts</div><div class="hud-score-label" id="hudLabel">Score Race</div></div>
+          <div class="hud-lives" id="livesDisplay"></div>
+        </div>
+        <div class="hud-right">
+          <span class="q-count" id="qCount">Q1</span>
+          <button class="ghost-btn" onclick="goStep('format')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
+        </div>
+      </div>
+      <div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="q-card">
+        <div class="q-meta"><span class="q-badge" id="qBadge"></span></div>
+        <div id="questionArea">
+          <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
+          <div class="q-text" id="questionText" style="display:none"></div>
+        </div>
+      </div>
+      <div class="answers" id="answersGrid"></div>
+      <div class="feedback" id="feedbackBar" style="display:none">
+        <div class="fb-left">
+          <span class="fb-icon" id="fbIcon"></span>
+          <div style="flex:1;min-width:0">
+            <div class="fb-title" id="fbTitle"></div>
+            <div id="fbYourAns" class="fb-your-ans" style="display:none"></div>
+            <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="fbCorrectAns"></span></div>
+            <div class="fb-pts" id="fbPts"></div>
+          </div>
+        </div>
+        <button class="next-btn" id="nextBtn" onclick="nextQuestion()"><i class="ti ti-arrow-right" style="font-size:14px"></i> Next</button>
+      </div>
+      <div style="text-align:right">
+        <button class="report-link" onclick="toggleReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
+        <div class="report-drop" id="reportDrop">
+          <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px">What's the issue?</div>
+          <div class="report-opts">
+            <label class="report-opt"><input type="radio" name="rpt" value="wrong"> Wrong answer marked correct</label>
+            <label class="report-opt"><input type="radio" name="rpt" value="unclear"> Question is unclear or ambiguous</label>
+            <label class="report-opt"><input type="radio" name="rpt" value="outdated"> Information is outdated</label>
+            <label class="report-opt"><input type="radio" name="rpt" value="duplicate"> Duplicate question</label>
+            <label class="report-opt"><input type="radio" name="rpt" value="other"> Other</label>
+          </div>
+          <textarea class="report-textarea" rows="2" placeholder="Optional: describe the issue..."></textarea>
+          <button class="report-submit" id="reportSubmitBtn" onclick="submitReport()">Submit report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="page" id="page-leaderboard">
+    <div style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:20px">
+      <div style="text-align:center" class="slide-in">
+        <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Leaderboard</div>
+        <h1>Top <span class="hi">Players</span></h1>
+      </div>
+      <div class="slide-in" style="display:flex;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto">
+        <button class="lb-tab active" id="lbTabGlobal" onclick="switchLbTab('global')">🌍 Global</button>
+        <button class="lb-tab" id="lbTabFriends" onclick="switchLbTab('friends')">👥 Friends</button>
+      </div>
+      <div id="lbGlobal" class="slide-in">
+        <div class="lb-list" id="lbGlobalList"></div>
+      </div>
+      <div id="lbFriends" style="display:none">
+        <div class="lb-empty" id="lbFriendsEmpty" style="display:none">
+          <div style="font-size:36px;margin-bottom:12px">👥</div>
+          <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text);margin-bottom:6px">No friends yet</div>
+          <div style="font-size:13px;color:var(--muted)">Sign in and add friends to see how you compare.</div>
+        </div>
+        <div class="lb-list" id="lbFriendsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY JOIN -->
+  <div class="page" id="page-lobby-join">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Join a Lobby</div>
+      <h1>Enter the <span class="hi">Code</span></h1>
+    </div>
+    <div class="form-wrap slide-in">
+      <div class="form-card">
+        <div>
+          <label class="form-label">Lobby Code</label>
+          <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="10" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
+          <div class="form-hint" style="margin-top:6px">Ask the lobby host for the code.</div>
+          <div class="form-err" id="lobbyJoinErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
+        </div>
+        <button class="form-submit" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:16px"></i> Join Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY ROOM (host view) -->
+  <div class="page" id="page-lobby-room">
+    <div style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:18px">
+      <div style="text-align:center" class="slide-in">
+        <div class="step-eyebrow">Waiting for players</div>
+        <h1>Lobby <span class="hi" id="lobbyCodeDisplay">—</span></h1>
+      </div>
+      <div class="slide-in" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:24px;backdrop-filter:blur(10px);text-align:center">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Share this code</div>
+        <div style="font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);letter-spacing:.15em;margin-bottom:14px" id="lobbyCodeBig">—</div>
+        <button class="ghost-btn" style="margin:0 auto" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
+      </div>
+      <div class="slide-in">
+        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/8)</div>
+        <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
+      </div>
+      <div class="slide-in" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="font-size:13px;color:var(--muted)">
+          <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
+          <span style="font-size:11px">Change format &amp; mode before starting</span>
+        </div>
+        <button class="ghost-btn" onclick="goStep('lobby-settings')"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+      </div>
+      <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
+        <button class="action-btn primary" id="startLobbyBtn" onclick="startLobbyGame()"><i class="ti ti-player-play" style="font-size:16px"></i> Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY SETTINGS -->
+  <div class="page" id="page-lobby-settings">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-room')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
+      <h1>Game <span class="hi">Settings</span></h1>
+    </div>
+    <div class="fmt-grid slide-in">
+      <div class="fmt-card" onclick="setLobbyFormat('mc',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-list"></i></div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('type',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-keyboard"></i></div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('img',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-photo"></i></div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a scene.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('char',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-user-circle"></i></div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Identify the character described.</div></div>
+    </div>
+    <div class="mode-grid slide-in">
+      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> +10 pts per correct answer</div></div>
+      <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
+      <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers while everyone watches. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER QUIZ -->
+  <div class="page" id="page-mp-quiz">
+    <div style="width:100%;max-width:900px;display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start">
+      <div class="quiz-wrap" id="mpQuizPanel">
+        <div class="quiz-hud">
+          <div class="hud-left">
+            <div><div class="hud-score" id="mpScoreDisplay">0 pts</div><div class="hud-score-label" id="mpHudLabel">Score Race</div></div>
+            <div class="hud-lives" id="mpLivesDisplay"></div>
+          </div>
+          <div class="hud-right">
+            <span class="q-count" id="mpQCount">Q1</span>
+            <button class="ghost-btn" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
+          </div>
+        </div>
+        <div class="timer-wrap"><div class="timer-bar" id="mpTimerBar"></div></div>
+        <div class="q-card">
+          <div class="q-meta"><span class="q-badge" id="mpQBadge"></span></div>
+          <div id="mpQuestionArea">
+            <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
+            <div class="q-text" id="mpQuestionText" style="display:none"></div>
+          </div>
+        </div>
+        <div class="answers" id="mpAnswersGrid"></div>
+        <div class="feedback" id="mpFeedbackBar" style="display:none">
+          <div class="fb-left">
+            <span class="fb-icon" id="mpFbIcon"></span>
+            <div style="flex:1;min-width:0">
+              <div class="fb-title" id="mpFbTitle"></div>
+              <div id="mpFbYourAns" class="fb-your-ans" style="display:none"></div>
+              <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="mpFbCorrectAns"></span></div>
+              <div class="fb-pts" id="mpFbPts"></div>
+            </div>
+          </div>
+          <button class="next-btn" id="mpNextBtn" onclick="mpNextQuestion()"><i class="ti ti-arrow-right" style="font-size:14px"></i> Next</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px">
+        <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)">
+          <div class="profile-section-title" style="margin-bottom:12px"><i class="ti ti-trophy"></i> Live Scores</div>
+          <div style="display:flex;flex-direction:column;gap:8px" id="mpScoreboard"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER RESULTS -->
+  <div class="page" id="page-mp-results">
+    <div class="results-wrap">
+      <div class="rank-hero slide-in d1" style="text-align:center">
+        <div class="rank-badge-wrap"><div class="rank-glow"></div><div class="rank-badge" id="mpWinnerBadge">🏆</div></div>
+        <div class="rank-title" id="mpWinnerTitle">Game <span>Over</span></div>
+        <div class="rank-sub" id="mpWinnerSub"></div>
+      </div>
+      <div class="slide-in d2" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:20px;backdrop-filter:blur(10px)">
+        <div class="profile-section-title"><i class="ti ti-trophy"></i> Final Standings</div>
+        <div style="display:flex;flex-direction:column;gap:10px" id="mpFinalStandings"></div>
+      </div>
+      <div class="action-row slide-in d3">
+        <button class="action-btn primary" onclick="goStep('lobby-room')"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
+        <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="page" id="page-results">
+    <div class="results-wrap">
+      <div class="rank-hero slide-in d1">
+        <div class="rank-badge-wrap"><div class="rank-glow"></div><div class="rank-badge" id="rankBadge">🏆</div></div>
+        <div class="rank-title" id="rankTitle">True <span>Otaku</span></div>
+        <div class="rank-sub" id="rankSub"></div>
+        <div class="score-display"><div class="score-big" id="scoreBig">0</div><div class="score-unit">pts</div></div>
+      </div>
+      <div class="stat-row slide-in d2">
+        <div class="stat-card"><div class="stat-val" id="statCorrect">0/0</div><div class="stat-label">Correct</div></div>
+        <div class="stat-card"><div class="stat-val" id="statAccuracy">0%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-card"><div class="stat-val" id="statLives">—</div><div class="stat-label">Lives left</div></div>
+      </div>
+      <div class="action-row slide-in d3">
+        <button class="action-btn primary" id="playAgainBtn" onclick="playAgain()"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
+        <button class="action-btn secondary" onclick="goStep('format')"><i class="ti ti-layout-grid" style="font-size:17px"></i> Change Format</button>
+      </div>
+      <div class="slide-in d4" style="text-align:center" id="viewProfileWrap">
+        <button class="ghost-btn" style="margin:0 auto;display:inline-flex" onclick="goStep('profile')"><i class="ti ti-user" style="font-size:15px"></i> View Profile</button>
+      </div>
+      <div class="slide-in d4">
+        <div class="recap-header"><div class="recap-title">Answer Recap</div><button class="recap-toggle" onclick="toggleRecap()" id="recapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
+        <div class="recap-list" id="recapList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="profile-wrap">
+
+      <!-- HERO -->
+      <div class="profile-hero slide-in d1">
+        <div class="profile-hero-inner">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar" id="profileAvatar">S</div>
+            <div class="profile-avatar-ring"></div>
+          </div>
+          <div class="profile-info">
+            <div class="profile-username" id="profileUsername">ShinobiMaster99</div>
+            <div class="profile-tag" id="profileRankTag">🔥 Anime Scholar</div>
+            <div class="profile-since"><i class="ti ti-calendar" style="font-size:13px"></i> Member since May 2025</div>
+          </div>
+          <button class="profile-edit-btn"><i class="ti ti-pencil" style="font-size:14px"></i> Edit Profile</button>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="profile-stats slide-in d2">
+        <div class="p-stat"><div class="p-stat-val" id="pStatGames">24</div><div class="p-stat-label">Games</div></div>
+        <div class="p-stat"><div class="p-stat-val" id="pStatBest">90</div><div class="p-stat-label">Best Score</div></div>
+        <div class="p-stat"><div class="p-stat-val" id="pStatAccuracy">78%</div><div class="p-stat-label">Accuracy</div></div>
+        <div class="p-stat"><div class="p-stat-val" id="pStatStreak">5🔥</div><div class="p-stat-label">Streak</div></div>
+      </div>
+
+      <!-- RANK PROGRESS -->
+      <div class="slide-in d3">
+        <div class="profile-section-title"><i class="ti ti-trending-up"></i> Rank Progress</div>
+        <div class="rank-progress-card">
+          <div class="rank-progress-row">
+            <div class="rank-current">
+              <div class="rank-emoji-sm" id="progressEmoji">🔥</div>
+              <div>
+                <div class="rank-name-sm" id="progressRankName">Anime Scholar</div>
+                <div class="rank-pts-sm" id="progressPts">580 total points</div>
+              </div>
+            </div>
+            <div class="rank-next" id="progressNext">Next: <strong>True Otaku</strong><br>220 pts to go</div>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:72%"></div></div>
+          <div class="progress-label"><span id="progressMin">Anime Scholar · 500pts</span><span id="progressMax">True Otaku · 800pts</span></div>
+        </div>
+      </div>
+
+      <!-- RECENT HISTORY -->
+      <div class="slide-in d4">
+        <div class="profile-section-title"><i class="ti ti-history"></i> Recent Games</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+      <!-- BADGES -->
+      <div class="slide-in d5">
+        <div class="profile-section-title"><i class="ti ti-medal"></i> Badges</div>
+        <div class="badges-grid" id="badgesGrid"></div>
+      </div>
+
+      <!-- CTA -->
+      <div class="profile-cta slide-in d5">
+        <div>
+          <div class="profile-cta-text">Ready for another round?</div>
+          <div class="profile-cta-sub">Keep playing to climb the ranks and unlock more badges.</div>
+        </div>
+        <button class="profile-cta-btn" id="profileCtaBtn" onclick="goStep('format')"><i class="ti ti-player-play" style="font-size:16px"></i> Play Now</button>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="foot-left">© 2025 Anime Sekai — For the love of anime</div>
+    <div class="foot-links">
+      <a class="foot-link" href="#">Submit a question</a>
+      <a class="foot-link" href="#">About</a>
+      <a class="foot-link" href="#">Contact</a>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── SUPABASE CONFIG ───────────────────────────────────────────
+// Replace these two values with your own from supabase.com
+// Project Settings → API → Project URL and anon public key
+const SUPABASE_URL  = 'https://ispagvwuxgbzzycdxdfx.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcGFndnd1eGdienp5Y2R4ZGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTcwMDksImV4cCI6MjA5NDQ3MzAwOX0.COahnEHqu4R-_OBAJX1J-4qGk_Lo04SWKfNBfkYCTn0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── SUPABASE AUTH ─────────────────────────────────────────────
+async function sbSignUp(username, password, email=''){
+  const meta = {username};
+  const { data, error } = await sb.auth.signUp({
+    email: email || `${username}@animesekai.guest`,
+    password,
+    options: { data: meta }
+  });
+  if(error) throw error;
+  // Update profile username explicitly (trigger may use email fallback)
+  if(data.user){
+    await sb.from('profiles').update({username}).eq('id', data.user.id);
+  }
+  return data.user;
+}
+
+async function sbSignIn(username, password){
+  // We store accounts by username; derive the email we used at sign-up
+  // In a real app you'd look up the email — for now use same pattern
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: `${username}@animesekai.guest`,
+    password
+  });
+  if(error) throw error;
+  return data.user;
+}
+
+async function sbSignOut(){
+  await sb.auth.signOut();
+}
+
+async function sbLoadProfile(userId){
+  const { data } = await sb.from('user_stats').select('*').eq('id', userId).single();
+  return data;
+}
+
+async function sbSaveGame(userId, gameData){
+  const { error } = await sb.from('games').insert({
+    user_id:   userId,
+    format:    gameData.format,
+    mode:      gameData.mode,
+    score:     gameData.score,
+    correct:   gameData.correct,
+    total:     gameData.total,
+    lives_left:gameData.livesLeft
+  });
+  if(error) console.error('Save game error:', error);
+}
+
+async function sbLoadHistory(userId){
+  const { data } = await sb.from('games')
+    .select('*')
+    .eq('user_id', userId)
+    .order('played_at', {ascending: false})
+    .limit(10);
+  return data || [];
+}
+
+async function sbLoadLeaderboard(){
+  const { data } = await sb.from('leaderboard').select('*').limit(20);
+  return data || [];
+}
+
+// ── SESSION RESTORE ───────────────────────────────────────────
+// On page load, check if user is already signed in
+sb.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user && !currentUser){
+    const profile = await sbLoadProfile(session.user.id);
+    if(profile){
+      currentUser = profile.username;
+      currentUserId = session.user.id;
+      isGuest = false;
+      totalGames    = parseInt(profile.total_games) || 0;
+      bestScore     = parseInt(profile.best_score)  || 0;
+      totalCorrect  = parseInt(profile.total_correct)|| 0;
+      totalAnswered = parseInt(profile.total_answered)||0;
+      allHistory = await sbLoadHistory(currentUserId);
+      updateNav();
+    }
+  }
+});
+</script>
+
+<script>
+let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false;
+let selectedFormat='mc',selectedMode='race';
+let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
+let quizHistory=[],currentQData=null,prefetchedQuestion=null;
+let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
+let allHistory=[];
+
+const accentHex={midnight:'#a78bfa',sakura:'#f472b6',ocean:'#38bdf8',ember:'#fb923c',forest:'#4ade80',rose:'#e879f9'};
+const colorNames={midnight:'Midnight',sakura:'Sakura',ocean:'Ocean',ember:'Ember',forest:'Forest',rose:'Rose'};
+const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character'};
+const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
+const keys=['A','B','C','D'];
+const ranks=[
+  {min:0,max:19,emoji:'😅',title:'Casual Watcher',sub:"You've seen a few episodes here and there. Keep watching!"},
+  {min:20,max:39,emoji:'🌱',title:'Anime Newcomer',sub:"You're finding your footing. The journey has only just begun."},
+  {min:40,max:59,emoji:'⚔️',title:'Seasoned Fan',sub:"A solid performance! You've clearly spent time with your watch list."},
+  {min:60,max:79,emoji:'🌟',title:'Anime Enthusiast',sub:"Impressive knowledge! Your dedication is starting to show."},
+  {min:80,max:89,emoji:'🔥',title:'Anime Scholar',sub:"Outstanding! You have deep knowledge across the anime universe."},
+  {min:90,max:100,emoji:'🏆',title:'True Otaku',sub:"Incredible! You clearly live and breathe anime. The arena bows before you."},
+];
+
+function computeBadges(){
+  const formatsPlayed=new Set(allHistory.map(h=>h.fmt));
+  return [
+    {emoji:'🎯',name:'First Strike',desc:'Complete your first quiz',unlocked:totalGames>=1},
+    {emoji:'🔥',name:'On Fire',desc:'Score 80+ pts in one game',unlocked:bestScore>=80},
+    {emoji:'💯',name:'Perfect',desc:'Score 100 pts',unlocked:bestScore>=100},
+    {emoji:'⚡',name:'Speed Demon',desc:'Answer in under 5s 10 times',unlocked:false},
+    {emoji:'❤️',name:'Survivor',desc:'Finish Survival with all 3 lives',unlocked:allHistory.some(h=>h.mode==='Survival'&&h.livesLeft===3)},
+    {emoji:'📚',name:'Scholar',desc:'Play 20+ games',unlocked:totalGames>=20},
+    {emoji:'🗾',name:'Otaku',desc:'Reach True Otaku rank',unlocked:bestScore>=90},
+    {emoji:'🎭',name:'Versatile',desc:'Play all 4 formats',unlocked:formatsPlayed.size>=4},
+  ];
+}
+
+function applyTheme(){
+  const b=document.body;
+  b.removeAttribute('data-theme');b.removeAttribute('data-color');
+  if(isDark){if(currentColor!=='midnight'){b.setAttribute('data-theme','dark');b.setAttribute('data-color',currentColor)}}
+  else{b.setAttribute('data-theme','light');if(currentColor!=='midnight')b.setAttribute('data-color',currentColor)}
+  document.getElementById('modeToggle').classList.toggle('on',!isDark);
+  document.getElementById('cdot').style.background=accentHex[currentColor];
+  document.getElementById('tlabel').textContent=(isDark?'Dark':'Light')+' · '+colorNames[currentColor];
+  const light=!isDark;
+  document.getElementById('logoMark').style.color=light?'var(--text)':'';
+  const em=document.getElementById('entryLogoMark');if(em)em.style.color=light?'var(--text)':'';
+  ['guestSubmitBtn','signinSubmitBtn','regSubmitBtn','reportSubmitBtn','nextBtn','playAgainBtn','profileCtaBtn'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.color=light?'var(--text)':'';
+  });
+  document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'var(--text)':'');
+}
+function toggleMode(){isDark=!isDark;applyTheme()}
+function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));el.classList.add('active');applyTheme();closeDrop()}
+function toggleDrop(){document.getElementById('drop').classList.toggle('open')}
+function closeDrop(){document.getElementById('drop').classList.remove('open')}
+document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
+
+const originalNavHTML=document.getElementById('navRight').innerHTML;
+function buildThemeDropHTML(){
+  return `<div class="drop-section">Mode</div>
+    <div class="toggle-row"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog${!isDark?' on':''}" id="modeToggle" onclick="toggleMode()"></button></div>
+    <div class="drop-sep"></div>
+    <div class="drop-section">Color</div>
+    ${['midnight','sakura','ocean','ember','forest','rose'].map(c=>`<button class="drop-row${currentColor===c?' active':''}" onclick="setColor('${c}','${accentHex[c]}','${colorNames[c]}',this)"><div class="drop-row-left"><span class="dot-sm" style="background:${accentHex[c]}"></span>${colorNames[c]}</div><i class="ti ti-check drop-check"></i></button>`).join('')}`;
+}
+function updateNav(){
+  const nr=document.getElementById('navRight');
+  if(currentUser){
+    nr.innerHTML=`
+      <div class="ctrl-wrap" id="themeWrap">
+        <button class="ghost-btn" onclick="toggleDrop()">
+          <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:${accentHex[currentColor]};flex-shrink:0"></span>
+          <span id="tlabel">${isDark?'Dark':'Light'} · ${colorNames[currentColor]}</span>
+          <i class="ti ti-chevron-down" style="font-size:13px"></i>
+        </button>
+        <div class="drop" id="drop">${buildThemeDropHTML()}</div>
+      </div>
+      <button class="ghost-btn" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
+        <div class="user-avatar">${currentUser[0].toUpperCase()}</div>${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
+      </div>
+      <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
+    document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
+  } else {
+    nr.innerHTML=originalNavHTML;
+  }
+  applyTheme();
+}
+async function signOut(){
+  await sbSignOut().catch(()=>{});
+  currentUser=null;currentUserId=null;isGuest=false;
+  totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
+  allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
+  prefetchedQuestion=null;currentQData=null;
+  clearInterval(timerInterval);
+  updateNav();goStep('landing');
+}
+
+function goStep(name){
+  clearInterval(timerInterval);
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg=document.getElementById('page-'+name);
+  pg.classList.add('active');
+  pg.querySelectorAll('.slide-in').forEach(el=>{el.style.animation='none';void el.offsetHeight;el.style.animation=''});
+  if(name==='profile')renderProfile();
+  applyTheme();
+}
+
+function clearErr(id){document.getElementById(id).classList.remove('show')}
+function showErr(id,msgId,msg){document.getElementById(msgId).textContent=msg;document.getElementById(id).classList.add('show')}
+
+// ── AUTH GATE ─────────────────────────────────────────────────
+let pendingDestination='solo';
+const authEyebrows={solo:'Solo quiz',create:'Create a lobby',join:'Join a lobby'};
+const authTitles={solo:'Test your <span class="hi">knowledge</span>',create:'Host with <span class="hi">friends</span>',join:'Jump <span class="hi">in</span>'};
+
+function choosePath(dest){
+  pendingDestination=dest;
+  if(currentUser){
+    afterAuth();return;
+  }
+  document.getElementById('authEyebrow').textContent=authEyebrows[dest];
+  document.getElementById('authTitle').innerHTML=authTitles[dest];
+  showAuthMode(null);
+  goStep('auth');
+}
+function showAuthMode(mode){
+  document.getElementById('authModePicker').style.display=mode?'none':'flex';
+  document.getElementById('authGuest').style.display=mode==='guest'?'block':'none';
+  document.getElementById('authSignin').style.display=mode==='signin'?'block':'none';
+  document.getElementById('authRegister').style.display=mode==='register'?'block':'none';
+}
+function afterAuth(){
+  if(pendingDestination==='create'){createLobby();return}
+  if(pendingDestination==='join'){goStep('lobby-join');return}
+  if(pendingDestination==='profile'){goStep('profile');return}
+  goStep('format');
+}
+async function submitGuest(){
+  const val=document.getElementById('guestName').value.trim();
+  if(val.length<3){showErr('guestErr','guestErrMsg','Username must be at least 3 characters.');return}
+  if(/\s/.test(val)){showErr('guestErr','guestErrMsg','No spaces allowed.');return}
+  const btn=document.getElementById('guestSubmitBtn');
+  btn.disabled=true;btn.textContent='Entering…';
+  try{
+    const randPass=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    const user=await sbSignUp(val,randPass,'');
+    currentUser=val;currentUserId=user?.id||null;isGuest=true;
+    updateNav();afterAuth();
+  }catch(e){
+    currentUser=val;currentUserId=null;isGuest=true;
+    updateNav();afterAuth();
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
+  }
+}
+async function submitSignin(){
+  const u=document.getElementById('siUser').value.trim();
+  const p=document.getElementById('siPass').value;
+  if(!u||!p){showErr('signinErr','signinErrMsg','Please fill in all fields.');return}
+  const btn=document.getElementById('signinSubmitBtn');
+  btn.disabled=true;btn.textContent='Signing in…';
+  try{
+    const user=await sbSignIn(u,p);
+    const profile=await sbLoadProfile(user.id);
+    currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
+    totalGames    =parseInt(profile?.total_games)   ||0;
+    bestScore     =parseInt(profile?.best_score)    ||0;
+    totalCorrect  =parseInt(profile?.total_correct) ||0;
+    totalAnswered =parseInt(profile?.total_answered)||0;
+    allHistory=await sbLoadHistory(user.id);
+    updateNav();afterAuth();
+  }catch(e){
+    showErr('signinErr','signinErrMsg',e.message||'Incorrect username or password.');
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-login" style="font-size:16px"></i> Sign In';
+  }
+}
+async function submitRegister(){
+  const u=document.getElementById('regUser').value.trim();
+  const p=document.getElementById('regPass').value;
+  const e=document.getElementById('regEmail').value.trim();
+  if(u.length<3){showErr('regErr','regErrMsg','Username must be at least 3 characters.');return}
+  if(/\s/.test(u)){showErr('regErr','regErrMsg','No spaces allowed.');return}
+  if(p.length<6){showErr('regErr','regErrMsg','Password must be at least 6 characters.');return}
+  if(e&&!e.includes('@')){showErr('regErr','regErrMsg','Please enter a valid email address.');return}
+  const btn=document.getElementById('regSubmitBtn');
+  btn.disabled=true;btn.textContent='Creating account…';
+  try{
+    const user=await sbSignUp(u,p,e);
+    currentUser=u;currentUserId=user?.id||null;isGuest=false;
+    updateNav();afterAuth();
+  }catch(err){
+    showErr('regErr','regErrMsg',err.message||'Could not create account. Username may already be taken.');
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus" style="font-size:16px"></i> Create Account';
+  }
+}
+
+function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
+function startQuiz(mode){
+  selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  document.getElementById('hudLabel').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':'Survival');
+  document.getElementById('qBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+  goStep('quiz');renderHUD();loadQuestion();
+}
+function renderHUD(){
+  document.getElementById('scoreDisplay').textContent=score+' pts';
+  document.getElementById('qCount').textContent='Q'+(qIndex+1);
+  const ld=document.getElementById('livesDisplay');ld.innerHTML='';
+  if(selectedMode==='survival'){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
+}
+
+async function fetchQuestion(){
+  const usedQs=quizHistory.map(h=>h.q).slice(-5).join(' | ');
+  const prompts={
+    mc:`Generate a multiple choice anime trivia question with exactly 4 options. Return ONLY valid JSON: {"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]} where answer is 0-based correct index and aliases are ALL alternate names (abbreviations like AOT/MHA/SNK/BNHA/JJK, Japanese titles, alternate English titles). Be thorough.${usedQs?' Avoid: '+usedQs:''}`,
+    type:`Generate an anime trivia question with a short answer (1-4 words). Return ONLY valid JSON: {"question":"...","answer":"canonical answer","aliases":["AOT","Shingeki no Kyojin"]} — aliases MUST include every common abbreviation, Japanese title, and alternate name. Be very thorough.${usedQs?' Avoid: '+usedQs:''}`,
+    img:`Generate an anime trivia question as if describing a scene. Multiple choice, 4 options. Return ONLY JSON: {"question":"You see [describe scene]. Which anime is this?","options":["A","B","C","D"],"answer":0,"aliases":[]}${usedQs?' Avoid: '+usedQs:''}`,
+    char:`Describe an anime character without naming them, and ask who they are. 4 options. Return ONLY JSON: {"question":"This character [description]. Who are they?","options":["A","B","C","D"],"answer":0,"aliases":["nickname","alternate spelling"]}${usedQs?' Avoid: '+usedQs:''}`,
+  };
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
+    const data=await res.json();
+    const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    return JSON.parse(raw);
+  }catch(e){return getFallback()}
+}
+function getFallback(){
+  const fb=[
+    {question:"Which anime features the character Goku?",options:["Dragon Ball Z","Naruto","One Piece","Bleach"],answer:0,aliases:["DBZ","Dragon Ball","DBS"]},
+    {question:"Who is the main character of Death Note?",options:["L","Light Yagami","Misa Amane","Near"],answer:1,aliases:[]},
+    {question:"In Demon Slayer, what is Tanjiro's sister's name?",options:["Kanao","Nezuko","Shinobu","Aoi"],answer:1,aliases:["Kimetsu no Yaiba","KnY"]},
+    {question:"Which studio produced My Hero Academia?",options:["Madhouse","Bones","Wit Studio","Ufotable"],answer:1,aliases:["MHA","Boku no Hero","BNHA"]},
+    {question:"What is the name of the main character in Naruto?",options:["Sasuke","Sakura","Naruto Uzumaki","Kakashi"],answer:2,aliases:[]},
+  ];
+  return fb[Math.floor(Math.random()*fb.length)];
+}
+function checkAnswer(userInput,qData){
+  const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
+  const aliases=qData.aliases||[];
+  const normalize=s=>s.toLowerCase().trim().replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
+  const userN=normalize(userInput);
+  return [canonical,...aliases].some(a=>normalize(a)===userN);
+}
+async function loadQuestion(){
+  answered=false;
+  document.getElementById('feedbackBar').style.display='none';
+  document.getElementById('reportDrop').classList.remove('open');
+  document.getElementById('answersGrid').innerHTML='';
+  document.getElementById('questionText').style.display='none';
+  document.getElementById('qLoading').style.display='flex';
+  renderHUD();
+  const qData=prefetchedQuestion||await fetchQuestion();
+  prefetchedQuestion=null;currentQData=qData;
+  showQuestion(qData);
+  fetchQuestion().then(q=>{prefetchedQuestion=q});
+}
+function showQuestion(qData){
+  document.getElementById('qLoading').style.display='none';
+  document.getElementById('questionText').style.display='block';
+  document.getElementById('questionText').textContent=qData.question||'Question unavailable';
+  const grid=document.getElementById('answersGrid');grid.innerHTML='';
+  const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
+  if(isType){
+    const wrap=document.createElement('div');wrap.className='type-wrap';
+    wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div>`;
+    grid.appendChild(wrap);applyTheme();
+    document.getElementById('typeInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkTypeAnswer()});
+    document.getElementById('typeInput').focus();
+  } else {
+    (qData.options||[]).forEach((opt,i)=>{
+      const d=document.createElement('div');d.className='ans';
+      d.innerHTML=`<span class="ans-key">${keys[i]}</span><span class="ans-text">${opt}</span>`;
+      d.onclick=()=>answerMC(i,d,qData);grid.appendChild(d);
+    });
+  }
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null});
+  startTimer();
+}
+function answerMC(idx,el,qData){
+  if(answered)return;answered=true;clearInterval(timerInterval);
+  const allAns=document.querySelectorAll('.ans');allAns.forEach(a=>a.classList.add('locked'));
+  const correct=idx===qData.answer;
+  if(correct){el.classList.add('correct');score+=10;}
+  else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;}
+  quizHistory[quizHistory.length-1].userAns=qData.options[idx];
+  quizHistory[quizHistory.length-1].correct=correct;
+  showFeedback(correct,qData.options[qData.answer],qData.options[idx]);
+  renderHUD();
+}
+function checkTypeAnswer(){
+  if(answered)return;
+  const input=document.getElementById('typeInput');
+  if(!input||!input.value.trim())return;
+  answered=true;clearInterval(timerInterval);
+  const userAns=input.value.trim();
+  const correct=checkAnswer(userAns,currentQData);
+  const canonicalAns=currentQData.answer||'';
+  input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
+  document.getElementById('typeSubmitBtn').disabled=true;
+  if(correct){score+=10;}else{lives--;}
+  quizHistory[quizHistory.length-1].userAns=userAns;
+  quizHistory[quizHistory.length-1].correct=correct;
+  showFeedback(correct,canonicalAns,userAns);
+  renderHUD();
+}
+function timeOut(){
+  if(answered)return;answered=true;
+  document.querySelectorAll('.ans').forEach(a=>a.classList.add('locked'));
+  const inp=document.getElementById('typeInput');if(inp)inp.disabled=true;
+  const sb=document.getElementById('typeSubmitBtn');if(sb)sb.disabled=true;
+  lives--;renderHUD();
+  const last=quizHistory[quizHistory.length-1];
+  if(last){last.userAns='(timed out)';last.correct=false;}
+  showFeedback(false,last?.correctAns||'?','(timed out)',"Time's up!");
+}
+function showFeedback(correct,correctAns,userAns,override){
+  const fb=document.getElementById('feedbackBar');fb.style.display='flex';
+  fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
+  document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:22px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:22px"></i>';
+  document.getElementById('fbTitle').textContent=override||(correct?'Correct!':'Wrong!');
+  document.getElementById('fbCorrectAns').textContent=correctAns;
+  const ya=document.getElementById('fbYourAns');
+  if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
+  else{ya.style.display='none';}
+  document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
+  applyTheme();
+}
+function nextQuestion(){
+  qIndex++;
+  if(selectedMode==='survival'&&lives<=0){endQuiz();return}
+  if(selectedMode==='race'&&score>=100){endQuiz();return}
+  loadQuestion();
+}
+function endQuiz(){
+  clearInterval(timerInterval);
+  // Update lifetime stats
+  totalGames++;
+  const correct=quizHistory.filter(h=>h.correct).length;
+  const total=quizHistory.length;
+  totalCorrect+=correct;totalAnswered+=total;
+  if(score>bestScore)bestScore=score;
+  if(correct===total&&total>0)currentStreak++;else currentStreak=0;
+  // Add to history
+  const rank=getRank(score);
+  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives});
+  // Save to Supabase if logged in
+  if(currentUserId){
+    sbSaveGame(currentUserId,{
+      format:selectedFormat,mode:selectedMode,score,correct,total,livesLeft:lives
+    });
+  }
+  renderResults();goStep('results');
+}
+function getRank(s){return ranks.find(r=>s>=r.min&&s<=r.max)||ranks[0]}
+function renderResults(){
+  const rank=getRank(score);
+  document.getElementById('rankBadge').textContent=rank.emoji;
+  const words=rank.title.split(' ');const last=words.pop();
+  document.getElementById('rankTitle').innerHTML=words.join(' ')+(words.length?' ':'')+' <span>'+last+'</span>';
+  document.getElementById('rankSub').textContent=rank.sub;
+  document.getElementById('scoreBig').textContent=score;
+  const correct=quizHistory.filter(h=>h.correct).length,total=quizHistory.length;
+  document.getElementById('statCorrect').textContent=correct+' / '+total;
+  document.getElementById('statAccuracy').textContent=(total?Math.round((correct/total)*100):0)+'%';
+  document.getElementById('statLives').textContent=selectedMode==='survival'?lives+' ❤️':'—';
+  buildRecap();if(score>=80)launchConfetti();
+  document.getElementById('viewProfileWrap').style.display=(!currentUser||isGuest)?'none':'block';
+  applyTheme();
+}
+function buildRecap(){
+  const list=document.getElementById('recapList');list.innerHTML='';
+  quizHistory.forEach((a,i)=>{
+    const item=document.createElement('div');item.className='recap-item '+(a.correct?'correct':'wrong');
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div></div><span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    list.appendChild(item);
+  });
+}
+let recapOpen=true;
+function toggleRecap(){
+  recapOpen=!recapOpen;
+  document.getElementById('recapList').style.display=recapOpen?'flex':'none';
+  document.getElementById('recapToggleBtn').innerHTML=recapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
+}
+function playAgain(){startQuiz(selectedMode)}
+
+function renderProfile(){
+  const user=currentUser||'Guest';
+  document.getElementById('profileAvatar').textContent=user[0].toUpperCase();
+  document.getElementById('profileUsername').textContent=user;
+  // compute rank from bestScore
+  const rank=getRank(bestScore);
+  document.getElementById('profileRankTag').textContent=rank.emoji+' '+rank.title;
+  document.getElementById('pStatGames').textContent=totalGames;
+  document.getElementById('pStatBest').textContent=bestScore;
+  document.getElementById('pStatAccuracy').textContent=totalAnswered?Math.round((totalCorrect/totalAnswered)*100)+'%':'0%';
+  document.getElementById('pStatStreak').textContent=currentStreak+'🔥';
+  // rank progress
+  const rIdx=ranks.findIndex(r=>r.emoji===rank.emoji);
+  const nextRank=ranks[rIdx+1];
+  document.getElementById('progressEmoji').textContent=rank.emoji;
+  document.getElementById('progressRankName').textContent=rank.title;
+  document.getElementById('progressPts').textContent=totalGames*10+' total points (approx)';
+  if(nextRank){
+    document.getElementById('progressNext').innerHTML=`Next: <strong>${nextRank.title}</strong><br>Keep playing!`;
+    const pct=Math.min(100,((bestScore-rank.min)/(rank.max-rank.min))*100);
+    document.getElementById('progressFill').style.width=pct+'%';
+    document.getElementById('progressMin').textContent=rank.title;
+    document.getElementById('progressMax').textContent=nextRank.title;
+  } else {
+    document.getElementById('progressNext').textContent='Max rank reached!';
+    document.getElementById('progressFill').style.width='100%';
+  }
+  // history
+  const hl=document.getElementById('historyList');hl.innerHTML='';
+  if(allHistory.length===0){
+    hl.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No games played yet. <a onclick="choosePath(\'solo\')" style="color:var(--accent);cursor:pointer">Start playing!</a></div>';
+  } else {
+    allHistory.slice(0,4).forEach(h=>{
+      const item=document.createElement('div');item.className='history-item';
+      item.innerHTML=`<div class="history-icon">${h.rank}</div><div class="history-info"><div class="history-title">${h.fmt} · ${h.mode}</div><div class="history-meta"><span><i class="ti ti-check" style="font-size:11px"></i> ${h.correct}/${h.total} correct</span><span><i class="ti ti-calendar" style="font-size:11px"></i> ${h.date}</span></div></div><div style="text-align:right"><div class="history-score">${h.score}</div><div class="history-rank">pts</div></div>`;
+      hl.appendChild(item);
+    });
+  }
+  // badges
+  const bg=document.getElementById('badgesGrid');bg.innerHTML='';
+  computeBadges().forEach(b=>{
+    const card=document.createElement('div');card.className='badge-card'+(b.unlocked?'':' locked');
+    card.innerHTML=`<div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div>`;
+    bg.appendChild(card);
+  });
+  applyTheme();
+}
+
+function startTimer(){
+  clearInterval(timerInterval);timeLeft=20;updateTimerBar();
+  timerInterval=setInterval(()=>{timeLeft-=0.1;updateTimerBar();if(timeLeft<=0){clearInterval(timerInterval);timeOut()}},100);
+}
+function updateTimerBar(){
+  const pct=Math.max(0,(timeLeft/20)*100);
+  const bar=document.getElementById('timerBar');bar.style.width=pct+'%';
+  bar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+}
+function launchConfetti(){
+  const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#fbbf24'];
+  for(let i=0;i<60;i++){setTimeout(()=>{
+    const el=document.createElement('div');el.className='confetti-piece';
+    el.style.cssText=`left:${Math.random()*100}vw;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*1.5}s`;
+    document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
+  },i*30);}
+}
+function toggleReport(){document.getElementById('reportDrop').classList.toggle('open')}
+function submitReport(){
+  const btn=document.getElementById('reportSubmitBtn');
+  btn.textContent='Reported — thank you!';btn.disabled=true;
+  setTimeout(()=>{document.getElementById('reportDrop').classList.remove('open');btn.textContent='Submit report';btn.disabled=false},2000);
+}
+
+// ── LEADERBOARD ──────────────────────────────────────────────
+let lbTab='global';
+function switchLbTab(tab){
+  lbTab=tab;
+  document.getElementById('lbTabGlobal').classList.toggle('active',tab==='global');
+  document.getElementById('lbTabFriends').classList.toggle('active',tab==='friends');
+  document.getElementById('lbGlobal').style.display=tab==='global'?'block':'none';
+  document.getElementById('lbFriends').style.display=tab==='friends'?'block':'none';
+  if(tab==='friends')renderFriendsLb();
+}
+async function renderLb(){
+  const list=document.getElementById('lbGlobalList');
+  list.innerHTML='<div style="text-align:center;padding:32px;color:var(--muted)"><div class="spinner" style="margin:0 auto 10px"></div>Loading…</div>';
+  let data=await sbLoadLeaderboard();
+  // Ensure current user appears if not in top 20
+  if(currentUser&&data.length&&!data.find(r=>r.username===currentUser)){
+    data.push({username:currentUser,best_score:bestScore,total_games:totalGames,theme_color:currentColor});
+  }
+  list.innerHTML='';
+  data.forEach((p,i)=>{
+    const rankClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const isMe=currentUser&&p.username===currentUser;
+    const color=accentHex[p.theme_color]||accentHex.midnight;
+    const row=document.createElement('div');row.className='lb-row';
+    if(isMe)row.style.borderColor='var(--accent)';
+    row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games played</div></div><div class="lb-score">${p.best_score}</div>`;
+    list.appendChild(row);
+  });
+  if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';
+}
+function renderFriendsLb(){
+  const list=document.getElementById('lbFriendsList');list.innerHTML='';
+  const empty=document.getElementById('lbFriendsEmpty');
+  if(!currentUser||isGuest){empty.style.display='block';return}
+  empty.style.display='none';
+  const friends=[{name:'OtakuKing',score:98,games:37,rank:'🏆',color:'#f472b6'},{name:'SakuraChan',score:82,games:33,rank:'🔥',color:'#e879f9'}];
+  if(currentUser)friends.push({name:currentUser,score:bestScore,games:totalGames,rank:getRank(bestScore).emoji,color:accentHex[currentColor]});
+  friends.sort((a,b)=>b.score-a.score);
+  friends.forEach((p,i)=>{
+    const isMe=p.name===currentUser;
+    const row=document.createElement('div');row.className='lb-row';
+    if(isMe)row.style.borderColor='var(--accent)';
+    row.innerHTML=`<div class="lb-rank ${i===0?'gold':i===1?'silver':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff">${p.name[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.rank} · ${p.games} games played</div></div><div class="lb-score">${p.score}</div>`;
+    list.appendChild(row);
+  });
+}
+const _origGoStep=goStep;
+goStep=function(name){
+  _origGoStep(name);
+  if(name==='leaderboard'){lbTab='global';switchLbTab('global');renderLb();}
+  if(name==='lobby-room')renderLobbyRoom();
+};
+
+// ── LOBBY / MULTIPLAYER ───────────────────────────────────────
+let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race';
+function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
+function createLobby(){
+  if(!currentUser){goStep('signin');return}
+  lobbyCode=generateCode();lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor]}];
+  lobbyFormat=selectedFormat;lobbyMode=selectedMode;
+  goStep('lobby-room');
+}
+function joinLobby(){
+  const code=document.getElementById('lobbyCodeInput').value.trim().toUpperCase();
+  if(code.length<4){showErr('lobbyJoinErr','lobbyJoinErrMsg','Please enter a valid lobby code.');return}
+  if(!currentUser){goStep('signin');return}
+  lobbyCode=code;
+  lobbyPlayers=[
+    {name:'OtakuKing',score:0,lives:3,isHost:true,color:'#f472b6'},
+    {name:currentUser,score:0,lives:3,isHost:false,color:accentHex[currentColor]},
+  ];
+  goStep('lobby-room');
+}
+function renderLobbyRoom(){
+  document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
+  document.getElementById('lobbyCodeBig').textContent=lobbyCode;
+  document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
+  lobbyPlayers.forEach(p=>{
+    const row=document.createElement('div');row.className='lobby-player';
+    row.innerHTML=`<div class="lobby-player-avatar" style="background:${p.color}">${p.name[0].toUpperCase()}</div><div class="lobby-player-name">${p.name}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}`;
+    list.appendChild(row);
+  });
+  applyTheme();
+}
+function copyLobbyCode(){
+  navigator.clipboard.writeText(lobbyCode).catch(()=>{});
+  const lbl=document.getElementById('copyCodeLabel');lbl.textContent='Copied!';
+  setTimeout(()=>{lbl.textContent='Copy Code'},2000);
+}
+function setLobbyFormat(fmt,el){
+  lobbyFormat=fmt;selectedFormat=fmt;
+  document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
+  el.style.borderColor='var(--accent)';
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  setTimeout(()=>goStep('lobby-room'),300);
+}
+function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':'Hot Potato 🥔'}
+function setLobbyMode(mode,el){
+  lobbyMode=mode;selectedMode=mode;
+  document.querySelectorAll('#page-lobby-settings .mode-card').forEach(c=>c.style.borderColor='');
+  el.style.borderColor='var(--accent)';
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  setTimeout(()=>goStep('lobby-room'),300);
+}
+function startLobbyGame(){
+  selectedFormat=lobbyFormat;selectedMode=lobbyMode;
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
+  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  // Hot Potato state
+  hpActiveIdx=0;
+  document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
+  document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+  _origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();
+}
+
+// ── HOT POTATO STATE ─────────────────────────────────────────
+let hpActiveIdx=0;
+function hpActivePlayers(){return lobbyPlayers.filter(p=>!p.eliminated)}
+function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.length]}
+function hpIsMyTurn(){return lobbyMode==='potato'&&hpActivePlayer().name===currentUser}
+
+function renderMPHUD(){
+  // In hot potato show current player's lives; in others show own score
+  const isHP=lobbyMode==='potato';
+  const active=isHP?hpActivePlayer():null;
+  const displayLives=isHP?active.lives:lives;
+  const displayScore=isHP?'🥔 '+active.name+"'s turn":score+' pts';
+  document.getElementById('mpScoreDisplay').textContent=displayScore;
+  document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
+  const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
+  if(selectedMode==='survival'||selectedMode==='potato'){
+    for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
+  }
+  if(!isHP){
+    lobbyPlayers.forEach(p=>{if(p.name!==currentUser&&Math.random()>.4){p.score=Math.min(100,p.score+(Math.random()>.5?10:0));}});
+    const me=lobbyPlayers.find(p=>p.name===currentUser);if(me)me.score=score;
+  }
+  renderMPScoreboard();
+}
+
+function renderMPScoreboard(){
+  const sb=document.getElementById('mpScoreboard');sb.innerHTML='';
+  const isHP=lobbyMode==='potato';
+  const sorted=isHP?[...lobbyPlayers]:[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+  sorted.forEach((p,i)=>{
+    const isMe=p.name===currentUser;
+    const isActive=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
+    const row=document.createElement('div');row.className='mp-score-row'+(isMe?' me':'');
+    if(isActive)row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
+    const rightCol=isHP
+      ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
+      :`<div class="mp-score-pts">${p.score}</div>`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated?'text-decoration:line-through;opacity:.4':''}">${p.name}${isMe?' (you)':''}</div>${rightCol}`;
+    sb.appendChild(row);
+  });
+}
+
+async function mpLoadQuestion(){
+  answered=false;
+  document.getElementById('mpFeedbackBar').style.display='none';
+  document.getElementById('mpAnswersGrid').innerHTML='';
+  document.getElementById('mpQuestionText').style.display='none';
+  document.getElementById('mpQLoading').style.display='flex';
+  renderMPHUD();
+  // In Hot Potato, lock input if not your turn
+  if(lobbyMode==='potato'){
+    const active=hpActivePlayer();
+    const isMyTurn=active.name===currentUser;
+    document.getElementById('mpQLoading').querySelector('.q-loading-text').textContent=
+      isMyTurn?'Your turn! Loading question…':active.name+"'s turn…";
+  }
+  const qData=prefetchedQuestion||await fetchQuestion();
+  prefetchedQuestion=null;currentQData=qData;
+  mpShowQuestion(qData);
+  fetchQuestion().then(q=>{prefetchedQuestion=q});
+}
+
+function mpShowQuestion(qData){
+  document.getElementById('mpQLoading').style.display='none';
+  document.getElementById('mpQuestionText').style.display='block';
+  document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
+  const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';
+  const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
+  const isHP=lobbyMode==='potato';
+  const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
+
+  if(isType||isHP){
+    // Hot Potato always uses type input; show disabled input if not your turn
+    const wrap=document.createElement('div');wrap.className='type-wrap';
+    const placeholder=isMyTurn?'Type your answer...':'Waiting for '+hpActivePlayer().name+'…';
+    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div>`;
+    grid.appendChild(wrap);applyTheme();
+    if(isMyTurn){
+      document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer()});
+      document.getElementById('mpTypeInput').focus();
+    }
+  } else {
+    (qData.options||[]).forEach((opt,i)=>{
+      const d=document.createElement('div');d.className='ans';
+      d.innerHTML=`<span class="ans-key">${keys[i]}</span><span class="ans-text">${opt}</span>`;
+      d.onclick=()=>mpAnswerMC(i,d,qData);grid.appendChild(d);
+    });
+  }
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null});
+  clearInterval(timerInterval);timeLeft=20;
+  const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+  timerInterval=setInterval(()=>{
+    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/20)*100);
+    mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+    if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
+  },100);
+}
+
+function mpAnswerMC(idx,el,qData){
+  if(answered)return;answered=true;clearInterval(timerInterval);
+  const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
+  const correct=idx===qData.answer;
+  if(correct){el.classList.add('correct');score+=10;}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;}
+  quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
+  mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
+}
+
+function mpCheckTypeAnswer(){
+  if(answered)return;
+  const input=document.getElementById('mpTypeInput');
+  if(!input||!input.value.trim())return;
+  answered=true;clearInterval(timerInterval);
+  const userAns=input.value.trim();
+  const correct=checkAnswer(userAns,currentQData);
+  input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
+  document.getElementById('mpTypeSubmitBtn').disabled=true;
+  const isHP=lobbyMode==='potato';
+  if(isHP){
+    const active=hpActivePlayer();
+    if(!correct){active.lives--;if(active.lives<=0)active.eliminated=true;}
+    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=correct;
+    const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
+    mpShowFeedback(correct,correctAns,userAns,null,active.name);
+    renderMPHUD();
+  } else {
+    if(correct){score+=10;}else{lives--;}
+    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=correct;
+    mpShowFeedback(correct,currentQData.answer,userAns);renderMPHUD();
+  }
+}
+
+function mpTimeOut(){
+  if(answered)return;answered=true;
+  document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
+  const inp=document.getElementById('mpTypeInput');if(inp)inp.disabled=true;
+  const isHP=lobbyMode==='potato';
+  if(isHP){
+    const active=hpActivePlayer();
+    active.lives--;if(active.lives<=0)active.eliminated=true;
+    renderMPHUD();
+    const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
+    const correctAns=last?.correctAns||'?';
+    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",active.name);
+  } else {
+    lives--;renderMPHUD();
+    const last=quizHistory[quizHistory.length-1];
+    if(last){last.userAns='(timed out)';last.correct=false;}
+    mpShowFeedback(false,last?.correctAns||'?','(timed out)',"Time's up!");
+  }
+}
+
+function mpShowFeedback(correct,correctAns,userAns,override,playerName){
+  const fb=document.getElementById('mpFeedbackBar');fb.style.display='flex';
+  fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
+  document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:22px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:22px"></i>';
+  const title=override||(playerName?(playerName+(correct?' got it!':' missed!')):correct?'Correct!':'Wrong!');
+  document.getElementById('mpFbTitle').textContent=title;
+  document.getElementById('mpFbCorrectAns').textContent=correctAns;
+  const ya=document.getElementById('mpFbYourAns');
+  if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
+  const isHP=lobbyMode==='potato';
+  document.getElementById('mpFbPts').textContent=correct&&!isHP?'+10 points added to your score':isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
+  applyTheme();
+}
+
+function mpNextQuestion(){
+  qIndex++;
+  const isHP=lobbyMode==='potato';
+  if(isHP){
+    // Advance potato to next non-eliminated player
+    hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+    while(lobbyPlayers[hpActiveIdx].eliminated){
+      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+    }
+    const remaining=hpActivePlayers();
+    if(remaining.length<=1){mpEndGame();return;}
+  } else {
+    if(selectedMode==='survival'&&lives<=0){mpEndGame();return}
+    if(selectedMode==='race'&&score>=100){mpEndGame();return}
+  }
+  mpLoadQuestion();
+}
+
+function mpEndGame(){
+  clearInterval(timerInterval);
+  const isHP=lobbyMode==='potato';
+  const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
+  const sorted=isHP
+    ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
+    :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+  const winner=sorted[0];const iWon=winner.name===currentUser;
+  document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
+  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span> — So close!';
+  document.getElementById('mpWinnerSub').textContent=iWon?(isHP?'Last one standing — you survived the potato!':'You outscored everyone — legendary run!'):'Better luck next time. Challenge them again!';
+  const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
+  sorted.forEach((p,i)=>{
+    const isMe=p.name===currentUser;
+    const row=document.createElement('div');row.className='standing-row';
+    if(isMe)row.style.borderColor='var(--accent)';
+    const rightCol=isHP
+      ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
+      :`<div class="lb-score">${p.score} pts</div>`;
+    row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${isHP?(p.eliminated?'Eliminated':'Survived'):(getRank(p.score).emoji+' '+getRank(p.score).title)}</div></div>${rightCol}`;
+    standings.appendChild(row);
+  });
+  if(iWon)launchConfetti();
+  _origGoStep('mp-results');applyTheme();
+}
+
+applyTheme();
+</script>
