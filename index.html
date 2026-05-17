@@ -550,7 +550,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
         <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" oninput="clearErr('signinErr')"></div>
-        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>        <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
+        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
+        <div class="form-err" id="signinErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="signinErrMsg"></span></div>
+        <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
       </div>
       <div class="form-footer" style="margin-top:10px">No account? <a onclick="showAuthMode('register')">Create one</a> · <a onclick="showAuthMode('forgot')">Forgot password?</a></div>
     </div>
@@ -1222,13 +1224,16 @@ async function sbSignUp(username, password, email=''){
   if(data.user){
     await sb.from('profiles').update({username, email: email||null}).eq('id', data.user.id);
   }
+  if(!data.session) throw new Error('Account created! Please sign in.');
   return data.user;
 }
 
 async function sbSignIn(username, password){
   let email=`${username}@animesekai.guest`;
-  const {data:profile}=await sb.from('profiles').select('email').eq('username',username).single();
-  if(profile?.email) email=profile.email;
+  try{
+    const {data:profile}=await sb.from('profiles').select('email').eq('username',username).maybeSingle();
+    if(profile?.email) email=profile.email;
+  }catch(e){}
   const { data, error } = await sb.auth.signInWithPassword({email, password});
   if(error) throw error;
   return data.user;
@@ -1239,8 +1244,10 @@ async function sbSignOut(){
 }
 
 async function sbLoadProfile(userId){
-  const { data } = await sb.from('user_stats').select('*').eq('id', userId).single();
-  return data;
+  try{
+    const { data } = await sb.from('user_stats').select('*').eq('id', userId).maybeSingle();
+    return data;
+  }catch(e){return null;}
 }
 
 async function sbSaveGame(userId, gameData){
@@ -1519,13 +1526,16 @@ async function submitGuest(){
   btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
 }
 async function submitSignin(){
+  console.log('submitSignin called');
   const u=document.getElementById('siUser').value.trim();
   const p=document.getElementById('siPass').value;
   if(!u||!p){showErr('signinErr','signinErrMsg','Please fill in all fields.');return}
   const btn=document.getElementById('signinSubmitBtn');
   btn.disabled=true;btn.textContent='Signing in…';
   try{
+    console.log('calling sbSignIn');
     const user=await sbSignIn(u,p);
+    console.log('sbSignIn result:', user);
     const profile=await sbLoadProfile(user.id);
     currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
     totalGames    =parseInt(profile?.total_games)   ||0;
