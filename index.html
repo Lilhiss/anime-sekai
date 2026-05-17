@@ -1404,15 +1404,24 @@ async function fetchQuestionFromAI(){
     char:`Describe an anime character without naming them and ask who they are. Type answer format.${topicClause}${avoidClause} Return ONLY JSON: {"question":"This character [description]. Who are they?","answer":"Character Name","aliases":["nickname","alternate spelling"]}`,
   };
   try{
-    const res=await fetch('/.netlify/functions/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
+    const res=await fetch('/.netlify/functions/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'gemini-2.0-flash',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
+    if(!res.ok){
+      const errText=await res.text();
+      console.error('Gemini proxy error:',res.status,errText);
+      return getFallback();
+    }
     const data=await res.json();
+    if(data.error){console.error('Gemini API error:',data.error);return getFallback();}
     const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    console.log('Gemini raw response:',raw);
     const parsed=JSON.parse(raw);
-    // Derive topic for saving
     const saveTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
     sbSaveQuestion(parsed,selectedFormat,saveTopic);
     return parsed;
-  }catch(e){return getFallback()}
+  }catch(e){
+    console.error('fetchQuestionFromAI error:',e);
+    return getFallback();
+  }
 }
 
 function getFallback(){
