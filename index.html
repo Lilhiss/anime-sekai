@@ -381,7 +381,59 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .foot-links{display:flex;gap:18px}
 .foot-link{font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;transition:color .2s}
 .foot-link:hover{color:var(--accent)}
-@media(max-width:600px){nav{padding:12px 16px}.entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}.stat-row,.profile-stats{grid-template-columns:1fr 1fr}.badges-grid{grid-template-columns:repeat(3,1fr)}.profile-hero-inner{flex-direction:column;text-align:center}footer{padding:12px 16px}.entry-card{padding:22px 16px}.entry-wrap{max-width:100%}#page-mp-quiz>div{grid-template-columns:1fr}}
+@media(max-width:600px){
+  nav{padding:10px 14px}
+  .logo-name{font-size:16px}
+  .ghost-btn{padding:6px 10px;font-size:12px}
+  .primary-btn{padding:6px 12px;font-size:12px}
+  .entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}
+  .entry-card{padding:18px 14px}
+  .entry-wrap{max-width:100%}
+  .stat-row,.profile-stats{grid-template-columns:1fr 1fr}
+  .badges-grid{grid-template-columns:repeat(3,1fr)}
+  .profile-hero-inner{flex-direction:column;text-align:center}
+  .profile-edit-btn{margin:0 auto}
+  footer{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:6px}
+  .foot-links{gap:12px}
+  #page-mp-quiz>div{grid-template-columns:1fr}
+  .topic-page-grid{grid-template-columns:1fr}
+  .topic-right{position:static}
+  .quiz-wrap{padding:12px}
+  .q-card{padding:16px}
+  .q-text{font-size:16px}
+  .hud-score{font-size:22px}
+  .feedback{flex-direction:column;gap:10px}
+  .fb-auto-next{align-self:flex-start}
+  .mode-grid{grid-template-columns:1fr}
+  h1{font-size:28px}
+  .results-wrap{gap:16px}
+  .rank-badge{font-size:56px}
+  .lb-row{padding:10px 12px;gap:10px}
+  .profile-wrap{gap:16px}
+  .recap-item{flex-wrap:wrap}
+}
+/* ADMIN PANEL */
+.admin-wrap{width:100%;max-width:900px;display:flex;flex-direction:column;gap:20px}
+.admin-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content}
+.admin-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.admin-tab.active{background:var(--accent);color:#fff}
+.admin-q-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
+.admin-q-card.flagged{border-color:#f87171}
+.admin-q-text{font-size:14px;font-weight:700;color:var(--text);line-height:1.5}
+.admin-q-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.admin-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;border:1px solid var(--border2);color:var(--muted);background:var(--bg3);text-transform:uppercase;letter-spacing:.04em}
+.admin-badge.format{color:var(--accent);border-color:var(--border2);background:var(--accent-soft)}
+.admin-badge.reported{color:#f87171;border-color:#f87171;background:rgba(248,113,113,.1)}
+.admin-badge.submitted{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.admin-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.admin-btn.approve{background:#4ade80;color:#0a0a0a}
+.admin-btn.reject{background:#f87171;color:#fff}
+.admin-btn.delete{background:var(--bg3);border:1px solid var(--border2);color:var(--muted)}
+.admin-btn.approve:hover{opacity:.85}.admin-btn.reject:hover{opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
+.admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
+.admin-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:600px){.admin-stat-row{grid-template-columns:1fr 1fr}}
 </style>
 
 <div class="scene">
@@ -660,6 +712,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div id="fbYourAns" class="fb-your-ans" style="display:none"></div>
             <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="fbCorrectAns"></span></div>
             <div class="fb-pts" id="fbPts"></div>
+            <div id="fbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:5px;font-style:italic"></div>
           </div>
         </div>
         <div class="fb-auto-next" id="soloAutoNext"></div>
@@ -747,7 +800,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
           <span style="font-size:11px">Change format &amp; mode before starting</span>
         </div>
-        <button class="ghost-btn" onclick="goStep('lobby-settings')"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+        <button class="ghost-btn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
       </div>
       <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
@@ -806,6 +859,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               <div id="mpFbYourAns" class="fb-your-ans" style="display:none"></div>
               <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="mpFbCorrectAns"></span></div>
               <div class="fb-pts" id="mpFbPts"></div>
+              <div id="mpFbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:5px;font-style:italic"></div>
             </div>
           </div>
           <div class="fb-auto-next" id="mpAutoNext"></div>
@@ -860,7 +914,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="stat-card"><div class="stat-val" id="statLives">—</div><div class="stat-label">Lives left</div></div>
       </div>
       <div class="action-row slide-in d3">
-        <button class="action-btn primary" id="playAgainBtn" onclick="playAgain()"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
+        <button class="action-btn primary" id="playAgainBtn" onclick="showPlayAgainModal()"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
         <button class="action-btn secondary" onclick="goStep('format')"><i class="ti ti-layout-grid" style="font-size:17px"></i> Change Format</button>
       </div>
       <div class="slide-in d4" style="text-align:center" id="viewProfileWrap">
@@ -889,7 +943,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div class="profile-tag" id="profileRankTag">🔥 Anime Scholar</div>
             <div class="profile-since"><i class="ti ti-calendar" style="font-size:13px"></i> Member since May 2025</div>
           </div>
-          <button class="profile-edit-btn"><i class="ti ti-pencil" style="font-size:14px"></i> Edit Profile</button>
+          <button class="profile-edit-btn" onclick="openEditProfile()"><i class="ti ti-pencil" style="font-size:14px"></i> Edit Profile</button>
         </div>
       </div>
 
@@ -944,12 +998,198 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- EDIT PROFILE MODAL -->
+  <div id="editProfileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Edit Profile</div>
+        <button onclick="closeEditProfile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div>
+        <label class="form-label">Username</label>
+        <input class="form-input" id="editUsernameInput" type="text" maxlength="20" placeholder="Your username" oninput="clearErr('editProfileErr')">
+        <div class="form-hint" style="margin-top:6px">3–20 characters, no spaces.</div>
+        <div class="form-err" id="editProfileErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="editProfileErrMsg"></span></div>
+      </div>
+      <div>
+        <label class="form-label">Theme Color</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px" id="editColorPicker"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeEditProfile()">Cancel</button>
+        <button class="action-btn primary" onclick="saveEditProfile()"><i class="ti ti-check" style="font-size:15px"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN OUT CONFIRMATION MODAL -->
+  <div id="signOutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
+      <div style="font-size:40px">👋</div>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Sign out?</div>
+        <div style="font-size:13px;color:var(--muted)">You'll need to sign back in to access your profile and saved stats.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeSignOutModal()">Cancel</button>
+        <button class="action-btn primary" onclick="confirmSignOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div class="page" id="page-admin">
+    <div class="admin-wrap">
+      <div style="text-align:center" class="slide-in">
+        <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Admin Panel</div>
+        <h1>🛡️ <span class="hi">Admin</span></h1>
+      </div>
+      <!-- Stats row -->
+      <div class="admin-stat-row slide-in" id="adminStatRow">
+        <div class="stat-card"><div class="stat-val" id="adminStatPending">—</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card"><div class="stat-val" id="adminStatApproved">—</div><div class="stat-label">Approved</div></div>
+        <div class="stat-card"><div class="stat-val" id="adminStatFlagged">—</div><div class="stat-label">Flagged</div></div>
+        <div class="stat-card"><div class="stat-val" id="adminStatTotal">—</div><div class="stat-label">Total Questions</div></div>
+      </div>
+      <!-- Tabs -->
+      <div class="admin-tabs slide-in">
+        <button class="admin-tab active" id="adminTabPending" onclick="switchAdminTab('pending')">⏳ Pending</button>
+        <button class="admin-tab" id="adminTabFlagged" onclick="switchAdminTab('flagged')">🚩 Flagged</button>
+        <button class="admin-tab" id="adminTabAll" onclick="switchAdminTab('all')">📋 All</button>
+      </div>
+      <!-- Question list -->
+      <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
+        <div class="admin-empty">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAY AGAIN MODAL -->
+  <div id="playAgainModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
+      <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);text-align:center">Play Again?</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="entry-card" style="padding:16px 18px;flex-direction:row;align-items:center;gap:14px;text-align:left;cursor:pointer" onclick="playAgain()">
+          <div class="entry-card-icon" style="width:42px;height:42px;flex-shrink:0;font-size:18px"><i class="ti ti-refresh"></i></div>
+          <div>
+            <div class="entry-card-title" style="font-size:14px">Same Settings</div>
+            <div class="entry-card-desc" style="font-size:11px;margin-top:2px" id="playAgainSettingsSummary">Same format, topic &amp; difficulty</div>
+          </div>
+          <i class="ti ti-chevron-right" style="font-size:16px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+        </div>
+        <div class="entry-card" style="padding:16px 18px;flex-direction:row;align-items:center;gap:14px;text-align:left;cursor:pointer" onclick="closePlayAgainModal();goStep('topic')">
+          <div class="entry-card-icon" style="width:42px;height:42px;flex-shrink:0;font-size:18px"><i class="ti ti-adjustments"></i></div>
+          <div>
+            <div class="entry-card-title" style="font-size:14px">Change Topic / Difficulty</div>
+            <div class="entry-card-desc" style="font-size:11px;margin-top:2px">Keep the format, pick a new topic</div>
+          </div>
+          <i class="ti ti-chevron-right" style="font-size:16px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+        </div>
+        <div class="entry-card" style="padding:16px 18px;flex-direction:row;align-items:center;gap:14px;text-align:left;cursor:pointer" onclick="closePlayAgainModal();goStep('format')">
+          <div class="entry-card-icon" style="width:42px;height:42px;flex-shrink:0;font-size:18px"><i class="ti ti-layout-grid"></i></div>
+          <div>
+            <div class="entry-card-title" style="font-size:14px">Start Fresh</div>
+            <div class="entry-card-desc" style="font-size:11px;margin-top:2px">Pick a new format, topic and mode</div>
+          </div>
+          <i class="ti ti-chevron-right" style="font-size:16px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
+        </div>
+      </div>
+      <button class="ghost-btn" style="margin:0 auto" onclick="closePlayAgainModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">About Anime Sekai</div>
+        <button onclick="document.getElementById('aboutModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="font-size:36px;text-align:center">🌸</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.7;text-align:center">
+        Anime Sekai is a fan-made anime trivia platform built for anime lovers of all levels. Test your knowledge solo, challenge friends in real time, and climb the ranks from Casual Watcher to True Otaku.<br><br>
+        Built with love for the anime community. 🎌
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:14px 16px">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Stack</div>
+        <div style="font-size:13px;color:var(--text)">Vanilla HTML/CSS/JS · Supabase · Gemini AI · Netlify</div>
+      </div>
+      <button class="action-btn primary" onclick="document.getElementById('aboutModal').style.display='none'">Got it!</button>
+    </div>
+  </div>
+
+  <!-- CONTACT MODAL -->
+  <div id="contactModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Contact</div>
+        <button onclick="document.getElementById('contactModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.6">Got feedback, found a bug, or want to get in touch? Fill in the form below.</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label class="form-label">Your name</label><input class="form-input" id="contactName" type="text" placeholder="Optional"></div>
+        <div><label class="form-label">Message</label><textarea class="form-input" id="contactMessage" rows="4" placeholder="Tell us what's on your mind…" style="resize:vertical;font-family:'Nunito',sans-serif;font-size:13px"></textarea></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="document.getElementById('contactModal').style.display='none'">Cancel</button>
+        <button class="action-btn primary" onclick="submitContact()"><i class="ti ti-send" style="font-size:15px"></i> Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT QUESTION MODAL -->
+  <div id="submitQModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Submit a Question</div>
+        <button onclick="document.getElementById('submitQModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="form-label">Question</label>
+          <input class="form-input" id="sqQuestion" type="text" placeholder="What is the name of…">
+        </div>
+        <div>
+          <label class="form-label">Format</label>
+          <select class="form-input" id="sqFormat" style="cursor:pointer">
+            <option value="mc">Multiple Choice</option>
+            <option value="type">Type the Answer</option>
+            <option value="char">Name the Character</option>
+          </select>
+        </div>
+        <div id="sqOptionsWrap">
+          <label class="form-label">Options (one per line, mark correct with ✓)</label>
+          <textarea class="form-input" id="sqOptions" rows="4" placeholder="✓ Correct answer&#10;Wrong option 1&#10;Wrong option 2&#10;Wrong option 3" style="resize:vertical;font-family:'Nunito',sans-serif;font-size:13px"></textarea>
+        </div>
+        <div>
+          <label class="form-label">Correct Answer</label>
+          <input class="form-input" id="sqAnswer" type="text" placeholder="The correct answer">
+        </div>
+        <div>
+          <label class="form-label">Aliases <span class="optional-tag">Optional</span></label>
+          <input class="form-input" id="sqAliases" type="text" placeholder="AOT, Shingeki no Kyojin, …">
+          <div class="form-hint" style="margin-top:4px">Comma-separated alternate answers that should also be accepted.</div>
+        </div>
+        <div>
+          <label class="form-label">Anime / Topic</label>
+          <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Shonen general…">
+        </div>
+      </div>
+      <div class="form-err" id="sqErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqErrMsg"></span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="document.getElementById('submitQModal').style.display='none'">Cancel</button>
+        <button class="action-btn primary" onclick="submitQuestion()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <div class="foot-left">© 2025 Anime Sekai — For the love of anime</div>
     <div class="foot-links">
-      <a class="foot-link" href="#">Submit a question</a>
-      <a class="foot-link" href="#">About</a>
-      <a class="foot-link" href="#">Contact</a>
+      <a class="foot-link" onclick="if(!currentUser||isGuest){pendingDestination='solo';showAuthMode(null);goStep('auth');}else{document.getElementById('submitQModal').style.display='flex';applyTheme();}">Submit a question</a>
+      <a class="foot-link" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()">About</a>
+      <a class="foot-link" onclick="document.getElementById('contactModal').style.display='flex';applyTheme()">Contact</a>
     </div>
   </footer>
 </div>
@@ -1126,6 +1366,7 @@ function updateNav(){
         <div class="drop" id="drop">${buildThemeDropHTML()}</div>
       </div>
       <button class="ghost-btn" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="display:none"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
         <div class="user-avatar">${currentUser[0].toUpperCase()}</div>${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
@@ -1136,7 +1377,16 @@ function updateNav(){
   }
   applyTheme();
 }
-async function signOut(){
+function signOut(){
+  // Show confirmation modal instead of signing out immediately
+  document.getElementById('signOutModal').style.display='flex';
+  applyTheme();
+}
+function closeSignOutModal(){
+  document.getElementById('signOutModal').style.display='none';
+}
+async function confirmSignOut(){
+  closeSignOutModal();
   await sbSignOut().catch(()=>{});
   currentUser=null;currentUserId=null;isGuest=false;
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
@@ -1144,6 +1394,52 @@ async function signOut(){
   prefetchedQuestion=null;currentQData=null;
   clearInterval(timerInterval);
   updateNav();goStep('landing');
+}
+
+// ── EDIT PROFILE ──────────────────────────────────────────────
+function openEditProfile(){
+  if(!currentUser)return;
+  document.getElementById('editUsernameInput').value=currentUser;
+  // Build color picker
+  const picker=document.getElementById('editColorPicker');picker.innerHTML='';
+  const colors={midnight:'#a78bfa',sakura:'#f472b6',ocean:'#38bdf8',ember:'#fb923c',forest:'#4ade80',rose:'#e879f9'};
+  Object.entries(colors).forEach(([key,hex])=>{
+    const btn=document.createElement('button');
+    btn.style.cssText=`width:32px;height:32px;border-radius:50%;background:${hex};border:3px solid ${currentColor===key?'var(--text)':'transparent'};cursor:pointer;transition:border-color .2s;flex-shrink:0`;
+    btn.title=key.charAt(0).toUpperCase()+key.slice(1);
+    btn.onclick=()=>{
+      document.querySelectorAll('#editColorPicker button').forEach(b=>b.style.borderColor='transparent');
+      btn.style.borderColor='var(--text)';
+      btn.dataset.selected='true';
+      picker.querySelectorAll('button').forEach(b=>delete b.dataset.selected);
+      btn.dataset.selected='true';
+      btn.dataset.color=key;
+    };
+    btn.dataset.color=key;
+    if(currentColor===key)btn.dataset.selected='true';
+    picker.appendChild(btn);
+  });
+  document.getElementById('editProfileModal').style.display='flex';
+  applyTheme();
+}
+function closeEditProfile(){
+  document.getElementById('editProfileModal').style.display='none';
+}
+async function saveEditProfile(){
+  const newName=document.getElementById('editUsernameInput').value.trim();
+  if(newName.length<3){showErr('editProfileErr','editProfileErrMsg','Username must be at least 3 characters.');return}
+  if(/\s/.test(newName)){showErr('editProfileErr','editProfileErrMsg','No spaces allowed.');return}
+  // Get selected color
+  const selectedBtn=document.querySelector('#editColorPicker button[data-selected]');
+  const newColor=selectedBtn?.dataset.color||currentColor;
+  // Update Supabase profile if logged in
+  if(currentUserId&&!isGuest){
+    const {error}=await sb.from('profiles').update({username:newName,theme_color:newColor}).eq('id',currentUserId);
+    if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
+  }
+  currentUser=newName;currentColor=newColor;
+  updateNav();renderProfile();applyTheme();
+  closeEditProfile();
 }
 
 function goStep(name){
@@ -1203,16 +1499,19 @@ async function submitGuest(){
   const btn=document.getElementById('guestSubmitBtn');
   btn.disabled=true;btn.textContent='Entering…';
   try{
-    const randPass=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
-    const user=await sbSignUp(val,randPass,'');
-    currentUser=val;currentUserId=user?.id||null;isGuest=true;
-    updateNav();afterAuth();
+    // Try anonymous Supabase sign-in for lobby support
+    const {data,error}=await sb.auth.signInAnonymously();
+    if(!error&&data?.user){
+      currentUserId=data.user.id;
+      // Upsert profile so FK constraints work
+      await sb.from('profiles').upsert({id:currentUserId,username:val,is_guest:true},{onConflict:'id'}).catch(()=>{});
+    }
   }catch(e){
-    currentUser=val;currentUserId=null;isGuest=true;
-    updateNav();afterAuth();
-  }finally{
-    btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
+    // Silent fail — app works without Supabase for solo play
+    console.log('Guest anon sign-in skipped:',e.message);
   }
+  currentUser=val;isGuest=true;updateNav();afterAuth();
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
 }
 async function submitSignin(){
   const u=document.getElementById('siUser').value.trim();
@@ -1229,7 +1528,7 @@ async function submitSignin(){
     totalCorrect  =parseInt(profile?.total_correct) ||0;
     totalAnswered =parseInt(profile?.total_answered)||0;
     allHistory=await sbLoadHistory(user.id);
-    updateNav();afterAuth();
+    updateNav();await checkAdminRole();afterAuth();
   }catch(e){
     showErr('signinErr','signinErrMsg',e.message||'Incorrect username or password.');
   }finally{
@@ -1249,7 +1548,7 @@ async function submitRegister(){
   try{
     const user=await sbSignUp(u,p,e);
     currentUser=u;currentUserId=user?.id||null;isGuest=false;
-    updateNav();afterAuth();
+    updateNav();await checkAdminRole();afterAuth();
   }catch(err){
     showErr('regErr','regErrMsg',err.message||'Could not create account. Username may already be taken.');
   }finally{
@@ -1443,11 +1742,11 @@ function buildTopicContext(){
 
 function buildDifficultyContext(){
   const map={
-    easy:' Difficulty: EASY — ask about very well-known, mainstream facts that any casual anime fan would know. Avoid deep lore, minor characters, or obscure details.',
-    normal:' Difficulty: NORMAL — ask about facts that a regular anime fan with decent knowledge would know. Some depth is fine but avoid highly obscure trivia.',
-    hard:' Difficulty: HARD — ask about deep lore, obscure characters, specific episode details, exact terminology, or facts only a dedicated fan would know. Avoid surface-level questions.',
+    easy:`\n\nDIFFICULTY: EASY — This is NON-NEGOTIABLE. You MUST ask about very well-known, mainstream facts that any casual anime fan would know after watching a few popular series. Examples of EASY questions: "What is Naruto's village called?", "Which fruit did Luffy eat?", "What is the name of the notebook in Death Note?". Do NOT ask about minor characters, specific episode numbers, obscure techniques, or deep lore. Keep it simple and accessible.`,
+    normal:`\n\nDIFFICULTY: NORMAL — This is NON-NEGOTIABLE. Ask about facts that a regular anime fan with decent knowledge of the series would know. You can reference named techniques, supporting characters, and key story arcs — but avoid highly obscure trivia, specific episode references, or facts only superfans would know.`,
+    hard:`\n\nDIFFICULTY: HARD — This is NON-NEGOTIABLE. You MUST ask about deep lore, obscure characters, specific episode or chapter details, exact technique names and their mechanics, or facts only a dedicated superfan would know. Examples of HARD questions: exact devil fruit awakening mechanics, the name of a minor antagonist's backstory, the specific episode a technique was first used. Do NOT ask surface-level questions — make it genuinely challenging.`,
   };
-  return map[selectedDifficulty]||map.normal;
+  return map[selectedDifficulty]||map.easy;
 }
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
@@ -1647,14 +1946,15 @@ async function sbSaveQuestion(qData,format,topic){
     question:qData.question,options:qData.options||null,
     answer:typeof qData.answer==='number'?String(qData.answer):qData.answer,
     aliases:qData.aliases||[],format,
-    topic_type:topic.type,topic_value:topic.value||null,report_count:0
+    topic_type:topic.type,topic_value:topic.value||null,
+    difficulty:selectedDifficulty||'easy',report_count:0
   }).catch(()=>{});
 }
 
 async function sbGetQuestion(format,topic){
   if(!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3);
+    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3).eq('difficulty',selectedDifficulty).eq('status','approved');
     if(topic.type==='anime')query=query.eq('topic_type','anime').eq('topic_value',topic.value);
     else if(topic.type==='genre')query=query.eq('topic_type','genre').eq('topic_value',topic.value);
     else query=query.eq('topic_type','all');
@@ -1670,7 +1970,7 @@ async function sbGetQuestion(format,topic){
     const filtered=data.filter(q=>!seenQs.includes(q.question));
     if(!filtered.length)return null;
     const row=filtered[Math.floor(Math.random()*filtered.length)];
-    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]};
+    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null};
   }catch(e){return null}
 }
 
@@ -1784,6 +2084,14 @@ function showFeedback(correct,correctAns,userAns,override){
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
   document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
+  // Show submitted_by credit if question came from a user
+  const subEl=document.getElementById('fbSubmittedBy');
+  if(currentQData?.submitted_by){
+    subEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
+    subEl.style.display='block';
+  } else {
+    subEl.style.display='none';
+  }
   applyTheme();
   startSoloAutoNext();
 }
@@ -1859,7 +2167,93 @@ function toggleRecap(){
   document.getElementById('recapList').style.display=recapOpen?'flex':'none';
   document.getElementById('recapToggleBtn').innerHTML=recapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
 }
-function playAgain(){startQuiz(selectedMode)}
+function showPlayAgainModal(){
+  const diffLabel={easy:'Easy',normal:'Normal',hard:'Hard'}[selectedDifficulty]||'Easy';
+  const topicLabel=isGeneralSelected||!selectedTopics.length?'General Anime':selectedTopics.map(t=>t.name).join(', ');
+  document.getElementById('playAgainSettingsSummary').textContent=`${fmtLabels[selectedFormat]} · ${topicLabel} · ${diffLabel}`;
+  document.getElementById('playAgainModal').style.display='flex';
+  applyTheme();
+}
+function closePlayAgainModal(){
+  document.getElementById('playAgainModal').style.display='none';
+}
+function playAgain(){
+  closePlayAgainModal();
+  startQuiz(selectedMode);
+}
+
+// ── CONTACT ───────────────────────────────────────────────────
+async function submitContact(){
+  const name=document.getElementById('contactName').value.trim();
+  const msg=document.getElementById('contactMessage').value.trim();
+  if(!msg){return;}
+  if(!SUPABASE_URL.includes('YOUR_PROJECT')){
+    await sb.from('contact_messages').insert({
+      name:name||'Anonymous',
+      message:msg,
+      sent_at:new Date().toISOString()
+    }).catch(()=>{});
+  }
+  document.getElementById('contactMessage').value='';
+  document.getElementById('contactName').value='';
+  document.getElementById('contactModal').style.display='none';
+  // Show brief confirmation
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  modal.textContent='Message sent — thanks! 🙏';
+  document.body.appendChild(modal);
+  setTimeout(()=>modal.remove(),3000);
+  applyTheme();
+}
+
+// ── SUBMIT QUESTION ───────────────────────────────────────────
+document.addEventListener('change',e=>{
+  if(e.target.id==='sqFormat'){
+    const isMC=e.target.value==='mc';
+    document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
+  }
+});
+async function submitQuestion(){
+  // Only signed-in users can submit
+  if(!currentUser||isGuest){
+    showErr('sqErr','sqErrMsg','You need a registered account to submit questions.');
+    return;
+  }
+  const q=document.getElementById('sqQuestion').value.trim();
+  const fmt=document.getElementById('sqFormat').value;
+  const ans=document.getElementById('sqAnswer').value.trim();
+  const topic=document.getElementById('sqTopic').value.trim();
+  if(!q){showErr('sqErr','sqErrMsg','Please enter a question.');return}
+  if(!ans){showErr('sqErr','sqErrMsg','Please enter the correct answer.');return}
+  if(!topic){showErr('sqErr','sqErrMsg','Please enter an anime or topic.');return}
+  let options=null,answerVal=ans;
+  if(fmt==='mc'){
+    const lines=document.getElementById('sqOptions').value.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(lines.length<2){showErr('sqErr','sqErrMsg','Please enter at least 2 options for multiple choice.');return}
+    const correctIdx=lines.findIndex(l=>l.startsWith('✓'));
+    options=lines.map(l=>l.replace(/^✓\s*/,''));
+    answerVal=correctIdx>=0?String(correctIdx):'0';
+  }
+  const aliases=document.getElementById('sqAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
+  if(!SUPABASE_URL.includes('YOUR_PROJECT')){
+    const {error}=await sb.from('questions').insert({
+      question:q,options,answer:answerVal,aliases,
+      format:fmt,topic_type:'anime',topic_value:topic,
+      difficulty:'normal',report_count:0,
+      submitted_by:currentUser,status:'pending'
+    }).catch(e=>({error:e}));
+    if(error&&error.code==='23505'){showErr('sqErr','sqErrMsg','This question already exists in the bank.');return}
+    if(error){showErr('sqErr','sqErrMsg','Could not submit. Try again.');return}
+  }
+  document.getElementById('submitQModal').style.display='none';
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  toast.textContent='Question submitted — nice one! 🎉';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),3000);
+  ['sqQuestion','sqAnswer','sqAliases','sqTopic','sqOptions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  applyTheme();
+}
 
 function renderProfile(){
   const user=currentUser||'Guest';
@@ -1926,10 +2320,32 @@ function launchConfetti(){
     document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
   },i*30);}
 }
-function submitReport(){
+async function submitReport(){
   const btn=document.getElementById('reportSubmitBtn');
-  btn.textContent='Reported — thank you!';btn.disabled=true;
-  setTimeout(()=>{document.getElementById('reportDrop').classList.remove('open');btn.textContent='Submit report';btn.disabled=false},2000);
+  btn.disabled=true;btn.textContent='Submitting…';
+  // Get selected reason
+  const reasonEl=document.querySelector('input[name="reportReason"]:checked');
+  const reason=reasonEl?reasonEl.value:'other';
+  const detail=document.getElementById('reportDetail')?.value?.trim()||'';
+  // Increment report_count in Supabase if question has an id
+  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    await sb.from('questions')
+      .update({report_count:sb.rpc?undefined:undefined}) // fallback below
+      .eq('id',currentQData.id)
+      .catch(()=>{});
+    // Use raw increment since supabase-js v2 doesn't have .increment() shorthand
+    await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
+      // fallback: fetch current count then update
+      const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
+      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
+    });
+  }
+  btn.textContent='Reported — thank you!';
+  setTimeout(()=>{
+    document.getElementById('reportDrop').classList.remove('open');
+    soloAutoNextPaused=false;
+    btn.textContent='Submit report';btn.disabled=false;
+  },2000);
 }
 
 // ── SUPABASE REALTIME ─────────────────────────────────────────
@@ -1938,19 +2354,30 @@ let isHost=false;
 let mpAutoNextInterval=null;
 
 async function rtGetOrCreateAnonSession(){
-  // If already have a userId (signed in or anon), use it
   if(currentUserId)return currentUserId;
-  // Create anonymous Supabase session for guest
-  const {data,error}=await sb.auth.signInAnonymously();
-  if(error){console.error('Anon sign in error:',error);return null;}
-  currentUserId=data.user?.id||null;
-  return currentUserId;
+  try{
+    const {data,error}=await sb.auth.signInAnonymously();
+    if(error){console.error('Anon sign in error:',error.message);return null;}
+    currentUserId=data.user?.id||null;
+    if(currentUserId){
+      await sb.from('profiles').upsert({
+        id:currentUserId,username:currentUser,is_guest:true
+      },{onConflict:'id'}).catch(()=>{});
+    }
+    return currentUserId;
+  }catch(e){
+    console.error('rtGetOrCreateAnonSession failed:',e.message);
+    return null;
+  }
 }
 
 async function rtCreateLobby(){
   const uid=await rtGetOrCreateAnonSession();
-  if(!uid){console.error('Could not get user ID for lobby');return;}
-  // Upsert profile for anon/guest users so FK constraint is satisfied
+  if(!uid){
+    console.warn('No Supabase session — lobby will be local only');
+    isHost=true;
+    return; // Lobby still shows locally, just won't sync to other devices
+  }
   await sb.from('profiles').upsert({id:uid,username:currentUser,is_guest:isGuest},{onConflict:'id'}).catch(()=>{});
   const {data,error}=await sb.from('lobbies').insert({
     code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'
@@ -2092,21 +2519,58 @@ async function renderLb(){
   });
   if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';
 }
-function renderFriendsLb(){
-  const list=document.getElementById('lbFriendsList');list.innerHTML='';
+async function renderFriendsLb(){
+  const list=document.getElementById('lbFriendsList');
   const empty=document.getElementById('lbFriendsEmpty');
-  if(!currentUser||isGuest){empty.style.display='block';return}
+  list.innerHTML='';
+  if(!currentUser||isGuest){
+    empty.style.display='block';
+    empty.innerHTML='<div style="font-size:36px;margin-bottom:12px">🔒</div><div style="font-family:\'Lilita One\',cursive;font-size:18px;color:var(--text);margin-bottom:6px">Sign in to see friends</div><div style="font-size:13px;color:var(--muted)">Play with others in lobbies to see them here.</div>';
+    return;
+  }
   empty.style.display='none';
-  const friends=[{name:'OtakuKing',score:98,games:37,rank:'🏆',color:'#f472b6'},{name:'SakuraChan',score:82,games:33,rank:'🔥',color:'#e879f9'}];
-  if(currentUser)friends.push({name:currentUser,score:bestScore,games:totalGames,rank:getRank(bestScore).emoji,color:accentHex[currentColor]});
-  friends.sort((a,b)=>b.score-a.score);
-  friends.forEach((p,i)=>{
-    const isMe=p.name===currentUser;
-    const row=document.createElement('div');row.className='lb-row';
-    if(isMe)row.style.borderColor='var(--accent)';
-    row.innerHTML=`<div class="lb-rank ${i===0?'gold':i===1?'silver':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff">${p.name[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.rank} · ${p.games} games played</div></div><div class="lb-score">${p.score}</div>`;
-    list.appendChild(row);
-  });
+  // Pull users you've shared lobbies with as proxy friends
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')){
+    list.innerHTML='<div class="lb-empty" style="font-size:13px">Play multiplayer games to see others here.</div>';
+    return;
+  }
+  list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)"><div class="spinner" style="margin:0 auto 10px"></div>Loading…</div>';
+  try{
+    // Find lobbies this user participated in
+    const {data:myLobbies}=await sb.from('lobby_players').select('lobby_id').eq('user_id',currentUserId).limit(20);
+    if(!myLobbies?.length){
+      list.innerHTML='<div class="lb-empty" style="font-size:13px">Play multiplayer games to see others here.</div>';
+      return;
+    }
+    const lobbyIds=myLobbies.map(l=>l.lobby_id);
+    // Get all players from those lobbies (excluding self)
+    const {data:others}=await sb.from('lobby_players').select('username,user_id,color').in('lobby_id',lobbyIds).neq('user_id',currentUserId);
+    if(!others?.length){
+      list.innerHTML='<div class="lb-empty" style="font-size:13px">No other players found yet. Invite friends!</div>';
+      return;
+    }
+    // Deduplicate by user_id
+    const unique=Object.values(others.reduce((acc,p)=>{acc[p.user_id]=p;return acc},{}));
+    const userIds=unique.map(p=>p.user_id);
+    // Get their stats
+    const {data:stats}=await sb.from('user_stats').select('*').in('id',userIds);
+    // Add yourself
+    const myStats={id:currentUserId,username:currentUser,best_score:bestScore,total_games:totalGames,theme_color:currentColor};
+    const allStats=[myStats,...(stats||[])].sort((a,b)=>(b.best_score||0)-(a.best_score||0));
+    list.innerHTML='';
+    allStats.forEach((p,i)=>{
+      const isMe=p.id===currentUserId;
+      const color=accentHex[p.theme_color]||accentHex.midnight;
+      const row=document.createElement('div');row.className='lb-row';
+      if(isMe)row.style.borderColor='var(--accent)';
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+      const rankClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      row.innerHTML=`<div class="lb-rank ${rankClass}">${medal}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games||0} games played</div></div><div class="lb-score">${p.best_score||0}</div>`;
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML='<div class="lb-empty" style="font-size:13px">Could not load. Try again later.</div>';
+  }
 }
 const _origGoStep=goStep;
 goStep=function(name){
@@ -2158,6 +2622,7 @@ function setLobbyFormat(fmt,el){
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  if(lobbyCode&&currentUserId)sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode).catch(()=>{});
   setTimeout(()=>goStep('lobby-room'),300);
 }
 function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':'Hot Potato 🥔'}
@@ -2166,7 +2631,18 @@ function setLobbyMode(mode,el){
   document.querySelectorAll('#page-lobby-settings .mode-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  if(lobbyCode&&currentUserId)sb.from('lobbies').update({mode}).eq('code',lobbyCode).catch(()=>{});
   setTimeout(()=>goStep('lobby-room'),300);
+}
+function openLobbySettings(){
+  goStep('lobby-settings');
+  // Restore current selections visually
+  const fmtCards=document.querySelectorAll('#page-lobby-settings .fmt-card');
+  const fmtIdx={mc:0,type:1,img:2,char:3}[lobbyFormat]??0;
+  fmtCards.forEach((c,i)=>c.style.borderColor=i===fmtIdx?'var(--accent)':'');
+  const modeCards=document.querySelectorAll('#page-lobby-settings .mode-card');
+  const modeIdx={race:0,survival:1,potato:2}[lobbyMode]??0;
+  modeCards.forEach((c,i)=>c.style.borderColor=i===modeIdx?'var(--accent)':'');
 }
 function startLobbyGame(){
   if(!isHost)return;
@@ -2345,6 +2821,13 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
   document.getElementById('mpFbPts').textContent=correct&&!isHP?'+10 points added to your score':isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
+  const mpSubEl=document.getElementById('mpFbSubmittedBy');
+  if(currentQData?.submitted_by){
+    mpSubEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
+    mpSubEl.style.display='block';
+  } else {
+    mpSubEl.style.display='none';
+  }
   applyTheme();
   // Broadcast updated player state
   const me=lobbyPlayers.find(p=>p.name===currentUser);
@@ -2432,6 +2915,104 @@ function mpEndGame(){
   });
   if(iWon)launchConfetti();
   _origGoStep('mp-results');applyTheme();
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────────
+let isAdmin=false;
+let adminTab='pending';
+
+async function checkAdminRole(){
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  const {data}=await sb.from('profiles').select('role').eq('id',currentUserId).single().catch(()=>({data:null}));
+  isAdmin=data?.role==='admin';
+  const adminLink=document.getElementById('adminNavLink');
+  if(adminLink)adminLink.style.display=isAdmin?'inline-flex':'none';
+}
+
+function goAdmin(){
+  if(!isAdmin){goStep('landing');return}
+  _origGoStep('admin');
+  loadAdminStats();
+  loadAdminQuestions();
+}
+
+async function loadAdminStats(){
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  const {data:all}=await sb.from('questions').select('status,report_count').catch(()=>({data:[]}));
+  if(!all)return;
+  document.getElementById('adminStatPending').textContent=all.filter(q=>q.status==='pending').length;
+  document.getElementById('adminStatApproved').textContent=all.filter(q=>q.status==='approved').length;
+  document.getElementById('adminStatFlagged').textContent=all.filter(q=>q.report_count>=3).length;
+  document.getElementById('adminStatTotal').textContent=all.length;
+}
+
+function switchAdminTab(tab){
+  adminTab=tab;
+  ['Pending','Flagged','All'].forEach(t=>{
+    const el=document.getElementById(`adminTab${t}`);
+    if(el)el.classList.toggle('active',t.toLowerCase()===tab);
+  });
+  loadAdminQuestions();
+}
+
+async function loadAdminQuestions(){
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  const list=document.getElementById('adminQuestionList');
+  list.innerHTML='<div class="admin-empty">Loading…</div>';
+  let query=sb.from('questions').select('*').order('created_at',{ascending:false}).limit(50);
+  if(adminTab==='pending')query=query.eq('status','pending');
+  else if(adminTab==='flagged')query=query.gte('report_count',3);
+  const {data,error}=await query;
+  if(error||!data?.length){
+    list.innerHTML=`<div class="admin-empty">${adminTab==='pending'?'No pending questions 🎉':adminTab==='flagged'?'No flagged questions 🎉':'No questions yet.'}</div>`;
+    return;
+  }
+  list.innerHTML='';
+  data.forEach(q=>list.appendChild(buildAdminCard(q)));
+  applyTheme();
+}
+
+function buildAdminCard(q){
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  const card=document.createElement('div');
+  card.className='admin-q-card'+(q.report_count>=3?' flagged':'');
+  card.id=`adminCard_${q.id}`;
+  const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
+  const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${q.answer}</div>`:'';
+  const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
+  card.innerHTML=`
+    <div>
+      <div class="admin-q-text">${q.question}</div>
+      ${optionsHtml}${answerHtml}${aliasHtml}
+    </div>
+    <div class="admin-q-meta">
+      <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
+      <span class="admin-badge">${q.topic_value||q.topic_type}</span>
+      <span class="admin-badge">${q.difficulty||'easy'}</span>
+      ${q.report_count>0?`<span class="admin-badge reported">⚑ ${q.report_count} reports</span>`:''}
+      ${q.submitted_by?`<span class="admin-badge submitted">👤 ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
+      <span class="admin-badge" style="margin-left:auto">${q.status}</span>
+    </div>
+    <div class="admin-actions">
+      ${q.status!=='approved'?`<button class="admin-btn approve" onclick="adminSetStatus('${q.id}','approved')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>`:''}
+      ${q.status!=='rejected'?`<button class="admin-btn reject" onclick="adminSetStatus('${q.id}','rejected')"><i class="ti ti-x" style="font-size:12px"></i> Reject</button>`:''}
+      <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>
+    </div>`;
+  return card;
+}
+
+async function adminSetStatus(id,status){
+  await sb.from('questions').update({status}).eq('id',id);
+  const card=document.getElementById(`adminCard_${id}`);
+  if(card)card.remove();
+  loadAdminStats();
+}
+
+async function adminDelete(id){
+  await sb.from('questions').delete().eq('id',id);
+  const card=document.getElementById(`adminCard_${id}`);
+  if(card)card.remove();
+  loadAdminStats();
 }
 
 renderTopicList();
