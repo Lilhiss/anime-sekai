@@ -299,8 +299,8 @@ h1 .hi{color:var(--accent)}
 /* ── TOPIC PICKER ── */
 .topic-picker-wrap{width:100%;max-width:580px;display:flex;flex-direction:column;gap:14px}
 .topic-type-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto}
-.topic-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
-.topic-tab.active{background:var(--accent);color:#fff}
+.topic-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:0;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.topic-tab.active{background:var(--accent-soft);color:var(--accent)}
 .topic-search-box{background:var(--card-bg);border:1.5px solid var(--border2);border-radius:16px;padding:20px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:12px}
 .topic-search-input-wrap{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:10px 14px;transition:border-color .2s}
 .topic-search-input-wrap:focus-within{border-color:var(--accent)}
@@ -329,6 +329,24 @@ h1 .hi{color:var(--accent)}
 .topic-general-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);transition:all .2s;background:var(--card-bg)}
 .topic-general-opt:hover{border-color:var(--accent);background:var(--accent-soft)}
 .topic-general-opt.selected{border-color:var(--accent);background:var(--accent-soft)}
+/* DIFFICULTY */
+.diff-grid{display:grid;grid-template-columns:1fr;gap:8px}
+.diff-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .2s;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px}
+.diff-card:hover{border-color:var(--accent);background:var(--accent-soft)}
+.diff-card.selected{border-color:var(--accent);background:var(--accent-soft)}
+.diff-card-emoji{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.diff-card-info{flex:1;min-width:0}
+.diff-card-title{font-size:13px;font-weight:800;color:var(--text)}
+.diff-card-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.diff-card-check{font-size:14px;color:var(--accent);opacity:0;flex-shrink:0;transition:opacity .2s}
+.diff-card.selected .diff-card-check{opacity:1}
+/* TOPIC PAGE LAYOUT */
+.topic-page-grid{width:100%;max-width:820px;display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start}
+.topic-left{display:flex;flex-direction:column;gap:10px}
+.topic-right{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.topic-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.topic-results{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+@media(max-width:700px){.topic-page-grid{grid-template-columns:1fr}}
 .lb-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .lb-tab.active{background:var(--accent);color:#fff}
 .lb-list{display:flex;flex-direction:column;gap:10px}
@@ -507,43 +525,81 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <!-- TOPIC -->
   <div class="page" id="page-topic">
     <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Choose your topic</div>
-      <h1>What do you want to <span class="hi">focus on</span>?</h1>
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Customize your quiz</div>
+      <h1>Topic <span class="hi">&amp;</span> Difficulty</h1>
     </div>
-    <div class="topic-picker-wrap slide-in">
-      <!-- General Anime on top -->
-      <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()">
-        <span style="font-size:22px">🌐</span>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:800;color:var(--text)">General Anime</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Questions from across the entire anime universe</div>
+    <div class="topic-page-grid slide-in">
+      <!-- LEFT: Topic picker -->
+      <div class="topic-left">
+        <div class="topic-section-label">📺 Topic</div>
+        <!-- General Anime — bigger -->
+        <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()" style="padding:16px 18px">
+          <span style="font-size:26px">🌐</span>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:800;color:var(--text)">General Anime</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">Questions from across the entire anime universe</div>
+          </div>
+          <i class="ti ti-check" id="generalCheck" style="font-size:18px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
         </div>
-        <i class="ti ti-check" id="generalCheck" style="font-size:16px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
-      </div>
-      <!-- Tabs -->
-      <div style="display:flex;justify-content:center">
-        <div class="topic-type-tabs">
-          <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')">🎬 Anime</button>
-          <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')">📚 Genre</button>
+        <!-- Search card with tabs as header -->
+        <div class="topic-search-box" style="gap:0;padding:0;overflow:hidden">
+          <!-- Tabs as header of the card -->
+          <div style="display:flex;border-bottom:1px solid var(--border2)">
+            <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')" style="flex:1;border-radius:0;padding:10px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
+            <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')" style="flex:1;border-radius:0;padding:10px 0">📚 Genre</button>
+          </div>
+          <!-- Search input -->
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border2)">
+            <div class="topic-search-input-wrap" style="padding:7px 11px">
+              <i class="ti ti-search"></i>
+              <input class="topic-search-input" id="topicSearchInput" type="text" placeholder="Search..." oninput="filterTopics()" autocomplete="off">
+              <button id="topicSearchClear" onclick="clearTopicSearch()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0;display:none;align-items:center"><i class="ti ti-x"></i></button>
+            </div>
+          </div>
+          <!-- Results list -->
+          <div class="topic-results" id="topicResultsList" style="padding:6px 8px;max-height:155px"></div>
+        </div>
+        <!-- Selected tags -->
+        <div id="topicSelectedWrap" style="display:none;flex-direction:column;gap:6px">
+          <div class="topic-section-label">Selected</div>
+          <div class="topic-selected-tags" id="topicSelectedTags"></div>
         </div>
       </div>
-      <!-- Search + list -->
-      <div class="topic-search-box">
-        <div class="topic-search-input-wrap">
-          <i class="ti ti-search"></i>
-          <input class="topic-search-input" id="topicSearchInput" type="text" placeholder="Search..." oninput="filterTopics()" autocomplete="off">
-          <button id="topicSearchClear" onclick="clearTopicSearch()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;display:none;align-items:center"><i class="ti ti-x"></i></button>
+
+      <!-- RIGHT: Difficulty + Continue -->
+      <div class="topic-right" style="height:100%;display:flex;flex-direction:column;gap:10px">
+        <div class="topic-section-label">⚡ Difficulty</div>
+        <div class="diff-grid" style="flex:0 0 auto">
+          <div class="diff-card selected" id="diffEasy" onclick="selectDifficulty('easy',this)">
+            <span class="diff-card-emoji">🌱</span>
+            <div class="diff-card-info">
+              <div class="diff-card-title">Easy</div>
+              <div class="diff-card-desc">Well-known facts, popular series</div>
+            </div>
+            <i class="ti ti-check diff-card-check"></i>
+          </div>
+          <div class="diff-card" id="diffNormal" onclick="selectDifficulty('normal',this)">
+            <span class="diff-card-emoji">⚔️</span>
+            <div class="diff-card-info">
+              <div class="diff-card-title">Normal</div>
+              <div class="diff-card-desc">Solid fan knowledge required</div>
+            </div>
+            <i class="ti ti-check diff-card-check"></i>
+          </div>
+          <div class="diff-card" id="diffHard" onclick="selectDifficulty('hard',this)">
+            <span class="diff-card-emoji">💀</span>
+            <div class="diff-card-info">
+              <div class="diff-card-title">Hard</div>
+              <div class="diff-card-desc">Deep lore, obscure details</div>
+            </div>
+            <i class="ti ti-check diff-card-check"></i>
+          </div>
         </div>
-        <div class="topic-results" id="topicResultsList"></div>
+        <!-- Continue button stretches to fill remaining height -->
+        <button class="topic-proceed-btn" id="topicProceedBtn" onclick="proceedFromTopic()" disabled style="flex:1;min-height:56px;font-size:18px">
+          <i class="ti ti-arrow-right" style="font-size:18px"></i> Continue
+        </button>
       </div>
-      <!-- Selected tags -->
-      <div id="topicSelectedWrap" style="display:none;flex-direction:column;gap:8px">
-        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Selected topics</div>
-        <div class="topic-selected-tags" id="topicSelectedTags"></div>
-      </div>
-      <button class="topic-proceed-btn" id="topicProceedBtn" onclick="proceedFromTopic()" disabled>
-        <i class="ti ti-arrow-right" style="font-size:16px"></i> Continue
-      </button>
     </div>
   </div>
 
@@ -606,7 +662,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div class="fb-pts" id="fbPts"></div>
           </div>
         </div>
-        <button class="next-btn" id="nextBtn" onclick="nextQuestion()"><i class="ti ti-arrow-right" style="font-size:14px"></i> Next</button>
+        <div class="fb-auto-next" id="soloAutoNext"></div>
       </div>
       <div style="text-align:right">
         <button class="report-link" onclick="toggleReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
@@ -661,7 +717,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="form-card">
         <div>
           <label class="form-label">Lobby Code</label>
-          <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="10" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
+          <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="12" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
           <div class="form-hint" style="margin-top:6px">Ask the lobby host for the code.</div>
           <div class="form-err" id="lobbyJoinErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
         </div>
@@ -993,6 +1049,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 <script>
 let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false;
 let selectedFormat='mc',selectedMode='race';
+let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
@@ -1097,9 +1154,14 @@ function goStep(name){
   pg.querySelectorAll('.slide-in').forEach(el=>{el.style.animation='none';void el.offsetHeight;el.style.animation=''});
   if(name==='profile')renderProfile();
   if(name==='topic'){
-    selectedTopics=[];isGeneralSelected=false;
+    selectedTopics=[];isGeneralSelected=false;selectedDifficulty='easy';
     updateGeneralUI();renderSelectedTags();updateProceedBtn();
     switchTopicTab('anime');
+    // Reset difficulty UI
+    ['diffEasy','diffNormal','diffHard'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.classList.toggle('selected',id==='diffEasy');
+    });
   }
   applyTheme();
 }
@@ -1323,15 +1385,21 @@ function switchTopicTab(tab){
   renderTopicList();
 }
 
+function selectDifficulty(diff,el){
+  selectedDifficulty=diff;
+  document.querySelectorAll('.diff-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
 function proceedFromTopic(){
   const badge=document.getElementById('selectedTopicBadge');
-  if(isGeneralSelected){
-    badge.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">🌐 General Anime</span>';
-    badge.style.display='flex';
-  } else if(selectedTopics.length>0){
-    badge.innerHTML=selectedTopics.map(t=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">${t.emoji} ${t.name}</span>`).join('');
-    badge.style.display='flex';
-  } else {badge.style.display='none';}
+  const diffEmoji={easy:'🌱',normal:'⚔️',hard:'💀'};
+  const diffLabel={easy:'Easy',normal:'Normal',hard:'Hard'};
+  const pill=txt=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">${txt}</span>`;
+  let pills=pill(`${diffEmoji[selectedDifficulty]} ${diffLabel[selectedDifficulty]}`);
+  if(isGeneralSelected){pills+=pill('🌐 General Anime');}
+  else if(selectedTopics.length>0){pills+=selectedTopics.map(t=>pill(`${t.emoji} ${t.name}`)).join('');}
+  badge.innerHTML=pills;badge.style.display='flex';
   goStep('mode');
 }
 
@@ -1372,6 +1440,15 @@ function buildTopicContext(){
   const names=selectedTopics.map(t=>t.name).join(', ');
   return ` The question MUST be specifically about one of these: ${resolved}. Only ask about characters, events, arcs, or facts from ${names}.`
 }
+
+function buildDifficultyContext(){
+  const map={
+    easy:' Difficulty: EASY — ask about very well-known, mainstream facts that any casual anime fan would know. Avoid deep lore, minor characters, or obscure details.',
+    normal:' Difficulty: NORMAL — ask about facts that a regular anime fan with decent knowledge would know. Some depth is fine but avoid highly obscure trivia.',
+    hard:' Difficulty: HARD — ask about deep lore, obscure characters, specific episode details, exact terminology, or facts only a dedicated fan would know. Avoid surface-level questions.',
+  };
+  return map[selectedDifficulty]||map.normal;
+}
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
@@ -1396,13 +1473,41 @@ async function fetchQuestion(){
 async function fetchQuestionFromAI(){
   const usedQs=quizHistory.map(h=>h.q).slice(-5).join(' | ');
   const topicClause=buildTopicContext();
-  const avoidClause=usedQs?` Avoid these recent questions: ${usedQs}`:'';
+  const diffClause=buildDifficultyContext();
+  const avoidClause=usedQs?`\n\nAVOID these recently used questions: ${usedQs}`:'';
+  const topicWarning=topicClause?`\n\nCRITICAL REMINDER: ${topicClause.trim()} Do NOT generate questions about any other anime or series.`:'';
+
+  const baseInstructions=`You are an anime trivia question generator. Return ONLY a single valid JSON object with no explanation, no markdown, no code fences — just raw JSON.${diffClause}${avoidClause}`;
+
   const prompts={
-    mc:`Generate a multiple choice anime trivia question with exactly 4 options.${topicClause}${avoidClause} Return ONLY valid JSON: {"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]} where answer is 0-based correct index and aliases are ALL alternate names (abbreviations like AOT/MHA/SNK/BNHA/JJK, Japanese titles, alternate English titles).`,
-    type:`Generate an anime trivia question with a short answer (1-4 words).${topicClause}${avoidClause} Return ONLY valid JSON: {"question":"...","answer":"canonical answer","aliases":["AOT","Shingeki no Kyojin"]} — aliases MUST include every common abbreviation, Japanese title, and alternate name.`,
-    img:`Generate an anime trivia question as if describing a scene. Multiple choice, 4 options.${topicClause}${avoidClause} Return ONLY JSON: {"question":"You see [describe scene]. Which anime is this?","options":["A","B","C","D"],"answer":0,"aliases":[]}`,
-    char:`Describe an anime character without naming them and ask who they are. Type answer format.${topicClause}${avoidClause} Return ONLY JSON: {"question":"This character [description]. Who are they?","answer":"Character Name","aliases":["nickname","alternate spelling"]}`,
+    mc:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
+
+Generate a multiple choice trivia question with EXACTLY 4 options.
+Return this exact JSON shape:
+{"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]}
+- "answer" is the 0-based index of the correct option
+- "aliases" must include ALL alternate names: abbreviations (AOT, MHA, SNK, BNHA, JJK, DBZ), Japanese titles, alternate English titles${topicWarning}`,
+
+    type:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
+
+Generate a trivia question with a SHORT answer (1-4 words).
+Return this exact JSON shape:
+{"question":"...","answer":"canonical answer","aliases":["alternate1","alternate2"]}
+- "aliases" MUST include every common abbreviation, Japanese title, nickname, and alternate spelling${topicWarning}`,
+
+    img:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
+
+Generate a trivia question describing an anime scene or visual, with 4 options.
+Return this exact JSON shape:
+{"question":"You see [describe a recognizable scene or visual]. Which anime is this from?","options":["A","B","C","D"],"answer":0,"aliases":[]}${topicWarning}`,
+
+    char:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
+
+Describe an anime character WITHOUT naming them, then ask who they are. Type-answer format.
+Return this exact JSON shape:
+{"question":"This character [detailed description of appearance, personality, abilities]. Who are they?","answer":"Character Full Name","aliases":["nickname","alternate name","alternate spelling"]}${topicWarning}`,
   };
+
   try{
     const res=await fetch('/.netlify/functions/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'gemini-2.0-flash',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
     if(!res.ok){
@@ -1581,6 +1686,7 @@ function checkAnswer(userInput,qData){
 }
 async function loadQuestion(){
   answered=false;
+  clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
   document.getElementById('feedbackBar').style.display='none';
   document.getElementById('reportDrop').classList.remove('open');
   document.getElementById('answersGrid').innerHTML='';
@@ -1651,6 +1757,23 @@ function timeOut(){
   if(last){last.userAns='(timed out)';last.correct=false;}
   showFeedback(false,last?.correctAns||'?','(timed out)',"Time's up!");
 }
+let soloAutoNextInterval=null;
+let soloAutoNextPaused=false;
+
+function startSoloAutoNext(){
+  clearInterval(soloAutoNextInterval);
+  soloAutoNextPaused=false;
+  let t=5;
+  const el=document.getElementById('soloAutoNext');
+  if(el)el.textContent=`Next in ${t}s`;
+  soloAutoNextInterval=setInterval(()=>{
+    if(soloAutoNextPaused)return;
+    t--;
+    if(el)el.textContent=t>0?`Next in ${t}s`:'';
+    if(t<=0){clearInterval(soloAutoNextInterval);nextQuestion();}
+  },1000);
+}
+
 function showFeedback(correct,correctAns,userAns,override){
   const fb=document.getElementById('feedbackBar');fb.style.display='flex';
   fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
@@ -1662,15 +1785,32 @@ function showFeedback(correct,correctAns,userAns,override){
   else{ya.style.display='none';}
   document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
   applyTheme();
+  startSoloAutoNext();
 }
+
 function nextQuestion(){
+  clearInterval(soloAutoNextInterval);
   qIndex++;
   if(selectedMode==='survival'&&lives<=0){endQuiz();return}
   if(selectedMode==='race'&&score>=100){endQuiz();return}
   loadQuestion();
 }
+
+function toggleReport(){
+  const drop=document.getElementById('reportDrop');
+  const isOpening=!drop.classList.contains('open');
+  drop.classList.toggle('open');
+  // Pause auto-next while report is open, resume when closed
+  if(isOpening){
+    soloAutoNextPaused=true;
+    const el=document.getElementById('soloAutoNext');
+    if(el)el.textContent='Paused';
+  } else {
+    soloAutoNextPaused=false;
+  }
+}
 function endQuiz(){
-  clearInterval(timerInterval);
+  clearInterval(timerInterval);clearInterval(soloAutoNextInterval);
   // Update lifetime stats
   totalGames++;
   const correct=quizHistory.filter(h=>h.correct).length;
@@ -1786,7 +1926,6 @@ function launchConfetti(){
     document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
   },i*30);}
 }
-function toggleReport(){document.getElementById('reportDrop').classList.toggle('open')}
 function submitReport(){
   const btn=document.getElementById('reportSubmitBtn');
   btn.textContent='Reported — thank you!';btn.disabled=true;
@@ -1798,13 +1937,27 @@ let rtChannel=null;
 let isHost=false;
 let mpAutoNextInterval=null;
 
+async function rtGetOrCreateAnonSession(){
+  // If already have a userId (signed in or anon), use it
+  if(currentUserId)return currentUserId;
+  // Create anonymous Supabase session for guest
+  const {data,error}=await sb.auth.signInAnonymously();
+  if(error){console.error('Anon sign in error:',error);return null;}
+  currentUserId=data.user?.id||null;
+  return currentUserId;
+}
+
 async function rtCreateLobby(){
+  const uid=await rtGetOrCreateAnonSession();
+  if(!uid){console.error('Could not get user ID for lobby');return;}
+  // Upsert profile for anon/guest users so FK constraint is satisfied
+  await sb.from('profiles').upsert({id:uid,username:currentUser,is_guest:isGuest},{onConflict:'id'}).catch(()=>{});
   const {data,error}=await sb.from('lobbies').insert({
-    code:lobbyCode,host_id:currentUserId,format:lobbyFormat,mode:lobbyMode,status:'waiting'
+    code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'
   }).select().single();
   if(error){console.error('Create lobby error:',error);return}
   await sb.from('lobby_players').insert({
-    lobby_id:data.id,user_id:currentUserId,username:currentUser,
+    lobby_id:data.id,user_id:uid,username:currentUser,
     color:accentHex[currentColor],is_host:true,score:0,lives:3
   });
   isHost=true;
@@ -1812,10 +1965,14 @@ async function rtCreateLobby(){
 }
 
 async function rtJoinLobby(code){
+  const uid=await rtGetOrCreateAnonSession();
+  if(!uid){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');return false;}
+  // Upsert profile for anon/guest users
+  await sb.from('profiles').upsert({id:uid,username:currentUser,is_guest:isGuest},{onConflict:'id'}).catch(()=>{});
   const {data:lobby}=await sb.from('lobbies').select('*').eq('code',code).eq('status','waiting').single();
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false}
   const {error}=await sb.from('lobby_players').insert({
-    lobby_id:lobby.id,user_id:currentUserId,username:currentUser,
+    lobby_id:lobby.id,user_id:uid,username:currentUser,
     color:accentHex[currentColor],is_host:false,score:0,lives:3
   });
   if(error){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. You may already be in this lobby.');return false}
@@ -1965,25 +2122,17 @@ function createLobby(){
   if(!currentUser){choosePath('create');return}
   lobbyCode=generateCode();
   lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor],eliminated:false}];
-  lobbyFormat=selectedFormat;lobbyMode=selectedMode;
+  lobbyFormat=selectedFormat||'mc';lobbyMode=selectedMode||'race';
   isHost=true;
   goStep('lobby-room');
-  if(currentUserId)rtCreateLobby();
+  rtCreateLobby(); // always — handles both guests and signed-in users
 }
 async function joinLobby(){
   const code=document.getElementById('lobbyCodeInput').value.trim().toUpperCase();
-  if(code.length<4){showErr('lobbyJoinErr','lobbyJoinErrMsg','Please enter a valid lobby code.');return}
+  if(code.length<6){showErr('lobbyJoinErr','lobbyJoinErrMsg','Please enter a valid lobby code.');return}
   if(!currentUser){choosePath('join');return}
-  if(currentUserId){
-    const ok=await rtJoinLobby(code);
-    if(!ok)return;
-  } else {
-    lobbyCode=code;
-    lobbyPlayers=[
-      {name:'Host',score:0,lives:3,isHost:true,color:'#f472b6'},
-      {name:currentUser,score:0,lives:3,isHost:false,color:accentHex[currentColor]},
-    ];
-  }
+  const ok=await rtJoinLobby(code);
+  if(!ok)return;
   goStep('lobby-room');
 }
 function renderLobbyRoom(){
