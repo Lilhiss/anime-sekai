@@ -552,7 +552,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" oninput="clearErr('signinErr')"></div>
         <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>        <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
       </div>
-      <div class="form-footer" style="margin-top:10px">No account? <a onclick="showAuthMode('register')">Create one</a></div>
+      <div class="form-footer" style="margin-top:10px">No account? <a onclick="showAuthMode('register')">Create one</a> · <a onclick="showAuthMode('forgot')">Forgot password?</a></div>
     </div>
     <!-- Register form -->
     <div id="authRegister" style="display:none;width:100%;max-width:420px" class="slide-in">
@@ -568,6 +568,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="form-submit" id="regSubmitBtn" onclick="submitRegister()"><i class="ti ti-user-plus" style="font-size:16px"></i> Create Account</button>
       </div>
       <div class="form-footer" style="margin-top:10px">Already have an account? <a onclick="showAuthMode('signin')">Sign in</a></div>
+    </div>
+    <!-- Forgot password form -->
+    <div id="authForgot" style="display:none;width:100%;max-width:420px" class="slide-in">
+      <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode('signin')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
+      <div class="form-card">
+        <div><label class="form-label">Username</label><input class="form-input" id="forgotUser" type="text" placeholder="YourUsername" oninput="clearErr('forgotErr')"><div class="form-hint" style="margin-top:6px">We'll look up your email and send a reset link.</div></div>
+        <div class="form-err" id="forgotErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="forgotErrMsg"></span></div>
+        <button class="form-submit" id="forgotSubmitBtn" onclick="submitForgotPassword()"><i class="ti ti-mail" style="font-size:16px"></i> Send Reset Link</button>
+      </div>
+      <div class="form-footer" style="margin-top:10px">Remembered it? <a onclick="showAuthMode('signin')">Sign in</a></div>
     </div>
   </div>
 
@@ -1209,20 +1219,17 @@ async function sbSignUp(username, password, email=''){
     options: { data: meta }
   });
   if(error) throw error;
-  // Update profile username explicitly (trigger may use email fallback)
   if(data.user){
-    await sb.from('profiles').update({username}).eq('id', data.user.id);
+    await sb.from('profiles').update({username, email: email||null}).eq('id', data.user.id);
   }
   return data.user;
 }
 
 async function sbSignIn(username, password){
-  // We store accounts by username; derive the email we used at sign-up
-  // In a real app you'd look up the email — for now use same pattern
-  const { data, error } = await sb.auth.signInWithPassword({
-    email: `${username}@animesekai.guest`,
-    password
-  });
+  let email=`${username}@animesekai.guest`;
+  const {data:profile}=await sb.from('profiles').select('email').eq('username',username).single();
+  if(profile?.email) email=profile.email;
+  const { data, error } = await sb.auth.signInWithPassword({email, password});
   if(error) throw error;
   return data.user;
 }
@@ -1482,6 +1489,7 @@ function showAuthMode(mode){
   document.getElementById('authGuest').style.display=mode==='guest'?'block':'none';
   document.getElementById('authSignin').style.display=mode==='signin'?'block':'none';
   document.getElementById('authRegister').style.display=mode==='register'?'block':'none';
+  document.getElementById('authForgot').style.display=mode==='forgot'?'block':'none';
 }
 function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
@@ -1543,7 +1551,7 @@ async function submitRegister(){
   const btn=document.getElementById('regSubmitBtn');
   btn.disabled=true;btn.textContent='Creating account…';
   try{
-    const user=await sbSignUp(u,p);
+    const user=await sbSignUp(u,p,e);
     currentUser=u;currentUserId=user?.id||null;isGuest=false;
     updateNav();await checkAdminRole();afterAuth();
   }catch(err){
@@ -1552,6 +1560,24 @@ async function submitRegister(){
     btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus" style="font-size:16px"></i> Create Account';
   }
 }
+async function submitForgotPassword(){
+  const u=document.getElementById('forgotUser').value.trim();
+  if(!u){showErr('forgotErr','forgotErrMsg','Please enter your username.');return}
+  const btn=document.getElementById('forgotSubmitBtn');
+  btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const {data:profile}=await sb.from('profiles').select('email').eq('username',u).single();
+    if(!profile?.email){showErr('forgotErr','forgotErrMsg','No email found for this account. Password cannot be recovered.');return}
+    const {error}=await sb.auth.resetPasswordForEmail(profile.email);
+    if(error)throw error;
+    document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
+  }catch(e){
+    showErr('forgotErr','forgotErrMsg',e.message||'Something went wrong.');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
 
 function selectFormat(fmt){selectedFormat=fmt;goStep('topic')}
 
