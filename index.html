@@ -296,7 +296,39 @@ h1 .hi{color:var(--accent)}
 .mp-countdown-label{font-size:16px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 @keyframes countPop{0%{transform:scale(1.4);opacity:0}30%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.8)}}
 .fb-auto-next{font-family:'Lilita One',cursive;font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;min-width:80px;text-align:center}
-/* LEADERBOARD */
+/* ── TOPIC PICKER ── */
+.topic-picker-wrap{width:100%;max-width:580px;display:flex;flex-direction:column;gap:14px}
+.topic-type-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto}
+.topic-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.topic-tab.active{background:var(--accent);color:#fff}
+.topic-search-box{background:var(--card-bg);border:1.5px solid var(--border2);border-radius:16px;padding:20px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:12px}
+.topic-search-input-wrap{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:10px 14px;transition:border-color .2s}
+.topic-search-input-wrap:focus-within{border-color:var(--accent)}
+.topic-search-input-wrap i{font-size:16px;color:var(--muted);flex-shrink:0}
+.topic-search-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700}
+.topic-search-input::placeholder{color:var(--muted);font-weight:400}
+.topic-results{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.topic-results::-webkit-scrollbar{width:4px}
+.topic-results::-webkit-scrollbar-track{background:transparent}
+.topic-results::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.topic-result-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:9px;cursor:pointer;transition:background .15s;font-size:13px;font-weight:700;color:var(--text);border:1.5px solid transparent}
+.topic-result-item:hover{background:var(--bg3)}
+.topic-result-item.selected{background:var(--accent-soft);border-color:var(--border2);color:var(--accent)}
+.topic-result-left{display:flex;align-items:center;gap:10px}
+.topic-result-emoji{font-size:18px;width:24px;text-align:center}
+.topic-result-check{font-size:14px;color:var(--accent);opacity:0;flex-shrink:0}
+.topic-result-item.selected .topic-result-check{opacity:1}
+.topic-empty{text-align:center;padding:20px;font-size:13px;color:var(--muted)}
+.topic-selected-tags{display:flex;flex-wrap:wrap;gap:8px;min-height:32px}
+.topic-tag{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 10px 5px 12px;font-size:12px;font-weight:800;color:var(--accent)}
+.topic-tag-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1;display:flex;align-items:center;transition:color .15s}
+.topic-tag-remove:hover{color:var(--accent)}
+.topic-proceed-btn{font-family:'Lilita One',cursive;font-size:16px;background:var(--accent);border:none;padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:opacity .2s,transform .15s}
+.topic-proceed-btn:hover{opacity:.88;transform:translateY(-1px)}
+.topic-proceed-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.topic-general-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);transition:all .2s;background:var(--card-bg)}
+.topic-general-opt:hover{border-color:var(--accent);background:var(--accent-soft)}
+.topic-general-opt.selected{border-color:var(--accent);background:var(--accent-soft)}
 .lb-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .lb-tab.active{background:var(--accent);color:#fff}
 .lb-list{display:flex;flex-direction:column;gap:10px}
@@ -472,6 +504,49 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- TOPIC -->
+  <div class="page" id="page-topic">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Choose your topic</div>
+      <h1>What do you want to <span class="hi">focus on</span>?</h1>
+    </div>
+    <div class="topic-picker-wrap slide-in">
+      <!-- General Anime on top -->
+      <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()">
+        <span style="font-size:22px">🌐</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:var(--text)">General Anime</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Questions from across the entire anime universe</div>
+        </div>
+        <i class="ti ti-check" id="generalCheck" style="font-size:16px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;justify-content:center">
+        <div class="topic-type-tabs">
+          <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')">🎬 Anime</button>
+          <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')">📚 Genre</button>
+        </div>
+      </div>
+      <!-- Search + list -->
+      <div class="topic-search-box">
+        <div class="topic-search-input-wrap">
+          <i class="ti ti-search"></i>
+          <input class="topic-search-input" id="topicSearchInput" type="text" placeholder="Search..." oninput="filterTopics()" autocomplete="off">
+          <button id="topicSearchClear" onclick="clearTopicSearch()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;display:none;align-items:center"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="topic-results" id="topicResultsList"></div>
+      </div>
+      <!-- Selected tags -->
+      <div id="topicSelectedWrap" style="display:none;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Selected topics</div>
+        <div class="topic-selected-tags" id="topicSelectedTags"></div>
+      </div>
+      <button class="topic-proceed-btn" id="topicProceedBtn" onclick="proceedFromTopic()" disabled>
+        <i class="ti ti-arrow-right" style="font-size:16px"></i> Continue
+      </button>
+    </div>
+  </div>
+
   <!-- FORMAT -->
   <div class="page" id="page-format">
     <div style="text-align:center" class="slide-in">
@@ -489,9 +564,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <!-- MODE -->
   <div class="page" id="page-mode">
     <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Choose your mode</div>
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('topic')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Choose your mode</div>
       <h1>How do you want to <span class="hi">play</span>?</h1>
     </div>
+    <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid slide-in">
       <div class="mode-card" onclick="startQuiz('race')"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> +10 pts per correct answer</div></div>
       <div class="mode-card" onclick="startQuiz('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
@@ -827,8 +903,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 // ── SUPABASE CONFIG ───────────────────────────────────────────
 // Replace these two values with your own from supabase.com
 // Project Settings → API → Project URL and anon public key
-const SUPABASE_URL  = 'https://ispagvwuxgbzzycdxdfx.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcGFndnd1eGdienp5Y2R4ZGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTcwMDksImV4cCI6MjA5NDQ3MzAwOX0.COahnEHqu4R-_OBAJX1J-4qGk_Lo04SWKfNBfkYCTn0';
+const SUPABASE_URL  = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON = 'YOUR_ANON_PUBLIC_KEY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── SUPABASE AUTH ─────────────────────────────────────────────
@@ -1020,6 +1096,11 @@ function goStep(name){
   pg.classList.add('active');
   pg.querySelectorAll('.slide-in').forEach(el=>{el.style.animation='none';void el.offsetHeight;el.style.animation=''});
   if(name==='profile')renderProfile();
+  if(name==='topic'){
+    selectedTopics=[];isGeneralSelected=false;
+    updateGeneralUI();renderSelectedTags();updateProceedBtn();
+    switchTopicTab('anime');
+  }
   applyTheme();
 }
 
@@ -1114,10 +1195,187 @@ async function submitRegister(){
   }
 }
 
-function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
+function selectFormat(fmt){selectedFormat=fmt;goStep('topic')}
+
+// ── TOPIC SELECTION ───────────────────────────────────────────
+let selectedTopics=[];
+let isGeneralSelected=false;
+let currentTopicTab='anime';
+
+const animeTopics=[
+  {key:'one-piece',emoji:'☠️',name:'One Piece',type:'anime'},
+  {key:'naruto',emoji:'🍥',name:'Naruto',type:'anime'},
+  {key:'dragon-ball',emoji:'⭐',name:'Dragon Ball',type:'anime'},
+  {key:'attack-on-titan',emoji:'⚔️',name:'Attack on Titan',type:'anime'},
+  {key:'demon-slayer',emoji:'🌊',name:'Demon Slayer',type:'anime'},
+  {key:'my-hero-academia',emoji:'💪',name:'My Hero Academia',type:'anime'},
+  {key:'hunter-x-hunter',emoji:'🎯',name:'Hunter x Hunter',type:'anime'},
+  {key:'fullmetal-alchemist',emoji:'⚙️',name:'Fullmetal Alchemist',type:'anime'},
+  {key:'jujutsu-kaisen',emoji:'👁️',name:'Jujutsu Kaisen',type:'anime'},
+  {key:'death-note',emoji:'📓',name:'Death Note',type:'anime'},
+  {key:'bleach',emoji:'⚡',name:'Bleach',type:'anime'},
+  {key:'sword-art-online',emoji:'🗡️',name:'Sword Art Online',type:'anime'},
+  {key:'fairy-tail',emoji:'✨',name:'Fairy Tail',type:'anime'},
+  {key:'vinland-saga',emoji:'🪓',name:'Vinland Saga',type:'anime'},
+  {key:'tokyo-revengers',emoji:'🏍️',name:'Tokyo Revengers',type:'anime'},
+  {key:'chainsaw-man',emoji:'🪚',name:'Chainsaw Man',type:'anime'},
+  {key:'spy-x-family',emoji:'🕵️',name:'Spy x Family',type:'anime'},
+  {key:'mob-psycho',emoji:'🌀',name:'Mob Psycho 100',type:'anime'},
+  {key:'cowboy-bebop',emoji:'🚀',name:'Cowboy Bebop',type:'anime'},
+  {key:'neon-genesis',emoji:'🤖',name:'Neon Genesis Evangelion',type:'anime'},
+  {key:'code-geass',emoji:'♟️',name:'Code Geass',type:'anime'},
+  {key:'re-zero',emoji:'💀',name:'Re:Zero',type:'anime'},
+  {key:'steins-gate',emoji:'⏱️',name:'Steins;Gate',type:'anime'},
+  {key:'your-lie-in-april',emoji:'🎹',name:'Your Lie in April',type:'anime'},
+  {key:'toradora',emoji:'🐯',name:'Toradora',type:'anime'},
+  {key:'haikyuu',emoji:'🏐',name:'Haikyuu!!',type:'anime'},
+  {key:'black-clover',emoji:'🍀',name:'Black Clover',type:'anime'},
+  {key:'overlord',emoji:'💀',name:'Overlord',type:'anime'},
+  {key:'konosuba',emoji:'💥',name:'KonoSuba',type:'anime'},
+  {key:'fruits-basket',emoji:'🍊',name:'Fruits Basket',type:'anime'},
+];
+
+const genreTopics=[
+  {key:'shonen',emoji:'🔥',name:'Shōnen',type:'genre'},
+  {key:'isekai',emoji:'🌀',name:'Isekai',type:'genre'},
+  {key:'shoujo',emoji:'🌸',name:'Shōjo',type:'genre'},
+  {key:'seinen',emoji:'🎭',name:'Seinen',type:'genre'},
+  {key:'mecha',emoji:'🤖',name:'Mecha',type:'genre'},
+  {key:'slice-of-life',emoji:'🏡',name:'Slice of Life',type:'genre'},
+  {key:'romance',emoji:'💕',name:'Romance',type:'genre'},
+  {key:'horror',emoji:'👻',name:'Horror',type:'genre'},
+  {key:'sports',emoji:'🏆',name:'Sports',type:'genre'},
+  {key:'fantasy',emoji:'🧙',name:'Fantasy',type:'genre'},
+  {key:'sci-fi',emoji:'🚀',name:'Sci-Fi',type:'genre'},
+  {key:'comedy',emoji:'😂',name:'Comedy',type:'genre'},
+  {key:'psychological',emoji:'🧠',name:'Psychological',type:'genre'},
+  {key:'action',emoji:'💥',name:'Action',type:'genre'},
+  {key:'adventure',emoji:'🗺️',name:'Adventure',type:'genre'},
+  {key:'mystery',emoji:'🔍',name:'Mystery',type:'genre'},
+];
+
+function getTopicList(){return currentTopicTab==='anime'?animeTopics:genreTopics;}
+
+function renderTopicList(filter=''){
+  const list=document.getElementById('topicResultsList');
+  const items=getTopicList().filter(t=>t.name.toLowerCase().includes(filter.toLowerCase()));
+  if(items.length===0){list.innerHTML='<div class="topic-empty">No results for "'+filter+'"</div>';return;}
+  list.innerHTML=items.map(t=>{
+    const sel=selectedTopics.some(s=>s.key===t.key);
+    return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
+      <div class="topic-result-left"><span class="topic-result-emoji">${t.emoji}</span><span>${t.name}</span></div>
+      <i class="ti ti-check topic-result-check"></i>
+    </div>`;
+  }).join('');
+}
+
+function filterTopics(){
+  const val=document.getElementById('topicSearchInput').value;
+  document.getElementById('topicSearchClear').style.display=val?'flex':'none';
+  renderTopicList(val);
+}
+
+function clearTopicSearch(){
+  document.getElementById('topicSearchInput').value='';
+  document.getElementById('topicSearchClear').style.display='none';
+  renderTopicList();
+}
+
+function toggleTopic(key,emoji,name,type){
+  if(isGeneralSelected){isGeneralSelected=false;updateGeneralUI();}
+  const idx=selectedTopics.findIndex(t=>t.key===key);
+  if(idx>=0){selectedTopics.splice(idx,1);}else{selectedTopics.push({key,emoji,name,type});}
+  renderTopicList(document.getElementById('topicSearchInput').value);
+  renderSelectedTags();updateProceedBtn();
+}
+
+function toggleGeneral(){
+  isGeneralSelected=!isGeneralSelected;
+  if(isGeneralSelected){selectedTopics=[];}
+  updateGeneralUI();
+  renderTopicList(document.getElementById('topicSearchInput').value);
+  renderSelectedTags();updateProceedBtn();
+}
+
+function updateGeneralUI(){
+  document.getElementById('generalCheck').style.opacity=isGeneralSelected?'1':'0';
+  document.getElementById('topicGeneralOpt').classList.toggle('selected',isGeneralSelected);
+}
+
+function renderSelectedTags(){
+  const wrap=document.getElementById('topicSelectedWrap');
+  const tags=document.getElementById('topicSelectedTags');
+  if(selectedTopics.length===0){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  tags.innerHTML=selectedTopics.map(t=>`<div class="topic-tag">${t.emoji} ${t.name}<button class="topic-tag-remove" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"><i class="ti ti-x"></i></button></div>`).join('');
+}
+
+function updateProceedBtn(){
+  document.getElementById('topicProceedBtn').disabled=!(selectedTopics.length>0||isGeneralSelected);
+}
+
+function switchTopicTab(tab){
+  currentTopicTab=tab;
+  document.getElementById('tabAnime').classList.toggle('active',tab==='anime');
+  document.getElementById('tabGenre').classList.toggle('active',tab==='genre');
+  document.getElementById('topicSearchInput').value='';
+  document.getElementById('topicSearchClear').style.display='none';
+  renderTopicList();
+}
+
+function proceedFromTopic(){
+  const badge=document.getElementById('selectedTopicBadge');
+  if(isGeneralSelected){
+    badge.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">🌐 General Anime</span>';
+    badge.style.display='flex';
+  } else if(selectedTopics.length>0){
+    badge.innerHTML=selectedTopics.map(t=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">${t.emoji} ${t.name}</span>`).join('');
+    badge.style.display='flex';
+  } else {badge.style.display='none';}
+  goStep('mode');
+}
+
+function buildTopicContext(){
+  if(isGeneralSelected||selectedTopics.length===0)return '';
+  const animeMap={
+    'one-piece':'One Piece','naruto':'Naruto (including Naruto Shippuden and Boruto)',
+    'dragon-ball':'Dragon Ball (including Dragon Ball Z, Super, GT)','attack-on-titan':'Attack on Titan (Shingeki no Kyojin)',
+    'demon-slayer':'Demon Slayer (Kimetsu no Yaiba)','my-hero-academia':'My Hero Academia (Boku no Hero Academia)',
+    'hunter-x-hunter':'Hunter x Hunter','fullmetal-alchemist':'Fullmetal Alchemist (including Brotherhood)',
+    'jujutsu-kaisen':'Jujutsu Kaisen','death-note':'Death Note','bleach':'Bleach (including Thousand-Year Blood War)',
+    'sword-art-online':'Sword Art Online','fairy-tail':'Fairy Tail','vinland-saga':'Vinland Saga',
+    'tokyo-revengers':'Tokyo Revengers','chainsaw-man':'Chainsaw Man','spy-x-family':'Spy x Family',
+    'mob-psycho':'Mob Psycho 100','cowboy-bebop':'Cowboy Bebop','neon-genesis':'Neon Genesis Evangelion',
+    'code-geass':'Code Geass','re-zero':'Re:Zero','steins-gate':'Steins;Gate',
+    'your-lie-in-april':'Your Lie in April','toradora':'Toradora','haikyuu':'Haikyuu!!',
+    'black-clover':'Black Clover','overlord':'Overlord','konosuba':'KonoSuba','fruits-basket':'Fruits Basket',
+  };
+  const genreMap={
+    'shonen':'Shōnen anime (action-focused series like Naruto, One Piece, Dragon Ball)',
+    'isekai':'Isekai anime (transported-to-another-world series like Re:Zero, SAO, That Time I Got Reincarnated as a Slime)',
+    'shoujo':'Shōjo anime (romance/drama like Sailor Moon, Fruits Basket, Kimi ni Todoke)',
+    'seinen':'Seinen anime (mature themes like Berserk, Vinland Saga, Tokyo Ghoul)',
+    'mecha':'Mecha anime (giant robots like Gundam, Evangelion, Code Geass)',
+    'slice-of-life':'Slice of Life anime (everyday life stories like K-On!, Barakamon)',
+    'romance':'Romance anime (love stories like Toradora, Your Lie in April, Clannad)',
+    'horror':'Horror anime (like Parasyte, Higurashi, Another)',
+    'sports':'Sports anime (like Haikyuu, Kuroko no Basket, Free!)',
+    'fantasy':'Fantasy anime (like Overlord, Black Clover, Magi)',
+    'sci-fi':'Sci-fi anime (like Steins;Gate, Psycho-Pass, Trigun)',
+    'comedy':'Comedy anime (like Gintama, Konosuba, Daily Lives of High School Boys)',
+    'psychological':'Psychological anime (like Death Note, Monster, Paranoia Agent)',
+    'action':'Action anime (intense fight sequences and action-heavy series)',
+    'adventure':'Adventure anime (journey and exploration-focused series)',
+    'mystery':'Mystery anime (like Detective Conan, The Promised Neverland)',
+  };
+  const resolved=selectedTopics.map(t=>animeMap[t.key]||genreMap[t.key]||t.name).join(' OR ');
+  const names=selectedTopics.map(t=>t.name).join(', ');
+  return ` The question MUST be specifically about one of these: ${resolved}. Only ask about characters, events, arcs, or facts from ${names}.`
+}
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
-  document.getElementById('hudLabel').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':'Survival');
+  const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
+  document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':'Survival');
   document.getElementById('qBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
   goStep('quiz');renderHUD();loadQuestion();
 }
@@ -1129,29 +1387,181 @@ function renderHUD(){
 }
 
 async function fetchQuestion(){
+  const bankTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
+  const banked=await sbGetQuestion(selectedFormat,bankTopic);
+  if(banked){if(currentUserId)sbMarkSeen(currentUserId,banked.id);return banked;}
+  return await fetchQuestionFromAI();
+}
+
+async function fetchQuestionFromAI(){
   const usedQs=quizHistory.map(h=>h.q).slice(-5).join(' | ');
+  const topicClause=buildTopicContext();
+  const avoidClause=usedQs?` Avoid these recent questions: ${usedQs}`:'';
   const prompts={
-    mc:`Generate a multiple choice anime trivia question with exactly 4 options. Return ONLY valid JSON: {"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]} where answer is 0-based correct index and aliases are ALL alternate names (abbreviations like AOT/MHA/SNK/BNHA/JJK, Japanese titles, alternate English titles). Be thorough.${usedQs?' Avoid: '+usedQs:''}`,
-    type:`Generate an anime trivia question with a short answer (1-4 words). Return ONLY valid JSON: {"question":"...","answer":"canonical answer","aliases":["AOT","Shingeki no Kyojin"]} — aliases MUST include every common abbreviation, Japanese title, and alternate name. Be very thorough.${usedQs?' Avoid: '+usedQs:''}`,
-    img:`Generate an anime trivia question as if describing a scene. Multiple choice, 4 options. Return ONLY JSON: {"question":"You see [describe scene]. Which anime is this?","options":["A","B","C","D"],"answer":0,"aliases":[]}${usedQs?' Avoid: '+usedQs:''}`,
-    char:`Describe an anime character without naming them, and ask who they are. 4 options. Return ONLY JSON: {"question":"This character [description]. Who are they?","options":["A","B","C","D"],"answer":0,"aliases":["nickname","alternate spelling"]}${usedQs?' Avoid: '+usedQs:''}`,
+    mc:`Generate a multiple choice anime trivia question with exactly 4 options.${topicClause}${avoidClause} Return ONLY valid JSON: {"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]} where answer is 0-based correct index and aliases are ALL alternate names (abbreviations like AOT/MHA/SNK/BNHA/JJK, Japanese titles, alternate English titles).`,
+    type:`Generate an anime trivia question with a short answer (1-4 words).${topicClause}${avoidClause} Return ONLY valid JSON: {"question":"...","answer":"canonical answer","aliases":["AOT","Shingeki no Kyojin"]} — aliases MUST include every common abbreviation, Japanese title, and alternate name.`,
+    img:`Generate an anime trivia question as if describing a scene. Multiple choice, 4 options.${topicClause}${avoidClause} Return ONLY JSON: {"question":"You see [describe scene]. Which anime is this?","options":["A","B","C","D"],"answer":0,"aliases":[]}`,
+    char:`Describe an anime character without naming them and ask who they are. Type answer format.${topicClause}${avoidClause} Return ONLY JSON: {"question":"This character [description]. Who are they?","answer":"Character Name","aliases":["nickname","alternate spelling"]}`,
   };
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
+    const res=await fetch('/.netlify/functions/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
     const data=await res.json();
     const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-    return JSON.parse(raw);
+    const parsed=JSON.parse(raw);
+    // Derive topic for saving
+    const saveTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
+    sbSaveQuestion(parsed,selectedFormat,saveTopic);
+    return parsed;
   }catch(e){return getFallback()}
 }
+
 function getFallback(){
   const fb=[
+    // MULTIPLE CHOICE — General
     {question:"Which anime features the character Goku?",options:["Dragon Ball Z","Naruto","One Piece","Bleach"],answer:0,aliases:["DBZ","Dragon Ball","DBS"]},
     {question:"Who is the main character of Death Note?",options:["L","Light Yagami","Misa Amane","Near"],answer:1,aliases:[]},
     {question:"In Demon Slayer, what is Tanjiro's sister's name?",options:["Kanao","Nezuko","Shinobu","Aoi"],answer:1,aliases:["Kimetsu no Yaiba","KnY"]},
     {question:"Which studio produced My Hero Academia?",options:["Madhouse","Bones","Wit Studio","Ufotable"],answer:1,aliases:["MHA","Boku no Hero","BNHA"]},
     {question:"What is the name of the main character in Naruto?",options:["Sasuke","Sakura","Naruto Uzumaki","Kakashi"],answer:2,aliases:[]},
+    {question:"In One Piece, what is the name of Luffy's pirate crew?",options:["Heart Pirates","Straw Hat Pirates","Whitebeard Pirates","Red Hair Pirates"],answer:1,aliases:[]},
+    {question:"Which anime is set in the world of Titans?",options:["Fullmetal Alchemist","Tokyo Ghoul","Attack on Titan","Vinland Saga"],answer:2,aliases:["AOT","SNK","Shingeki no Kyojin"]},
+    {question:"What fruit did Monkey D. Luffy eat to gain his powers?",options:["Mera Mera no Mi","Gura Gura no Mi","Gomu Gomu no Mi","Ope Ope no Mi"],answer:2,aliases:[]},
+    {question:"In Fullmetal Alchemist Brotherhood, what do Edward and Alphonse Elric seek?",options:["The Holy Grail","The Philosopher's Stone","The Death Note","The One Ring"],answer:1,aliases:["FMAB","FMA"]},
+    {question:"Which anime features the Chunin Exams?",options:["Bleach","Dragon Ball Z","Naruto","Hunter x Hunter"],answer:2,aliases:[]},
+    {question:"What is the name of the soul-cutting sword used in Bleach?",options:["Zanpakuto","Katana","Nodachi","Wakizashi"],answer:0,aliases:[]},
+    {question:"In Hunter x Hunter, what is the name of the special ability system?",options:["Chakra","Nen","Haki","Alchemy"],answer:1,aliases:["HxH"]},
+    {question:"Which anime follows Shinichi Izumi and a parasitic alien?",options:["Tokyo Ghoul","Parasyte","Ajin","Devilman Crybaby"],answer:1,aliases:["Parasyte the Maxim","Kiseijuu"]},
+    {question:"What is the name of the organization L works for in Death Note?",options:["Interpol","The Task Force","The SPK","Wammy's House"],answer:1,aliases:[]},
+    {question:"In Sword Art Online, what is the name of the first virtual reality game?",options:["ALfheim Online","Gun Gale Online","Sword Art Online","Ordinal Scale"],answer:2,aliases:["SAO"]},
+    {question:"Which anime features the Phantom Troupe?",options:["Naruto","One Piece","Hunter x Hunter","Fairy Tail"],answer:2,aliases:["HxH"]},
+    {question:"What is the name of Naruto's signature technique?",options:["Rasengan","Shadow Clone Jutsu","Chidori","Amaterasu"],answer:1,aliases:[]},
+    {question:"In Fairy Tail, who is the most powerful dragon slayer?",options:["Natsu","Gajeel","Wendy","Sting"],answer:0,aliases:[]},
+    {question:"Which anime takes place in Ouran High School?",options:["Clannad","Ouran High School Host Club","Toradora","Fruits Basket"],answer:1,aliases:["OHSHC"]},
+    {question:"What is the name of the main antagonist in My Hero Academia?",options:["Stain","Shigaraki","All For One","Overhaul"],answer:2,aliases:["MHA","BNHA"]},
+    // MULTIPLE CHOICE — Specific series
+    {question:"In Attack on Titan, which Wall do the main characters live behind at the start?",options:["Wall Sina","Wall Rose","Wall Maria","Wall Paradis"],answer:2,aliases:["AOT","SNK"]},
+    {question:"What is the name of Sasuke's signature lightning technique in Naruto?",options:["Rasengan","Amaterasu","Chidori","Susanoo"],answer:2,aliases:[]},
+    {question:"In One Piece, what is the name of the sea monster that Luffy befriends early on?",options:["Laboon","Moby Dick","Zunisha","Caribou"],answer:0,aliases:[]},
+    {question:"What is the Devil Fruit ability of Portgas D. Ace in One Piece?",options:["Ice","Fire","Light","Darkness"],answer:1,aliases:[]},
+    {question:"In Demon Slayer, what Breathing Style does Tanjiro primarily use?",options:["Flame Breathing","Thunder Breathing","Wind Breathing","Water Breathing"],answer:3,aliases:["Kimetsu no Yaiba"]},
+    {question:"In Jujutsu Kaisen, what is Yuji Itadori's cursed energy technique?",options:["Infinity","Black Flash","Divergent Fist","Cursed Speech"],answer:2,aliases:["JJK"]},
+    {question:"What is the name of the island where Gol D. Roger was executed in One Piece?",options:["Marineford","Loguetown","Raftel","Dawn Island"],answer:1,aliases:[]},
+    {question:"In My Hero Academia, what is Izuku Midoriya's hero name?",options:["Shoto","Deku","Kacchan","Froppy"],answer:1,aliases:["MHA","BNHA"]},
+    {question:"Which Hashira in Demon Slayer uses the Insect Breathing style?",options:["Mitsuri Kanroji","Shinobu Kocho","Muichiro Tokito","Gyomei Himejima"],answer:1,aliases:["Kimetsu no Yaiba"]},
+    {question:"In Dragon Ball Z, on which planet does Goku fight Frieza?",options:["Earth","Namek","Vegeta","King Kai's Planet"],answer:1,aliases:["DBZ"]},
+    {question:"What is the name of the notebook in Death Note?",options:["Soul Book","Death Note","Kira's Journal","Shinigami Diary"],answer:1,aliases:[]},
+    {question:"In Fullmetal Alchemist Brotherhood, who is the Flame Alchemist?",options:["Edward Elric","Roy Mustang","Alex Armstrong","Olivier Armstrong"],answer:1,aliases:["FMAB"]},
+    {question:"In Bleach, what is the name of Ichigo Kurosaki's zanpakuto?",options:["Senbonzakura","Zangetsu","Ryujin Jakka","Wabisuke"],answer:1,aliases:[]},
+    {question:"What is the name of Gon's best friend in Hunter x Hunter?",options:["Kurapika","Leorio","Killua","Bisky"],answer:2,aliases:["HxH"]},
+    {question:"In Re:Zero, what happens to Subaru when he dies?",options:["He goes to another world","He returns to a save point","He becomes a spirit","He loses his memory"],answer:1,aliases:[]},
+    // TYPE THE ANSWER
+    {question:"What is the name of the pirate who ate the Gomu Gomu no Mi in One Piece?",answer:"Monkey D. Luffy",aliases:["Luffy","Monkey D Luffy","Mugiwara no Luffy"]},
+    {question:"In Attack on Titan, what is Eren Yeager's Titan called?",answer:"Attack Titan",aliases:["Shingeki no Kyojin","Eren Titan"]},
+    {question:"What anime features the phrase 'Plus Ultra'?",answer:"My Hero Academia",aliases:["MHA","BNHA","Boku no Hero Academia"]},
+    {question:"Name the anime where characters use 'Nen' as their special ability.",answer:"Hunter x Hunter",aliases:["HxH","Hunter Hunter"]},
+    {question:"What is the name of the Death God in Death Note?",answer:"Ryuk",aliases:["Ryūk"]},
+    {question:"In Naruto, what is the name of the nine-tailed fox sealed inside Naruto?",answer:"Kurama",aliases:["Nine Tails","Kyuubi","Kyubi","Nine-Tailed Fox"]},
+    {question:"What anime follows Tanjiro Kamado as he tries to cure his sister?",answer:"Demon Slayer",aliases:["Kimetsu no Yaiba","Demon Slayer Kimetsu no Yaiba"]},
+    {question:"Name the anime where Izuku Midoriya is born without a Quirk.",answer:"My Hero Academia",aliases:["MHA","BNHA","Boku no Hero Academia"]},
+    {question:"What is the name of Sasuke Uchiha's older brother in Naruto?",answer:"Itachi",aliases:["Itachi Uchiha"]},
+    {question:"In Fullmetal Alchemist, what does Edward Elric lose in the failed transmutation?",answer:"Right arm",aliases:["arm","his arm","right arm and left leg","his right arm"]},
+    {question:"What is the name of the main character in Bleach?",answer:"Ichigo Kurosaki",aliases:["Ichigo"]},
+    {question:"In Dragon Ball Z, what is the name of Goku's home planet?",answer:"Vegeta",aliases:["Planet Vegeta"]},
+    {question:"Name the villain organization in My Hero Academia led by Shigaraki.",answer:"League of Villains",aliases:["Villains League","Paranormal Liberation Front"]},
+    {question:"What is the name of the spirit world ruler in Yu Yu Hakusho?",answer:"Koenma",aliases:[]},
+    {question:"In Sword Art Online, what is the name of the main character?",answer:"Kirito",aliases:["Kazuto Kirigaya","Kazuto","The Black Swordsman"]},
+    {question:"What anime is set in Kamurocho and follows delinquent Takemichi Hanagaki?",answer:"Tokyo Revengers",aliases:["Tokyo Revengers"]},
+    {question:"Name the anime where Gintoki Sakata works as a freelancer in feudal Japan.",answer:"Gintama",aliases:["Gin Tama"]},
+    {question:"In Jujutsu Kaisen, who is Yuji Itadori's mentor?",answer:"Satoru Gojo",aliases:["Gojo","Gojo Satoru"]},
+    {question:"What is the name of the cursed spirit Yuji Itadori hosts in Jujutsu Kaisen?",answer:"Ryomen Sukuna",aliases:["Sukuna","The King of Curses"]},
+    {question:"In Re:Zero, what is the name of the silver-haired girl Subaru tries to save?",answer:"Emilia",aliases:[]},
+    {question:"What is the name of the hidden village where Naruto grew up?",answer:"Konohagakure",aliases:["Konoha","Hidden Leaf Village","Leaf Village"]},
+    {question:"In One Piece, what is the name of the final island where the One Piece treasure is?",answer:"Laugh Tale",aliases:["Raftel","Laugh Tale"]},
+    {question:"Name the Survey Corps commander in Attack on Titan.",answer:"Erwin Smith",aliases:["Erwin","Commander Erwin"]},
+    {question:"In Spy x Family, what is the code name of the spy protagonist?",answer:"Loid Forger",aliases:["Loid","Twilight","Agent Twilight"]},
+    {question:"What anime follows Denji who merges with a chainsaw devil?",answer:"Chainsaw Man",aliases:[]},
+    // NAME THE CHARACTER
+    {question:"This character has spiky blonde hair, wears an orange jumpsuit, and dreams of becoming Hokage. Who are they?",answer:"Naruto Uzumaki",aliases:["Naruto"]},
+    {question:"This character has a scar on his left eye, wears a straw hat, and can stretch his body like rubber. Who are they?",answer:"Monkey D. Luffy",aliases:["Luffy"]},
+    {question:"This character writes names in a supernatural notebook to kill people, believing he is a god. Who are they?",answer:"Light Yagami",aliases:["Kira","Light"]},
+    {question:"This character is a half-demon with white hair and dog ears who wields the Tessaiga. Who are they?",answer:"Inuyasha",aliases:[]},
+    {question:"This pro hero has a muscular form, uses One For All, and was Izuku's greatest inspiration. Who are they?",answer:"All Might",aliases:["Toshinori Yagi"]},
+    {question:"This character lost her parents to a vampire, has red eyes, and leads the Ame-no-Habakiri squad. Who are they?",answer:"Yuno",aliases:[]},
+    {question:"This character is a failed clone of the greatest shinobi, has white hair and purple eyes, and can copy any jutsu. Who are they?",answer:"Kakashi Hatake",aliases:["Kakashi","Copy Ninja Kakashi"]},
+    {question:"This character has heterochromia, uses both fire and ice powers, and is the son of a villainous hero. Who are they?",answer:"Shoto Todoroki",aliases:["Todoroki","Shoto"]},
+    {question:"This character is a water hashira with a gentle demeanor who trained Tanjiro. Who are they?",answer:"Sakonji Urokodaki",aliases:["Urokodaki"]},
+    {question:"This character is a royal guard in the Chimera Ant arc and is considered one of the strongest in Hunter x Hunter. Who are they?",answer:"Neferpitou",aliases:["Pitou"]},
+    {question:"This character has a scar on the left side of his face, wears glasses, and uses alchemy involving fire. Who are they?",answer:"Roy Mustang",aliases:["Flame Alchemist","Mustang"]},
+    {question:"This character is a spirit detective with slicked-back hair who uses his spirit gun attack. Who are they?",answer:"Yusuke Urameshi",aliases:["Yusuke"]},
+    {question:"This character is a shinigami who can only be seen by those with spiritual powers and carries a massive sword. Who are they?",answer:"Ichigo Kurosaki",aliases:["Ichigo"]},
+    {question:"This character is an assassin with short silver hair, immense speed, and is Gon's best friend. Who are they?",answer:"Killua Zoldyck",aliases:["Killua"]},
+    {question:"This character has no memories, is made entirely of armor, and is the younger of two alchemist brothers. Who are they?",answer:"Alphonse Elric",aliases:["Al","Alphonse"]},
+    {question:"This character is a demon king reincarnated as a slime who befriends many monster races. Who are they?",answer:"Rimuru Tempest",aliases:["Rimuru","Satoru Mikami"]},
+    {question:"This character is a spy who adopts a child and marries a woman, all for a secret mission. Who are they?",answer:"Loid Forger",aliases:["Twilight","Loid"]},
+    {question:"This silver-haired character serves as a half-elf candidate for the Witch of Envy and is kind but powerful. Who are they?",answer:"Emilia",aliases:[]},
+    {question:"This villain has a hand covering his face, leads a group of villains, and craves chaos. Who are they?",answer:"Tomura Shigaraki",aliases:["Shigaraki","Tenko Shimura"]},
+    {question:"This character is a former adventurer turned shopkeeper who has golden eyes and uses wild magic. Who are they?",answer:"Rimuru Tempest",aliases:["Rimuru"]},
+    {question:"This character has green hair, is the number one hero, and can stop time with his Quirk. Who are they?",answer:"Satoru Gojo",aliases:["Gojo"]},
+    {question:"This character is an elf with a cursed mark, uses black magic, and is fiercely loyal to his captain Yami. Who are they?",answer:"Asta",aliases:[]},
+    {question:"This survey corps soldier has short black hair, a cold demeanor, and is humanity's strongest soldier. Who are they?",answer:"Levi Ackerman",aliases:["Levi","Captain Levi"]},
+    {question:"This demon slayer has yellow and red hair, uses thunder breathing, and calls Tanjiro his best friend. Who are they?",answer:"Zenitsu Agatsuma",aliases:["Zenitsu"]},
+    {question:"This character is a chainsaw devil hybrid who just wants to eat good food and be with women. Who are they?",answer:"Denji",aliases:["Chainsaw Man"]},
   ];
-  return fb[Math.floor(Math.random()*fb.length)];
+  // Filter to match current format where possible
+  const typeFormats=['type','char'];
+  const mcFormats=['mc','img'];
+  let pool;
+  if(selectedFormat==='type'||selectedFormat==='char'){
+    pool=fb.filter(q=>!q.options);
+  } else {
+    pool=fb.filter(q=>q.options);
+  }
+  if(!pool.length)pool=fb;
+  // Avoid questions already seen this session
+  const seen=quizHistory.map(h=>h.q);
+  const unseen=pool.filter(q=>!seen.includes(q.question));
+  const source=unseen.length?unseen:pool;
+  return source[Math.floor(Math.random()*source.length)];
+}
+
+// ── QUESTION BANK ─────────────────────────────────────────────
+async function sbSaveQuestion(qData,format,topic){
+  if(!qData?.question||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  const {data:existing}=await sb.from('questions').select('id').eq('question',qData.question).limit(1);
+  if(existing?.length)return;
+  await sb.from('questions').insert({
+    question:qData.question,options:qData.options||null,
+    answer:typeof qData.answer==='number'?String(qData.answer):qData.answer,
+    aliases:qData.aliases||[],format,
+    topic_type:topic.type,topic_value:topic.value||null,report_count:0
+  }).catch(()=>{});
+}
+
+async function sbGetQuestion(format,topic){
+  if(!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
+  try{
+    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3);
+    if(topic.type==='anime')query=query.eq('topic_type','anime').eq('topic_value',topic.value);
+    else if(topic.type==='genre')query=query.eq('topic_type','genre').eq('topic_value',topic.value);
+    else query=query.eq('topic_type','all');
+    const seenQs=quizHistory.map(h=>h.q);
+    let seenIds=[];
+    if(currentUserId){
+      const {data:seen}=await sb.from('seen_questions').select('question_id').eq('user_id',currentUserId).limit(200);
+      seenIds=(seen||[]).map(s=>s.question_id);
+    }
+    if(seenIds.length)query=query.not('id','in',`(${seenIds.join(',')})`);
+    const {data}=await query.limit(20);
+    if(!data?.length)return null;
+    const filtered=data.filter(q=>!seenQs.includes(q.question));
+    if(!filtered.length)return null;
+    const row=filtered[Math.floor(Math.random()*filtered.length)];
+    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]};
+  }catch(e){return null}
+}
+
+async function sbMarkSeen(userId,questionId){
+  await sb.from('seen_questions').upsert({user_id:userId,question_id:questionId},{onConflict:'user_id,question_id'}).catch(()=>{});
 }
 function checkAnswer(userInput,qData){
   const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
@@ -1866,5 +2276,6 @@ function mpEndGame(){
   _origGoStep('mp-results');applyTheme();
 }
 
+renderTopicList();
 applyTheme();
 </script>
