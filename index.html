@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css');
@@ -580,6 +582,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="form-submit" id="forgotSubmitBtn" onclick="submitForgotPassword()"><i class="ti ti-mail" style="font-size:16px"></i> Send Reset Link</button>
       </div>
       <div class="form-footer" style="margin-top:10px">Remembered it? <a onclick="showAuthMode('signin')">Sign in</a></div>
+    </div>
+
+    <!-- Reset password form -->
+    <div id="authReset" style="display:none;width:100%;max-width:420px" class="slide-in">
+      <div class="form-card">
+        <div><label class="form-label">New Password</label><div style="position:relative"><input class="form-input" id="resetPass" type="password" autocomplete="new-password" placeholder="Choose a new password" oninput="clearErr('resetErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('resetPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
+        <div class="form-err" id="resetErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="resetErrMsg"></span></div>
+        <button class="form-submit" id="resetSubmitBtn" onclick="submitResetPassword()"><i class="ti ti-lock" style="font-size:16px"></i> Set New Password</button>
+      </div>
     </div>
   </div>
 
@@ -1264,12 +1275,14 @@ async function sbSaveGame(userId, gameData){
 }
 
 async function sbLoadHistory(userId){
-  const { data } = await sb.from('games')
-    .select('*')
-    .eq('user_id', userId)
-    .order('played_at', {ascending: false})
-    .limit(10);
-  return data || [];
+  try{
+    const { data } = await sb.from('games')
+      .select('*')
+      .eq('user_id', userId)
+      .order('played_at', {ascending: false})
+      .limit(10);
+    return data || [];
+  }catch(e){return [];}
 }
 
 async function sbLoadLeaderboard(){
@@ -1497,6 +1510,7 @@ function showAuthMode(mode){
   document.getElementById('authSignin').style.display=mode==='signin'?'block':'none';
   document.getElementById('authRegister').style.display=mode==='register'?'block':'none';
   document.getElementById('authForgot').style.display=mode==='forgot'?'block':'none';
+  document.getElementById('authReset').style.display=mode==='reset'?'block':'none';
 }
 function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
@@ -1520,22 +1534,18 @@ async function submitGuest(){
     }
   }catch(e){
     // Silent fail — app works without Supabase for solo play
-    console.log('Guest anon sign-in skipped:',e.message);
   }
   currentUser=val;isGuest=true;updateNav();afterAuth();
   btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
 }
 async function submitSignin(){
-  console.log('submitSignin called');
   const u=document.getElementById('siUser').value.trim();
   const p=document.getElementById('siPass').value;
   if(!u||!p){showErr('signinErr','signinErrMsg','Please fill in all fields.');return}
   const btn=document.getElementById('signinSubmitBtn');
   btn.disabled=true;btn.textContent='Signing in…';
   try{
-    console.log('calling sbSignIn');
     const user=await sbSignIn(u,p);
-    console.log('sbSignIn result:', user);
     const profile=await sbLoadProfile(user.id);
     currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
     totalGames    =parseInt(profile?.total_games)   ||0;
@@ -1578,7 +1588,7 @@ async function submitForgotPassword(){
   try{
     const {data:profile}=await sb.from('profiles').select('email').eq('username',u).single();
     if(!profile?.email){showErr('forgotErr','forgotErrMsg','No email found for this account. Password cannot be recovered.');return}
-    const {error}=await sb.auth.resetPasswordForEmail(profile.email);
+    const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.netlify.app'});
     if(error)throw error;
     document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
   }catch(e){
@@ -1588,6 +1598,37 @@ async function submitForgotPassword(){
   }
 }
 
+
+async function submitResetPassword(){
+  const p=document.getElementById('resetPass').value;
+  if(p.length<6){showErr('resetErr','resetErrMsg','Password must be at least 6 characters.');return}
+  const btn=document.getElementById('resetSubmitBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const {error}=await sb.auth.updateUser({password:p});
+    if(error)throw error;
+    btn.innerHTML='✅ Password updated! Please sign in.';
+    setTimeout(()=>{showAuthMode('signin');goStep('auth');},2000);
+  }catch(e){
+    showErr('resetErr','resetErrMsg',e.message||'Something went wrong.');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+// ── DETECT PASSWORD RESET TOKEN IN URL ───────────────────────
+(function(){
+  const hash=window.location.hash;
+  if(hash.includes('type=recovery')){
+    // Supabase puts the token in the URL hash after redirect
+    sb.auth.onAuthStateChange((event)=>{
+      if(event==='PASSWORD_RECOVERY'){
+        goStep('auth');
+        showAuthMode('reset');
+      }
+    });
+  }
+})();
 
 function selectFormat(fmt){selectedFormat=fmt;goStep('topic')}
 
@@ -1850,7 +1891,6 @@ Return this exact JSON shape:
     const data=await res.json();
     if(data.error){console.error('Gemini API error:',data.error);return getFallback();}
     const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-    console.log('Gemini raw response:',raw);
     const parsed=JSON.parse(raw);
     const saveTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
     sbSaveQuestion(parsed,selectedFormat,saveTopic);
