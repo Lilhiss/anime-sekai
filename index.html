@@ -383,36 +383,122 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .foot-links{display:flex;gap:18px}
 .foot-link{font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;transition:color .2s}
 .foot-link:hover{color:var(--accent)}
-@media(max-width:600px){
-  nav{padding:10px 14px}
-  .logo-name{font-size:16px}
-  .ghost-btn{padding:6px 10px;font-size:12px}
-  .primary-btn{padding:6px 12px;font-size:12px}
-  .entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}
-  .entry-card{padding:18px 14px}
-  .entry-wrap{max-width:100%}
-  .stat-row,.profile-stats{grid-template-columns:1fr 1fr}
-  .badges-grid{grid-template-columns:repeat(3,1fr)}
-  .profile-hero-inner{flex-direction:column;text-align:center}
-  .profile-edit-btn{margin:0 auto}
-  footer{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:6px}
-  .foot-links{gap:12px}
-  #page-mp-quiz>div{grid-template-columns:1fr}
+/* ── HAMBURGER NAV ── */
+.nav-hamburger{display:none;background:var(--bg2);border:1px solid var(--border2);color:var(--text);width:36px;height:36px;border-radius:9px;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.nav-drawer{display:none;position:fixed;top:0;right:0;bottom:0;width:260px;background:var(--bg2);border-left:1px solid var(--border2);z-index:500;flex-direction:column;padding:20px 16px;gap:8px;box-shadow:-8px 0 32px #0008;overflow-y:auto}
+.nav-drawer.open{display:flex}
+.nav-drawer-close{align-self:flex-end;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;margin-bottom:8px;display:flex;align-items:center}
+.nav-drawer .ghost-btn,.nav-drawer .primary-btn{width:100%;justify-content:flex-start;padding:11px 14px;font-size:14px;border-radius:10px}
+.nav-drawer-sep{height:1px;background:var(--border);margin:4px 0}
+.nav-overlay{display:none;position:fixed;inset:0;z-index:499}
+.nav-overlay.open{display:block}
+
+/* ── LEADERBOARD ENHANCEMENTS ── */
+.lb-you-card{background:var(--accent-soft);border:2px solid var(--accent);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.lb-you-label{font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.lb-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px}
+
+/* ── TABLET (≤900px) ── */
+@media(max-width:900px){
+  .topic-page-grid{grid-template-columns:1fr 200px}
+}
+
+/* ── TABLET (≤700px) ── */
+@media(max-width:700px){
   .topic-page-grid{grid-template-columns:1fr}
   .topic-right{position:static}
-  .quiz-wrap{padding:12px}
-  .q-card{padding:16px}
-  .q-text{font-size:16px}
-  .hud-score{font-size:22px}
+  #page-mp-quiz>div{grid-template-columns:1fr}
+  .profile-stats{grid-template-columns:1fr 1fr}
+  .admin-stat-row{grid-template-columns:1fr 1fr}
+}
+
+/* ── MOBILE (≤600px) ── */
+@media(max-width:600px){
+  /* Nav → hamburger */
+  .nav-right{display:none!important}
+  .nav-hamburger{display:flex}
+  nav{padding:10px 14px}
+  .logo-name{font-size:17px}
+
+  /* Layout */
+  .page{padding:24px 16px 24px}
+  h1{font-size:26px}
+
+  /* Grids → single column */
+  .entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}
+  .entry-card{padding:16px 14px}
+  .entry-wrap{max-width:100%}
+
+  /* Quiz */
+  .quiz-wrap{gap:14px}
+  .q-card{padding:16px 14px}
+  .q-text{font-size:15px}
+  .hud-score{font-size:20px}
+  .hud-score-label{font-size:10px}
   .feedback{flex-direction:column;gap:10px}
   .fb-auto-next{align-self:flex-start}
-  .mode-grid{grid-template-columns:1fr}
-  h1{font-size:28px}
-  .results-wrap{gap:16px}
-  .rank-badge{font-size:56px}
+  .next-btn{width:100%;justify-content:center}
+  .timer-wrap{height:7px}
+
+  /* Results */
+  .results-wrap{gap:14px}
+  .rank-hero{padding:24px 16px}
+  .rank-badge{width:72px;height:72px;font-size:34px}
+  .rank-title{font-size:22px}
+  .score-big{font-size:38px}
+  .stat-row{grid-template-columns:1fr 1fr 1fr}
+  .stat-val{font-size:18px}
+
+  /* Profile */
+  .profile-wrap{gap:14px}
+  .profile-hero{padding:22px 16px}
+  .profile-hero-inner{flex-direction:column;text-align:center;gap:16px}
+  .profile-edit-btn{margin:0 auto}
+  .profile-stats{grid-template-columns:1fr 1fr}
+  .profile-avatar{width:68px;height:68px;font-size:28px}
+  .profile-username{font-size:22px}
+  .badges-grid{grid-template-columns:repeat(3,1fr)}
+  .rank-progress-card{padding:14px}
+  .rank-progress-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .rank-next{text-align:left}
+
+  /* Leaderboard */
   .lb-row{padding:10px 12px;gap:10px}
-  .profile-wrap{gap:16px}
+  .lb-name{font-size:13px}
+  .lb-score{font-size:17px}
+  .lb-meta{font-size:10px}
+  .lb-you-card{padding:10px 12px;gap:10px}
+
+  /* Lobby */
+  .lobby-player{padding:10px 12px}
+  #page-lobby-room>div{gap:14px}
+
+  /* Topic picker */
+  .topic-page-grid{grid-template-columns:1fr}
+  .topic-right{position:static}
+
+  /* Recap */
   .recap-item{flex-wrap:wrap}
+
+  /* Admin */
+  .admin-stat-row{grid-template-columns:1fr 1fr}
+  .admin-actions{flex-wrap:wrap}
+
+  /* Footer */
+  footer{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:6px}
+  .foot-links{gap:12px;flex-wrap:wrap}
+
+  /* Forms */
+  .form-wrap{max-width:100%}
+  .form-card{padding:20px 16px}
+
+  /* Entry logo */
+  .entry-logo-mark{width:60px;height:60px;font-size:26px;border-radius:16px}
+  .entry-title{font-size:clamp(28px,7vw,42px)}
+
+  /* MP scoreboard collapses below quiz on mobile */
+  #page-mp-quiz>div{grid-template-columns:1fr}
+  #page-mp-quiz>div>div:last-child{position:static}
 }
 /* ADMIN PANEL */
 .admin-wrap{width:100%;max-width:900px;display:flex;flex-direction:column;gap:20px}
@@ -467,9 +553,43 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button class="drop-row" onclick="setColor('rose','#e879f9','Rose',this)"><div class="drop-row-left"><span class="dot-sm" style="background:#e879f9"></span>Rose</div><i class="ti ti-check drop-check"></i></button>
         </div>
       </div>
-      <button class="ghost-btn" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" onclick="pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
       <button class="primary-btn" id="signinBtn" onclick="choosePath('solo')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+    </div>
+
+    <!-- Mobile hamburger -->
+    <button class="nav-hamburger" id="navHamburger" onclick="openNavDrawer()" aria-label="Menu">
+      <i class="ti ti-menu-2"></i>
+    </button>
+
+    <!-- Mobile nav drawer -->
+    <div class="nav-overlay" id="navOverlay" onclick="closeNavDrawer()"></div>
+    <div class="nav-drawer" id="navDrawer">
+      <button class="nav-drawer-close" onclick="closeNavDrawer()"><i class="ti ti-x"></i></button>
+      <div id="navDrawerUser" style="display:none;padding:10px 12px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Signed in as</div>
+        <div id="navDrawerUsername" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--accent)"></div>
+      </div>
+      <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <button class="ghost-btn" onclick="closeNavDrawer();pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+      <div class="nav-drawer-sep"></div>
+      <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('solo')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+      <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
+      <div class="nav-drawer-sep"></div>
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
+      <div class="toggle-row" style="padding:0 2px 10px">
+        <span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span>
+        <button class="tog" id="modeToggleDrawer" onclick="toggleMode()"></button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 2px">
+        <button onclick="setColor('midnight','#a78bfa','Midnight',null);closeNavDrawer()" style="background:#a78bfa;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Midnight"></button>
+        <button onclick="setColor('sakura','#f472b6','Sakura',null);closeNavDrawer()" style="background:#f472b6;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Sakura"></button>
+        <button onclick="setColor('ocean','#38bdf8','Ocean',null);closeNavDrawer()" style="background:#38bdf8;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Ocean"></button>
+        <button onclick="setColor('ember','#fb923c','Ember',null);closeNavDrawer()" style="background:#fb923c;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Ember"></button>
+        <button onclick="setColor('forest','#4ade80','Forest',null);closeNavDrawer()" style="background:#4ade80;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Forest"></button>
+        <button onclick="setColor('rose','#e879f9','Rose',null);closeNavDrawer()" style="background:#e879f9;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Rose"></button>
+      </div>
     </div>
   </nav>
 
@@ -598,7 +718,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="page" id="page-topic">
     <div style="text-align:center" class="slide-in">
       <div class="step-eyebrow"><button class="back-btn" onclick="goStep('format')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Customize your quiz</div>
-      <h1>Topic <span class="hi">&amp;</span> Difficulty</h1>
+      <h1>Pick a <span class="hi">Topic</span></h1>
     </div>
     <div class="topic-page-grid slide-in">
       <!-- LEFT: Topic picker -->
@@ -638,36 +758,30 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
 
-      <!-- RIGHT: Difficulty + Continue -->
+      <!-- RIGHT: Continue (difficulty hidden) -->
       <div class="topic-right" style="height:100%;display:flex;flex-direction:column;gap:10px">
-        <div class="topic-section-label">⚡ Difficulty</div>
-        <div class="diff-grid" style="flex:0 0 auto">
-          <div class="diff-card selected" id="diffEasy" onclick="selectDifficulty('easy',this)">
-            <span class="diff-card-emoji">🌱</span>
-            <div class="diff-card-info">
-              <div class="diff-card-title">Easy</div>
-              <div class="diff-card-desc">Well-known facts, popular series</div>
+        <!-- DIFFICULTY SELECTOR (hidden — re-enable by removing display:none from this div and restoring selectedDifficulty logic) -->
+        <div style="display:none">
+          <div class="topic-section-label">⚡ Difficulty</div>
+          <div class="diff-grid" style="flex:0 0 auto">
+            <div class="diff-card selected" id="diffEasy" onclick="selectDifficulty('easy',this)">
+              <span class="diff-card-emoji">🌱</span>
+              <div class="diff-card-info"><div class="diff-card-title">Easy</div><div class="diff-card-desc">Well-known facts, popular series</div></div>
+              <i class="ti ti-check diff-card-check"></i>
             </div>
-            <i class="ti ti-check diff-card-check"></i>
-          </div>
-          <div class="diff-card" id="diffNormal" onclick="selectDifficulty('normal',this)">
-            <span class="diff-card-emoji">⚔️</span>
-            <div class="diff-card-info">
-              <div class="diff-card-title">Normal</div>
-              <div class="diff-card-desc">Solid fan knowledge required</div>
+            <div class="diff-card" id="diffNormal" onclick="selectDifficulty('normal',this)">
+              <span class="diff-card-emoji">⚔️</span>
+              <div class="diff-card-info"><div class="diff-card-title">Normal</div><div class="diff-card-desc">Solid fan knowledge required</div></div>
+              <i class="ti ti-check diff-card-check"></i>
             </div>
-            <i class="ti ti-check diff-card-check"></i>
-          </div>
-          <div class="diff-card" id="diffHard" onclick="selectDifficulty('hard',this)">
-            <span class="diff-card-emoji">💀</span>
-            <div class="diff-card-info">
-              <div class="diff-card-title">Hard</div>
-              <div class="diff-card-desc">Deep lore, obscure details</div>
+            <div class="diff-card" id="diffHard" onclick="selectDifficulty('hard',this)">
+              <span class="diff-card-emoji">💀</span>
+              <div class="diff-card-info"><div class="diff-card-title">Hard</div><div class="diff-card-desc">Deep lore, obscure details</div></div>
+              <i class="ti ti-check diff-card-check"></i>
             </div>
-            <i class="ti ti-check diff-card-check"></i>
           </div>
         </div>
-        <!-- Continue button stretches to fill remaining height -->
+        <!-- Continue button -->
         <button class="topic-proceed-btn" id="topicProceedBtn" onclick="proceedFromTopic()" disabled style="flex:1;min-height:56px;font-size:18px">
           <i class="ti ti-arrow-right" style="font-size:18px"></i> Continue
         </button>
@@ -755,27 +869,54 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- LEADERBOARD -->
-  <div class="page" id="page-leaderboard">
+  <!-- LEADERBOARD (hidden) -->
+  <div class="page" id="page-leaderboard" style="display:none!important">
     <div style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:20px">
       <div style="text-align:center" class="slide-in">
         <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Leaderboard</div>
         <h1>Top <span class="hi">Players</span></h1>
       </div>
+
+      <!-- Tabs -->
       <div class="slide-in" style="display:flex;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto">
         <button class="lb-tab active" id="lbTabGlobal" onclick="switchLbTab('global')">🌍 Global</button>
         <button class="lb-tab" id="lbTabFriends" onclick="switchLbTab('friends')">👥 Friends</button>
       </div>
+
+      <!-- Your rank card (shown when signed in) -->
+      <div id="lbYouCard" class="lb-you-card slide-in" style="display:none">
+        <div class="lb-rank" style="font-size:18px" id="lbYouRank">#—</div>
+        <div class="lb-avatar" id="lbYouAvatar" style="background:var(--accent);color:#fff">?</div>
+        <div class="lb-info">
+          <div class="lb-name" id="lbYouName">—</div>
+          <div class="lb-you-label">Your rank</div>
+        </div>
+        <div class="lb-score" id="lbYouScore">—</div>
+      </div>
+
+      <!-- Global list -->
       <div id="lbGlobal" class="slide-in">
+        <div class="lb-section-label">Rankings</div>
         <div class="lb-list" id="lbGlobalList"></div>
       </div>
+
+      <!-- Friends list -->
       <div id="lbFriends" style="display:none">
         <div class="lb-empty" id="lbFriendsEmpty" style="display:none">
           <div style="font-size:36px;margin-bottom:12px">👥</div>
           <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text);margin-bottom:6px">No friends yet</div>
           <div style="font-size:13px;color:var(--muted)">Sign in and add friends to see how you compare.</div>
         </div>
+        <div class="lb-section-label" id="lbFriendsLabel" style="display:none">Players you've met</div>
         <div class="lb-list" id="lbFriendsList"></div>
+      </div>
+
+      <!-- CTA for guests -->
+      <div id="lbGuestCta" class="slide-in" style="display:none;background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:18px 20px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">🏆</div>
+        <div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text);margin-bottom:4px">Want to appear here?</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Create a free account to save your scores and climb the ranks.</div>
+        <button class="action-btn primary" style="margin:0 auto;width:fit-content;padding:10px 24px;font-size:14px" onclick="goStep('auth');showAuthMode('register')"><i class="ti ti-user-plus" style="font-size:15px"></i> Create Account</button>
       </div>
     </div>
   </div>
@@ -1000,8 +1141,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="history-list" id="historyList"></div>
       </div>
 
-      <!-- BADGES -->
-      <div class="slide-in d5">
+      <!-- BADGES (hidden) -->
+      <div class="slide-in d5" style="display:none">
         <div class="profile-section-title"><i class="ti ti-medal"></i> Badges</div>
         <div class="badges-grid" id="badgesGrid"></div>
       </div>
@@ -1353,6 +1494,8 @@ function applyTheme(){
   if(isDark){if(currentColor!=='midnight'){b.setAttribute('data-theme','dark');b.setAttribute('data-color',currentColor)}}
   else{b.setAttribute('data-theme','light');if(currentColor!=='midnight')b.setAttribute('data-color',currentColor)}
   document.getElementById('modeToggle').classList.toggle('on',!isDark);
+  const modeTogDrawer=document.getElementById('modeToggleDrawer');
+  if(modeTogDrawer)modeTogDrawer.classList.toggle('on',!isDark);
   document.getElementById('cdot').style.background=accentHex[currentColor];
   document.getElementById('tlabel').textContent=(isDark?'Dark':'Light')+' · '+colorNames[currentColor];
   const light=!isDark;
@@ -1364,7 +1507,7 @@ function applyTheme(){
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'var(--text)':'');
 }
 function toggleMode(){isDark=!isDark;applyTheme()}
-function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));el.classList.add('active');applyTheme();closeDrop()}
+function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
 function toggleDrop(){document.getElementById('drop').classList.toggle('open')}
 function closeDrop(){document.getElementById('drop').classList.remove('open')}
 document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
@@ -1389,7 +1532,7 @@ function updateNav(){
         </button>
         <div class="drop" id="drop">${buildThemeDropHTML()}</div>
       </div>
-      <button class="ghost-btn" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+      <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="display:none"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
         <div class="user-avatar">${currentUser[0].toUpperCase()}</div>${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
@@ -1400,6 +1543,7 @@ function updateNav(){
     nr.innerHTML=originalNavHTML;
   }
   applyTheme();
+  if(typeof syncDrawerState==='function')syncDrawerState();
 }
 function signOut(){
   // Show confirmation modal instead of signing out immediately
@@ -1477,11 +1621,11 @@ function goStep(name){
     selectedTopics=[];isGeneralSelected=false;selectedDifficulty='easy';
     updateGeneralUI();renderSelectedTags();updateProceedBtn();
     switchTopicTab('anime');
-    // Reset difficulty UI
-    ['diffEasy','diffNormal','diffHard'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el)el.classList.toggle('selected',id==='diffEasy');
-    });
+    // DIFFICULTY UI RESET (hidden — restore when re-enabling difficulty selector)
+    // ['diffEasy','diffNormal','diffHard'].forEach(id=>{
+    //   const el=document.getElementById(id);
+    //   if(el)el.classList.toggle('selected',id==='diffEasy');
+    // });
   }
   applyTheme();
 }
@@ -2027,7 +2171,8 @@ async function sbSaveQuestion(qData,format,topic){
 async function sbGetQuestion(format,topic){
   if(!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3).eq('difficulty',selectedDifficulty).eq('status','approved');
+    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3).eq('status','approved');
+    // DIFFICULTY FILTER DISABLED — re-enable by adding: .eq('difficulty',selectedDifficulty)
     if(topic.type==='anime')query=query.eq('topic_type','anime').eq('topic_value',topic.value);
     else if(topic.type==='genre')query=query.eq('topic_type','genre').eq('topic_value',topic.value);
     else query=query.eq('topic_type','all');
@@ -2577,20 +2722,41 @@ async function renderLb(){
   list.innerHTML='<div style="text-align:center;padding:32px;color:var(--muted)"><div class="spinner" style="margin:0 auto 10px"></div>Loading…</div>';
   let data=await sbLoadLeaderboard();
   // Ensure current user appears if not in top 20
-  if(currentUser&&data.length&&!data.find(r=>r.username===currentUser)){
+  if(currentUser&&!isGuest&&data.length&&!data.find(r=>r.username===currentUser)){
     data.push({username:currentUser,best_score:bestScore,total_games:totalGames,theme_color:currentColor});
   }
   list.innerHTML='';
+
+  // Your rank card
+  const youCard=document.getElementById('lbYouCard');
+  const guestCta=document.getElementById('lbGuestCta');
+  if(currentUser&&!isGuest&&data.length){
+    const myIdx=data.findIndex(r=>r.username===currentUser);
+    if(myIdx>=0){
+      youCard.style.display='flex';
+      document.getElementById('lbYouRank').textContent=myIdx===0?'🥇':myIdx===1?'🥈':myIdx===2?'🥉':'#'+(myIdx+1);
+      document.getElementById('lbYouAvatar').textContent=currentUser[0].toUpperCase();
+      document.getElementById('lbYouAvatar').style.background=accentHex[currentColor]||accentHex.midnight;
+      document.getElementById('lbYouName').textContent=currentUser;
+      document.getElementById('lbYouScore').textContent=data[myIdx].best_score+' pts';
+    }
+    guestCta.style.display='none';
+  } else if(!currentUser||isGuest){
+    youCard.style.display='none';
+    guestCta.style.display='block';
+  }
+
   data.forEach((p,i)=>{
     const rankClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
     const isMe=currentUser&&p.username===currentUser;
     const color=accentHex[p.theme_color]||accentHex.midnight;
     const row=document.createElement('div');row.className='lb-row';
     if(isMe)row.style.borderColor='var(--accent)';
-    row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games played</div></div><div class="lb-score">${p.best_score}</div>`;
+    row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games · ${getRank(p.best_score).emoji} ${getRank(p.best_score).title}</div></div><div class="lb-score">${p.best_score}</div>`;
     list.appendChild(row);
   });
   if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';
+  applyTheme();
 }
 async function renderFriendsLb(){
   const list=document.getElementById('lbFriendsList');
@@ -2631,6 +2797,7 @@ async function renderFriendsLb(){
     const myStats={id:currentUserId,username:currentUser,best_score:bestScore,total_games:totalGames,theme_color:currentColor};
     const allStats=[myStats,...(stats||[])].sort((a,b)=>(b.best_score||0)-(a.best_score||0));
     list.innerHTML='';
+    document.getElementById('lbFriendsLabel').style.display='block';
     allStats.forEach((p,i)=>{
       const isMe=p.id===currentUserId;
       const color=accentHex[p.theme_color]||accentHex.midnight;
@@ -3091,4 +3258,38 @@ async function adminDelete(id){
 
 renderTopicList();
 applyTheme();
+
+// ── MOBILE NAV DRAWER ─────────────────────────────────────────
+function openNavDrawer(){
+  document.getElementById('navDrawer').classList.add('open');
+  document.getElementById('navOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  syncDrawerState();
+}
+function closeNavDrawer(){
+  document.getElementById('navDrawer').classList.remove('open');
+  document.getElementById('navOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function syncDrawerState(){
+  // Sync light/dark toggle
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark'||!document.documentElement.getAttribute('data-theme');
+  const tog=document.getElementById('modeToggleDrawer');
+  if(tog)tog.classList.toggle('on',!isDark);
+  // Sync user state
+  const drawerUser=document.getElementById('navDrawerUser');
+  const drawerUsername=document.getElementById('navDrawerUsername');
+  const drawerSignin=document.getElementById('navDrawerSignin');
+  const drawerSignout=document.getElementById('navDrawerSignout');
+  if(currentUser&&!isGuest){
+    drawerUser.style.display='block';
+    drawerUsername.textContent=currentUser;
+    drawerSignin.style.display='none';
+    drawerSignout.style.display='flex';
+  } else {
+    drawerUser.style.display='none';
+    drawerSignin.style.display='flex';
+    drawerSignout.style.display='none';
+  }
+}
 </script>
