@@ -1773,12 +1773,30 @@ let animeTopics=[];
 let genreTopics=[];
 
 async function loadTopicsFromSupabase(){
+  const list=document.getElementById('topicResultsList');
+  if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading topics…</div>';
+  // Guard: wait for sb to be ready
+  if(typeof sb==='undefined'||!sb){
+    console.error('Supabase client not ready');
+    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Not connected. Please refresh.</div>';
+    return;
+  }
+  console.log('loadTopicsFromSupabase: firing query…');
   try{
     const {data,error}=await sb.from('questions')
       .select('topic_type,topic_value')
       .eq('status','approved')
       .lt('report_count',3);
-    if(error||!data)return;
+    console.log('loadTopicsFromSupabase result:',{data,error});
+    if(error){
+      console.error('loadTopicsFromSupabase error:',error);
+      if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.<br><span style="font-size:11px">'+error.message+'</span></div>';
+      return;
+    }
+    if(!data||data.length===0){
+      if(list)list.innerHTML='<div class="topic-empty">No topics available yet.</div>';
+      return;
+    }
     const animeSet=new Map();
     const genreSet=new Map();
     data.forEach(row=>{
@@ -1795,17 +1813,27 @@ async function loadTopicsFromSupabase(){
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
     genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    console.log('loadTopicsFromSupabase: anime=',animeTopics.length,'genre=',genreTopics.length);
     renderTopicList();
-  }catch(e){console.error('loadTopicsFromSupabase error:',e);}
+  }catch(e){
+    console.error('loadTopicsFromSupabase exception:',e);
+    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.<br><span style="font-size:11px">'+e.message+'</span></div>';
+  }
 }
 
 function getTopicList(){return currentTopicTab==='anime'?animeTopics:genreTopics;}
 
 function renderTopicList(filter=''){
   const list=document.getElementById('topicResultsList');
-  const items=getTopicList().filter(t=>t.name.toLowerCase().includes((filter||'').toLowerCase()));
+  if(!list)return;
+  const all=getTopicList();
+  const items=all.filter(t=>t.name.toLowerCase().includes((filter||'').toLowerCase()));
+  if(all.length===0){
+    // Still loading or empty — don't overwrite the spinner set by loadTopicsFromSupabase
+    return;
+  }
   if(items.length===0){
-    list.innerHTML='<div class="topic-empty">'+(getTopicList().length===0?'Loading topics…':'No results for "'+filter+'"')+'</div>';
+    list.innerHTML='<div class="topic-empty">No results for "'+filter+'"</div>';
     return;
   }
   list.innerHTML=items.map(t=>{
