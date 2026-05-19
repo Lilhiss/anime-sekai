@@ -1984,7 +1984,7 @@ async function fetchQuestion(){
   const bankTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
   const banked=await sbGetQuestion(selectedFormat,bankTopic);
   if(banked){if(currentUserId)sbMarkSeen(currentUserId,banked.id);return banked;}
-  return await fetchQuestionFromAI();
+  return getFallback();
 }
 
 async function fetchQuestionFromAI(){
