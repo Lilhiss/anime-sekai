@@ -1622,11 +1622,7 @@ function showAuthMode(mode){
   document.getElementById('authRegister').style.display=mode==='register'?'block':'none';
   document.getElementById('authForgot').style.display=mode==='forgot'?'block':'none';
   document.getElementById('authReset').style.display=mode==='reset'?'block':'none';
-  // Always clear sign-in fields to prevent browser autofill persisting after sign-out
-  if(mode==='signin'||!mode){
-    const u=document.getElementById('siUser');const p=document.getElementById('siPass');
-    if(u)u.value='';if(p)p.value='';
-  }
+  if(mode==='signin'||!mode){const u=document.getElementById('siUser');const p=document.getElementById('siPass');if(u)u.value='';if(p)p.value='';}
 }
 function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
@@ -1666,8 +1662,6 @@ async function submitSignin(){
   const btn=document.getElementById('signinSubmitBtn');
   btn.disabled=true;btn.textContent='Signing in…';
   try{
-    // Clear any lingering anonymous/guest session before signing in
-    await sb.auth.signOut({scope:'local'}).catch(()=>{});
     const user=await sbSignIn(u,p);
     const profile=await sbLoadProfile(user.id);
     currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
