@@ -534,6 +534,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-btn.delete{background:var(--bg3);border:1px solid var(--border2);color:var(--muted)}
 .admin-btn.approve:hover{opacity:.85}.admin-btn.reject:hover{opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
+.lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
 .admin-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:600px){.admin-stat-row{grid-template-columns:1fr 1fr}}
 </style>
@@ -3256,6 +3257,22 @@ function renderLobbyRoom(){
     row.innerHTML=`<div class="lobby-player-avatar" style="background:${p.color}">${p.name[0].toUpperCase()}</div><div class="lobby-player-name">${p.name}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}`;
     list.appendChild(row);
   });
+  // Lock controls for non-host players
+  const settingsPanel=document.querySelector('#page-lobby-room .slide-in:nth-child(4)');
+  const startBtn=document.getElementById('startLobbyBtn');
+  if(!isHost){
+    if(settingsPanel)settingsPanel.classList.add('lobby-guest-lock');
+    if(startBtn){startBtn.classList.add('lobby-guest-lock');startBtn.disabled=true;}
+  } else {
+    if(settingsPanel)settingsPanel.classList.remove('lobby-guest-lock');
+    if(startBtn){startBtn.classList.remove('lobby-guest-lock');startBtn.disabled=false;}
+  }
+  // Update hint text
+  document.querySelectorAll('#page-lobby-room .slide-in:nth-child(4) span').forEach(s=>{
+    if(s.textContent.includes('Change format')||s.textContent.includes('Only the host')){
+      s.textContent=isHost?'Change format \u0026 mode before starting':'Only the host can change settings';
+    }
+  });
   applyTheme();
 }
 function copyLobbyCode(){
@@ -3389,6 +3406,7 @@ function setLobbyMode(mode,el){
   }
 }
 function openLobbySettings(){
+  if(!isHost)return;
   goStep('lobby-settings');
   // Highlight currently selected format
   const fmtCards=document.querySelectorAll('#page-lobby-settings .fmt-card');
