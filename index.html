@@ -1450,8 +1450,23 @@ async function sbLoadLeaderboard(){
 
 // ── SESSION RESTORE ───────────────────────────────────────────
 // On page load, check if user is already signed in
+// Clear any stale anonymous session immediately on page load
+// This prevents the anonymous token from blocking real sign-in
+(function(){
+  try{
+    const key='sb-ispagvwuxgbzzycdxdfx-auth-token';
+    const raw=localStorage.getItem(key);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed?.user?.is_anonymous===true){
+        localStorage.removeItem(key);
+      }
+    }
+  }catch(e){}
+})();
+
 sb.auth.onAuthStateChange(async (event, session) => {
-  if(session?.user && !currentUser){
+  if(session?.user && !currentUser && !session.user.is_anonymous){
     const profile = await sbLoadProfile(session.user.id);
     if(profile){
       currentUser = profile.username;
@@ -1460,7 +1475,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
       totalCorrect  = parseInt(profile.total_correct)|| 0;
-      totalAnswered = parseInt(profile.total_answered)||0;
+      totalAnswered = parseInt(profile.total_addressed)||0;
       allHistory = await sbLoadHistory(currentUserId);
       updateNav();
     }
