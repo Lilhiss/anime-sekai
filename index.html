@@ -1333,7 +1333,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 // Project Settings → API → Project URL and anon public key
 const SUPABASE_URL  = 'https://ispagvwuxgbzzycdxdfx.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcGFndnd1eGdienp5Y2R4ZGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTcwMDksImV4cCI6MjA5NDQ3MzAwOX0.COahnEHqu4R-_OBAJX1J-4qGk_Lo04SWKfNBfkYCTn0';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    storage: window.localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  }
+});
 
 // ── SUPABASE AUTH ─────────────────────────────────────────────
 async function sbSignUp(username, password, email=''){
@@ -1354,9 +1361,14 @@ async function sbSignUp(username, password, email=''){
 async function sbSignIn(username, password){
   let email=`${username}@animesekai.guest`;
   try{
-    const {data:profile}=await sb.from('profiles').select('email').eq('username',username).maybeSingle();
+    const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+    const query = sb.from('profiles').select('email').eq('username',username).maybeSingle();
+    const {data:profile} = await Promise.race([query, timeout]);
     if(profile?.email) email=profile.email;
   }catch(e){}
+  if(email.endsWith('@animesekai.guest')){
+    throw new Error('Could not find your account. If you registered with an email, please use it to sign in.');
+  }
   const { data, error } = await sb.auth.signInWithPassword({email, password});
   if(error) throw error;
   return data.user;
