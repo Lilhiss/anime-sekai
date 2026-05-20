@@ -1704,7 +1704,7 @@ async function submitForgotPassword(){
   try{
     const {data:profile}=await sb.from('profiles').select('email').eq('username',u).single();
     if(!profile?.email){showErr('forgotErr','forgotErrMsg','No email found for this account. Password cannot be recovered.');return}
-    const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.netlify.app'});
+    const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
     if(error)throw error;
     document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
   }catch(e){
@@ -2192,7 +2192,7 @@ async function sbGetQuestion(format,topic){
 }
 
 async function sbMarkSeen(userId,questionId){
-  await sb.from('seen_questions').upsert({user_id:userId,question_id:questionId},{onConflict:'user_id,question_id'}).catch(()=>{});
+  try{await sb.from('seen_questions').upsert({user_id:userId,question_id:questionId},{onConflict:'user_id,question_id'});}catch(e){}
 }
 function checkAnswer(userInput,qData){
   const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
