@@ -109,6 +109,9 @@ h1 .hi{color:var(--accent)}
 .fmt-card:hover .fmt-card-arrow{color:var(--accent);transform:translateX(3px)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
 .mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:12px}
+.time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
+.time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
+.time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
 .mode-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
 .mode-icon{width:52px;height:52px;border-radius:14px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--accent)}
 .mode-title{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
@@ -782,7 +785,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="startQuiz('race')"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> +10 pts per correct answer</div></div>
+      <div class="mode-card" onclick="showTimeLimitPicker()"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
       <div class="mode-card" onclick="startQuiz('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
     </div>
   </div>
@@ -1196,6 +1199,25 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- TIME LIMIT PICKER MODAL -->
+  <div id="timeLimitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">#x23F1;#xFE0F; Time Limit</div>
+        <button onclick="document.getElementById('timeLimitModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="color:var(--muted);font-size:13px;line-height:1.5">Choose how long you have to answer each question. The faster you answer, the more points you earn — up to <strong style="color:var(--accent)">10 points</strong> instantly, dropping to <strong style="color:var(--accent)">1 point</strong> at the last second.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
+        <div class="time-limit-opt" onclick="selectTimeLimit(5)" data-val="5"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">5s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Lightning</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(10)" data-val="10"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">10s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30" style="grid-column:span 2"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
+      </div>
+      <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> Start Race</button>
+    </div>
+  </div>
+
   <!-- PLAY AGAIN MODAL -->
   <div id="playAgainModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
@@ -1453,6 +1475,7 @@ let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGu
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
+let raceTimeLimit=15,selectedTimeLimitVal=15,questionStartTime=0,lastPtsEarned=0;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
@@ -2267,8 +2290,10 @@ function answerMC(idx,el,qData){
   if(answered)return;answered=true;clearInterval(timerInterval);
   const allAns=document.querySelectorAll('.ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
-  if(correct){el.classList.add('correct');score+=10;}
-  else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;}
+  const elapsed=(Date.now()-questionStartTime)/1000;
+  const pts=selectedMode==="race"?calcSpeedPoints(elapsed,raceTimeLimit):10;
+  if(correct){el.classList.add("correct");score+=pts;lastPtsEarned=pts;}
+  else{el.classList.add("wrong");allAns[qData.answer].classList.add("correct");lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];
   quizHistory[quizHistory.length-1].correct=correct;
   showFeedback(correct,qData.options[qData.answer],qData.options[idx]);
@@ -2284,7 +2309,9 @@ function checkTypeAnswer(){
   const canonicalAns=currentQData.answer||'';
   input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
   document.getElementById('typeSubmitBtn').disabled=true;
-  if(correct){score+=10;}else{lives--;}
+  const telapsed2=(Date.now()-questionStartTime)/1000;
+  const tpts2=selectedMode==="race"?calcSpeedPoints(telapsed2,raceTimeLimit):10;
+  if(correct){score+=tpts2;lastPtsEarned=tpts2;}else{lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=userAns;
   quizHistory[quizHistory.length-1].correct=correct;
   showFeedback(correct,canonicalAns,userAns);
@@ -2326,7 +2353,8 @@ function showFeedback(correct,correctAns,userAns,override){
   const ya=document.getElementById('fbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
-  document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
+  const ptsMsg=correct?(selectedMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=4?'Good 👍':'Just in time ⏱️'}`:'+ 10 points added to your score'):'';
+  document.getElementById('fbPts').textContent=ptsMsg;
   // Show submitted_by credit if question came from a user
   const subEl=document.getElementById('fbSubmittedBy');
   if(currentQData?.submitted_by){
@@ -2546,12 +2574,40 @@ function renderProfile(){
   applyTheme();
 }
 
+// ── TIME LIMIT PICKER ────────────────────────────────────────
+function showTimeLimitPicker(){
+  selectedTimeLimitVal=raceTimeLimit;
+  document.querySelectorAll(".time-limit-opt").forEach(el=>{
+    el.classList.toggle("selected",parseInt(el.dataset.val)===selectedTimeLimitVal);
+  });
+  document.getElementById("timeLimitModal").style.display="flex";
+  applyTheme();
+}
+function selectTimeLimit(val){
+  selectedTimeLimitVal=val;
+  document.querySelectorAll(".time-limit-opt").forEach(el=>{
+    el.classList.toggle("selected",parseInt(el.dataset.val)===val);
+  });
+}
+function confirmTimeLimit(){
+  raceTimeLimit=selectedTimeLimitVal;
+  document.getElementById("timeLimitModal").style.display="none";
+  startQuiz("race");
+}
+
+// Exponential score: 10 pts instantly, 1 pt at time limit
+function calcSpeedPoints(elapsed,limit){
+  const ratio=Math.min(elapsed,limit)/limit; // 0=instant, 1=last second
+  const pts=Math.round(10*Math.pow(0.1,ratio)); // 10->1 exponentially
+  return Math.max(1,Math.min(10,pts));
+}
+
 function startTimer(){
-  clearInterval(timerInterval);timeLeft=20;updateTimerBar();
+  clearInterval(timerInterval);timeLeft=raceTimeLimit;questionStartTime=Date.now();updateTimerBar();
   timerInterval=setInterval(()=>{timeLeft-=0.1;updateTimerBar();if(timeLeft<=0){clearInterval(timerInterval);timeOut()}},100);
 }
 function updateTimerBar(){
-  const pct=Math.max(0,(timeLeft/20)*100);
+  const pct=Math.max(0,(timeLeft/raceTimeLimit)*100);
   const bar=document.getElementById('timerBar');bar.style.width=pct+'%';
   bar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
 }
