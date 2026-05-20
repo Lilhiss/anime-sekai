@@ -382,6 +382,17 @@ h1 .hi{color:var(--accent)}
 .lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1}
 .lobby-player-badge{font-size:11px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 10px;color:var(--accent)}
 .lobby-host-crown{font-size:14px;color:#fbbf24}
+.lobby-player-actions{display:flex;gap:6px;margin-left:auto;align-items:center}
+.lobby-action-btn{font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s;white-space:nowrap}
+.lobby-action-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.lobby-action-btn.kick:hover{background:#f87171;border-color:#f87171;color:#fff}
+/* Kicked modal */
+.kicked-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center}
+.kicked-modal-overlay.open{display:flex}
+.kicked-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:36px 32px;max-width:380px;width:90%;text-align:center;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 64px #0009}
+.kicked-modal-icon{font-size:52px;line-height:1}
+.kicked-modal-title{font-family:'Lilita One',cursive;font-size:24px;color:var(--text)}
+.kicked-modal-sub{font-size:14px;color:var(--muted);line-height:1.6}
 /* MP SCOREBOARD */
 .mp-score-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .2s}
 .mp-score-row.me{background:var(--accent-soft);border:1px solid var(--border2)}
@@ -1422,6 +1433,32 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <a class="foot-link" onclick="document.getElementById('contactModal').style.display='flex';applyTheme()">Contact</a>
     </div>
   </footer>
+
+  <!-- KICKED FROM LOBBY MODAL -->
+  <div class="kicked-modal-overlay" id="kickedModal">
+    <div class="kicked-modal">
+      <div class="kicked-modal-icon">🚫</div>
+      <div class="kicked-modal-title">You've been kicked</div>
+      <div class="kicked-modal-sub">The host removed you from this lobby. You can join another game or create your own.</div>
+      <button class="action-btn primary" style="margin-top:4px" onclick="document.getElementById('kickedModal').classList.remove('open');goStep('landing')"><i class="ti ti-home" style="font-size:15px"></i> Back to Home</button>
+    </div>
+  </div>
+
+  <!-- CONFIRM TRANSFER HOST MODAL -->
+  <div id="transferHostModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px;text-align:center;box-shadow:0 24px 64px #0009">
+      <div style="font-size:40px">👑</div>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Transfer host to <span id="transferTargetName" style="color:var(--accent)"></span>?</div>
+        <div style="font-size:13px;color:var(--muted)">They'll be able to start the game and change settings. You'll become a regular player.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="document.getElementById('transferHostModal').style.display='none'">Cancel</button>
+        <button class="action-btn primary" onclick="confirmTransferHost()"><i class="ti ti-crown" style="font-size:15px"></i> Transfer</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3039,6 +3076,28 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
   });
+  rtChannel.on('broadcast',{event:'host_transferred'},({payload})=>{
+    lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
+    if(currentUser===payload.newHost){
+      isHost=true;
+    } else {
+      isHost=(currentUser===payload.newHost);
+    }
+    renderLobbyRoom();
+  });
+  rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
+    if(currentUser===payload.kicked){
+      // This player was kicked — show modal and leave
+      if(rtChannel)rtChannel.unsubscribe();
+      lobbyPlayers=[];
+      document.getElementById('kickedModal').classList.add('open');
+      applyTheme();
+      return;
+    }
+    // For other players, just remove them from the list
+    lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.kicked);
+    renderLobbyRoom();
+  });
   rtChannel.subscribe((status)=>{
     if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
       // Only show disconnect modal if we're mid-game and it's a guest
@@ -3254,7 +3313,9 @@ function renderLobbyRoom(){
   const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
   lobbyPlayers.forEach(p=>{
     const row=document.createElement('div');row.className='lobby-player';
-    row.innerHTML=`<div class="lobby-player-avatar" style="background:${p.color}">${p.name[0].toUpperCase()}</div><div class="lobby-player-name">${p.name}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}`;
+    const isMe=p.name===currentUser;
+    const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
+    row.innerHTML=`<div class="lobby-player-avatar" style="background:${p.color}">${p.name[0].toUpperCase()}</div><div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
   // Lock controls for non-host players
@@ -3428,7 +3489,66 @@ function startLobbyGame(){
   }
 }
 
-// ── HOT POTATO STATE ─────────────────────────────────────────
+// ── HOST CONTROLS: KICK & TRANSFER ───────────────────────────
+let _transferTarget=null;
+function promptTransferHost(name){
+  if(!isHost)return;
+  _transferTarget=name;
+  document.getElementById('transferTargetName').textContent=name;
+  document.getElementById('transferHostModal').style.display='flex';
+  applyTheme();
+}
+async function confirmTransferHost(){
+  if(!isHost||!_transferTarget)return;
+  document.getElementById('transferHostModal').style.display='none';
+  // Update local state
+  lobbyPlayers.forEach(p=>{p.isHost=(p.name===_transferTarget);});
+  isHost=false;
+  // Broadcast to all players
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget}});
+  }
+  // Update Supabase lobby_players if we have a real session
+  if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{
+      const token=await rtGetAuthToken();
+      // Get lobby id from code
+      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const lData=await lRes.json();
+      const lid=Array.isArray(lData)?lData[0]?.id:null;
+      if(lid){
+        // Set all is_host=false then set new host
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+      }
+    }catch(e){}
+  }
+  _transferTarget=null;
+  renderLobbyRoom();
+}
+async function kickPlayer(name){
+  if(!isHost)return;
+  // Broadcast kick event before removing
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'player_kicked',payload:{kicked:name}});
+  }
+  // Remove from local list
+  lobbyPlayers=lobbyPlayers.filter(p=>p.name!==name);
+  // Remove from Supabase
+  if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{
+      const token=await rtGetAuthToken();
+      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const lData=await lRes.json();
+      const lid=Array.isArray(lData)?lData[0]?.id:null;
+      if(lid){
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(name)}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      }
+    }catch(e){}
+  }
+  renderLobbyRoom();
+}
+
 let hpActiveIdx=0;
 function hpActivePlayers(){return lobbyPlayers.filter(p=>!p.eliminated)}
 function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.length]}
