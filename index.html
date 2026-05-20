@@ -1354,9 +1354,31 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 // Project Settings → API → Project URL and anon public key
 const SUPABASE_URL  = 'https://ispagvwuxgbzzycdxdfx.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcGFndnd1eGdienp5Y2R4ZGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTcwMDksImV4cCI6MjA5NDQ3MzAwOX0.COahnEHqu4R-_OBAJX1J-4qGk_Lo04SWKfNBfkYCTn0';
+// Custom storage that never saves anonymous sessions to localStorage
+// This prevents guest play from blocking real sign-in on the next visit
+const anonSafeStorage = {
+  getItem: (key) => {
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return null;
+      const parsed = JSON.parse(raw);
+      if(parsed?.user?.is_anonymous === true){ localStorage.removeItem(key); return null; }
+      return raw;
+    }catch(e){ return null; }
+  },
+  setItem: (key, value) => {
+    try{
+      const parsed = JSON.parse(value);
+      if(parsed?.user?.is_anonymous === true) return; // never persist anonymous sessions
+      localStorage.setItem(key, value);
+    }catch(e){ localStorage.setItem(key, value); }
+  },
+  removeItem: (key) => { try{ localStorage.removeItem(key); }catch(e){} }
+};
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
-    storage: window.localStorage,
+    storage: anonSafeStorage,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
@@ -1380,25 +1402,16 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Clear any stale anonymous session that would block sign-in
-  try{
-    const sessionResult = await Promise.race([
-      sb.auth.getSession(),
-      new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-    ]);
-    if(sessionResult?.data?.session?.user?.is_anonymous){
-      await sb.auth.signOut();
-    }
-  }catch(e){
-    // If getSession hangs, clear the token manually
-    try{ localStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(_){}
-  }
+  // Use plain fetch for the email lookup — bypasses the Supabase JS client
+  // which hangs waiting for an auth session before sending the query
   let email=`${username}@animesekai.guest`;
   try{
-    const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 5000));
-    const query = sb.from('profiles').select('email').eq('username',username).maybeSingle();
-    const {data:profile} = await Promise.race([query, timeout]);
-    if(profile?.email) email=profile.email;
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=eq.${encodeURIComponent(username)}&limit=1`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    const rows = await res.json();
+    if(Array.isArray(rows) && rows[0]?.email) email = rows[0].email;
   }catch(e){}
   if(email.endsWith('@animesekai.guest')){
     throw new Error('Could not find your account. Please check your username.');
@@ -1409,7 +1422,9 @@ async function sbSignIn(username, password){
 }
 
 async function sbSignOut(){
-  await sb.auth.signOut();
+  try{ await sb.auth.signOut(); }catch(e){}
+  // Explicitly clear the token in case the custom storage didn't catch it
+  try{ localStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(e){}
 }
 
 async function sbLoadProfile(userId){
