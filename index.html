@@ -2889,6 +2889,10 @@ async function rtGetOrCreateAnonSession(){
   }
 }
 
+async function rtGetAuthToken(){
+  try{const{data}=await sb.auth.getSession();return data?.session?.access_token||SUPABASE_ANON;}catch(e){return SUPABASE_ANON;}
+}
+
 async function rtCreateLobby(){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){
@@ -2896,11 +2900,12 @@ async function rtCreateLobby(){
     isHost=true;
     return; // Lobby still shows locally, just won't sync to other devices
   }
+  const token=await rtGetAuthToken();
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
@@ -2911,7 +2916,7 @@ async function rtCreateLobby(){
     const lobbyRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=representation'
       },
       body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'})
@@ -2925,7 +2930,7 @@ async function rtCreateLobby(){
     await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=minimal'
       },
       body:JSON.stringify({lobby_id:lobbyId,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:true,score:0,lives:3})
@@ -2938,12 +2943,13 @@ async function rtCreateLobby(){
 async function rtJoinLobby(code){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');return false;}
+  const token=await rtGetAuthToken();
   // Upsert profile for anon/guest users
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
@@ -2953,7 +2959,7 @@ async function rtJoinLobby(code){
   try{
     const lobbyRes=await fetch(
       `${SUPABASE_URL}/rest/v1/lobbies?select=*&code=eq.${encodeURIComponent(code)}&status=eq.waiting&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
     );
     const lobbyRows=await lobbyRes.json();
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
@@ -2963,7 +2969,7 @@ async function rtJoinLobby(code){
     const joinRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=minimal'
       },
       body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
