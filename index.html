@@ -1,5 +1,11 @@
 <!DOCTYPE html>
-
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anime Sekai Quiz</title>
+</head>
+<body>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css');
@@ -134,6 +140,7 @@ h1 .hi{color:var(--accent)}
 .timer-bar.warn{background:#fbbf24}
 .timer-bar.danger{background:#f87171}
 .q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 24px;backdrop-filter:blur(10px)}
+.q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
 .q-meta{margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
 .q-text{font-family:'Lilita One',cursive;font-size:clamp(16px,2.5vw,22px);color:var(--text);line-height:1.4}
@@ -167,6 +174,9 @@ h1 .hi{color:var(--accent)}
 .next-btn{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:10px 22px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:opacity .2s,transform .15s;white-space:nowrap;flex-shrink:0;align-self:center}
 .next-btn:hover{opacity:.88;transform:translateY(-1px)}
 .type-wrap{grid-column:1/-1;display:flex;flex-direction:column;gap:10px}
+@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(6px)}45%{transform:translateX(-5px)}60%{transform:translateX(5px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}
+.shake{animation:shake .4s ease}
+.type-input.wrong-attempt{border-color:#f87171;background:#f8717115;}
 .type-input-row{display:flex;gap:10px}
 .type-input{flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;outline:none;transition:border-color .2s}
 .type-input:focus{border-color:var(--accent)}
@@ -836,7 +846,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <label class="report-opt"><input type="radio" name="rpt" value="duplicate"> Duplicate question</label>
             <label class="report-opt"><input type="radio" name="rpt" value="other"> Other</label>
           </div>
-          <textarea class="report-textarea" rows="2" placeholder="Optional: describe the issue..."></textarea>
+          <textarea class="report-textarea" id="reportDetail" rows="2" placeholder="Optional: describe the issue..."></textarea>
           <button class="report-submit" id="reportSubmitBtn" onclick="submitReport()">Submit report</button>
         </div>
       </div>
@@ -933,6 +943,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="slide-in" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="font-size:13px;color:var(--muted)">
           <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
+          <span style="font-size:11px;color:var(--accent)" id="lobbyTopicsLabel" style="display:none"></span>
           <span style="font-size:11px">Change format &amp; mode before starting</span>
         </div>
         <button class="ghost-btn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
@@ -944,11 +955,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- LOBBY SETTINGS -->
+  <!-- LOBBY SETTINGS: FORMAT -->
   <div class="page" id="page-lobby-settings">
     <div style="text-align:center" class="slide-in">
       <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-room')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
-      <h1>Game <span class="hi">Settings</span></h1>
+      <h1>Pick a <span class="hi">Format</span></h1>
     </div>
     <div class="fmt-grid slide-in">
       <div class="fmt-card" onclick="setLobbyFormat('mc',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-list"></i></div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer.</div></div>
@@ -956,10 +967,58 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="fmt-card" onclick="setLobbyFormat('img',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-photo"></i></div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a scene.</div></div>
       <div class="fmt-card" onclick="setLobbyFormat('char',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-user-circle"></i></div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Identify the character described.</div></div>
     </div>
+  </div>
+
+  <!-- LOBBY SETTINGS: TOPIC -->
+  <div class="page" id="page-lobby-topic">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-settings')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
+      <h1>Pick a <span class="hi">Topic</span></h1>
+    </div>
+    <div class="topic-page-grid slide-in">
+      <div class="topic-chips-row">
+        <div class="topic-general-opt" id="lobbyTopicGeneralOpt" onclick="toggleLobbyGeneral()" style="flex:1;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:180px">
+          <span style="font-size:42px">🌐</span>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text)">General Anime</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6">Questions from across the entire anime universe</div>
+          </div>
+          <i class="ti ti-check" id="lobbyGeneralCheck" style="font-size:20px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
+        </div>
+        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:180px">
+          <div style="display:flex;border-bottom:1px solid var(--border2)">
+            <button class="topic-tab active" id="lobbyTabAnime" onclick="switchLobbyTopicTab('anime')" style="flex:1;border-radius:0;padding:10px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
+            <button class="topic-tab" id="lobbyTabGenre" onclick="switchLobbyTopicTab('genre')" style="flex:1;border-radius:0;padding:10px 0">📚 Genre</button>
+          </div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border2)">
+            <div class="topic-search-input-wrap" style="padding:7px 11px">
+              <i class="ti ti-search"></i>
+              <input class="topic-search-input" id="lobbyTopicSearchInput" type="text" placeholder="Search..." oninput="filterLobbyTopics()" autocomplete="off">
+            </div>
+          </div>
+          <div class="topic-results" id="lobbyTopicResultsList" style="padding:6px 8px;max-height:200px"></div>
+        </div>
+      </div>
+      <div id="lobbyTopicSelectedWrap" style="display:none;flex-direction:column;gap:6px;width:100%">
+        <div class="topic-section-label">Selected</div>
+        <div class="topic-selected-tags" id="lobbyTopicSelectedTags"></div>
+      </div>
+      <button class="topic-proceed-btn" id="lobbyTopicProceedBtn" onclick="proceedFromLobbyTopic()" style="min-height:56px;font-size:18px;width:100%">
+        <i class="ti ti-arrow-right" style="font-size:18px"></i> Continue
+      </button>
+    </div>
+  </div>
+
+  <!-- LOBBY SETTINGS: MODE -->
+  <div class="page" id="page-lobby-mode">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-settings')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
+      <h1>Pick a <span class="hi">Mode</span></h1>
+    </div>
     <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> +10 pts per correct answer</div></div>
+      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
       <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
-      <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers while everyone watches. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
+      <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
     </div>
   </div>
 
@@ -1208,9 +1267,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <div id="timeLimitDesc" style="color:var(--muted);font-size:13px;line-height:1.5"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
-        <div class="time-limit-opt" onclick="selectTimeLimit(10)" data-val="10"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">10s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(25)" data-val="25"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">25s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
         <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
       </div>
       <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> <span id="timeLimitStartLabel">Start Race</span></button>
@@ -1446,38 +1505,53 @@ async function sbSignOut(){
 
 async function sbLoadProfile(userId){
   try{
-    const { data } = await sb.from('user_stats').select('*').eq('id', userId).maybeSingle();
-    return data;
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows=await res.json();
+    return Array.isArray(rows)&&rows[0]?rows[0]:null;
   }catch(e){return null;}
 }
 
 async function sbSaveGame(userId, gameData){
-  const { error } = await sb.from('games').insert({
-    user_id:   userId,
-    format:    gameData.format,
-    mode:      gameData.mode,
-    score:     gameData.score,
-    correct:   gameData.correct,
-    total:     gameData.total,
-    lives_left:gameData.livesLeft
-  });
-  if(error) console.error('Save game error:', error);
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/games`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'return=minimal'
+      },
+      body:JSON.stringify({
+        user_id:userId,format:gameData.format,mode:gameData.mode,
+        score:gameData.score,correct:gameData.correct,
+        total:gameData.total,lives_left:gameData.livesLeft
+      })
+    });
+    if(!res.ok)console.error('Save game error:',res.status);
+  }catch(e){console.error('Save game error:',e);}
 }
 
 async function sbLoadHistory(userId){
   try{
-    const { data } = await sb.from('games')
-      .select('*')
-      .eq('user_id', userId)
-      .order('played_at', {ascending: false})
-      .limit(10);
-    return data || [];
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/games?select=*&user_id=eq.${userId}&order=played_at.desc&limit=10`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows=await res.json();
+    return Array.isArray(rows)?rows:[];
   }catch(e){return [];}
 }
 
 async function sbLoadLeaderboard(){
-  const { data } = await sb.from('leaderboard').select('*').limit(20);
-  return data || [];
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/leaderboard?select=*&limit=20`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows=await res.json();
+    return Array.isArray(rows)?rows:[];
+  }catch(e){return [];}
 }
 
 // ── SESSION RESTORE ───────────────────────────────────────────
@@ -1520,7 +1594,7 @@ let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGu
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
-let raceTimeLimit=15,pendingMode='race',questionStartTime=0,lastPtsEarned=0;
+let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
@@ -1825,7 +1899,12 @@ async function submitForgotPassword(){
   const btn=document.getElementById('forgotSubmitBtn');
   btn.disabled=true;btn.textContent='Sending…';
   try{
-    const {data:profile}=await sb.from('profiles').select('email').eq('username',u).single();
+    const forgotRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=eq.${encodeURIComponent(u)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const forgotRows=await forgotRes.json();
+    const profile=Array.isArray(forgotRows)&&forgotRows[0]?forgotRows[0]:null;
     if(!profile?.email){showErr('forgotErr','forgotErrMsg','No email found for this account. Password cannot be recovered.');return}
     const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
     if(error)throw error;
@@ -1898,25 +1977,17 @@ let genreTopics=[];
 async function loadTopicsFromSupabase(){
   const list=document.getElementById('topicResultsList');
   if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading topics…</div>';
-  if(typeof sb==='undefined'||!sb){
-    console.error('Supabase client not ready');
-    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Not connected. Please refresh.</div>';
-    return;
-  }
-  // Wait for auth session to be ready before querying
   try{
-    await sb.auth.getSession();
-  }catch(e){/* ignore, just warming up the client */}
-  console.log('loadTopicsFromSupabase: firing query…');
-  try{
-    const {data,error}=await sb.from('questions')
-      .select('topic_type,topic_value')
-      .eq('status','approved')
-      .lt('report_count',3);
-    console.log('loadTopicsFromSupabase result:',{data,error});
-    if(error){
-      console.error('loadTopicsFromSupabase error:',error);
-      if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.<br><span style="font-size:11px">'+error.message+'</span></div>';
+    // Use plain fetch to avoid Supabase JS client hanging on getSession()
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    if(!res.ok) throw new Error('Failed to load topics');
+    const data=await res.json();
+    const error=null;
+    if(!data){
+      if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.</div>';
       return;
     }
     if(!data||data.length===0){
@@ -1943,7 +2014,7 @@ async function loadTopicsFromSupabase(){
     renderTopicList();
   }catch(e){
     console.error('loadTopicsFromSupabase exception:',e);
-    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.<br><span style="font-size:11px">'+e.message+'</span></div>';
+    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics. Please refresh.</div>';
   }
 }
 
@@ -2278,33 +2349,60 @@ function getFallback(){
 // ── QUESTION BANK ─────────────────────────────────────────────
 async function sbSaveQuestion(qData,format,topic){
   if(!qData?.question||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  const {data:existing}=await sb.from('questions').select('id').eq('question',qData.question).limit(1);
-  if(existing?.length)return;
-  await sb.from('questions').insert({
-    question:qData.question,options:qData.options||null,
-    answer:typeof qData.answer==='number'?String(qData.answer):qData.answer,
-    aliases:qData.aliases||[],format,
-    topic_type:topic.type,topic_value:topic.value||null,
-    difficulty:selectedDifficulty||'easy',report_count:0
-  }).catch(()=>{});
+  try{
+    // Dedup check
+    const checkRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?select=id&question=eq.${encodeURIComponent(qData.question)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const existing=await checkRes.json();
+    if(Array.isArray(existing)&&existing.length)return;
+    // Insert
+    await fetch(`${SUPABASE_URL}/rest/v1/questions`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'return=minimal'
+      },
+      body:JSON.stringify({
+        question:qData.question,options:qData.options||null,
+        answer:typeof qData.answer==='number'?String(qData.answer):qData.answer,
+        aliases:qData.aliases||[],format,
+        topic_type:topic.type,topic_value:topic.value||null,
+        difficulty:selectedDifficulty||'easy',report_count:0
+      })
+    });
+  }catch(e){}
 }
 
 async function sbGetQuestion(format,topic){
-  if(!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
+  if(SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    let query=sb.from('questions').select('*').eq('format',format).lt('report_count',3).eq('status','approved');
-    if(topic.type==='anime')query=query.eq('topic_type','anime').eq('topic_value',topic.value);
-    else if(topic.type==='genre')query=query.eq('topic_type','genre').eq('topic_value',topic.value);
-    else query=query.eq('topic_type','all');
+    // Build topic filter
+    let topicFilter='';
+    if(topic.type==='anime')topicFilter=`&topic_type=eq.anime&topic_value=eq.${encodeURIComponent(topic.value)}`;
+    else if(topic.type==='genre')topicFilter=`&topic_type=eq.genre&topic_value=eq.${encodeURIComponent(topic.value)}`;
+    else topicFilter='&topic_type=eq.all';
+    // Fetch seen question ids for this user
     const seenQs=quizHistory.map(h=>h.q);
     let seenIds=[];
     if(currentUserId){
-      const {data:seen}=await sb.from('seen_questions').select('question_id').eq('user_id',currentUserId).limit(200);
-      seenIds=(seen||[]).map(s=>s.question_id);
+      const seenRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/seen_questions?select=question_id&user_id=eq.${currentUserId}&limit=200`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const seenData=await seenRes.json();
+      if(Array.isArray(seenData))seenIds=seenData.map(s=>s.question_id);
     }
-    if(seenIds.length)query=query.not('id','in',`(${seenIds.join(',')})`);
-    const {data}=await query.limit(20);
-    if(!data?.length)return null;
+    // Build exclusion filter
+    const excludeFilter=seenIds.length?`&id=not.in.(${seenIds.join(',')})`:'';
+    // Fetch candidate questions
+    const qRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&limit=20`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const data=await qRes.json();
+    if(!Array.isArray(data)||!data.length)return null;
     const filtered=data.filter(q=>!seenQs.includes(q.question));
     if(!filtered.length)return null;
     const row=filtered[Math.floor(Math.random()*filtered.length)];
@@ -2313,7 +2411,16 @@ async function sbGetQuestion(format,topic){
 }
 
 async function sbMarkSeen(userId,questionId){
-  try{await sb.from('seen_questions').upsert({user_id:userId,question_id:questionId},{onConflict:'user_id,question_id'});}catch(e){}
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/seen_questions`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
+      },
+      body:JSON.stringify({user_id:userId,question_id:questionId})
+    });
+  }catch(e){}
 }
 function checkAnswer(userInput,qData){
   const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
@@ -2330,6 +2437,7 @@ async function loadQuestion(){
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
+  document.querySelector('.q-card')?.classList.remove('type-mode','shake');
   renderHUD();
   const qData=prefetchedQuestion||await fetchQuestion();
   prefetchedQuestion=null;currentQData=qData;
@@ -2343,8 +2451,9 @@ function showQuestion(qData){
   const grid=document.getElementById('answersGrid');grid.innerHTML='';
   const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
   if(isType){
+    document.querySelector('.q-card').classList.add('type-mode');
     const wrap=document.createElement('div');wrap.className='type-wrap';
-    wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div>`;
+    wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="typeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
     grid.appendChild(wrap);applyTheme();
     document.getElementById('typeInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkTypeAnswer()});
     document.getElementById('typeInput').focus();
@@ -2375,26 +2484,47 @@ function checkTypeAnswer(){
   if(answered)return;
   const input=document.getElementById('typeInput');
   if(!input||!input.value.trim())return;
-  answered=true;clearInterval(timerInterval);
   const userAns=input.value.trim();
   const correct=checkAnswer(userAns,currentQData);
   const canonicalAns=currentQData.answer||'';
-  input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
+  if(!correct){
+    // Wrong — shake card, flash red, clear input, allow retry
+    const card=document.querySelector('.q-card');
+    input.classList.add('wrong-attempt');
+    card.classList.add('shake');
+    const hint=document.getElementById('typeWrongHint');
+    if(hint)hint.style.display='block';
+    setTimeout(()=>{
+      input.classList.remove('wrong-attempt');
+      card.classList.remove('shake');
+      input.value='';
+      input.focus();
+    },400);
+    return;
+  }
+  // Correct — lock and show feedback
+  answered=true;clearInterval(timerInterval);
+  input.disabled=true;input.classList.add('correct-input');
   document.getElementById('typeSubmitBtn').disabled=true;
+  const hint=document.getElementById('typeWrongHint');if(hint)hint.style.display='none';
   const taElapsed=(Date.now()-questionStartTime)/1000;
   const taPts=selectedMode==='race'?calcSpeedPoints(taElapsed,raceTimeLimit):10;
-  if(correct){score+=taPts;lastPtsEarned=taPts;}else{lives--;lastPtsEarned=0;}
+  score+=taPts;lastPtsEarned=taPts;
   quizHistory[quizHistory.length-1].userAns=userAns;
-  quizHistory[quizHistory.length-1].correct=correct;
-  showFeedback(correct,canonicalAns,userAns);
+  quizHistory[quizHistory.length-1].correct=true;
+  showFeedback(true,canonicalAns,userAns);
   renderHUD();
 }
 function timeOut(){
   if(answered)return;answered=true;
   document.querySelectorAll('.ans').forEach(a=>a.classList.add('locked'));
-  const inp=document.getElementById('typeInput');if(inp)inp.disabled=true;
-  const sb=document.getElementById('typeSubmitBtn');if(sb)sb.disabled=true;
-  lives--;renderHUD();
+  const inp=document.getElementById('typeInput');if(inp){inp.disabled=true;inp.classList.remove('wrong-attempt');}
+  const submitBtn=document.getElementById('typeSubmitBtn');if(submitBtn)submitBtn.disabled=true;
+  const hint=document.getElementById('typeWrongHint');if(hint)hint.style.display='none';
+  document.querySelector('.q-card')?.classList.remove('shake');
+  // Time running out always costs a life
+  lives--;
+  renderHUD();
   const last=quizHistory[quizHistory.length-1];
   if(last){last.userAns='(timed out)';last.correct=false;}
   showFeedback(false,last?.correctAns||'?','(timed out)',"Time's up!");
@@ -2426,7 +2556,7 @@ function showFeedback(correct,correctAns,userAns,override){
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
   if(correct && selectedMode==='race'){
-    const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=4?'Good 👍':'Just in time ⏱️';
+    const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
     document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
   } else {
     document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
@@ -2655,7 +2785,7 @@ function showTimeLimitPicker(mode){
   pendingMode=mode;
   const isRace=mode==='race';
   document.getElementById('timeLimitDesc').textContent=isRace
-    ? 'Choose how long you have per question. The faster you answer, the more points you earn — up to 10 pts instantly, dropping to 1 pt at the last second.'
+    ? 'Choose how long you have per question. You get full points for the first 5s, then points drop — down to a minimum of 3 pts.'
     : 'Choose how long you have to answer each question. Run out of time and you lose a life.';
   document.getElementById('timeLimitStartLabel').textContent=isRace?'Start Race':'Start Survival';
   const grid=document.getElementById('timeLimitGrid');
@@ -2673,13 +2803,24 @@ function selectTimeLimit(val){
 }
 function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
-  startQuiz(pendingMode);
+  if(pendingLobbyAfterTimeLimit){
+    pendingLobbyAfterTimeLimit=false;
+    goStep('lobby-room');
+  } else {
+    startQuiz(pendingMode);
+  }
 }
 
-// Exponential scoring: 10 pts at 0s elapsed, 1 pt at time limit
+// Exponential scoring with 5s flat grace period at full points
+// After 5s, points drop exponentially from 10 down to 3 over the remaining time
 function calcSpeedPoints(elapsed,limit){
-  const ratio=Math.min(elapsed,limit)/limit;
-  return Math.max(1,Math.min(10,Math.round(10*Math.pow(0.1,ratio))));
+  const grace=5;
+  if(elapsed<=grace) return 10;
+  const remaining=limit-grace;
+  if(remaining<=0) return 3;
+  const ratio=Math.min(elapsed-grace,remaining)/remaining;
+  // Scale between 10 and 3 instead of 10 and 1
+  return Math.max(3,Math.min(10,Math.round(3+7*Math.pow(0.1,ratio))));
 }
 
 function startTimer(){
@@ -2703,7 +2844,7 @@ async function submitReport(){
   const btn=document.getElementById('reportSubmitBtn');
   btn.disabled=true;btn.textContent='Submitting…';
   // Get selected reason
-  const reasonEl=document.querySelector('input[name="reportReason"]:checked');
+  const reasonEl=document.querySelector('input[name="rpt"]:checked');
   const reason=reasonEl?reasonEl.value:'other';
   const detail=document.getElementById('reportDetail')?.value?.trim()||'';
   // Increment report_count in Supabase if question has an id
@@ -2739,9 +2880,7 @@ async function rtGetOrCreateAnonSession(){
     if(error){console.error('Anon sign in error:',error.message);return null;}
     currentUserId=data.user?.id||null;
     if(currentUserId){
-      await sb.from('profiles').upsert({
-        id:currentUserId,username:currentUser,is_guest:true
-      },{onConflict:'id'}).catch(()=>{});
+      try{ await sb.from('profiles').upsert({id:currentUserId,username:currentUser,is_guest:true},{onConflict:'id'}); }catch(e){}
     }
     return currentUserId;
   }catch(e){
@@ -2757,31 +2896,80 @@ async function rtCreateLobby(){
     isHost=true;
     return; // Lobby still shows locally, just won't sync to other devices
   }
-  await sb.from('profiles').upsert({id:uid,username:currentUser,is_guest:isGuest},{onConflict:'id'}).catch(()=>{});
-  const {data,error}=await sb.from('lobbies').insert({
-    code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'
-  }).select().single();
-  if(error){console.error('Create lobby error:',error);return}
-  await sb.from('lobby_players').insert({
-    lobby_id:data.id,user_id:uid,username:currentUser,
-    color:accentHex[currentColor],is_host:true,score:0,lives:3
-  });
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
+    });
+  }catch(e){}
+  let lobbyId=null;
+  try{
+    const lobbyRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'return=representation'
+      },
+      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'})
+    });
+    if(!lobbyRes.ok){console.error('Create lobby error:',lobbyRes.status);return;}
+    const lobbyRows=await lobbyRes.json();
+    lobbyId=Array.isArray(lobbyRows)?lobbyRows[0]?.id:lobbyRows?.id;
+  }catch(e){console.error('Create lobby error:',e);return;}
+  if(!lobbyId){console.error('Create lobby error: no id returned');return;}
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'return=minimal'
+      },
+      body:JSON.stringify({lobby_id:lobbyId,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:true,score:0,lives:3})
+    });
+  }catch(e){}
   isHost=true;
-  rtSubscribe(data.id);
+  rtSubscribe(lobbyId);
 }
 
 async function rtJoinLobby(code){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');return false;}
   // Upsert profile for anon/guest users
-  await sb.from('profiles').upsert({id:uid,username:currentUser,is_guest:isGuest},{onConflict:'id'}).catch(()=>{});
-  const {data:lobby}=await sb.from('lobbies').select('*').eq('code',code).eq('status','waiting').single();
-  if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false}
-  const {error}=await sb.from('lobby_players').insert({
-    lobby_id:lobby.id,user_id:uid,username:currentUser,
-    color:accentHex[currentColor],is_host:false,score:0,lives:3
-  });
-  if(error){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. You may already be in this lobby.');return false}
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
+    });
+  }catch(e){}
+  let lobby=null;
+  try{
+    const lobbyRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&code=eq.${encodeURIComponent(code)}&status=eq.waiting&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const lobbyRows=await lobbyRes.json();
+    lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
+  }catch(e){}
+  if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
+  try{
+    const joinRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'Content-Type':'application/json','Prefer':'return=minimal'
+      },
+      body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
+    });
+    if(!joinRes.ok){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. You may already be in this lobby.');return false;}
+  }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   isHost=false;lobbyCode=code;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   rtSubscribe(lobby.id);
@@ -2804,6 +2992,8 @@ function rtSubscribe(lobbyId){
     selectedFormat=payload.format;selectedMode=payload.mode;
     lobbyFormat=payload.format;lobbyMode=payload.mode;
     lobbyPlayers=payload.players;
+    selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
+    lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
@@ -2852,10 +3042,16 @@ function rtSubscribe(lobbyId){
 }
 
 async function rtRefreshPlayers(lobbyId){
-  const {data}=await sb.from('lobby_players').select('*').eq('lobby_id',lobbyId);
-  if(!data)return;
-  lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
-  renderLobbyRoom();
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return;
+    lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
+    renderLobbyRoom();
+  }catch(e){}
 }
 
 async function mpHostFetchAndBroadcast(){
@@ -3006,7 +3202,7 @@ goStep=function(name){
 };
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
-let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race';
+let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true;
 function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
 function createLobby(){
   if(!currentUser){choosePath('create');return}
@@ -3029,7 +3225,9 @@ function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+timeLimitLabel;
+  updateLobbyTopicsLabel();
   const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
   lobbyPlayers.forEach(p=>{
     const row=document.createElement('div');row.className='lobby-player';
@@ -3047,28 +3245,133 @@ function setLobbyFormat(fmt,el){
   lobbyFormat=fmt;selectedFormat=fmt;
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
-  if(lobbyCode&&currentUserId)sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode).catch(()=>{});
-  setTimeout(()=>goStep('lobby-room'),300);
+  if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode);}catch(e){}}
+  setTimeout(()=>openLobbyTopicPage(),300);
+}
+function openLobbyTopicPage(){
+  lobbyTopics=[];lobbyIsGeneral=true;
+  updateLobbyGeneralUI();renderLobbySelectedTags();
+  switchLobbyTopicTab('anime');
+  loadLobbyTopics();
+  goStep('lobby-topic');
+}
+let lobbyCurrentTopicTab='anime';
+async function loadLobbyTopics(){
+  const list=document.getElementById('lobbyTopicResultsList');
+  if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading…</div>';
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const data=await res.json();
+    const animeSet=new Map(),genreSet=new Map();
+    data.forEach(row=>{
+      if(!row.topic_value)return;
+      const name=row.topic_value;
+      const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+      if(row.topic_type==='anime'&&!animeSet.has(key)){
+        animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime'});
+      } else if(row.topic_type==='genre'&&!genreSet.has(key)){
+        genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre'});
+      }
+    });
+    animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    renderLobbyTopicList();
+  }catch(e){
+    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.</div>';
+  }
+}
+function renderLobbyTopicList(filter=''){
+  const list=document.getElementById('lobbyTopicResultsList');
+  if(!list)return;
+  const all=lobbyCurrentTopicTab==='anime'?animeTopics:genreTopics;
+  const items=all.filter(t=>t.name.toLowerCase().includes((filter||'').toLowerCase()));
+  if(!items.length){list.innerHTML='<div class="topic-empty">No results</div>';return;}
+  list.innerHTML=items.map(t=>{
+    const sel=lobbyTopics.some(s=>s.key===t.key);
+    return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
+      <div class="topic-result-left"><span class="topic-result-emoji">${t.emoji}</span><span>${t.name}</span></div>
+      <i class="ti ti-check topic-result-check"></i>
+    </div>`;
+  }).join('');
+}
+function filterLobbyTopics(){
+  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput').value);
+}
+function switchLobbyTopicTab(tab){
+  lobbyCurrentTopicTab=tab;
+  document.getElementById('lobbyTabAnime').classList.toggle('active',tab==='anime');
+  document.getElementById('lobbyTabGenre').classList.toggle('active',tab==='genre');
+  document.getElementById('lobbyTopicSearchInput').value='';
+  renderLobbyTopicList();
+}
+function toggleLobbyTopic(key,emoji,name,type){
+  lobbyIsGeneral=false;updateLobbyGeneralUI();
+  const idx=lobbyTopics.findIndex(t=>t.key===key);
+  if(idx>=0){lobbyTopics.splice(idx,1);}else{lobbyTopics.push({key,emoji,name,type});}
+  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput').value);
+  renderLobbySelectedTags();
+}
+function toggleLobbyGeneral(){
+  lobbyIsGeneral=!lobbyIsGeneral;
+  if(lobbyIsGeneral)lobbyTopics=[];
+  updateLobbyGeneralUI();renderLobbyTopicList();renderLobbySelectedTags();
+}
+function updateLobbyGeneralUI(){
+  document.getElementById('lobbyGeneralCheck').style.opacity=lobbyIsGeneral?'1':'0';
+  document.getElementById('lobbyTopicGeneralOpt').classList.toggle('selected',lobbyIsGeneral);
+}
+function renderLobbySelectedTags(){
+  const wrap=document.getElementById('lobbyTopicSelectedWrap');
+  const tags=document.getElementById('lobbyTopicSelectedTags');
+  if(lobbyTopics.length===0){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  tags.innerHTML=lobbyTopics.map(t=>`<div class="topic-tag">${t.emoji} ${t.name}<button class="topic-tag-remove" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"><i class="ti ti-x"></i></button></div>`).join('');
+}
+function proceedFromLobbyTopic(){
+  // Set selectedTopics and isGeneralSelected to match lobby choices
+  selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
+  // Update lobby topics label in waiting room
+  updateLobbyTopicsLabel();
+  goStep('lobby-mode');
+}
+function updateLobbyTopicsLabel(){
+  const el=document.getElementById('lobbyTopicsLabel');
+  if(!el)return;
+  if(lobbyIsGeneral||lobbyTopics.length===0){
+    el.textContent='🌐 General Anime';
+  } else {
+    el.textContent=lobbyTopics.map(t=>t.emoji+' '+t.name).join(', ');
+  }
+  el.style.display='block';
 }
 function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':'Hot Potato 🥔'}
 function setLobbyMode(mode,el){
   lobbyMode=mode;selectedMode=mode;
-  document.querySelectorAll('#page-lobby-settings .mode-card').forEach(c=>c.style.borderColor='');
+  document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
+  // Don't show time suffix yet — picker hasn't confirmed a value.
+  // renderLobbyRoom() on return will show the final correct label.
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
-  if(lobbyCode&&currentUserId)sb.from('lobbies').update({mode}).eq('code',lobbyCode).catch(()=>{});
-  setTimeout(()=>goStep('lobby-room'),300);
+  if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({mode}).eq('code',lobbyCode);}catch(e){}}
+  // Show time limit picker for race and survival, then return to lobby room
+  if(mode==='race'||mode==='survival'){
+    setTimeout(()=>{
+      pendingLobbyAfterTimeLimit=true;
+      showTimeLimitPicker(mode);
+    },300);
+  } else {
+    setTimeout(()=>goStep('lobby-room'),300);
+  }
 }
 function openLobbySettings(){
   goStep('lobby-settings');
-  // Restore current selections visually
+  // Highlight currently selected format
   const fmtCards=document.querySelectorAll('#page-lobby-settings .fmt-card');
   const fmtIdx={mc:0,type:1,img:2,char:3}[lobbyFormat]??0;
   fmtCards.forEach((c,i)=>c.style.borderColor=i===fmtIdx?'var(--accent)':'');
-  const modeCards=document.querySelectorAll('#page-lobby-settings .mode-card');
-  const modeIdx={race:0,survival:1,potato:2}[lobbyMode]??0;
-  modeCards.forEach((c,i)=>c.style.borderColor=i===modeIdx?'var(--accent)':'');
 }
 function startLobbyGame(){
   if(!isHost)return;
@@ -3077,7 +3380,7 @@ function startLobbyGame(){
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
   hpActiveIdx=0;
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral}});
   } else {
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
@@ -3127,26 +3430,6 @@ function renderMPScoreboard(){
   });
 }
 
-async function mpLoadQuestion(){
-  answered=false;
-  document.getElementById('mpFeedbackBar').style.display='none';
-  document.getElementById('mpAnswersGrid').innerHTML='';
-  document.getElementById('mpQuestionText').style.display='none';
-  document.getElementById('mpQLoading').style.display='flex';
-  renderMPHUD();
-  // In Hot Potato, lock input if not your turn
-  if(lobbyMode==='potato'){
-    const active=hpActivePlayer();
-    const isMyTurn=active.name===currentUser;
-    document.getElementById('mpQLoading').querySelector('.q-loading-text').textContent=
-      isMyTurn?'Your turn! Loading question…':active.name+"'s turn…";
-  }
-  const qData=prefetchedQuestion||await fetchQuestion();
-  prefetchedQuestion=null;currentQData=qData;
-  mpShowQuestion(qData);
-  fetchQuestion().then(q=>{prefetchedQuestion=q});
-}
-
 function mpShowQuestion(qData){
   document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpQuestionText').style.display='block';
@@ -3174,10 +3457,10 @@ function mpShowQuestion(qData){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null});
-  clearInterval(timerInterval);timeLeft=20;
+  clearInterval(timerInterval);timeLeft=raceTimeLimit;questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
   timerInterval=setInterval(()=>{
-    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/20)*100);
+    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/raceTimeLimit)*100);
     mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
     if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
   },100);
@@ -3187,7 +3470,9 @@ function mpAnswerMC(idx,el,qData){
   if(answered)return;answered=true;clearInterval(timerInterval);
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
-  if(correct){el.classList.add('correct');score+=10;}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;}
+  const mpElapsed=(Date.now()-questionStartTime)/1000;
+  const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):10;
+  if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
   mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
 }
@@ -3210,7 +3495,9 @@ function mpCheckTypeAnswer(){
     mpShowFeedback(correct,correctAns,userAns,null,active.name);
     renderMPHUD();
   } else {
-    if(correct){score+=10;}else{lives--;}
+    const mpTaElapsed=(Date.now()-questionStartTime)/1000;
+    const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):10;
+    if(correct){score+=mpTaPts;lastPtsEarned=mpTaPts;}else{lives--;lastPtsEarned=0;}
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=correct;
     mpShowFeedback(correct,currentQData.answer,userAns);renderMPHUD();
   }
