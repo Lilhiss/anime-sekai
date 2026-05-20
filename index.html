@@ -937,7 +937,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="ghost-btn" style="margin:0 auto" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
       </div>
       <div class="slide-in">
-        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/8)</div>
+        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
         <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
       </div>
       <div class="slide-in" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2965,6 +2965,19 @@ async function rtJoinLobby(code){
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
+  // Enforce mode-dependent player limit
+  try{
+    const countRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobby.id}`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const countRows=await countRes.json();
+    const maxPlayers=lobby.mode==='hp'?8:12;
+    if(Array.isArray(countRows)&&countRows.length>=maxPlayers){
+      showErr('lobbyJoinErr','lobbyJoinErrMsg',`This lobby is full (max ${maxPlayers} players for ${lobby.mode==='hp'?'Hot Potato':'this mode'}).`);
+      return false;
+    }
+  }catch(e){}
   try{
     const joinRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
       method:'POST',
@@ -3230,7 +3243,10 @@ async function joinLobby(){
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
+  const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
+  const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
+  if(lobbyMaxEl)lobbyMaxEl.textContent=maxPlayers;
   const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+timeLimitLabel;
   updateLobbyTopicsLabel();
