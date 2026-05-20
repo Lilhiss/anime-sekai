@@ -1483,7 +1483,7 @@ async function sbSignIn(username, password){
   let email=`${username}@animesekai.guest`;
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=eq.${encodeURIComponent(username)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
     );
     const rows = await res.json();
@@ -1900,7 +1900,7 @@ async function submitForgotPassword(){
   btn.disabled=true;btn.textContent='Sending…';
   try{
     const forgotRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=eq.${encodeURIComponent(u)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(u)}&limit=1`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const forgotRows=await forgotRes.json();
