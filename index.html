@@ -1359,6 +1359,20 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
+  // Clear any stale anonymous session before signing in
+  try{
+    const { data: { session } } = await Promise.race([
+      sb.auth.getSession(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ]);
+    if(session?.user?.is_anonymous){
+      await sb.auth.signOut();
+    }
+  }catch(e){
+    // If getSession hangs or fails, clear localStorage manually
+    localStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token');
+  }
+
   let email=`${username}@animesekai.guest`;
   try{
     const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 5000));
