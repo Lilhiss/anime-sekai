@@ -546,6 +546,34 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-btn.approve:hover{opacity:.85}.admin-btn.reject:hover{opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
+
+/* LOBBY BROWSER */
+.lobby-browser-wrap{width:100%;max-width:600px;display:flex;flex-direction:column;gap:18px}
+.lobby-browser-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;align-self:center}
+.lobby-browser-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 20px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.lobby-browser-tab.active{background:var(--accent);color:#fff}
+.lobby-list-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px)}
+.lobby-list-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px #0004}
+.lobby-list-avatar{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:20px;color:#fff;flex-shrink:0}
+.lobby-list-info{flex:1;min-width:0}
+.lobby-list-host{font-family:'Lilita One',cursive;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lobby-list-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lobby-list-badge{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 9px;font-size:11px;font-weight:800;color:var(--accent)}
+.lobby-list-players{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
+.lobby-list-join-btn{font-family:'Lilita One',cursive;font-size:13px;background:var(--accent);border:none;padding:9px 18px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:opacity .2s;flex-shrink:0}
+.lobby-list-join-btn:hover{opacity:.85}
+.lobby-list-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:16px}
+.lobby-list-loading{text-align:center;padding:32px 24px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
+.lobby-random-btn{font-family:'Lilita One',cursive;font-size:15px;background:var(--accent-soft);border:1.5px solid var(--border2);color:var(--accent);padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.lobby-random-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.lobby-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.lobby-divider::before,.lobby-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.lobby-refresh-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lobby-count-label{font-size:12px;color:var(--muted);font-weight:700}
+.lobby-refresh-btn{font-size:11px;font-weight:800;color:var(--muted);background:var(--bg2);border:1px solid var(--border2);padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s}
+.lobby-refresh-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+@keyframes spin-once{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spinning{animation:spin-once .5s linear}
 .admin-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:600px){.admin-stat-row{grid-template-columns:1fr 1fr}}
 </style>
@@ -917,22 +945,53 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- LOBBY JOIN -->
+  <!-- LOBBY JOIN / BROWSER -->
   <div class="page" id="page-lobby-join">
     <div style="text-align:center" class="slide-in">
       <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Join a Lobby</div>
-      <h1>Enter the <span class="hi">Code</span></h1>
+      <h1>Find a <span class="hi">Game</span></h1>
     </div>
-    <div class="form-wrap slide-in">
-      <div class="form-card">
-        <div>
-          <label class="form-label">Lobby Code</label>
-          <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="12" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
-          <div class="form-hint" style="margin-top:6px">Ask the lobby host for the code.</div>
-          <div class="form-err" id="lobbyJoinErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
+    <div class="lobby-join-split slide-in">
+
+      <!-- LEFT: BROWSE -->
+      <div id="lobbyBrowsePanel" class="lobby-join-col">
+        <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:15px"></i> Open Lobbies</div>
+        <button class="lobby-random-btn" id="lobbyRandomBtn" onclick="joinRandomLobby()">
+          <i class="ti ti-bolt" style="font-size:17px"></i> Join a Random Lobby
+        </button>
+        <div class="lobby-divider" style="margin:0">or pick one</div>
+        <div class="lobby-refresh-row">
+          <span class="lobby-count-label" id="lobbyCountLabel">Loading lobbies…</span>
+          <button class="lobby-refresh-btn" id="lobbyRefreshBtn" onclick="loadPublicLobbies()">
+            <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
+          </button>
         </div>
-        <button class="form-submit" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:16px"></i> Join Game</button>
+        <div id="lobbyBrowseList" style="display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto">
+          <div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>
+        </div>
       </div>
+
+      <!-- DIVIDER -->
+      <div class="lobby-join-vdivider">
+        <div class="lobby-join-vline"></div>
+        <span class="lobby-join-vor">or</span>
+        <div class="lobby-join-vline"></div>
+      </div>
+
+      <!-- RIGHT: CODE ENTRY -->
+      <div id="lobbyCodePanel" class="lobby-join-col lobby-join-col-code">
+        <div class="lobby-join-col-header"><i class="ti ti-hash" style="font-size:15px"></i> Enter a Code</div>
+        <div class="form-card" style="flex:1;justify-content:center">
+          <div>
+            <label class="form-label">Lobby Code</label>
+            <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="12" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
+            <div class="form-hint" style="margin-top:6px">Ask the lobby host for their code.</div>
+            <div class="form-err" id="lobbyJoinErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
+          </div>
+          <button class="form-submit" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:16px"></i> Join Game</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -952,13 +1011,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
         <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
       </div>
+      <div id="lobbyHostChangingBanner" style="display:none;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:12px 16px;font-size:13px;font-weight:700;color:var(--accent)">
+        <div class="spinner" style="width:16px;height:16px;border-width:2px;flex-shrink:0"></div>
+        Host is making changes…
+      </div>
       <div class="slide-in" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="font-size:13px;color:var(--muted)">
           <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
           <span style="font-size:11px;color:var(--accent)" id="lobbyTopicsLabel" style="display:none"></span>
-          <span style="font-size:11px">Change format &amp; mode before starting</span>
+          <span style="font-size:11px" id="lobbySettingsHint">Change format &amp; mode before starting</span>
         </div>
-        <button class="ghost-btn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+        <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
       </div>
       <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
@@ -1813,8 +1876,8 @@ function showErr(id,msgId,msg){document.getElementById(msgId).textContent=msg;do
 
 // ── AUTH GATE ─────────────────────────────────────────────────
 let pendingDestination='solo';
-const authEyebrows={solo:'Solo quiz',create:'Create a lobby',join:'Join a lobby'};
-const authTitles={solo:'Test your <span class="hi">knowledge</span>',create:'Host with <span class="hi">friends</span>',join:'Jump <span class="hi">in</span>'};
+const authEyebrows={solo:'Solo quiz',create:'Create a lobby',join:'Join a lobby',landing:'Welcome back'};
+const authTitles={solo:'Test your <span class="hi">knowledge</span>',create:'Host with <span class="hi">friends</span>',join:'Jump <span class="hi">in</span>',landing:'Sign <span class="hi">in</span>'};
 
 function choosePath(dest){
   pendingDestination=dest;
@@ -2844,6 +2907,7 @@ function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:false}});}
     goStep('lobby-room');
   } else {
     startQuiz(pendingMode);
@@ -2958,7 +3022,7 @@ async function rtCreateLobby(){
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=representation'
       },
-      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting'})
+      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser})
     });
     if(!lobbyRes.ok){console.error('Create lobby error:',lobbyRes.status);return;}
     const lobbyRows=await lobbyRes.json();
@@ -3086,6 +3150,19 @@ function rtSubscribe(lobbyId){
       isHost=(currentUser===payload.newHost);
     }
     renderLobbyRoom();
+  });
+  rtChannel.on('broadcast',{event:'settings_changed'},({payload})=>{
+    if(isHost)return;
+    const banner=document.getElementById('lobbyHostChangingBanner');
+    const label=document.getElementById('lobbySettingsLabel');
+    const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
+    if(payload.changing){
+      if(banner)banner.style.display='flex';
+    } else {
+      lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
+      if(label)label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;
+      if(banner)banner.style.display='none';
+    }
   });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
     if(currentUser===payload.kicked){
@@ -3280,6 +3357,11 @@ goStep=function(name){
   _origGoStep(name);
   if(name==='leaderboard'){lbTab='global';switchLbTab('global');renderLb();}
   if(name==='lobby-room')renderLobbyRoom();
+  if(name==='lobby-join'){
+    // Reset to browse tab and load lobbies
+    switchLobbyBrowserTab('browse');
+    loadPublicLobbies();
+  }
 };
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
@@ -3302,6 +3384,153 @@ async function joinLobby(){
   if(!ok)return;
   goStep('lobby-room');
 }
+
+// ── LOBBY BROWSER ─────────────────────────────────────────────
+function switchLobbyBrowserTab(tab){
+  const isBrowse=tab==='browse';
+  document.getElementById('lbTabBrowse').classList.toggle('active',isBrowse);
+  document.getElementById('lbTabCode').classList.toggle('active',!isBrowse);
+  document.getElementById('lobbyBrowsePanel').style.display=isBrowse?'flex':'none';
+  document.getElementById('lobbyBrowsePanel').style.flexDirection='column';
+  document.getElementById('lobbyBrowsePanel').style.gap='12px';
+  document.getElementById('lobbyCodePanel').style.display=isBrowse?'none':'block';
+}
+
+const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
+const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔'};
+
+async function loadPublicLobbies(){
+  const list=document.getElementById('lobbyBrowseList');
+  const countLabel=document.getElementById('lobbyCountLabel');
+  const refreshIcon=document.getElementById('lobbyRefreshIcon');
+  if(!list)return;
+
+  // Spin the refresh icon
+  refreshIcon.classList.add('spinning');
+  setTimeout(()=>refreshIcon.classList.remove('spinning'),500);
+
+  list.innerHTML='<div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>';
+  countLabel.textContent='Loading lobbies…';
+
+  if(SUPABASE_URL.includes('YOUR_PROJECT')){
+    list.innerHTML='<div class="lobby-list-empty">🔌 Connect Supabase to see live lobbies.</div>';
+    countLabel.textContent='0 open lobbies';
+    return;
+  }
+
+  try{
+    const token=await rtGetAuthToken();
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&order=created_at.desc&limit=30`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const lobbies=await res.json();
+    if(!Array.isArray(lobbies)||!lobbies.length){
+      list.innerHTML='<div class="lobby-list-empty">😴 No open lobbies right now.<br><span style="font-size:12px;margin-top:6px;display:block">Create one and share the code with friends!</span></div>';
+      countLabel.textContent='0 open lobbies';
+      document.getElementById('lobbyRandomBtn').style.opacity='.45';
+      document.getElementById('lobbyRandomBtn').style.pointerEvents='none';
+      return;
+    }
+
+    // Fetch player counts for each lobby
+    const ids=lobbies.map(l=>l.id);
+    let playerCounts={};
+    try{
+      const pcRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+      );
+      const pcData=await pcRes.json();
+      if(Array.isArray(pcData))pcData.forEach(r=>{playerCounts[r.lobby_id]=(playerCounts[r.lobby_id]||0)+1;});
+    }catch(e){}
+
+    list.innerHTML='';
+    const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#e879f9'];
+    lobbies.forEach((lobby,i)=>{
+      const count=playerCounts[lobby.id]||1;
+      const max=lobby.mode==='hp'?8:12;
+      const full=count>=max;
+      const hostInitial=(lobby.host_username||'?')[0].toUpperCase();
+      const color=colors[i%colors.length];
+      const fmt=lobby.format||'mc';
+      const mode=lobby.mode||'race';
+      const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
+      const modeName={race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode]||mode;
+
+      const card=document.createElement('div');
+      card.className='lobby-list-card'+(full?' lobby-guest-lock':'');
+      card.innerHTML=`
+        <div class="lobby-list-avatar" style="background:${color}">${hostInitial}</div>
+        <div class="lobby-list-info">
+          <div class="lobby-list-host">${lobby.host_username||lobby.code}</div>
+          <div class="lobby-list-meta">
+            <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
+            <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+          <div class="lobby-list-players"><i class="ti ti-users" style="font-size:12px"></i> ${count}/${max}</div>
+          ${full
+            ? '<span style="font-size:11px;font-weight:800;color:var(--muted)">Full</span>'
+            : `<button class="lobby-list-join-btn" onclick="joinLobbyById('${lobby.id}','${lobby.code}')">Join</button>`
+          }
+        </div>`;
+      list.appendChild(card);
+    });
+
+    const open=lobbies.filter(l=>(playerCounts[l.id]||1)<(l.mode==='hp'?8:12)).length;
+    countLabel.textContent=`${lobbies.length} open ${lobbies.length===1?'lobby':'lobbies'}`;
+    const randomBtn=document.getElementById('lobbyRandomBtn');
+    if(open>0){randomBtn.style.opacity='';randomBtn.style.pointerEvents='';}
+    else{randomBtn.style.opacity='.45';randomBtn.style.pointerEvents='none';}
+  }catch(e){
+    list.innerHTML='<div class="lobby-list-empty">⚠️ Couldn\'t load lobbies. Check your connection.</div>';
+    countLabel.textContent='—';
+  }
+}
+
+async function joinLobbyById(lobbyId, code){
+  if(!currentUser){choosePath('join');return;}
+  // Use code-based join — pass code to rtJoinLobby
+  const ok=await rtJoinLobby(code);
+  if(!ok)return;
+  goStep('lobby-room');
+}
+
+async function joinRandomLobby(){
+  if(!currentUser){choosePath('join');return;}
+  const token=await rtGetAuthToken();
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&order=created_at.desc&limit=30`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const lobbies=await res.json();
+    if(!Array.isArray(lobbies)||!lobbies.length){
+      showErr('lobbyJoinErr','lobbyJoinErrMsg','No open lobbies found right now.');return;
+    }
+    // Filter non-full, shuffle, pick first
+    const ids=lobbies.map(l=>l.id);
+    let playerCounts={};
+    try{
+      const pcRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+      );
+      const pcData=await pcRes.json();
+      if(Array.isArray(pcData))pcData.forEach(r=>{playerCounts[r.lobby_id]=(playerCounts[r.lobby_id]||0)+1;});
+    }catch(e){}
+    const available=lobbies.filter(l=>(playerCounts[l.id]||1)<(l.mode==='hp'?8:12));
+    if(!available.length){showErr('lobbyJoinErr','lobbyJoinErrMsg','All lobbies are currently full.');return;}
+    const pick=available[Math.floor(Math.random()*available.length)];
+    const ok=await rtJoinLobby(pick.code);
+    if(!ok)return;
+    goStep('lobby-room');
+  }catch(e){
+    showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');
+  }
+}
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
@@ -3323,19 +3552,19 @@ function renderLobbyRoom(){
   // Lock controls for non-host players
   const settingsPanel=document.querySelector('#page-lobby-room .slide-in:nth-child(4)');
   const startBtn=document.getElementById('startLobbyBtn');
+  const settingsBtn=document.getElementById('lobbySettingsBtn');
   if(!isHost){
     if(settingsPanel)settingsPanel.classList.add('lobby-guest-lock');
     if(startBtn){startBtn.classList.add('lobby-guest-lock');startBtn.disabled=true;}
+    if(settingsBtn){settingsBtn.style.opacity='0.4';settingsBtn.style.pointerEvents='none';settingsBtn.title='Only the host can change settings';}
   } else {
     if(settingsPanel)settingsPanel.classList.remove('lobby-guest-lock');
     if(startBtn){startBtn.classList.remove('lobby-guest-lock');startBtn.disabled=false;}
+    if(settingsBtn){settingsBtn.style.opacity='';settingsBtn.style.pointerEvents='';settingsBtn.title='';}
   }
   // Update hint text
-  document.querySelectorAll('#page-lobby-room .slide-in:nth-child(4) span').forEach(s=>{
-    if(s.textContent.includes('Change format')||s.textContent.includes('Only the host')){
-      s.textContent=isHost?'Change format \u0026 mode before starting':'Only the host can change settings';
-    }
-  });
+  const hint=document.getElementById('lobbySettingsHint');
+  if(hint)hint.textContent=isHost?'Change format \u0026 mode before starting':'Only the host can change settings';
   applyTheme();
 }
 function copyLobbyCode(){
@@ -3348,6 +3577,7 @@ function setLobbyFormat(fmt,el){
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode);}catch(e){}}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:true}});}
   setTimeout(()=>openLobbyTopicPage(),300);
 }
 function openLobbyTopicPage(){
@@ -3458,6 +3688,7 @@ function setLobbyMode(mode,el){
   // renderLobbyRoom() on return will show the final correct label.
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
   if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({mode}).eq('code',lobbyCode);}catch(e){}}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:true}});}
   // Show time limit picker for race and survival, then return to lobby room
   if(mode==='race'||mode==='survival'){
     setTimeout(()=>{
@@ -3465,6 +3696,7 @@ function setLobbyMode(mode,el){
       showTimeLimitPicker(mode);
     },300);
   } else {
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
 }
