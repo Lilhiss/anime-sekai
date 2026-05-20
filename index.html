@@ -785,8 +785,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="showTimeLimitPicker()"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
-      <div class="mode-card" onclick="startQuiz('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
+      <div class="mode-card" onclick="showTimeLimitPicker('race')"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
+      <div class="mode-card" onclick="showTimeLimitPicker('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
     </div>
   </div>
 
@@ -1203,18 +1203,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div id="timeLimitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:20px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">#x23F1;#xFE0F; Time Limit</div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">&#x23F1; Time Limit</div>
         <button onclick="document.getElementById('timeLimitModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div style="color:var(--muted);font-size:13px;line-height:1.5">Choose how long you have to answer each question. The faster you answer, the more points you earn — up to <strong style="color:var(--accent)">10 points</strong> instantly, dropping to <strong style="color:var(--accent)">1 point</strong> at the last second.</div>
+      <div id="timeLimitDesc" style="color:var(--muted);font-size:13px;line-height:1.5"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
-        <div class="time-limit-opt" onclick="selectTimeLimit(5)" data-val="5"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">5s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Lightning</div></div>
         <div class="time-limit-opt" onclick="selectTimeLimit(10)" data-val="10"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">10s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
         <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
         <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30" style="grid-column:span 2"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
+        <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
       </div>
-      <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> Start Race</button>
+      <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> <span id="timeLimitStartLabel">Start Race</span></button>
     </div>
   </div>
 
@@ -1381,20 +1380,19 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Clear any stale anonymous session before signing in
+  // Clear any stale anonymous session that would block sign-in
   try{
-    const { data: { session } } = await Promise.race([
+    const sessionResult = await Promise.race([
       sb.auth.getSession(),
       new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ]);
-    if(session?.user?.is_anonymous){
+    if(sessionResult?.data?.session?.user?.is_anonymous){
       await sb.auth.signOut();
     }
   }catch(e){
-    // If getSession hangs or fails, clear localStorage manually
-    localStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token');
+    // If getSession hangs, clear the token manually
+    try{ localStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(_){}
   }
-
   let email=`${username}@animesekai.guest`;
   try{
     const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error('timeout')), 5000));
@@ -1403,7 +1401,7 @@ async function sbSignIn(username, password){
     if(profile?.email) email=profile.email;
   }catch(e){}
   if(email.endsWith('@animesekai.guest')){
-    throw new Error('Could not find your account. If you registered with an email, please use it to sign in.');
+    throw new Error('Could not find your account. Please check your username.');
   }
   const { data, error } = await sb.auth.signInWithPassword({email, password});
   if(error) throw error;
@@ -1475,7 +1473,7 @@ let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGu
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
-let raceTimeLimit=15,selectedTimeLimitVal=15,questionStartTime=0,lastPtsEarned=0;
+let raceTimeLimit=15,pendingMode='race',questionStartTime=0,lastPtsEarned=0;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
@@ -1959,10 +1957,8 @@ function selectDifficulty(diff,el){
 
 function proceedFromTopic(){
   const badge=document.getElementById('selectedTopicBadge');
-  const diffEmoji={easy:'🌱',normal:'⚔️',hard:'💀'};
-  const diffLabel={easy:'Easy',normal:'Normal',hard:'Hard'};
   const pill=txt=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">${txt}</span>`;
-  let pills=pill(`${diffEmoji[selectedDifficulty]} ${diffLabel[selectedDifficulty]}`);
+  let pills='';
   if(isGeneralSelected){pills+=pill('🌐 General Anime');}
   else if(selectedTopics.length>0){pills+=selectedTopics.map(t=>pill(`${t.emoji} ${t.name}`)).join('');}
   badge.innerHTML=pills;badge.style.display='flex';
@@ -2290,10 +2286,10 @@ function answerMC(idx,el,qData){
   if(answered)return;answered=true;clearInterval(timerInterval);
   const allAns=document.querySelectorAll('.ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
-  const elapsed=(Date.now()-questionStartTime)/1000;
-  const pts=selectedMode==="race"?calcSpeedPoints(elapsed,raceTimeLimit):10;
-  if(correct){el.classList.add("correct");score+=pts;lastPtsEarned=pts;}
-  else{el.classList.add("wrong");allAns[qData.answer].classList.add("correct");lives--;lastPtsEarned=0;}
+  const mcElapsed=(Date.now()-questionStartTime)/1000;
+  const mcPts=selectedMode==='race'?calcSpeedPoints(mcElapsed,raceTimeLimit):10;
+  if(correct){el.classList.add('correct');score+=mcPts;lastPtsEarned=mcPts;}
+  else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];
   quizHistory[quizHistory.length-1].correct=correct;
   showFeedback(correct,qData.options[qData.answer],qData.options[idx]);
@@ -2309,9 +2305,9 @@ function checkTypeAnswer(){
   const canonicalAns=currentQData.answer||'';
   input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
   document.getElementById('typeSubmitBtn').disabled=true;
-  const telapsed2=(Date.now()-questionStartTime)/1000;
-  const tpts2=selectedMode==="race"?calcSpeedPoints(telapsed2,raceTimeLimit):10;
-  if(correct){score+=tpts2;lastPtsEarned=tpts2;}else{lives--;lastPtsEarned=0;}
+  const taElapsed=(Date.now()-questionStartTime)/1000;
+  const taPts=selectedMode==='race'?calcSpeedPoints(taElapsed,raceTimeLimit):10;
+  if(correct){score+=taPts;lastPtsEarned=taPts;}else{lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=userAns;
   quizHistory[quizHistory.length-1].correct=correct;
   showFeedback(correct,canonicalAns,userAns);
@@ -2353,8 +2349,12 @@ function showFeedback(correct,correctAns,userAns,override){
   const ya=document.getElementById('fbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
-  const ptsMsg=correct?(selectedMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=4?'Good 👍':'Just in time ⏱️'}`:'+ 10 points added to your score'):'';
-  document.getElementById('fbPts').textContent=ptsMsg;
+  if(correct && selectedMode==='race'){
+    const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=4?'Good 👍':'Just in time ⏱️';
+    document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
+  } else {
+    document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
+  }
   // Show submitted_by credit if question came from a user
   const subEl=document.getElementById('fbSubmittedBy');
   if(currentQData?.submitted_by){
@@ -2574,32 +2574,36 @@ function renderProfile(){
   applyTheme();
 }
 
-// ── TIME LIMIT PICKER ────────────────────────────────────────
-function showTimeLimitPicker(){
-  selectedTimeLimitVal=raceTimeLimit;
-  document.querySelectorAll(".time-limit-opt").forEach(el=>{
-    el.classList.toggle("selected",parseInt(el.dataset.val)===selectedTimeLimitVal);
+// ── TIME LIMIT PICKER ─────────────────────────────────────────
+function showTimeLimitPicker(mode){
+  pendingMode=mode;
+  const isRace=mode==='race';
+  document.getElementById('timeLimitDesc').textContent=isRace
+    ? 'Choose how long you have per question. The faster you answer, the more points you earn — up to 10 pts instantly, dropping to 1 pt at the last second.'
+    : 'Choose how long you have to answer each question. Run out of time and you lose a life.';
+  document.getElementById('timeLimitStartLabel').textContent=isRace?'Start Race':'Start Survival';
+  const grid=document.getElementById('timeLimitGrid');
+  grid.querySelectorAll('.time-limit-opt').forEach(el=>{
+    el.classList.toggle('selected',parseInt(el.dataset.val)===raceTimeLimit);
   });
-  document.getElementById("timeLimitModal").style.display="flex";
+  document.getElementById('timeLimitModal').style.display='flex';
   applyTheme();
 }
 function selectTimeLimit(val){
-  selectedTimeLimitVal=val;
-  document.querySelectorAll(".time-limit-opt").forEach(el=>{
-    el.classList.toggle("selected",parseInt(el.dataset.val)===val);
+  raceTimeLimit=val;
+  document.querySelectorAll('.time-limit-opt').forEach(el=>{
+    el.classList.toggle('selected',parseInt(el.dataset.val)===val);
   });
 }
 function confirmTimeLimit(){
-  raceTimeLimit=selectedTimeLimitVal;
-  document.getElementById("timeLimitModal").style.display="none";
-  startQuiz("race");
+  document.getElementById('timeLimitModal').style.display='none';
+  startQuiz(pendingMode);
 }
 
-// Exponential score: 10 pts instantly, 1 pt at time limit
+// Exponential scoring: 10 pts at 0s elapsed, 1 pt at time limit
 function calcSpeedPoints(elapsed,limit){
-  const ratio=Math.min(elapsed,limit)/limit; // 0=instant, 1=last second
-  const pts=Math.round(10*Math.pow(0.1,ratio)); // 10->1 exponentially
-  return Math.max(1,Math.min(10,pts));
+  const ratio=Math.min(elapsed,limit)/limit;
+  return Math.max(1,Math.min(10,Math.round(10*Math.pow(0.1,ratio))));
 }
 
 function startTimer(){
