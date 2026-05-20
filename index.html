@@ -672,8 +672,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div id="authSignin" style="display:none;width:100%;max-width:420px" class="slide-in">
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
-        <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" oninput="clearErr('signinErr')"></div>
-        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
+        <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" autocomplete="off" oninput="clearErr('signinErr')"></div>
+        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="new-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
         <div class="form-err" id="signinErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="signinErrMsg"></span></div>
         <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
       </div>
@@ -1622,6 +1622,11 @@ function showAuthMode(mode){
   document.getElementById('authRegister').style.display=mode==='register'?'block':'none';
   document.getElementById('authForgot').style.display=mode==='forgot'?'block':'none';
   document.getElementById('authReset').style.display=mode==='reset'?'block':'none';
+  // Always clear sign-in fields to prevent browser autofill persisting after sign-out
+  if(mode==='signin'||!mode){
+    const u=document.getElementById('siUser');const p=document.getElementById('siPass');
+    if(u)u.value='';if(p)p.value='';
+  }
 }
 function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
