@@ -672,8 +672,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div id="authSignin" style="display:none;width:100%;max-width:420px" class="slide-in">
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
-        <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" autocomplete="off" oninput="clearErr('signinErr')"></div>
-        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="new-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
+        <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" autocomplete="username" oninput="clearErr('signinErr')"></div>
+        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
         <div class="form-err" id="signinErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="signinErrMsg"></span></div>
         <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
       </div>
@@ -1666,6 +1666,8 @@ async function submitSignin(){
   const btn=document.getElementById('signinSubmitBtn');
   btn.disabled=true;btn.textContent='Signing in…';
   try{
+    // Clear any lingering anonymous/guest session before signing in
+    await sb.auth.signOut({scope:'local'}).catch(()=>{});
     const user=await sbSignIn(u,p);
     const profile=await sbLoadProfile(user.id);
     currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
