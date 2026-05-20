@@ -581,7 +581,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" onclick="pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
-      <button class="primary-btn" id="signinBtn" onclick="choosePath('solo')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+      <button class="primary-btn" id="signinBtn" onclick="choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
     </div>
 
     <!-- Mobile hamburger -->
@@ -600,7 +600,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" onclick="closeNavDrawer();pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
       <div class="nav-drawer-sep"></div>
-      <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('solo')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+      <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
       <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
       <div class="nav-drawer-sep"></div>
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
@@ -1862,6 +1862,7 @@ function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
   if(pendingDestination==='join'){goStep('lobby-join');return}
   if(pendingDestination==='profile'){goStep('profile');return}
+  if(pendingDestination==='landing'){goStep('landing');return}
   goStep('format');
 }
 async function submitGuest(){
@@ -3030,6 +3031,7 @@ async function rtJoinLobby(code){
   isHost=false;lobbyCode=code;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   rtSubscribe(lobby.id);
+  await rtRefreshPlayers(lobby.id);
   return true;
 }
 
