@@ -1217,6 +1217,23 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- GUEST DISCONNECT MODAL -->
+  <div id="guestDisconnectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:32px 28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;text-align:center">
+      <div style="font-size:48px">🔌</div>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:8px">You've been disconnected</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Guests can't rejoin a session after disconnecting. Create a free account to keep your progress and never lose your spot again.</div>
+      </div>
+      <button class="action-btn primary" onclick="document.getElementById('guestDisconnectModal').style.display='none';goStep('auth');showAuthMode('register')" style="width:100%">
+        <i class="ti ti-user-plus" style="font-size:15px"></i> Create Free Account
+      </button>
+      <button class="action-btn secondary" onclick="document.getElementById('guestDisconnectModal').style.display='none';goStep('landing')" style="width:100%">
+        <i class="ti ti-home" style="font-size:15px"></i> Back to Home
+      </button>
+    </div>
+  </div>
+
   <!-- PLAY AGAIN MODAL -->
   <div id="playAgainModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
@@ -2742,6 +2759,12 @@ async function rtJoinLobby(code){
   return true;
 }
 
+function showGuestDisconnectModal(){
+  if(!isGuest)return;
+  document.getElementById('guestDisconnectModal').style.display='flex';
+  applyTheme();
+}
+
 function rtSubscribe(lobbyId){
   if(rtChannel)rtChannel.unsubscribe();
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
@@ -2777,7 +2800,26 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
   });
-  rtChannel.subscribe();
+  rtChannel.subscribe((status)=>{
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+      // Only show disconnect modal if we're mid-game and it's a guest
+      const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
+      const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+      if(isGuest&&(inMpQuiz||inLobby)){
+        showGuestDisconnectModal();
+      }
+    }
+  });
+
+  // Also detect tab visibility change — if guest comes back after hiding tab mid-game
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&isGuest&&rtChannel){
+      const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
+      if(inMpQuiz&&rtChannel.state!=='joined'){
+        showGuestDisconnectModal();
+      }
+    }
+  },{once:false});
 }
 
 async function rtRefreshPlayers(lobbyId){
