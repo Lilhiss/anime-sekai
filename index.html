@@ -4149,6 +4149,7 @@ function renderMPScoreboard(){
 
 function mpShowQuestion(qData){
   document.getElementById('mpQLoading').style.display='none';
+  document.getElementById('mpFeedbackBar').style.display='none';
   document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';
@@ -4160,7 +4161,7 @@ function mpShowQuestion(qData){
     // Hot Potato always uses type input; show disabled input if not your turn
     const wrap=document.createElement('div');wrap.className='type-wrap';
     const placeholder=isMyTurn?'Type your answer...':'Waiting for '+hpActivePlayer().name+'…';
-    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div>`;
+    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="mpTypeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
     grid.appendChild(wrap);applyTheme();
     if(isMyTurn){
       document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer()});
@@ -4198,12 +4199,29 @@ function mpCheckTypeAnswer(){
   if(answered)return;
   const input=document.getElementById('mpTypeInput');
   if(!input||!input.value.trim())return;
-  answered=true;clearInterval(timerInterval);
   const userAns=input.value.trim();
   const correct=checkAnswer(userAns,currentQData);
+  const isHP=lobbyMode==='potato';
+  if(!correct&&!isHP){
+    // Wrong — shake, flash red, clear and allow retry (same as solo)
+    const card=document.querySelector('#page-mp-quiz .q-card');
+    input.classList.add('wrong-attempt');
+    if(card)card.classList.add('shake');
+    const hint=document.getElementById('mpTypeWrongHint');
+    if(hint)hint.style.display='block';
+    setTimeout(()=>{
+      input.classList.remove('wrong-attempt');
+      if(card)card.classList.remove('shake');
+      input.value='';
+      input.focus();
+    },400);
+    return;
+  }
+  // Correct (or Hot Potato where a single wrong attempt costs a life) — lock and finalise
+  answered=true;clearInterval(timerInterval);
   input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
   document.getElementById('mpTypeSubmitBtn').disabled=true;
-  const isHP=lobbyMode==='potato';
+  const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
   if(isHP){
     const active=hpActivePlayer();
     if(!correct){active.lives--;if(active.lives<=0)active.eliminated=true;}
@@ -4212,31 +4230,35 @@ function mpCheckTypeAnswer(){
     mpShowFeedback(correct,correctAns,userAns,null,active.name);
     renderMPHUD();
   } else {
+    // Non-HP: only reaches here on a correct answer (wrong answers return early above)
     const mpTaElapsed=(Date.now()-questionStartTime)/1000;
     const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):10;
-    if(correct){score+=mpTaPts;lastPtsEarned=mpTaPts;}else{lives--;lastPtsEarned=0;}
-    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=correct;
-    mpShowFeedback(correct,currentQData.answer,userAns);renderMPHUD();
+    score+=mpTaPts;lastPtsEarned=mpTaPts;
+    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
+    mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
   }
 }
 
 function mpTimeOut(){
   if(answered)return;answered=true;
   document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
-  const inp=document.getElementById('mpTypeInput');if(inp)inp.disabled=true;
+  const inp=document.getElementById('mpTypeInput');
+  if(inp){inp.disabled=true;inp.classList.remove('wrong-attempt');}
+  const submitBtn=document.getElementById('mpTypeSubmitBtn');if(submitBtn)submitBtn.disabled=true;
+  const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
+  const correctAns=currentQData?(currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer):'?';
   const isHP=lobbyMode==='potato';
   if(isHP){
     const active=hpActivePlayer();
     active.lives--;if(active.lives<=0)active.eliminated=true;
     renderMPHUD();
     const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
-    const correctAns=last?.correctAns||'?';
     mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",active.name);
   } else {
     lives--;renderMPHUD();
     const last=quizHistory[quizHistory.length-1];
     if(last){last.userAns='(timed out)';last.correct=false;}
-    mpShowFeedback(false,last?.correctAns||'?','(timed out)',"Time's up!");
+    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!");
   }
 }
 
