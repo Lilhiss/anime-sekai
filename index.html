@@ -547,6 +547,20 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
 
+/* MULTIPLAYER HUB */
+.mp-hub-layout{width:100%;max-width:900px;display:grid;grid-template-columns:280px auto 1fr;gap:0;align-items:start}
+.mp-hub-create{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:36px 24px;height:100%;min-height:320px;box-sizing:border-box}
+.mp-hub-join{display:flex;flex-direction:column;gap:14px}
+.mp-hub-divider{display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 28px;align-self:stretch}
+.mp-hub-vline{flex:1;width:1px;background:var(--border)}
+.mp-hub-or{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+@media(max-width:700px){
+  .mp-hub-layout{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+  .mp-hub-create{min-height:unset;aspect-ratio:unset;padding:28px 20px}
+  .mp-hub-divider{flex-direction:row;padding:4px 0}
+  .mp-hub-vline{flex:1;width:auto;height:1px}
+}
+
 /* LOBBY BROWSER */
 .lobby-join-stack{width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px}
 .lobby-code-bar{display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:10px 14px;backdrop-filter:blur(10px);transition:border-color .2s}
@@ -655,22 +669,69 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="entry-title">Anime <span>Sekai</span></div>
         <div class="entry-sub">Test your anime knowledge — how far will you go?</div>
       </div>
-      <div class="entry-cards" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="entry-cards">
         <div class="entry-card" style="aspect-ratio:1/1" onclick="choosePath('solo')">
           <div class="entry-card-icon"><i class="ti ti-brain"></i></div>
           <div class="entry-card-title">Test Your Knowledge</div>
           <div class="entry-card-desc">Solo quiz — pick a format and mode, then see how far you can go.</div>
         </div>
-        <div class="entry-card" style="aspect-ratio:1/1" onclick="choosePath('create')">
-          <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
-          <div class="entry-card-title">Create Lobby</div>
-          <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
+        <div class="entry-card" style="aspect-ratio:1/1" onclick="goStep('multiplayer')">
+          <div class="entry-card-icon"><i class="ti ti-users"></i></div>
+          <div class="entry-card-title">Multiplayer</div>
+          <div class="entry-card-desc">Play with friends or jump into an open lobby and compete in real time.</div>
         </div>
-        <div class="entry-card" style="aspect-ratio:1/1" onclick="choosePath('join')">
-          <div class="entry-card-icon"><i class="ti ti-door-enter"></i></div>
-          <div class="entry-card-title">Join Lobby</div>
-          <div class="entry-card-desc">Got a code from a friend? Jump straight into their game.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER HUB -->
+  <div class="page" id="page-multiplayer">
+    <div style="text-align:center" class="slide-in">
+      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Multiplayer</div>
+      <h1>Play <span class="hi">Together</span></h1>
+      <p style="color:var(--muted);font-size:14px;margin-top:-8px">Host your own lobby or jump into an open game.</p>
+    </div>
+    <div class="mp-hub-layout slide-in">
+
+      <!-- LEFT: CREATE LOBBY -->
+      <div class="entry-card mp-hub-create" onclick="choosePath('create')">
+        <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
+        <div class="entry-card-title">Create Lobby</div>
+        <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="mp-hub-divider">
+        <div class="mp-hub-vline"></div>
+      </div>
+
+      <!-- RIGHT: JOIN -->
+      <div class="mp-hub-join">
+
+        <!-- CODE BAR -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
+          <div class="lobby-code-bar">
+            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr')" onkeydown="if(event.key==='Enter')joinLobby()">
+            <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join</button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
+          <div class="form-err" id="lobbyJoinErr" style="margin-top:0"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
         </div>
+
+        <!-- LIST HEADER -->
+        <div class="lobby-list-header">
+          <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:14px"></i> Open Lobbies <span class="lobby-count-label" id="lobbyCountLabel"></span></div>
+          <button class="lobby-refresh-btn" onclick="loadPublicLobbies()">
+            <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
+          </button>
+        </div>
+
+        <!-- LOBBY LIST -->
+        <div id="lobbyBrowseList" style="display:flex;flex-direction:column;gap:10px">
+          <div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -946,40 +1007,6 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   </div>
 
   <!-- LOBBY JOIN / BROWSER -->
-  <div class="page" id="page-lobby-join">
-    <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Join a Lobby</div>
-      <h1>Find a <span class="hi">Game</span></h1>
-    </div>
-    <div class="lobby-join-stack slide-in">
-
-      <!-- CODE BAR -->
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
-        <div class="lobby-code-bar">
-          <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr')" onkeydown="if(event.key==='Enter')joinLobby()">
-          <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join Game</button>
-        </div>
-        <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
-      </div>
-      <div class="form-err" id="lobbyJoinErr" style="margin-top:-4px;padding-left:4px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
-
-      <!-- LIST HEADER -->
-      <div class="lobby-list-header">
-        <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:14px"></i> Open Lobbies <span class="lobby-count-label" id="lobbyCountLabel"></span></div>
-        <button class="lobby-refresh-btn" onclick="loadPublicLobbies()">
-          <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
-        </button>
-      </div>
-
-      <!-- LOBBY LIST -->
-      <div id="lobbyBrowseList" style="display:flex;flex-direction:column;gap:10px">
-        <div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>
-      </div>
-
-    </div>
-  </div>
-
   <!-- LOBBY ROOM (host view) -->
   <div class="page" id="page-lobby-room">
     <div style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:18px">
@@ -1908,7 +1935,8 @@ function showAuthMode(mode){
 }
 function afterAuth(){
   if(pendingDestination==='create'){createLobby();return}
-  if(pendingDestination==='join'){goStep('lobby-join');return}
+  if(pendingDestination==='join'){goStep('multiplayer');return}
+  if(pendingDestination==='multiplayer'){goStep('multiplayer');return}
   if(pendingDestination==='profile'){goStep('profile');return}
   if(pendingDestination==='landing'){goStep('landing');return}
   goStep('format');
@@ -3164,7 +3192,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.subscribe((status)=>{
     if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
-      // Only show disconnect modal if we're mid-game and it's a guest
+      if(intentionalLeave){intentionalLeave=false;return;} // user left on purpose, skip modal
       const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
       const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
       if(isGuest&&(inMpQuiz||inLobby)){
@@ -3342,11 +3370,11 @@ goStep=function(name){
   _origGoStep(name);
   if(name==='leaderboard'){lbTab='global';switchLbTab('global');renderLb();}
   if(name==='lobby-room')renderLobbyRoom();
-  if(name==='lobby-join')loadPublicLobbies();
+  if(name==='multiplayer')loadPublicLobbies();
 };
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
-let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true;
+let lobbyCode='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false;
 function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
 function createLobby(){
   if(!currentUser){choosePath('create');return}
@@ -3436,7 +3464,7 @@ async function loadPublicLobbies(){
       card.innerHTML=`
         <div class="lobby-list-avatar" style="background:${color}">${hostInitial}</div>
         <div class="lobby-list-info">
-          <div class="lobby-list-host">${lobby.host_username||lobby.code}</div>
+          <div class="lobby-list-host">${lobby.host_username ? lobby.host_username+"'s Lobby" : lobby.code}</div>
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
@@ -3684,9 +3712,10 @@ async function rtDeleteLobby(){
 }
 async function leaveLobbyRoom(){
   if(isHost)await rtDeleteLobby();
+  intentionalLeave=true;
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
-  goStep('landing');
+  goStep('multiplayer');
 }
 let _transferTarget=null;
 function promptTransferHost(name){
