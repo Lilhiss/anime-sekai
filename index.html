@@ -3203,8 +3203,29 @@ function showGuestDisconnectModal(){
 function rtSubscribe(lobbyId){
   if(rtChannel)rtChannel.unsubscribe();
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
-  rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},()=>{
-    rtRefreshPlayers(lobbyId);
+  rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
+    await rtRefreshPlayers(lobbyId);
+    // If no host is present and we're not already host, elect the first non-host player
+    if(isHost)return;
+    const hasHost=lobbyPlayers.some(p=>p.isHost);
+    if(hasHost)return;
+    if(!lobbyPlayers.length)return;
+    // Only the first player in the list self-promotes to avoid races
+    if(lobbyPlayers[0].name!==currentUser)return;
+    // Claim host in Supabase
+    try{
+      const token=await rtGetAuthToken();
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
+    }catch(e){}
+    isHost=true;
+    lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
+    renderLobbyRoom();
+    showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+    if(rtChannel){
+      rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reclaimable:true,originalHostName:'The host'}});
+    }
   });
   rtChannel.on('broadcast',{event:'lobby_expiry_warning'},()=>{
     if(!isHost)showLobbyToast('⏳ This lobby will close in 1 minute if the game hasn\'t started.','warning');
@@ -3322,7 +3343,7 @@ function rtSubscribe(lobbyId){
 async function rtRefreshPlayers(lobbyId){
   try{
     const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}`,
+      `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}&order=joined_at.asc`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const data=await res.json();
