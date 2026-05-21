@@ -561,7 +561,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   .mp-hub-vline{flex:1;width:auto;height:1px}
 }
 
-/* LOBBY BROWSER */
+.lobby-timer-bar{background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(10px);transition:border-color .3s}
+.lobby-timer-bar.warning{border-color:#f59e0b;background:rgba(245,158,11,.07)}
+.lobby-timer-bar.danger{border-color:#ef4444;background:rgba(239,68,68,.07)}
+.lobby-timer-track{width:100px;height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;flex-shrink:0}
+.lobby-timer-fill{height:100%;border-radius:99px;background:var(--accent);transition:width 1s linear,background .3s}
+.lobby-timer-bar.warning .lobby-timer-fill{background:#f59e0b}
+.lobby-timer-bar.danger .lobby-timer-fill{background:#ef4444}
 .lobby-join-stack{width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px}
 .lobby-code-bar{display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:10px 14px;backdrop-filter:blur(10px);transition:border-color .2s}
 .lobby-code-bar:focus-within{border-color:var(--accent)}
@@ -1018,6 +1024,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Share this code</div>
         <div style="font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);letter-spacing:.15em;margin-bottom:14px" id="lobbyCodeBig">—</div>
         <button class="ghost-btn" style="margin:0 auto" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
+      </div>
+      <!-- LOBBY TIMER -->
+      <div class="slide-in lobby-timer-bar" id="lobbyTimerBar">
+        <div style="display:flex;align-items:center;gap:7px">
+          <i class="ti ti-clock" style="font-size:14px;color:var(--muted)"></i>
+          <span style="font-size:12px;font-weight:800;color:var(--muted)">Lobby expires in</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="lobby-timer-track"><div class="lobby-timer-fill" id="lobbyTimerFill"></div></div>
+          <span style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);min-width:42px;text-align:right" id="lobbyTimerLabel">10:00</span>
+        </div>
       </div>
       <div class="slide-in">
         <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
@@ -3394,7 +3411,53 @@ async function joinLobby(){
   goStep('lobby-room');
 }
 
-// ── LOBBY BROWSER ─────────────────────────────────────────────
+// ── LOBBY TIMER ───────────────────────────────────────────────
+const LOBBY_TTL=10*60; // 10 minutes in seconds
+let lobbyTimerInterval=null;
+let lobbyTimerSecondsLeft=LOBBY_TTL;
+
+function startLobbyTimer(){
+  clearLobbyTimer();
+  lobbyTimerSecondsLeft=LOBBY_TTL;
+  updateLobbyTimerUI();
+  lobbyTimerInterval=setInterval(async()=>{
+    lobbyTimerSecondsLeft--;
+    updateLobbyTimerUI();
+    if(lobbyTimerSecondsLeft<=0){
+      clearLobbyTimer();
+      if(isHost){
+        await rtDeleteLobby();
+        intentionalLeave=true;
+        if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+        isHost=false;
+        goStep('multiplayer');
+        // Brief toast-style notice
+        setTimeout(()=>alert('Your lobby expired after 10 minutes of inactivity.'),300);
+      }
+    }
+  },1000);
+}
+
+function clearLobbyTimer(){
+  if(lobbyTimerInterval){clearInterval(lobbyTimerInterval);lobbyTimerInterval=null;}
+}
+
+function updateLobbyTimerUI(){
+  const bar=document.getElementById('lobbyTimerBar');
+  const fill=document.getElementById('lobbyTimerFill');
+  const label=document.getElementById('lobbyTimerLabel');
+  if(!bar||!fill||!label)return;
+  const pct=Math.max(0,(lobbyTimerSecondsLeft/LOBBY_TTL)*100);
+  const mins=Math.floor(lobbyTimerSecondsLeft/60);
+  const secs=lobbyTimerSecondsLeft%60;
+  label.textContent=`${mins}:${secs.toString().padStart(2,'0')}`;
+  fill.style.width=pct+'%';
+  bar.classList.remove('warning','danger');
+  if(lobbyTimerSecondsLeft<=60)bar.classList.add('danger');
+  else if(lobbyTimerSecondsLeft<=180)bar.classList.add('warning');
+  // Only show timer bar to host
+  bar.style.display=isHost?'flex':'none';
+}
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
 const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔'};
 
@@ -3498,6 +3561,8 @@ async function joinLobbyById(lobbyId,code){
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
+  if(isHost)startLobbyTimer();
+  else{clearLobbyTimer();const b=document.getElementById('lobbyTimerBar');if(b)b.style.display='none';}
   const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
@@ -3674,6 +3739,7 @@ function openLobbySettings(){
 }
 function startLobbyGame(){
   if(!isHost)return;
+  clearLobbyTimer();
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
@@ -3711,6 +3777,7 @@ async function rtDeleteLobby(){
   }catch(e){console.warn('rtDeleteLobby failed:',e);}
 }
 async function leaveLobbyRoom(){
+  clearLobbyTimer();
   if(isHost)await rtDeleteLobby();
   intentionalLeave=true;
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
