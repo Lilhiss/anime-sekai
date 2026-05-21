@@ -1432,10 +1432,6 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         Anime Sekai is a fan-made anime trivia platform built for anime lovers of all levels. Test your knowledge solo, challenge friends in real time, and climb the ranks from Casual Watcher to True Otaku.<br><br>
         Built with love for the anime community. 🎌
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:14px 16px">
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Stack</div>
-        <div style="font-size:13px;color:var(--text)">Vanilla HTML/CSS/JS · Supabase · Gemini AI · Netlify</div>
-      </div>
       <button class="action-btn primary" onclick="document.getElementById('aboutModal').style.display='none'">Got it!</button>
     </div>
   </div>
@@ -3086,7 +3082,7 @@ async function rtCreateLobby(){
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=representation'
       },
-      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName})
+      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName,expires_at:new Date(Date.now()+10*60*1000).toISOString()})
     });
     if(!lobbyRes.ok){console.error('Create lobby error:',lobbyRes.status);return;}
     const lobbyRows=await lobbyRes.json();
@@ -3610,7 +3606,7 @@ async function joinLobbyById(lobbyId,code){
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyName||lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
-  if(isHost)startLobbyTimer();
+  if(isHost&&!lobbyTimerInterval)startLobbyTimer(); // only start once
   const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
