@@ -701,7 +701,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="entry-card-title">Create Lobby</div>
         <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
         <div style="width:100%;display:flex;flex-direction:column;gap:6px" onclick="event.stopPropagation()">
-          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" style="text-align:center;font-size:14px;width:100%;box-sizing:border-box">
+          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" autocomplete="off" style="text-align:center;font-size:14px;width:100%;box-sizing:border-box">
           <button class="form-submit" style="width:100%" onclick="createLobby()"><i class="ti ti-plus" style="font-size:15px"></i> Create Lobby</button>
         </div>
       </div>
@@ -793,7 +793,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
         <div><label class="form-label">Username</label><input class="form-input" id="siUser" type="text" placeholder="YourUsername" autocomplete="off" oninput="clearErr('signinErr')"></div>
-        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="off" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
+        <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••" oninput="clearErr('signinErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>
         <div class="form-err" id="signinErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="signinErrMsg"></span></div>
         <button class="form-submit" id="signinSubmitBtn" onclick="submitSignin()"><i class="ti ti-login" style="font-size:16px"></i> Sign In</button>
       </div>
@@ -3181,7 +3181,7 @@ async function rtJoinLobby(code){
         // rtChannel is subscribed above, give it a moment to connect
         setTimeout(()=>{
           if(rtChannel){
-            rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reclaimable:false}});
+            rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'reclaim'}});
           }
         },1200);
       } else if(!curHostId){
@@ -3224,7 +3224,7 @@ function rtSubscribe(lobbyId){
       lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
       renderLobbyRoom();
       showLobbyToast(`👑 The host left — you're now the host!`,'warning');
-      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reclaimable:true,originalHostName:'The host'}});
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:'The host'}});
     }catch(e){}
   });
   rtChannel.on('broadcast',{event:'lobby_expiry_warning'},()=>{
@@ -3265,15 +3265,22 @@ function rtSubscribe(lobbyId){
     lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
     if(currentUser===payload.newHost){
       isHost=true;
-      const msg=payload.reclaimable
-        ?`👑 The host left — you're now the host!`
-        :`👑 Host returned — they've reclaimed the lobby.`;
-      showLobbyToast(msg,'warning');
+      if(payload.reason==='reclaim'){
+        showLobbyToast(`👑 Host returned — they've reclaimed the lobby.`,'warning');
+      } else if(payload.reason==='left'){
+        showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+      } else {
+        // Manual transfer
+        showLobbyToast(`👑 You're now the host!`,'warning');
+      }
     } else {
       isHost=false;
-      if(payload.reclaimable){
+      if(payload.reason==='left'){
         showLobbyToast(`👑 ${payload.originalHostName||'The host'} left — ${payload.newHost} is now the host.`,'warning');
+      } else if(payload.reason==='reclaim'){
+        showLobbyToast(`👑 ${payload.newHost} has reclaimed host.`,'warning');
       }
+      // No toast for manual transfer — the outgoing host already knows, others don't need notifying
     }
     renderLobbyRoom();
   });
@@ -3955,7 +3962,7 @@ async function leaveLobbyRoom(){
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
       }catch(e){}
       // Broadcast so remaining players' postgres_changes election picks it up cleanly
-      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reclaimable:true,originalHostId:currentUserId,originalHostName:currentUser}});
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser}});
     }
   }
   intentionalLeave=true;
@@ -3979,7 +3986,7 @@ async function confirmTransferHost(){
   isHost=false;
   // Broadcast to all players
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget}});
+    rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget,reason:'manual'}});
   }
   // Update Supabase lobby_players if we have a real session
   if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
@@ -4431,7 +4438,7 @@ window.addEventListener('pagehide', () => {
     bcXhr.setRequestHeader('apikey', SUPABASE_ANON);
     bcXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
     bcXhr.setRequestHeader('Content-Type', 'application/json');
-    bcXhr.send(JSON.stringify({messages:[{topic:`realtime:lobby:${lobbyCode}`,event:'host_transferred',payload:{newHost:nextPlayer.username,reclaimable:true,originalHostId:currentUserId,originalHostName:currentUser}}]}));
+    bcXhr.send(JSON.stringify({messages:[{topic:`realtime:lobby:${lobbyCode}`,event:'host_transferred',payload:{newHost:nextPlayer.username,reason:'left',originalHostName:currentUser}}]}));
   } catch(e) {}
 });
 
