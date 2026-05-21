@@ -3828,7 +3828,20 @@ async function rtDeleteLobby(){
 }
 async function leaveLobbyRoom(){
   clearLobbyTimer();
-  if(isHost)await rtDeleteLobby();
+  if(isHost){
+    await rtDeleteLobby();
+  } else if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+    // Non-host: delete own row so the host's player list updates immediately
+    try{
+      const token=await rtGetAuthToken();
+      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const lData=await lRes.json();
+      const lid=Array.isArray(lData)?lData[0]?.id:null;
+      if(lid){
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
+      }
+    }catch(e){}
+  }
   intentionalLeave=true;
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
@@ -4234,6 +4247,27 @@ async function adminDelete(id){
 }
 
 applyTheme();
+
+// ── NON-HOST TAB-CLOSE REMOVAL ────────────────────────────────
+// When a non-host player closes their tab, remove them from lobby_players
+// via sendBeacon so the request fires even as the page is unloading.
+window.addEventListener('pagehide', () => {
+  if (isHost || !currentUserId || SUPABASE_URL.includes('YOUR_PROJECT') || !lobbyCode) return;
+  const inLobby = document.getElementById('page-lobby-room').classList.contains('active');
+  if (!inLobby) return;
+  // Use sendBeacon with the REST DELETE endpoint — works reliably on tab close
+  const url = `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=in.(select id from lobbies where code=eq.${encodeURIComponent(lobbyCode)})&user_id=eq.${encodeURIComponent(currentUserId)}`;
+  // sendBeacon only supports POST, so we fall back to a synchronous XHR trick instead
+  // (DELETE via fetch won't fire; XHR with async=false is the most reliable cross-browser option)
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('DELETE', `${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(currentUserId)}&lobby_id=in.(select%20id%20from%20lobbies%20where%20code%3Deq.${encodeURIComponent(lobbyCode)})`, false);
+    xhr.setRequestHeader('apikey', SUPABASE_ANON);
+    xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON}`);
+    xhr.setRequestHeader('Prefer', 'return=minimal');
+    xhr.send();
+  } catch(e) {}
+});
 
 // ── MOBILE NAV DRAWER ─────────────────────────────────────────
 function openNavDrawer(){
