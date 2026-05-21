@@ -1029,15 +1029,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
         <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
       </div>
-      <div id="lobbyHostChangingBanner" style="display:none;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:12px 16px;font-size:13px;font-weight:700;color:var(--accent)">
-        <div class="spinner" style="width:16px;height:16px;border-width:2px;flex-shrink:0"></div>
-        Host is making changes…
-      </div>
-      <div class="slide-in" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div style="font-size:13px;color:var(--muted)">
-          <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
-          <span style="font-size:11px;color:var(--accent)" id="lobbyTopicsLabel" style="display:none"></span>
-          <span style="font-size:11px" id="lobbySettingsHint">Change format &amp; mode before starting</span>
+      <div class="slide-in" id="lobbySettingsBox" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;transition:all .3s">
+        <div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px" id="lobbySettingsContent">
+          <div id="lobbyChangingSpinner" style="display:none;flex-shrink:0"><div class="spinner" style="width:16px;height:16px;border-width:2px"></div></div>
+          <div>
+            <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
+            <span style="font-size:11px;color:var(--accent)" id="lobbyTopicsLabel"></span>
+            <span style="font-size:11px" id="lobbySettingsHint">Change format &amp; mode before starting</span>
+          </div>
         </div>
         <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
       </div>
@@ -3216,15 +3215,22 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'settings_changed'},({payload})=>{
     if(isHost)return;
-    const banner=document.getElementById('lobbyHostChangingBanner');
     const label=document.getElementById('lobbySettingsLabel');
+    const hint=document.getElementById('lobbySettingsHint');
+    const spinner=document.getElementById('lobbyChangingSpinner');
+    const settingsBtn=document.getElementById('lobbySettingsBtn');
     const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
     if(payload.changing){
-      if(banner)banner.style.display='flex';
+      if(spinner)spinner.style.display='block';
+      if(label){label.style.color='var(--accent)';label.textContent='Host is making changes…';}
+      if(hint)hint.style.display='none';
+      if(settingsBtn)settingsBtn.style.display='none';
     } else {
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
-      if(label)label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;
-      if(banner)banner.style.display='none';
+      if(spinner)spinner.style.display='none';
+      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;}
+      if(hint)hint.style.display='';
+      if(settingsBtn)settingsBtn.style.display='';
     }
   });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
