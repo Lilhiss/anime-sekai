@@ -3868,9 +3868,22 @@ async function rtSetLobbyStatus(status){
 }
 
 async function rtDeleteLobby(){
-  // Called when host leaves — removes the lobby row entirely
-  if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode||!isHost)return;
+  // Called when host leaves — removes the lobby and all its players entirely
+  if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode)return;
   try{
+    // Fetch the lobby id first so we can delete lobby_players too
+    const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}
+    });
+    const lData=await lRes.json();
+    const lid=Array.isArray(lData)?lData[0]?.id:null;
+    // Delete all players first (FK constraint), then the lobby row
+    if(lid){
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{
+        method:'DELETE',
+        headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Prefer':'return=minimal'}
+      });
+    }
     await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${lobbyCode}`,{
       method:'DELETE',
       headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Prefer':'return=minimal'}
