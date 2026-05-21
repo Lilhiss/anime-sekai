@@ -3279,6 +3279,11 @@ function rtSubscribe(lobbyId){
       if(topicsLabel)topicsLabel.style.display='block';
     }
   });
+  rtChannel.on('broadcast',{event:'player_left'},({payload})=>{
+    if(!isHost)return;
+    lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
+    renderLobbyRoom();
+  });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
     if(currentUser===payload.kicked){
       // This player was kicked — show modal and leave
@@ -3887,6 +3892,11 @@ async function leaveLobbyRoom(){
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
       }
     }catch(e){}
+  }
+  // Broadcast departure so the host's UI updates immediately,
+  // without relying on postgres_changes firing reliably for deletes.
+  if(rtChannel&&!isHost){
+    rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
   }
   intentionalLeave=true;
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
