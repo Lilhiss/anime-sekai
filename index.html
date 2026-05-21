@@ -3205,27 +3205,27 @@ function rtSubscribe(lobbyId){
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
     await rtRefreshPlayers(lobbyId);
-    // If no host is present and we're not already host, elect the first non-host player
+    // If the host_transferred broadcast already handled this, lobbyPlayers will have a host — skip.
     if(isHost)return;
     const hasHost=lobbyPlayers.some(p=>p.isHost);
     if(hasHost)return;
     if(!lobbyPlayers.length)return;
-    // Only the first player in the list self-promotes to avoid races
-    if(lobbyPlayers[0].name!==currentUser)return;
-    // Claim host in Supabase
+    // Fallback self-election: re-fetch from DB with stable order to pick a single winner
     try{
       const token=await rtGetAuthToken();
+      const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const pData=await pRes.json();
+      const first=Array.isArray(pData)?pData[0]:null;
+      if(!first||first.user_id!==currentUserId)return; // not our turn to claim
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
       await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
+      isHost=true;
+      lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
+      renderLobbyRoom();
+      showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reclaimable:true,originalHostName:'The host'}});
     }catch(e){}
-    isHost=true;
-    lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
-    renderLobbyRoom();
-    showLobbyToast(`👑 The host left — you're now the host!`,'warning');
-    if(rtChannel){
-      rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reclaimable:true,originalHostName:'The host'}});
-    }
   });
   rtChannel.on('broadcast',{event:'lobby_expiry_warning'},()=>{
     if(!isHost)showLobbyToast('⏳ This lobby will close in 1 minute if the game hasn\'t started.','warning');
@@ -3913,24 +3913,50 @@ async function rtDeleteLobby(){
 }
 async function leaveLobbyRoom(){
   clearLobbyTimer();
-  if(isHost){
-    await rtDeleteLobby();
-  } else if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
-    // Non-host: delete own row so the host's player list updates immediately
-    try{
-      const token=await rtGetAuthToken();
-      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
-      const lData=await lRes.json();
-      const lid=Array.isArray(lData)?lData[0]?.id:null;
-      if(lid){
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
-      }
-    }catch(e){}
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
+    intentionalLeave=true;
+    if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+    isHost=false;
+    goStep('multiplayer');
+    return;
   }
-  // Broadcast departure so the host's UI updates immediately,
-  // without relying on postgres_changes firing reliably for deletes.
-  if(rtChannel&&!isHost){
-    rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
+  const token=await rtGetAuthToken();
+  // Fetch lobby id
+  let lid=null;
+  try{
+    const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+    const lData=await lRes.json();
+    lid=Array.isArray(lData)?lData[0]?.id:null;
+  }catch(e){}
+
+  if(!isHost){
+    // Non-host: remove own row and broadcast departure
+    if(lid){
+      try{await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});}catch(e){}
+    }
+    if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
+  } else if(lid){
+    // Host: check if anyone else is in the lobby
+    let others=[];
+    try{
+      const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lid}&user_id=neq.${currentUserId}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      others=await pRes.json();
+    }catch(e){}
+    const next=Array.isArray(others)?others[0]:null;
+    if(!next){
+      // Nobody else — delete lobby entirely
+      await rtDeleteLobby();
+    } else {
+      // Transfer host to next player, remove self
+      try{
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${next.user_id}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:next.user_id,host_username:next.username})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
+      }catch(e){}
+      // Broadcast so remaining players' postgres_changes election picks it up cleanly
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reclaimable:true,originalHostId:currentUserId,originalHostName:currentUser}});
+    }
   }
   intentionalLeave=true;
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
