@@ -3220,17 +3220,20 @@ function rtSubscribe(lobbyId){
     const spinner=document.getElementById('lobbyChangingSpinner');
     const settingsBtn=document.getElementById('lobbySettingsBtn');
     const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
+    const topicsLabel=document.getElementById('lobbyTopicsLabel');
     if(payload.changing){
       if(spinner)spinner.style.display='block';
       if(label){label.style.color='var(--accent)';label.textContent='Host is making changes…';}
       if(hint)hint.style.display='none';
       if(settingsBtn)settingsBtn.style.display='none';
+      if(topicsLabel)topicsLabel.style.display='none';
     } else {
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
       if(spinner)spinner.style.display='none';
       if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;}
       if(hint)hint.style.display='';
       if(settingsBtn)settingsBtn.style.display='';
+      if(topicsLabel)topicsLabel.style.display='block';
     }
   });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
