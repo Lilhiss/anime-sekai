@@ -3141,15 +3141,16 @@ async function rtJoinLobby(code){
     }
   }catch(e){}
   try{
+    // Use upsert so a rejoining player (e.g. original host after refresh) never hits a dupe conflict
     const joinRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'return=minimal'
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
     });
-    if(!joinRes.ok){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. You may already be in this lobby.');return false;}
+    if(!joinRes.ok){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
@@ -3171,12 +3172,6 @@ async function rtJoinLobby(code){
       // Only reclaim if the current host isn't already us (covers the edge case
       // where the DB row somehow survived the pagehide)
       if(curHostId&&curHostId!==uid){
-        // Re-add ourselves to lobby_players first (pagehide deleted our row)
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players`,{
-          method:'POST',
-          headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-          body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
-        });
         // Transfer host: clear all flags, set ours
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}&user_id=eq.${uid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
