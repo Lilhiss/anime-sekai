@@ -548,29 +548,29 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
 
 /* LOBBY BROWSER */
-.lobby-browser-wrap{width:100%;max-width:600px;display:flex;flex-direction:column;gap:18px}
-.lobby-browser-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;align-self:center}
-.lobby-browser-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 20px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
-.lobby-browser-tab.active{background:var(--accent);color:#fff}
-.lobby-list-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px)}
-.lobby-list-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px #0004}
-.lobby-list-avatar{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:20px;color:#fff;flex-shrink:0}
+.lobby-join-stack{width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px}
+.lobby-code-bar{display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:10px 14px;backdrop-filter:blur(10px);transition:border-color .2s}
+.lobby-code-bar:focus-within{border-color:var(--accent)}
+.lobby-code-input{flex:1;background:none;border:none;outline:none;font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;color:var(--text);letter-spacing:.08em;min-width:0;text-align:center}
+.lobby-code-input::placeholder{color:var(--muted);font-weight:600;letter-spacing:.06em}
+.lobby-code-btn{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:9px 18px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:opacity .2s;flex-shrink:0}
+.lobby-code-btn:hover{opacity:.85}
+.lobby-list-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lobby-join-col-header{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.lobby-list-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .22s;backdrop-filter:blur(10px)}
+.lobby-list-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px #0004}
+.lobby-list-avatar{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:18px;color:#fff;flex-shrink:0}
 .lobby-list-info{flex:1;min-width:0}
-.lobby-list-host{font-family:'Lilita One',cursive;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lobby-list-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.lobby-list-badge{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 9px;font-size:11px;font-weight:800;color:var(--accent)}
-.lobby-list-players{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
-.lobby-list-join-btn{font-family:'Lilita One',cursive;font-size:13px;background:var(--accent);border:none;padding:9px 18px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:opacity .2s;flex-shrink:0}
+.lobby-list-host{font-family:'Lilita One',cursive;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lobby-list-meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lobby-list-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 8px;font-size:10px;font-weight:800;color:var(--accent)}
+.lobby-list-players{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:4px}
+.lobby-list-join-btn{font-family:'Lilita One',cursive;font-size:13px;background:var(--accent);border:none;padding:8px 16px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:opacity .2s;flex-shrink:0}
 .lobby-list-join-btn:hover{opacity:.85}
-.lobby-list-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:16px}
-.lobby-list-loading{text-align:center;padding:32px 24px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
-.lobby-random-btn{font-family:'Lilita One',cursive;font-size:15px;background:var(--accent-soft);border:1.5px solid var(--border2);color:var(--accent);padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
-.lobby-random-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
-.lobby-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.lobby-divider::before,.lobby-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.lobby-refresh-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.lobby-count-label{font-size:12px;color:var(--muted);font-weight:700}
-.lobby-refresh-btn{font-size:11px;font-weight:800;color:var(--muted);background:var(--bg2);border:1px solid var(--border2);padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s}
+.lobby-list-empty{text-align:center;padding:36px 20px;color:var(--muted);font-size:13px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:14px;line-height:1.7}
+.lobby-list-loading{text-align:center;padding:28px 20px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px;font-size:13px}
+.lobby-count-label{font-size:11px;color:var(--muted);font-weight:700;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:2px 9px;text-transform:none;letter-spacing:0}
+.lobby-refresh-btn{font-size:11px;font-weight:800;color:var(--muted);background:var(--bg2);border:1px solid var(--border2);padding:5px 11px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
 .lobby-refresh-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 @keyframes spin-once{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .spinning{animation:spin-once .5s linear}
@@ -951,45 +951,30 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Join a Lobby</div>
       <h1>Find a <span class="hi">Game</span></h1>
     </div>
-    <div class="lobby-join-split slide-in">
+    <div class="lobby-join-stack slide-in">
 
-      <!-- LEFT: BROWSE -->
-      <div id="lobbyBrowsePanel" class="lobby-join-col">
-        <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:15px"></i> Open Lobbies</div>
-        <button class="lobby-random-btn" id="lobbyRandomBtn" onclick="joinRandomLobby()">
-          <i class="ti ti-bolt" style="font-size:17px"></i> Join a Random Lobby
+      <!-- CODE BAR -->
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
+        <div class="lobby-code-bar">
+          <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr')" onkeydown="if(event.key==='Enter')joinLobby()">
+          <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join Game</button>
+        </div>
+        <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
+      </div>
+      <div class="form-err" id="lobbyJoinErr" style="margin-top:-4px;padding-left:4px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
+
+      <!-- LIST HEADER -->
+      <div class="lobby-list-header">
+        <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:14px"></i> Open Lobbies <span class="lobby-count-label" id="lobbyCountLabel"></span></div>
+        <button class="lobby-refresh-btn" onclick="loadPublicLobbies()">
+          <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
         </button>
-        <div class="lobby-divider" style="margin:0">or pick one</div>
-        <div class="lobby-refresh-row">
-          <span class="lobby-count-label" id="lobbyCountLabel">Loading lobbies…</span>
-          <button class="lobby-refresh-btn" id="lobbyRefreshBtn" onclick="loadPublicLobbies()">
-            <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
-          </button>
-        </div>
-        <div id="lobbyBrowseList" style="display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto">
-          <div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>
-        </div>
       </div>
 
-      <!-- DIVIDER -->
-      <div class="lobby-join-vdivider">
-        <div class="lobby-join-vline"></div>
-        <span class="lobby-join-vor">or</span>
-        <div class="lobby-join-vline"></div>
-      </div>
-
-      <!-- RIGHT: CODE ENTRY -->
-      <div id="lobbyCodePanel" class="lobby-join-col lobby-join-col-code">
-        <div class="lobby-join-col-header"><i class="ti ti-hash" style="font-size:15px"></i> Enter a Code</div>
-        <div class="form-card" style="flex:1;justify-content:center">
-          <div>
-            <label class="form-label">Lobby Code</label>
-            <input class="form-input" id="lobbyCodeInput" type="text" placeholder="e.g. OTAKU-7842" maxlength="12" style="text-transform:uppercase;letter-spacing:.1em;font-size:18px;text-align:center" oninput="clearErr('lobbyJoinErr')">
-            <div class="form-hint" style="margin-top:6px">Ask the lobby host for their code.</div>
-            <div class="form-err" id="lobbyJoinErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
-          </div>
-          <button class="form-submit" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:16px"></i> Join Game</button>
-        </div>
+      <!-- LOBBY LIST -->
+      <div id="lobbyBrowseList" style="display:flex;flex-direction:column;gap:10px">
+        <div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>
       </div>
 
     </div>
@@ -3357,11 +3342,7 @@ goStep=function(name){
   _origGoStep(name);
   if(name==='leaderboard'){lbTab='global';switchLbTab('global');renderLb();}
   if(name==='lobby-room')renderLobbyRoom();
-  if(name==='lobby-join'){
-    // Reset to browse tab and load lobbies
-    switchLobbyBrowserTab('browse');
-    loadPublicLobbies();
-  }
+  if(name==='lobby-join')loadPublicLobbies();
 };
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
@@ -3386,16 +3367,6 @@ async function joinLobby(){
 }
 
 // ── LOBBY BROWSER ─────────────────────────────────────────────
-function switchLobbyBrowserTab(tab){
-  const isBrowse=tab==='browse';
-  document.getElementById('lbTabBrowse').classList.toggle('active',isBrowse);
-  document.getElementById('lbTabCode').classList.toggle('active',!isBrowse);
-  document.getElementById('lobbyBrowsePanel').style.display=isBrowse?'flex':'none';
-  document.getElementById('lobbyBrowsePanel').style.flexDirection='column';
-  document.getElementById('lobbyBrowsePanel').style.gap='12px';
-  document.getElementById('lobbyCodePanel').style.display=isBrowse?'none':'block';
-}
-
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
 const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔'};
 
@@ -3405,31 +3376,33 @@ async function loadPublicLobbies(){
   const refreshIcon=document.getElementById('lobbyRefreshIcon');
   if(!list)return;
 
-  // Spin the refresh icon
   refreshIcon.classList.add('spinning');
   setTimeout(()=>refreshIcon.classList.remove('spinning'),500);
-
   list.innerHTML='<div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>';
-  countLabel.textContent='Loading lobbies…';
+  countLabel.textContent='';
 
   if(SUPABASE_URL.includes('YOUR_PROJECT')){
     list.innerHTML='<div class="lobby-list-empty">🔌 Connect Supabase to see live lobbies.</div>';
-    countLabel.textContent='0 open lobbies';
     return;
   }
 
   try{
-    const token=await rtGetAuthToken();
+    // Use anon key directly — lobbies list is public, no auth needed
     const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&order=created_at.desc&limit=30`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&limit=30`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
+    if(!res.ok){
+      const errText=await res.text();
+      console.error('loadPublicLobbies error:',res.status,errText);
+      list.innerHTML=`<div class="lobby-list-empty">⚠️ Error ${res.status} loading lobbies.<br><span style="font-size:11px;margin-top:4px;display:block">${errText}</span></div>`;
+      return;
+    }
     const lobbies=await res.json();
+    console.log('Lobbies fetched:',lobbies);
     if(!Array.isArray(lobbies)||!lobbies.length){
       list.innerHTML='<div class="lobby-list-empty">😴 No open lobbies right now.<br><span style="font-size:12px;margin-top:6px;display:block">Create one and share the code with friends!</span></div>';
-      countLabel.textContent='0 open lobbies';
-      document.getElementById('lobbyRandomBtn').style.opacity='.45';
-      document.getElementById('lobbyRandomBtn').style.pointerEvents='none';
+      countLabel.textContent='0 open';
       return;
     }
 
@@ -3439,11 +3412,11 @@ async function loadPublicLobbies(){
     try{
       const pcRes=await fetch(
         `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
       );
       const pcData=await pcRes.json();
       if(Array.isArray(pcData))pcData.forEach(r=>{playerCounts[r.lobby_id]=(playerCounts[r.lobby_id]||0)+1;});
-    }catch(e){}
+    }catch(e){console.warn('Player count fetch failed:',e);}
 
     list.innerHTML='';
     const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#e879f9'];
@@ -3479,58 +3452,21 @@ async function loadPublicLobbies(){
       list.appendChild(card);
     });
 
-    const open=lobbies.filter(l=>(playerCounts[l.id]||1)<(l.mode==='hp'?8:12)).length;
-    countLabel.textContent=`${lobbies.length} open ${lobbies.length===1?'lobby':'lobbies'}`;
-    const randomBtn=document.getElementById('lobbyRandomBtn');
-    if(open>0){randomBtn.style.opacity='';randomBtn.style.pointerEvents='';}
-    else{randomBtn.style.opacity='.45';randomBtn.style.pointerEvents='none';}
+    countLabel.textContent=`${lobbies.length} open`;
   }catch(e){
+    console.error('loadPublicLobbies exception:',e);
     list.innerHTML='<div class="lobby-list-empty">⚠️ Couldn\'t load lobbies. Check your connection.</div>';
-    countLabel.textContent='—';
+    countLabel.textContent='';
   }
 }
 
-async function joinLobbyById(lobbyId, code){
+async function joinLobbyById(lobbyId,code){
   if(!currentUser){choosePath('join');return;}
-  // Use code-based join — pass code to rtJoinLobby
   const ok=await rtJoinLobby(code);
   if(!ok)return;
   goStep('lobby-room');
 }
 
-async function joinRandomLobby(){
-  if(!currentUser){choosePath('join');return;}
-  const token=await rtGetAuthToken();
-  try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&order=created_at.desc&limit=30`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
-    );
-    const lobbies=await res.json();
-    if(!Array.isArray(lobbies)||!lobbies.length){
-      showErr('lobbyJoinErr','lobbyJoinErrMsg','No open lobbies found right now.');return;
-    }
-    // Filter non-full, shuffle, pick first
-    const ids=lobbies.map(l=>l.id);
-    let playerCounts={};
-    try{
-      const pcRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
-      );
-      const pcData=await pcRes.json();
-      if(Array.isArray(pcData))pcData.forEach(r=>{playerCounts[r.lobby_id]=(playerCounts[r.lobby_id]||0)+1;});
-    }catch(e){}
-    const available=lobbies.filter(l=>(playerCounts[l.id]||1)<(l.mode==='hp'?8:12));
-    if(!available.length){showErr('lobbyJoinErr','lobbyJoinErrMsg','All lobbies are currently full.');return;}
-    const pick=available[Math.floor(Math.random()*available.length)];
-    const ok=await rtJoinLobby(pick.code);
-    if(!ok)return;
-    goStep('lobby-room');
-  }catch(e){
-    showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');
-  }
-}
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
