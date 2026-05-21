@@ -1009,7 +1009,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
       </div>
       <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
+        <button class="action-btn secondary" onclick="leaveLobbyRoom()"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
         <button class="action-btn primary" id="startLobbyBtn" onclick="startLobbyGame()"><i class="ti ti-player-play" style="font-size:16px"></i> Start Game</button>
       </div>
     </div>
@@ -3650,6 +3650,7 @@ function startLobbyGame(){
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
   hpActiveIdx=0;
+  rtSetLobbyStatus('active'); // remove from public list
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral}});
   } else {
@@ -3659,7 +3660,34 @@ function startLobbyGame(){
   }
 }
 
-// ── HOST CONTROLS: KICK & TRANSFER ───────────────────────────
+async function rtSetLobbyStatus(status){
+  // Updates lobby status — 'active' hides it from the public list, 'finished' marks it done
+  if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode)return;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${lobbyCode}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({status})
+    });
+  }catch(e){console.warn('rtSetLobbyStatus failed:',e);}
+}
+
+async function rtDeleteLobby(){
+  // Called when host leaves — removes the lobby row entirely
+  if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode||!isHost)return;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${lobbyCode}`,{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Prefer':'return=minimal'}
+    });
+  }catch(e){console.warn('rtDeleteLobby failed:',e);}
+}
+async function leaveLobbyRoom(){
+  if(isHost)await rtDeleteLobby();
+  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+  isHost=false;
+  goStep('landing');
+}
 let _transferTarget=null;
 function promptTransferHost(name){
   if(!isHost)return;
