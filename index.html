@@ -2966,7 +2966,7 @@ function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:false}});}
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
     startQuiz(pendingMode);
@@ -3181,7 +3181,7 @@ async function rtJoinLobby(code){
         // rtChannel is subscribed above, give it a moment to connect
         setTimeout(()=>{
           if(rtChannel){
-            rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'reclaim'}});
+            rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'reclaim',remainingSeconds:lobbyTimerSecondsLeft}});
           }
         },1200);
       } else if(!curHostId){
@@ -3224,11 +3224,42 @@ function rtSubscribe(lobbyId){
       lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
       renderLobbyRoom();
       showLobbyToast(`👑 The host left — you're now the host!`,'warning');
-      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:'The host'}});
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:'The host',remainingSeconds:lobbyTimerSecondsLeft}});
     }catch(e){}
   });
-  rtChannel.on('broadcast',{event:'lobby_expiry_warning'},()=>{
+  rtChannel.on('broadcast',{event:'lobby_expiry_warning'},({payload})=>{
     if(!isHost)showLobbyToast('⏳ This lobby will close in 1 minute if the game hasn\'t started.','warning');
+    // Fix #3: arm a failsafe so the lobby closes even if the host's tab crashes
+    // before the 60-second countdown finishes. Only one non-host wins the
+    // self-election (same pattern used in postgres_changes above).
+    const remaining=typeof payload?.remainingSeconds==='number'?payload.remainingSeconds:60;
+    setTimeout(async()=>{
+      // If we became host in the meantime, the timer is already running — skip.
+      if(isHost)return;
+      // Check if the lobby is still open in DB.
+      if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode)return;
+      try{
+        const token=await rtGetAuthToken();
+        // Is there still an active host in the lobby?
+        const lobbyRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id,status&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,
+          {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+        const lobbyData=await lobbyRes.json();
+        const lobbyRow=Array.isArray(lobbyData)?lobbyData[0]:null;
+        if(!lobbyRow||lobbyRow.status!=='waiting')return; // already gone or started
+        // Use stable ordering to elect a single non-host enforcer.
+        const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyRow.id}&order=joined_at.asc&limit=1`,
+          {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+        const pData=await pRes.json();
+        const first=Array.isArray(pData)?pData[0]:null;
+        if(!first||first.user_id!==currentUserId)return; // not our turn to enforce
+        // We won the election — close the lobby.
+        await rtDeleteLobby();
+        intentionalLeave=true;
+        if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+        goStep('multiplayer');
+        setTimeout(()=>showLobbyToast('The lobby expired and was closed.','danger'),300);
+      }catch(e){}
+    },(remaining+2)*1000); // +2 s buffer so the host always wins the race if present
   });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
     selectedFormat=payload.format;selectedMode=payload.mode;
@@ -3265,6 +3296,18 @@ function rtSubscribe(lobbyId){
     lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
     if(currentUser===payload.newHost){
       isHost=true;
+      // Resume the timer from wherever the outgoing host was — not a fresh 10 min.
+      const inherited=typeof payload.remainingSeconds==='number'&&payload.remainingSeconds>0
+        ?payload.remainingSeconds:null;
+      // Update expires_at in DB so future refreshes read the correct time.
+      if(inherited&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+        const newExpiry=new Date(Date.now()+inherited*1000).toISOString();
+        fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
+          method:'PATCH',
+          headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({expires_at:newExpiry})
+        }).catch(()=>{});
+      }
       if(payload.reason==='reclaim'){
         showLobbyToast(`👑 Host returned — they've reclaimed the lobby.`,'warning');
       } else if(payload.reason==='left'){
@@ -3273,6 +3316,10 @@ function rtSubscribe(lobbyId){
         // Manual transfer
         showLobbyToast(`👑 You're now the host!`,'warning');
       }
+      // startLobbyTimer is called by renderLobbyRoom when isHost&&!lobbyTimerInterval,
+      // but we need to pass the inherited seconds. Clear first so the guard triggers correctly.
+      clearLobbyTimer();
+      startLobbyTimer(inherited);
     } else {
       isHost=false;
       if(payload.reason==='left'){
@@ -3300,11 +3347,17 @@ function rtSubscribe(lobbyId){
       if(topicsLabel)topicsLabel.style.display='none';
     } else {
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
+      lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
+      selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
       if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;}
       if(hint)hint.style.display='';
       if(settingsBtn)settingsBtn.style.display='';
-      if(topicsLabel)topicsLabel.style.display='block';
+      if(topicsLabel){
+        topicsLabel.style.display='block';
+        if(lobbyIsGeneral||lobbyTopics.length===0){topicsLabel.textContent='General Anime';}
+        else{topicsLabel.textContent=lobbyTopics.map(t=>t.emoji+' '+t.name).join(', ');}
+      }
     }
   });
   rtChannel.on('broadcast',{event:'player_left'},({payload})=>{
@@ -3542,10 +3595,35 @@ let lobbyTimerInterval=null;
 let lobbyTimerSecondsLeft=LOBBY_TTL;
 let lobbyWarningShown=false;
 
-function startLobbyTimer(){
+// Pass remainingSeconds to resume an inherited timer; omit (or pass null) to read
+// expires_at from the DB (fresh host start). Falls back to LOBBY_TTL if unavailable.
+async function startLobbyTimer(remainingSeconds){
   clearLobbyTimer();
-  lobbyTimerSecondsLeft=LOBBY_TTL;
-  lobbyWarningShown=false;
+  if(remainingSeconds!=null){
+    // Inherited from a host_transferred broadcast — use it directly.
+    lobbyTimerSecondsLeft=Math.max(1,Math.round(remainingSeconds));
+    lobbyWarningShown=lobbyTimerSecondsLeft<=60;
+  } else {
+    // Fresh host start: derive remaining time from DB expires_at so a page-refresh
+    // doesn't silently reset the clock.
+    lobbyTimerSecondsLeft=LOBBY_TTL;
+    lobbyWarningShown=false;
+    if(!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+      try{
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=expires_at&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,
+          {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+        const d=await r.json();
+        const exp=Array.isArray(d)?d[0]?.expires_at:null;
+        if(exp){
+          const secsLeft=Math.round((new Date(exp)-Date.now())/1000);
+          if(secsLeft>0&&secsLeft<LOBBY_TTL){
+            lobbyTimerSecondsLeft=secsLeft;
+            lobbyWarningShown=secsLeft<=60;
+          }
+        }
+      }catch(e){}
+    }
+  }
   lobbyTimerInterval=setInterval(async()=>{
     lobbyTimerSecondsLeft--;
     // Broadcast 1-minute warning to all players
@@ -3553,7 +3631,7 @@ function startLobbyTimer(){
       lobbyWarningShown=true;
       showLobbyToast('⏳ This lobby will close in 1 minute if the game hasn\'t started.','warning');
       if(rtChannel){
-        rtChannel.send({type:'broadcast',event:'lobby_expiry_warning',payload:{}});
+        rtChannel.send({type:'broadcast',event:'lobby_expiry_warning',payload:{remainingSeconds:60}});
       }
     }
     if(lobbyTimerSecondsLeft<=0){
@@ -3691,7 +3769,10 @@ async function joinLobbyById(lobbyId,code){
 function renderLobbyRoom(){
   document.getElementById('lobbyCodeDisplay').textContent=lobbyName||lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
-  if(isHost&&!lobbyTimerInterval)startLobbyTimer(); // only start once
+  // Only auto-start the timer the first time this host opens the room.
+  // If startLobbyTimer() was already called (e.g. inherited via host_transferred),
+  // lobbyTimerInterval will be non-null and we skip — don't reset the clock.
+  if(isHost&&!lobbyTimerInterval)startLobbyTimer();
   const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
@@ -3735,7 +3816,7 @@ function setLobbyFormat(fmt,el){
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode);}catch(e){}}
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:true}});}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>openLobbyTopicPage(),300);
 }
 function openLobbyTopicPage(){
@@ -3846,7 +3927,7 @@ function setLobbyMode(mode,el){
   // renderLobbyRoom() on return will show the final correct label.
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
   if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({mode}).eq('code',lobbyCode);}catch(e){}}
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:true}});}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   // Show time limit picker for race and survival, then return to lobby room
   if(mode==='race'||mode==='survival'){
     setTimeout(()=>{
@@ -3854,7 +3935,7 @@ function setLobbyMode(mode,el){
       showTimeLimitPicker(mode);
     },300);
   } else {
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,changing:false}});}
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
 }
@@ -3962,7 +4043,7 @@ async function leaveLobbyRoom(){
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
       }catch(e){}
       // Broadcast so remaining players' postgres_changes election picks it up cleanly
-      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser}});
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}});
     }
   }
   intentionalLeave=true;
@@ -3986,7 +4067,7 @@ async function confirmTransferHost(){
   isHost=false;
   // Broadcast to all players
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget,reason:'manual'}});
+    rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget,reason:'manual',remainingSeconds:lobbyTimerSecondsLeft}});
   }
   // Update Supabase lobby_players if we have a real session
   if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
@@ -4427,8 +4508,9 @@ window.addEventListener('pagehide', () => {
   // Promote next player: clear all is_host flags, set new host
   syncXHR('PATCH', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, {is_host: false});
   syncXHR('PATCH', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${nextPlayer.user_id}`, {is_host: true});
-  // Update lobbies table host_id/host_username
-  syncXHR('PATCH', `/rest/v1/lobbies?id=eq.${lobbyId}`, {host_id: nextPlayer.user_id, host_username: nextPlayer.username});
+  // Update lobbies table host_id/host_username and keep expires_at accurate for the new host
+  const newExpiry = new Date(Date.now() + lobbyTimerSecondsLeft * 1000).toISOString();
+  syncXHR('PATCH', `/rest/v1/lobbies?id=eq.${lobbyId}`, {host_id: nextPlayer.user_id, host_username: nextPlayer.username, expires_at: newExpiry});
   // Remove departing host from lobby_players
   syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${encodeURIComponent(currentUserId)}`, null);
   // Broadcast host_transferred via a POST to Supabase Realtime REST (best-effort)
@@ -4438,7 +4520,7 @@ window.addEventListener('pagehide', () => {
     bcXhr.setRequestHeader('apikey', SUPABASE_ANON);
     bcXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
     bcXhr.setRequestHeader('Content-Type', 'application/json');
-    bcXhr.send(JSON.stringify({messages:[{topic:`realtime:lobby:${lobbyCode}`,event:'host_transferred',payload:{newHost:nextPlayer.username,reason:'left',originalHostName:currentUser}}]}));
+    bcXhr.send(JSON.stringify({messages:[{topic:`realtime:lobby:${lobbyCode}`,event:'host_transferred',payload:{newHost:nextPlayer.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}}]}));
   } catch(e) {}
 });
 
