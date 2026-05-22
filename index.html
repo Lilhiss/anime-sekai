@@ -324,7 +324,10 @@ h1 .hi{color:var(--accent)}
 .pfp-preset-label{font-size:9px;font-weight:700;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pfp-upload-zone{border:2px dashed var(--border2);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
 .pfp-upload-zone:hover,.pfp-upload-zone.dragover{border-color:var(--accent);background:var(--accent-soft)}
-.pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto 16px;overflow:hidden;border:3px solid var(--accent);display:none}
+.pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto 16px;overflow:hidden;border:3px solid var(--accent);display:none;position:relative;cursor:pointer}
+.pfp-preview-edit-hint{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.pfp-upload-preview:hover .pfp-preview-edit-hint{opacity:1}
+.pfp-preview-edit-hint i{font-size:22px;color:#fff}
 .pfp-upload-preview img{width:100%;height:100%;object-fit:cover}
 .pfp-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 
@@ -1449,7 +1452,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div id="pfpUploadTab" style="display:none">
           <div class="pfp-section-label">Upload your own</div>
-          <div class="pfp-upload-preview" id="pfpUploadPreview"><img id="pfpUploadImg" src="" alt="Preview"></div>
+          <div class="pfp-upload-preview" id="pfpUploadPreview" onclick="document.getElementById('pfpFileInput').click()" title="Click to change image" style="cursor:pointer;position:relative">
+            <img id="pfpUploadImg" src="" alt="Preview">
+            <div class="pfp-preview-edit-hint"><i class="ti ti-camera"></i></div>
+          </div>
           <div class="pfp-upload-zone" id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" ondragover="pfpDragOver(event)" ondragleave="pfpDragLeave(event)" ondrop="pfpDrop(event)">
             <i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
             <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
@@ -1860,12 +1866,17 @@ async function sbSignOut(){
 
 async function sbLoadProfile(userId){
   try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const rows=await res.json();
-    return Array.isArray(rows)&&rows[0]?rows[0]:null;
+    const [statsRes, profileRes]=await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url&id=eq.${userId}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
+    ]);
+    const [statsRows, profileRows]=await Promise.all([statsRes.json(), profileRes.json()]);
+    const stats=Array.isArray(statsRows)&&statsRows[0]?statsRows[0]:null;
+    if(!stats)return null;
+    const avatar_url=(Array.isArray(profileRows)&&profileRows[0]?.avatar_url)||null;
+    return {...stats, avatar_url};
   }catch(e){return null;}
 }
 
@@ -2372,17 +2383,8 @@ function processUploadFile(file){
     document.getElementById('pfpUploadImg').src=previewUrl;
     document.getElementById('pfpUploadPreview').style.display='block';
     zone.style.display='none';
-    // Remove any previous hint/change-btn if re-selecting
+    // Remove any previous hint if re-selecting
     document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
-    // Show approx size + a "Change image" button so the user can pick a different file
-    const kb=Math.round(blob.size/1024);
-    const hint=document.createElement('div');
-    hint.className='pfp-upload-hint';
-    hint.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px';
-    hint.innerHTML=`
-      <div style="font-size:11px;color:var(--muted)">Resized to 256×256 · ${kb}KB — ready to save</div>
-      <button onclick="pfpResetUpload()" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s" onmouseover="this.style.background='var(--accent)';this.style.borderColor='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border2)';this.style.color='var(--text)'"><i class="ti ti-refresh" style="font-size:12px"></i> Change image</button>`;
-    document.getElementById('pfpUploadTab').appendChild(hint);
   }).catch(()=>{
     // Restore zone on error
     zone.style.display='';
@@ -2393,23 +2395,6 @@ function processUploadFile(file){
     errMsg.textContent='Could not process image. Please try another file.';
     errEl.style.display='flex';
   });
-}
-
-function pfpResetUpload(){
-  // Clear the pending upload state and restore the drop zone so the user can pick a new file
-  pfpUploadBlob=null;
-  pfpUploadDataUrl=null;
-  pfpPendingSelection=null;
-  document.getElementById('pfpFileInput').value='';
-  document.getElementById('pfpUploadPreview').style.display='none';
-  document.getElementById('pfpUploadImg').src='';
-  document.getElementById('pfpUploadErr').style.display='none';
-  document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
-  const zone=document.getElementById('pfpUploadZone');
-  zone.style.display='';
-  zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
-    <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
-    <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;
 }
 
 async function savePfp(){
@@ -2449,12 +2434,11 @@ async function savePfp(){
       // Get the permanent public URL
       const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(`${currentUserId}/avatar.jpg`);
 
-      // Cache-bust so the browser picks up the new image immediately
+      // Cache-bust in memory so the browser picks up the new image immediately,
+      // but persist the clean URL (without timestamp) to the DB so it loads correctly on refresh
       const bustedUrl=publicUrl+'?t='+Date.now();
-
       currentPfp={type:'upload',value:bustedUrl};
-      // Persist URL (not the blob) in profiles table
-      await sb.from('profiles').update({avatar_url:bustedUrl}).eq('id',currentUserId);
+      await sb.from('profiles').update({avatar_url:publicUrl}).eq('id',currentUserId);
     }
     closePfpPicker();renderProfile();updateNav();
   }catch(e){
