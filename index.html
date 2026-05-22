@@ -561,6 +561,19 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   #page-mp-quiz>div{grid-template-columns:1fr}
   #page-mp-quiz>div>div:last-child{position:static}
 }
+/* TOPIC AUTOCOMPLETE */
+.sq-topic-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .15s;gap:10px;border-bottom:1px solid var(--border)}
+.sq-topic-item:last-child{border-bottom:none}
+.sq-topic-item:hover,.sq-topic-item.active{background:var(--bg3)}
+.sq-topic-item-name{font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-topic-item-name em{color:var(--accent);font-style:normal}
+.sq-topic-item-count{font-size:11px;font-weight:700;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
+.sq-topic-empty{padding:12px 14px;font-size:13px;color:var(--muted);text-align:center}
+.sq-topic-new{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background .15s;border-top:1px solid var(--border)}
+.sq-topic-new:hover{background:var(--bg3)}
+.sq-topic-new-label{font-size:13px;font-weight:700;color:var(--accent)}
+.sq-topic-new-badge{font-size:10px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);border-radius:99px;padding:2px 8px}
+
 /* ADMIN PANEL */
 .admin-wrap{width:100%;max-width:900px;display:flex;flex-direction:column;gap:20px}
 .admin-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content}
@@ -1651,9 +1664,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <input class="form-input" id="sqAliases" type="text" placeholder="AOT, Shingeki no Kyojin, …">
           <div class="form-hint" style="margin-top:4px">Comma-separated alternate answers that should also be accepted.</div>
         </div>
-        <div>
+        <div style="position:relative">
           <label class="form-label">Anime / Topic</label>
-          <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Shonen general…">
+          <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Shonen general…" autocomplete="off" oninput="sqTopicInput()" onkeydown="sqTopicKeydown(event)" onfocus="sqTopicInput()" onblur="setTimeout(sqTopicHide,150)">
+          <div id="sqTopicDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1.5px solid var(--border2);border-radius:12px;z-index:999;overflow:hidden;box-shadow:0 8px 28px #0008;max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
       <div class="form-err" id="sqErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqErrMsg"></span></div>
@@ -2248,7 +2262,7 @@ async function removePfp(){
   try{
     // Delete from Supabase Storage if it was an uploaded file
     if(currentPfp?.type==='upload'&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-      await sb.storage.from('avatars').remove([`${currentUserId}.jpg`]).catch(()=>{});
+      await sb.storage.from('avatars').remove([`${currentUserId}/avatar.jpg`]).catch(()=>{});
     }
     // Clear avatar_url in profiles table
     if(currentUserId&&!isGuest&&!SUPABASE_URL.includes('YOUR_PROJECT')){
@@ -2399,8 +2413,8 @@ async function savePfp(){
       currentPfp={type:'upload',value:pfpUploadDataUrl};
     } else {
       // Upload to Supabase Storage bucket called "avatars"
-      // File is named by user id so re-uploads overwrite the old one (no accumulation)
-      const filePath=`${currentUserId}.jpg`;
+      // File is stored as {userId}/avatar.jpg so the RLS policy (foldername = uid) works
+      const filePath=`${currentUserId}/avatar.jpg`;
       const{error:upErr}=await sb.storage.from('avatars').upload(filePath,pfpUploadBlob,{
         contentType:'image/jpeg',
         upsert:true   // overwrites previous upload for this user
@@ -2408,7 +2422,7 @@ async function savePfp(){
       if(upErr)throw upErr;
 
       // Get the permanent public URL
-      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
+      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(`${currentUserId}/avatar.jpg`);
 
       // Cache-bust so the browser picks up the new image immediately
       const bustedUrl=publicUrl+'?t='+Date.now();
@@ -3404,12 +3418,129 @@ document.addEventListener('change',e=>{
     document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
   }
 });
+// ── TOPIC AUTOCOMPLETE ────────────────────────────────────────
+let sqTopicCache = null;   // [{topic_value, count}] loaded once per modal open
+let sqTopicActiveIdx = -1; // keyboard navigation index
+
+async function sqLoadTopics(){
+  if(sqTopicCache) return;
+  if(SUPABASE_URL.includes('YOUR_PROJECT')){sqTopicCache=[];return;}
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_value&status=eq.approved`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows = await res.json();
+    // Tally counts per topic_value
+    const map = {};
+    (Array.isArray(rows)?rows:[]).forEach(r=>{
+      if(!r.topic_value)return;
+      map[r.topic_value]=(map[r.topic_value]||0)+1;
+    });
+    sqTopicCache = Object.entries(map)
+      .map(([topic_value,count])=>({topic_value,count}))
+      .sort((a,b)=>b.count-a.count); // most questions first
+  }catch(e){sqTopicCache=[];}
+}
+
+function sqTopicInput(){
+  const val = document.getElementById('sqTopic').value.trim();
+  sqTopicActiveIdx = -1;
+  if(val.length < 2){ sqTopicHide(); return; }
+  sqLoadTopics().then(()=>sqTopicRender(val));
+}
+
+function sqTopicRender(query){
+  const drop = document.getElementById('sqTopicDrop');
+  if(!sqTopicCache){drop.style.display='none';return;}
+
+  const q = query.toLowerCase();
+  const matches = sqTopicCache.filter(t=>t.topic_value.toLowerCase().includes(q));
+
+  drop.innerHTML = '';
+
+  if(matches.length === 0){
+    // No matches — show "new topic" hint
+    const hint = document.createElement('div');
+    hint.className = 'sq-topic-empty';
+    hint.textContent = 'No existing topics match — a new one will be created.';
+    drop.appendChild(hint);
+  } else {
+    matches.slice(0,8).forEach((t,i)=>{
+      const item = document.createElement('div');
+      item.className = 'sq-topic-item';
+      item.dataset.idx = i;
+      // Bold the matching portion
+      const lo = t.topic_value.toLowerCase();
+      const start = lo.indexOf(q);
+      const before = t.topic_value.slice(0,start);
+      const match  = t.topic_value.slice(start,start+q.length);
+      const after  = t.topic_value.slice(start+q.length);
+      item.innerHTML = `<span class="sq-topic-item-name">${before}<em>${match}</em>${after}</span>
+        <span class="sq-topic-item-count">${t.count} Q${t.count===1?'':'s'}</span>`;
+      item.onmousedown = ()=>sqTopicSelect(t.topic_value);
+      drop.appendChild(item);
+    });
+
+    // If typed value isn't an exact match, offer it as a new topic at the bottom
+    const exactMatch = matches.some(t=>t.topic_value.toLowerCase()===q);
+    if(!exactMatch){
+      const newRow = document.createElement('div');
+      newRow.className = 'sq-topic-new';
+      newRow.innerHTML = `<i class="ti ti-plus" style="font-size:13px;color:var(--accent)"></i>
+        <span class="sq-topic-new-label">"${query}"</span>
+        <span class="sq-topic-new-badge">New topic</span>`;
+      newRow.onmousedown = ()=>sqTopicSelect(query);
+      drop.appendChild(newRow);
+    }
+  }
+
+  drop.style.display = 'block';
+}
+
+function sqTopicSelect(value){
+  document.getElementById('sqTopic').value = value;
+  sqTopicHide();
+}
+
+function sqTopicHide(){
+  const drop = document.getElementById('sqTopicDrop');
+  if(drop) drop.style.display = 'none';
+  sqTopicActiveIdx = -1;
+}
+
+function sqTopicKeydown(e){
+  const drop = document.getElementById('sqTopicDrop');
+  if(!drop || drop.style.display === 'none') return;
+  const items = drop.querySelectorAll('.sq-topic-item, .sq-topic-new');
+  if(!items.length) return;
+
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    sqTopicActiveIdx = Math.min(sqTopicActiveIdx+1, items.length-1);
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    sqTopicActiveIdx = Math.max(sqTopicActiveIdx-1, -1);
+  } else if(e.key === 'Enter' && sqTopicActiveIdx >= 0){
+    e.preventDefault();
+    items[sqTopicActiveIdx].onmousedown();
+    return;
+  } else if(e.key === 'Escape'){
+    sqTopicHide(); return;
+  } else { return; }
+
+  items.forEach((el,i)=>el.classList.toggle('active', i===sqTopicActiveIdx));
+  if(sqTopicActiveIdx >= 0) items[sqTopicActiveIdx].scrollIntoView({block:'nearest'});
+}
+
 function openSubmitQuestion(){
   applyTheme();
   if(!currentUser||isGuest){
     document.getElementById('submitSignInModal').style.display='flex';
   } else {
     document.getElementById('submitQModal').style.display='flex';
+    sqTopicCache=null; // refresh topics each time the modal opens
+    sqLoadTopics();    // pre-fetch in background so first keystroke is instant
   }
 }
 
@@ -3459,6 +3590,8 @@ async function submitQuestion(){
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(),3000);
   ['sqQuestion','sqAnswer','sqAliases','sqTopic','sqOptions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  sqTopicHide();
+  sqTopicCache=null; // force refresh next open so new topic appears
   applyTheme();
 }
 
