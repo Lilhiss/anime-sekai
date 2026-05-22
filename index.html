@@ -1773,37 +1773,9 @@ async function sbLoadLeaderboard(){
       // Nobody left — delete the lobby entirely
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
       await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'DELETE', headers });
-    } else {
-      // Others remain — promote the next player to host if needed
-      const hostRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&is_host=eq.true&limit=1`, { headers });
-      const hostData = await hostRes.json();
-      const hasHost = Array.isArray(hostData) && hostData.length > 0;
-      if(!hasHost){
-        // No host left — promote the first remaining player
-        const firstRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`, { headers });
-        const firstData = await firstRes.json();
-        const newHostId = Array.isArray(firstData) ? firstData[0]?.user_id : null;
-        if(newHostId){
-          // Fetch new host username for the broadcast
-          const nhRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=username&lobby_id=eq.${lobbyId}&user_id=eq.${newHostId}&limit=1`, { headers });
-          const nhData = await nhRes.json();
-          const newHostUsername = Array.isArray(nhData) ? nhData[0]?.username : null;
-          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({is_host: false}) });
-          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${newHostId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({is_host: true}) });
-          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({host_id: newHostId}) });
-          // Broadcast host_transferred so remaining players get the toast
-          if(newHostUsername){
-            try{
-              await fetch(`${SUPABASE_URL}/realtime/v1/api/broadcast`, {
-                method: 'POST',
-                headers: {...headers, 'Content-Type': 'application/json'},
-                body: JSON.stringify({messages:[{topic:`realtime:lobby:${code}`,event:'host_transferred',payload:{newHost:newHostUsername,reason:'left',originalHostName:'The host',remainingSeconds:600}}]})
-              });
-            }catch(e){}
-          }
-        }
-      }
     }
+    // If others remain, the postgres_changes listener on their clients will detect
+    // no host and self-elect + show the toast — no need to promote from here.
     // Clear stale session data so the refreshed page starts with a clean slate
     try{ sessionStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(e){}
     try{ sessionStorage.removeItem('guest_user_id'); }catch(e){}
