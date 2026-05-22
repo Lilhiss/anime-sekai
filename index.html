@@ -1743,22 +1743,55 @@ async function sbLoadLeaderboard(){
 })();
 
 // ── REFRESH LOBBY CLEANUP ─────────────────────────────────────
-// If the user refreshed while in a lobby, clean up their old player row.
-// We do this immediately on load before a new session is created.
+// If the user refreshed while in a lobby, treat it as a full leave:
+// delete their player row, and if nobody else remains, delete the lobby too.
 (async function(){
   try{
     const raw = sessionStorage.getItem('pending_lobby_cleanup');
     if(!raw) return;
     sessionStorage.removeItem('pending_lobby_cleanup');
-    const {userId, lobbyCode: code, isHost: wasHost} = JSON.parse(raw);
+    const {userId, lobbyCode: code} = JSON.parse(raw);
     if(!userId || !code) return;
 
-    // Fire-and-forget: delete the old player row
-    // If wasHost and no players remain after deletion, the DB trigger handles lobby cleanup
-    fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(userId)}&lobby_id=in.(select%20id%20from%20lobbies%20where%20code%3Deq.${encodeURIComponent(code)})`, {
-      method: 'DELETE',
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' }
-    }).catch(()=>{});
+    const headers = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' };
+
+    // 1. Find the lobby id
+    const lRes = await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(code)}&limit=1`, { headers });
+    const lData = await lRes.json();
+    const lobbyId = Array.isArray(lData) ? lData[0]?.id : null;
+    if(!lobbyId) return; // already gone
+
+    // 2. Delete our player row
+    await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(userId)}&lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
+
+    // 3. Check if anyone else is still in the lobby
+    const pRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&limit=1`, { headers });
+    const pData = await pRes.json();
+    const hasPlayers = Array.isArray(pData) && pData.length > 0;
+
+    if(!hasPlayers){
+      // Nobody left — delete the lobby entirely
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
+      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'DELETE', headers });
+    } else {
+      // Others remain — promote the next player to host if needed
+      const hostRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&is_host=eq.true&limit=1`, { headers });
+      const hostData = await hostRes.json();
+      const hasHost = Array.isArray(hostData) && hostData.length > 0;
+      if(!hasHost){
+        // No host left — promote the first remaining player
+        const firstRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`, { headers });
+        const firstData = await firstRes.json();
+        const newHostId = Array.isArray(firstData) ? firstData[0]?.user_id : null;
+        if(newHostId){
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({is_host: false}) });
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${newHostId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({is_host: true}) });
+          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'PATCH', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({host_id: newHostId}) });
+        }
+      }
+    }
+    // Clear the stale anon session so the refreshed page starts with a clean slate
+    try{ sessionStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(e){}
   }catch(e){}
 })();
 
@@ -4777,8 +4810,28 @@ window.addEventListener('pagehide', () => {
   }
 
   if (!isHost) {
-    // Non-host: just remove own row
-    syncXHR('DELETE', `/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(currentUserId)}&lobby_id=in.(select%20id%20from%20lobbies%20where%20code%3Deq.${encodeURIComponent(lobbyCode)})`, null);
+    // Non-host: remove own row, then delete lobby if now empty
+    const lobbyXhr2 = new XMLHttpRequest();
+    lobbyXhr2.open('GET', `${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`, false);
+    lobbyXhr2.setRequestHeader('apikey', SUPABASE_ANON);
+    lobbyXhr2.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
+    lobbyXhr2.send();
+    let lobbyId2 = null;
+    try { lobbyId2 = JSON.parse(lobbyXhr2.responseText)?.[0]?.id; } catch(e) {}
+    if (!lobbyId2) return;
+    syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId2}&user_id=eq.${encodeURIComponent(currentUserId)}`, null);
+    // Check if anyone remains
+    const checkXhr = new XMLHttpRequest();
+    checkXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId2}&limit=1`, false);
+    checkXhr.setRequestHeader('apikey', SUPABASE_ANON);
+    checkXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
+    checkXhr.send();
+    let remaining = [];
+    try { remaining = JSON.parse(checkXhr.responseText) || []; } catch(e) {}
+    if (!remaining.length) {
+      syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId2}`, null);
+      syncXHR('DELETE', `/rest/v1/lobbies?id=eq.${lobbyId2}`, null);
+    }
     return;
   }
 
