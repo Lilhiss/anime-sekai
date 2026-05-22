@@ -295,6 +295,39 @@ h1 .hi{color:var(--accent)}
 .badge-name{font-size:11px;font-weight:800;color:var(--text)}
 .badge-desc{font-size:10px;color:var(--muted);line-height:1.4}
 
+/* PROFILE PICTURE */
+.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-avatar-wrap{cursor:pointer;position:relative}
+.profile-avatar-edit-hint{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.profile-avatar-wrap:hover .profile-avatar-edit-hint{opacity:1}
+.profile-avatar-edit-hint i{font-size:22px;color:#fff}
+.user-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+/* PFP PICKER MODAL */
+.pfp-modal-inner{background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.pfp-modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
+.pfp-tabs{display:flex;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:3px;margin:14px 24px 0}
+.pfp-tab{flex:1;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 0;border-radius:7px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.pfp-tab.active{background:var(--accent);color:#fff}
+.pfp-body{flex:1;overflow-y:auto;padding:16px 24px 24px}
+.pfp-body::-webkit-scrollbar{width:4px}
+.pfp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.pfp-preset-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+@media(max-width:500px){.pfp-preset-grid{grid-template-columns:repeat(4,1fr)}}
+.pfp-preset-item{position:relative;cursor:pointer;border-radius:50%;aspect-ratio:1;border:3px solid transparent;transition:all .2s;overflow:hidden}
+.pfp-preset-item:hover{border-color:var(--accent);transform:scale(1.08)}
+.pfp-preset-item.selected{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.pfp-preset-item img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.pfp-preset-fallback{width:100%;height:100%;border-radius:50%;background:var(--accent-soft);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--accent);text-align:center;line-height:1.2;padding:4px}
+.pfp-preset-check{position:absolute;bottom:0;right:0;width:18px;height:18px;border-radius:50%;background:var(--accent);display:none;align-items:center;justify-content:center;font-size:10px;color:#fff;border:2px solid var(--bg2)}
+.pfp-preset-item.selected .pfp-preset-check{display:flex}
+.pfp-preset-label{font-size:9px;font-weight:700;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pfp-upload-zone{border:2px dashed var(--border2);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.pfp-upload-zone:hover,.pfp-upload-zone.dragover{border-color:var(--accent);background:var(--accent-soft)}
+.pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto 16px;overflow:hidden;border:3px solid var(--accent);display:none}
+.pfp-upload-preview img{width:100%;height:100%;object-fit:cover}
+.pfp-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+
 /* PLAY AGAIN CTA */
 .profile-cta{background:var(--accent-soft);border:1px solid var(--border2);border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .profile-cta-text{font-family:'Lilita One',cursive;font-size:17px;color:var(--text)}
@@ -646,7 +679,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-      <button class="ghost-btn" onclick="pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+      <button class="ghost-btn" onclick="isGuest||currentUser?goStep('profile'):(pendingDestination='profile',goStep('auth'))"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
       <button class="primary-btn" id="signinBtn" onclick="choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
     </div>
 
@@ -666,7 +699,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div id="navDrawerUsername" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--accent)"></div>
     </div>
     <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-    <button class="ghost-btn" onclick="closeNavDrawer();pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+    <button class="ghost-btn" onclick="closeNavDrawer();isGuest||currentUser?goStep('profile'):(pendingDestination='profile',goStep('auth'))"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
     <div class="nav-drawer-sep"></div>
     <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
     <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
@@ -1280,12 +1313,26 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="page" id="page-profile">
     <div class="profile-wrap">
 
+      <!-- GUEST BANNER -->
+      <div id="profileGuestBanner" class="slide-in d1" style="display:none;background:var(--accent-soft);border:1.5px solid var(--border2);border-radius:18px;padding:20px 22px;display:none;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="font-size:36px;flex-shrink:0">👤</div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text);margin-bottom:4px">You're playing as a guest</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.55">Your stats this session are shown below, but they won't be saved when you leave. Create a free account to track your progress, appear on the leaderboard, and keep your history forever.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;width:100%;max-width:200px">
+          <button class="action-btn primary" style="width:100%;justify-content:center;font-size:13px;padding:10px 18px" onclick="goStep('auth');showAuthMode('register')"><i class="ti ti-user-plus" style="font-size:14px"></i> Create Account</button>
+          <button class="action-btn secondary" style="width:100%;justify-content:center;font-size:13px;padding:9px 18px" onclick="goStep('auth');showAuthMode('signin')"><i class="ti ti-login" style="font-size:14px"></i> Sign In</button>
+        </div>
+      </div>
+
       <!-- HERO -->
       <div class="profile-hero slide-in d1">
         <div class="profile-hero-inner">
-          <div class="profile-avatar-wrap">
+          <div class="profile-avatar-wrap" onclick="openPfpPicker()" title="Change profile picture">
             <div class="profile-avatar" id="profileAvatar">S</div>
             <div class="profile-avatar-ring"></div>
+            <div class="profile-avatar-edit-hint"><i class="ti ti-camera"></i></div>
           </div>
           <div class="profile-info">
             <div class="profile-username" id="profileUsername">ShinobiMaster99</div>
@@ -1367,6 +1414,44 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeEditProfile()">Cancel</button>
         <button class="action-btn primary" onclick="saveEditProfile()"><i class="ti ti-check" style="font-size:15px"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PFP PICKER MODAL -->
+  <div id="pfpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div class="pfp-modal-inner">
+      <div class="pfp-modal-header">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Profile Picture</div>
+        <button onclick="closePfpPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="pfp-tabs">
+        <button class="pfp-tab active" id="pfpTabPreset" onclick="switchPfpTab('preset')"><i class="ti ti-layout-grid" style="font-size:13px"></i> Presets</button>
+        <button class="pfp-tab" id="pfpTabUpload" onclick="switchPfpTab('upload')"><i class="ti ti-upload" style="font-size:13px"></i> Upload</button>
+      </div>
+      <div class="pfp-body">
+        <div id="pfpPresetTab">
+          <div class="pfp-section-label" style="margin-bottom:12px">Choose a character</div>
+          <div class="pfp-preset-grid" id="pfpPresetGrid"></div>
+        </div>
+        <div id="pfpUploadTab" style="display:none">
+          <div class="pfp-section-label">Upload your own</div>
+          <div class="pfp-upload-preview" id="pfpUploadPreview"><img id="pfpUploadImg" src="" alt="Preview"></div>
+          <div class="pfp-upload-zone" id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" ondragover="pfpDragOver(event)" ondragleave="pfpDragLeave(event)" ondrop="pfpDrop(event)">
+            <i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+            <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
+            <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 2MB</div>
+          </div>
+          <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="pfpFileSelected(event)">
+          <div id="pfpUploadErr" style="margin-top:10px;display:none;font-size:12px;color:#f87171;font-weight:700;align-items:center;gap:5px"><i class="ti ti-alert-circle"></i> <span id="pfpUploadErrMsg"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px">
+          <button class="action-btn secondary" style="flex:1" onclick="closePfpPicker()">Cancel</button>
+          <button class="action-btn primary" style="flex:1" onclick="savePfp()"><i class="ti ti-check" style="font-size:15px"></i> Save Picture</button>
+        </div>
+        <button id="pfpRemoveBtn" onclick="removePfp()" style="display:none;width:100%;background:none;border:1px solid #f87171;color:#f87171;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:8px;border-radius:10px;cursor:pointer;transition:all .2s;display:none;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='#f8717115'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:13px"></i> Remove current photo</button>
       </div>
     </div>
   </div>
@@ -1908,6 +1993,14 @@ sb.auth.onAuthStateChange(async (event, session) => {
       totalCorrect  = parseInt(profile.total_correct)|| 0;
       totalAnswered = parseInt(profile.total_addressed)||0;
       allHistory = await sbLoadHistory(currentUserId);
+      // Restore avatar
+      if(profile.avatar_url){
+        if(profile.avatar_url.startsWith('preset:')){
+          currentPfp={type:'preset',value:profile.avatar_url.slice(7)};
+        } else {
+          currentPfp={type:'upload',value:profile.avatar_url};
+        }
+      }
       updateNav();
     }
   }
@@ -2007,7 +2100,7 @@ function updateNav(){
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="display:none"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
-        <div class="user-avatar">${currentUser[0].toUpperCase()}</div>${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
+        ${getNavAvatarHTML(currentUser[0].toUpperCase())}${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
     document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
@@ -2028,7 +2121,7 @@ function closeSignOutModal(){
 async function confirmSignOut(){
   closeSignOutModal();
   await sbSignOut().catch(()=>{});
-  currentUser=null;currentUserId=null;isGuest=false;
+  currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
@@ -2085,6 +2178,275 @@ async function saveEditProfile(){
   currentUser=newName;currentColor=newColor;
   updateNav();renderProfile();applyTheme();
   closeEditProfile();
+}
+
+// ── PROFILE PICTURE ───────────────────────────────────────────
+const PFP_PRESETS = [
+  // Shonen staples
+  {id:'naruto',    name:'Naruto',    series:'Naruto',          src:'img/pfp/naruto.jpg'},
+  {id:'goku',      name:'Goku',      series:'Dragon Ball Z',   src:'img/pfp/goku.jpg'},
+  {id:'luffy',     name:'Luffy',     series:'One Piece',       src:'img/pfp/luffy.jpg'},
+  {id:'ichigo',    name:'Ichigo',    series:'Bleach',          src:'img/pfp/ichigo.jpg'},
+  {id:'deku',      name:'Deku',      series:'My Hero Academia',src:'img/pfp/deku.jpg'},
+  {id:'levi',      name:'Levi',      series:'Attack on Titan', src:'img/pfp/levi.jpg'},
+  // Modern hits
+  {id:'tanjiro',   name:'Tanjiro',   series:'Demon Slayer',    src:'img/pfp/tanjiro.jpg'},
+  {id:'gojo',      name:'Gojo',      series:'Jujutsu Kaisen',  src:'img/pfp/gojo.jpg'},
+  {id:'power',     name:'Power',     series:'Chainsaw Man',    src:'img/pfp/power.jpg'},
+  {id:'eren',      name:'Eren',      series:'Attack on Titan', src:'img/pfp/eren.jpg'},
+  {id:'anya',      name:'Anya',      series:'Spy x Family',    src:'img/pfp/anya.jpg'},
+  // Female leads
+  {id:'mikasa',    name:'Mikasa',    series:'Attack on Titan', src:'img/pfp/mikasa.jpg'},
+  {id:'nezuko',    name:'Nezuko',    series:'Demon Slayer',    src:'img/pfp/nezuko.jpg'},
+  {id:'robin',     name:'Robin',     series:'One Piece',       src:'img/pfp/robin.jpg'},
+  {id:'zerotwo',   name:'Zero Two',  series:'DitFranXX',       src:'img/pfp/zerotwo.jpg'},
+  // Classics
+  {id:'spike',     name:'Spike',     series:'Cowboy Bebop',    src:'img/pfp/spike.jpg'},
+  {id:'edward',    name:'Edward',    series:'Fullmetal Alch.', src:'img/pfp/edward.jpg'},
+  {id:'sailormoon',name:'Sailor Moon',series:'Sailor Moon',   src:'img/pfp/sailormoon.jpg'},
+  {id:'asuka',     name:'Asuka',     series:'Evangelion',      src:'img/pfp/asuka.jpg'},
+  // Isekai / other
+  {id:'rimuru',    name:'Rimuru',    series:'Tensura',         src:'img/pfp/rimuru.jpg'},
+  {id:'asuna',     name:'Asuna',     series:'Sword Art Online',src:'img/pfp/asuna.jpg'},
+  {id:'subaru',    name:'Subaru',    series:'Re:Zero',         src:'img/pfp/subaru.jpg'},
+  // Cult picks
+  {id:'l',         name:'L',         series:'Death Note',      src:'img/pfp/l.jpg'},
+  {id:'killua',    name:'Killua',    series:'Hunter x Hunter', src:'img/pfp/killua.jpg'},
+];
+
+let currentPfp = null;        // {type:'preset'|'upload', value: presetId | dataURL}
+let pfpPendingSelection = null; // selection in the modal before saving
+let pfpUploadDataUrl = null;   // data URL for uploaded image
+
+function openPfpPicker(){
+  if(isGuest){return;} // guests can't save; avatar click does nothing for them
+  pfpPendingSelection = currentPfp ? {...currentPfp} : null;
+  pfpUploadDataUrl = null;
+  pfpUploadBlob = null;
+  switchPfpTab('preset');
+  buildPfpPresetGrid();
+  // Reset upload tab fully
+  const zone=document.getElementById('pfpUploadZone');
+  if(zone){zone.style.display='block';zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+    <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
+    <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;}
+  document.getElementById('pfpUploadPreview').style.display='none';
+  document.getElementById('pfpUploadErr').style.display='none';
+  document.getElementById('pfpFileInput').value='';
+  document.getElementById('pfpModal').style.display='flex';
+  // Only show remove button if user already has a pfp
+  const removeBtn=document.getElementById('pfpRemoveBtn');
+  if(removeBtn)removeBtn.style.display=currentPfp?'flex':'none';
+  applyTheme();
+}
+function closePfpPicker(){
+  document.getElementById('pfpModal').style.display='none';
+}
+async function removePfp(){
+  const removeBtn=document.getElementById('pfpRemoveBtn');
+  if(removeBtn){removeBtn.disabled=true;removeBtn.innerHTML='<i class="ti ti-loader" style="font-size:13px"></i> Removing…';}
+  try{
+    // Delete from Supabase Storage if it was an uploaded file
+    if(currentPfp?.type==='upload'&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+      await sb.storage.from('avatars').remove([`${currentUserId}.jpg`]).catch(()=>{});
+    }
+    // Clear avatar_url in profiles table
+    if(currentUserId&&!isGuest&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+      await sb.from('profiles').update({avatar_url:null}).eq('id',currentUserId).catch(()=>{});
+    }
+    currentPfp=null;
+    closePfpPicker();
+    renderProfile();
+    updateNav();
+  }finally{
+    if(removeBtn){removeBtn.disabled=false;removeBtn.innerHTML='<i class="ti ti-trash" style="font-size:13px"></i> Remove current photo';}
+  }
+}
+function closePfpPicker(){
+  document.getElementById('pfpModal').style.display='none';
+}
+function switchPfpTab(tab){
+  document.getElementById('pfpPresetTab').style.display = tab==='preset'?'block':'none';
+  document.getElementById('pfpUploadTab').style.display  = tab==='upload'?'block':'none';
+  document.getElementById('pfpTabPreset').classList.toggle('active', tab==='preset');
+  document.getElementById('pfpTabUpload').classList.toggle('active', tab==='upload');
+}
+function buildPfpPresetGrid(){
+  const grid = document.getElementById('pfpPresetGrid');
+  grid.innerHTML = '';
+  PFP_PRESETS.forEach(p => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px';
+    const isSelected = pfpPendingSelection?.type==='preset' && pfpPendingSelection?.value===p.id;
+    const item = document.createElement('div');
+    item.className = 'pfp-preset-item' + (isSelected?' selected':'');
+    item.id = 'pfpItem_'+p.id;
+    item.title = p.name + ' · ' + p.series;
+    item.onclick = () => selectPreset(p.id);
+    // Try image first, fall back to text initials
+    item.innerHTML = `<img src="${p.src}" alt="${p.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="pfp-preset-fallback" style="display:none">${p.name.split(' ').map(w=>w[0]).join('')}</div>
+      <div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
+    const label = document.createElement('div');
+    label.className = 'pfp-preset-label';
+    label.textContent = p.name;
+    label.style.cssText = 'font-size:9px;font-weight:700;color:var(--muted);text-align:center;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    wrap.appendChild(item);
+    wrap.appendChild(label);
+    grid.appendChild(wrap);
+  });
+}
+function selectPreset(id){
+  pfpPendingSelection = {type:'preset', value:id};
+  document.querySelectorAll('.pfp-preset-item').forEach(el=>{
+    el.classList.toggle('selected', el.id==='pfpItem_'+id);
+  });
+}
+function pfpDragOver(e){e.preventDefault();document.getElementById('pfpUploadZone').classList.add('dragover')}
+function pfpDragLeave(){document.getElementById('pfpUploadZone').classList.remove('dragover')}
+function pfpDrop(e){
+  e.preventDefault();pfpDragLeave();
+  const file=e.dataTransfer?.files?.[0];
+  if(file)processUploadFile(file);
+}
+function pfpFileSelected(e){
+  const file=e.target.files?.[0];
+  if(file)processUploadFile(file);
+}
+// Resize an image file to a square canvas (max 256px) and return a Blob (~JPEG, q=0.82)
+function resizeImageToBlob(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const SIZE=256;
+      // Crop to square from centre, then scale to SIZE×SIZE
+      const s=Math.min(img.width,img.height);
+      const ox=(img.width-s)/2, oy=(img.height-s)/2;
+      const canvas=document.createElement('canvas');
+      canvas.width=SIZE;canvas.height=SIZE;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,ox,oy,s,s,0,0,SIZE,SIZE);
+      canvas.toBlob(blob=>{
+        if(blob)resolve(blob);
+        else reject(new Error('Canvas toBlob failed'));
+      },'image/jpeg',0.82);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Image load failed'));};
+    img.src=url;
+  });
+}
+
+function processUploadFile(file){
+  const errEl=document.getElementById('pfpUploadErr');
+  const errMsg=document.getElementById('pfpUploadErrMsg');
+  errEl.style.display='none';
+  if(!file.type.startsWith('image/')){errMsg.textContent='Please choose an image file.';errEl.style.display='flex';return;}
+  // 10MB pre-resize cap — plenty generous, we'll shrink it down anyway
+  if(file.size>10*1024*1024){errMsg.textContent='Image must be under 10MB.';errEl.style.display='flex';return;}
+  // Show a spinner in the zone while we resize
+  const zone=document.getElementById('pfpUploadZone');
+  zone.innerHTML='<div class="spinner" style="margin:0 auto"></div>';
+  resizeImageToBlob(file).then(blob=>{
+    // Store the resized blob for upload, show preview from it
+    pfpUploadBlob=blob;
+    const previewUrl=URL.createObjectURL(blob);
+    pfpUploadDataUrl=previewUrl; // used for preview only
+    pfpPendingSelection={type:'upload',value:'pending'}; // real URL set after upload
+    document.getElementById('pfpUploadImg').src=previewUrl;
+    document.getElementById('pfpUploadPreview').style.display='block';
+    zone.style.display='none';
+    // Show approx size to user
+    const kb=Math.round(blob.size/1024);
+    const hint=document.createElement('div');
+    hint.style.cssText='font-size:11px;color:var(--muted);text-align:center;margin-top:8px';
+    hint.textContent=`Resized to 256×256 · ${kb}KB — ready to save`;
+    document.getElementById('pfpUploadTab').appendChild(hint);
+  }).catch(()=>{
+    // Restore zone on error
+    zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+      <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
+      <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;
+    errMsg.textContent='Could not process image. Please try another file.';
+    errEl.style.display='flex';
+  });
+}
+
+async function savePfp(){
+  if(!pfpPendingSelection){closePfpPicker();return;}
+
+  // ── PRESET: just save the key, no storage needed ──────────────
+  if(pfpPendingSelection.type==='preset'){
+    currentPfp=pfpPendingSelection;
+    if(currentUserId&&!isGuest){
+      sb.from('profiles').update({avatar_url:'preset:'+currentPfp.value}).eq('id',currentUserId).catch(()=>{});
+    }
+    closePfpPicker();renderProfile();updateNav();
+    return;
+  }
+
+  // ── UPLOAD: resize blob → Supabase Storage → save public URL ──
+  if(!pfpUploadBlob){closePfpPicker();return;}
+
+  // Show saving state
+  const saveBtn=document.querySelector('#pfpModal .action-btn.primary');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+
+  try{
+    if(!currentUserId||isGuest||SUPABASE_URL.includes('YOUR_PROJECT')){
+      // Fallback for dev / guest: keep the object URL in memory for the session
+      currentPfp={type:'upload',value:pfpUploadDataUrl};
+    } else {
+      // Upload to Supabase Storage bucket called "avatars"
+      // File is named by user id so re-uploads overwrite the old one (no accumulation)
+      const filePath=`${currentUserId}.jpg`;
+      const{error:upErr}=await sb.storage.from('avatars').upload(filePath,pfpUploadBlob,{
+        contentType:'image/jpeg',
+        upsert:true   // overwrites previous upload for this user
+      });
+      if(upErr)throw upErr;
+
+      // Get the permanent public URL
+      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
+
+      // Cache-bust so the browser picks up the new image immediately
+      const bustedUrl=publicUrl+'?t='+Date.now();
+
+      currentPfp={type:'upload',value:bustedUrl};
+      // Persist URL (not the blob) in profiles table
+      await sb.from('profiles').update({avatar_url:bustedUrl}).eq('id',currentUserId);
+    }
+    closePfpPicker();renderProfile();updateNav();
+  }catch(e){
+    const errEl=document.getElementById('pfpUploadErr');
+    const errMsg=document.getElementById('pfpUploadErrMsg');
+    errMsg.textContent='Upload failed — please try again.';
+    errEl.style.display='flex';
+    console.error('PFP upload error:',e);
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save Picture';}
+  }
+}
+
+let pfpUploadBlob=null; // holds the resized Blob before upload
+function getAvatarHTML(size, initial){
+  if(!currentPfp){
+    return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px">${initial}</div>`;
+  }
+  const src = currentPfp.type==='preset'
+    ? PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src || ''
+    : currentPfp.value;
+  return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;padding:0;background:var(--bg3)"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
+}
+function getNavAvatarHTML(initial){
+  if(!currentPfp){
+    return `<div class="user-avatar">${initial}</div>`;
+  }
+  const src = currentPfp.type==='preset'
+    ? PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src || ''
+    : currentPfp.value;
+  return `<div class="user-avatar" style="padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
 }
 
 function goStep(name){
@@ -2214,6 +2576,10 @@ async function submitSignin(){
     totalCorrect  =parseInt(profile?.total_correct) ||0;
     totalAnswered =parseInt(profile?.total_answered)||0;
     allHistory=await sbLoadHistory(user.id);
+    if(profile?.avatar_url){
+      if(profile.avatar_url.startsWith('preset:')){currentPfp={type:'preset',value:profile.avatar_url.slice(7)};}
+      else{currentPfp={type:'upload',value:profile.avatar_url};}
+    }
     updateNav();await checkAdminRole();afterAuth();
   }catch(e){
     showErr('signinErr','signinErrMsg',e.message||'Incorrect username or password.');
@@ -3098,7 +3464,45 @@ async function submitQuestion(){
 
 function renderProfile(){
   const user=currentUser||'Guest';
-  document.getElementById('profileAvatar').textContent=user[0].toUpperCase();
+  // Guest banner
+  const banner=document.getElementById('profileGuestBanner');
+  if(banner){banner.style.display=isGuest?'flex':'none';}
+  // Edit button — guests can't edit (no persistent profile)
+  const editBtn=document.querySelector('#page-profile .profile-edit-btn');
+  if(editBtn){
+    if(isGuest){
+      editBtn.style.opacity='.35';editBtn.style.pointerEvents='none';editBtn.title='Create an account to edit your profile';
+    } else {
+      editBtn.style.opacity='';editBtn.style.pointerEvents='';editBtn.title='';
+    }
+  }
+  // Avatar — replace the whole element so image vs initial is always correct
+  const avatarWrap = document.querySelector('#page-profile .profile-avatar-wrap');
+  if(avatarWrap){
+    const initial = user[0].toUpperCase();
+    // Replace inner avatar div with image or initial
+    const oldAvatar = document.getElementById('profileAvatar');
+    if(oldAvatar){
+      if(currentPfp){
+        const src = currentPfp.type==='preset'
+          ? (PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src||'')
+          : currentPfp.value;
+        oldAvatar.innerHTML=`<img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
+        oldAvatar.style.padding='0';oldAvatar.style.background='var(--bg3)';
+        oldAvatar.style.fontSize='';
+      } else {
+        oldAvatar.innerHTML='';
+        oldAvatar.textContent=initial;
+        oldAvatar.style.padding='';oldAvatar.style.background='';
+        oldAvatar.style.fontSize='';
+      }
+    }
+    // Guests: no pfp click
+    avatarWrap.style.cursor=isGuest?'default':'pointer';
+    avatarWrap.onclick=isGuest?null:openPfpPicker;
+    const hint=avatarWrap.querySelector('.profile-avatar-edit-hint');
+    if(hint)hint.style.display=isGuest?'none':'';
+  }
   document.getElementById('profileUsername').textContent=user;
   // compute rank from bestScore
   const rank=getRank(bestScore);
