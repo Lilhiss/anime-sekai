@@ -3302,7 +3302,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
-    if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||false;}
+    if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
     renderMPScoreboard();
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
@@ -4119,25 +4119,24 @@ async function leaveLobbyRoom(){
     }
     if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
   } else if(lid){
-    // Host: check if anyone else is in the lobby
+    // Host: remove self first, then check who's left
+    try{await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});}catch(e){}
     let others=[];
     try{
-      const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lid}&user_id=neq.${currentUserId}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lid}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
       others=await pRes.json();
     }catch(e){}
-    const next=Array.isArray(others)?others[0]:null;
+    const next=Array.isArray(others)&&others.length?others[0]:null;
     if(!next){
       // Nobody else — delete lobby entirely
       await rtDeleteLobby();
     } else {
-      // Transfer host to next player, remove self
+      // Transfer host to next player
       try{
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${next.user_id}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
         await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:next.user_id,host_username:next.username})});
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
       }catch(e){}
-      // Broadcast so remaining players' postgres_changes election picks it up cleanly
       if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}});
     }
   }
@@ -4234,10 +4233,12 @@ function renderMPScoreboard(){
     const isActive=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
     const row=document.createElement('div');row.className='mp-score-row'+(isMe?' me':'');
     if(isActive)row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
+    const ansIcon=p.roundAnswered?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
+    const roundMeta=p.roundAnswered&&!isHP?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const rightCol=isHP
       ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
-      :`<div class="mp-score-pts">${p.score}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated?'text-decoration:line-through;opacity:.4':''}">${p.name}${isMe?' (you)':''}</div>${rightCol}`;
+      :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
@@ -4282,7 +4283,7 @@ function mpShowQuestion(qData){
 }
 
 function mpAnswerMC(idx,el,qData){
-  if(answered)return;answered=true;clearInterval(timerInterval);
+  if(answered)return;answered=true;
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
   const mpElapsed=(Date.now()-questionStartTime)/1000;
@@ -4315,7 +4316,7 @@ function mpCheckTypeAnswer(){
     return;
   }
   // Correct (or Hot Potato where a single wrong attempt costs a life) — lock and finalise
-  answered=true;clearInterval(timerInterval);
+  answered=true;
   input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
   document.getElementById('mpTypeSubmitBtn').disabled=true;
   const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
@@ -4357,6 +4358,25 @@ function mpTimeOut(){
     if(last){last.userAns='(timed out)';last.correct=false;}
     mpShowFeedback(false,correctAns,'(timed out)',"Time's up!");
   }
+  // Auto-advance starts only once the question timer has expired for everyone
+  mpStartAutoNext(()=>{
+    if(!isHost)return;
+    if(isHP){
+      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+      const remaining=hpActivePlayers();
+      if(remaining.length<=1){
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        else mpEndGame();return;
+      }
+    } else {
+      if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+    }
+    qIndex++;
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
+    else{mpLoadQuestion();}
+  });
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName){
@@ -4386,29 +4406,10 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   applyTheme();
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
-  if(me){me.score=score;me.lives=lives;}
+  if(me){me.score=score;me.lives=lives;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
   if(me&&rtChannel){
-    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false}});
+    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed}});
   }
-  // Auto-advance — only host drives the flow
-  mpStartAutoNext(()=>{
-    if(!isHost)return;
-    if(isHP){
-      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
-      const remaining=hpActivePlayers();
-      if(remaining.length<=1){
-        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
-        else mpEndGame();return;
-      }
-    } else {
-      if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-      if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-    }
-    qIndex++;
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
-    else{mpLoadQuestion();}
-  });
 }
 
 function mpNextQuestion(){
@@ -4428,6 +4429,7 @@ function mpNextQuestion(){
 
 async function mpLoadQuestion(){
   answered=false;
+  lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
   document.getElementById('mpFeedbackBar').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   const mpRdLQ=document.getElementById('mpReportDrop');if(mpRdLQ)mpRdLQ.classList.remove('open');
@@ -4614,9 +4616,12 @@ window.addEventListener('pagehide', () => {
   try { lobbyId = JSON.parse(lobbyXhr.responseText)?.[0]?.id; } catch(e) {}
   if (!lobbyId) return;
 
-  // Find next non-host player to promote
+  // Remove departing host first so the remaining-players check is accurate
+  syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${encodeURIComponent(currentUserId)}`, null);
+
+  // Now find who's left
   const playersXhr = new XMLHttpRequest();
-  playersXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&is_host=eq.false&limit=1`, false);
+  playersXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`, false);
   playersXhr.setRequestHeader('apikey', SUPABASE_ANON);
   playersXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
   playersXhr.send();
@@ -4625,8 +4630,8 @@ window.addEventListener('pagehide', () => {
 
   if (!nextPlayer) {
     // No other players — delete the lobby
-    syncXHR('DELETE', `/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`, null);
     syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, null);
+    syncXHR('DELETE', `/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`, null);
     return;
   }
 
@@ -4636,8 +4641,6 @@ window.addEventListener('pagehide', () => {
   // Update lobbies table host_id/host_username and keep expires_at accurate for the new host
   const newExpiry = new Date(Date.now() + lobbyTimerSecondsLeft * 1000).toISOString();
   syncXHR('PATCH', `/rest/v1/lobbies?id=eq.${lobbyId}`, {host_id: nextPlayer.user_id, host_username: nextPlayer.username, expires_at: newExpiry});
-  // Remove departing host from lobby_players
-  syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${encodeURIComponent(currentUserId)}`, null);
   // Broadcast host_transferred via a POST to Supabase Realtime REST (best-effort)
   try {
     const bcXhr = new XMLHttpRequest();
