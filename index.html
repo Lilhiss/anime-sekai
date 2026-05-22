@@ -1407,6 +1407,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="profile-cta-btn" id="profileCtaBtn" onclick="goStep('format')"><i class="ti ti-player-play" style="font-size:16px"></i> Play Now</button>
       </div>
 
+      <!-- DANGER ZONE -->
+      <div class="slide-in d5" id="profileDangerZone" style="display:none">
+        <div style="background:var(--card-bg);border:1px solid #f8717155;border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Lilita One',cursive;font-size:15px;color:#f87171">Danger Zone</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">Permanently delete your account and all your data.</div>
+          </div>
+          <button onclick="openDeleteAccount()" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;background:none;border:1.5px solid #f87171;color:#f87171;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap" onmouseover="this.style.background='#f8717120'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:14px"></i> Delete Account</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1486,6 +1497,29 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeSignOutModal()">Cancel</button>
         <button class="action-btn primary" onclick="confirmSignOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT MODAL -->
+  <div id="deleteAccountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid #f8717155;border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:#f87171;display:flex;align-items:center;gap:8px"><i class="ti ti-alert-triangle" style="font-size:20px"></i> Delete Account</div>
+        <button onclick="closeDeleteAccount()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="background:#f8717112;border:1px solid #f8717155;border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+        <i class="ti ti-alert-circle" style="color:#f87171;font-size:18px;flex-shrink:0;margin-top:1px"></i>
+        <div style="font-size:13px;color:var(--text);line-height:1.6">This is <strong>permanent and irreversible.</strong> Your account, stats, game history, and profile picture will be deleted and cannot be recovered.</div>
+      </div>
+      <div>
+        <label class="form-label" style="margin-bottom:8px;display:block">Enter your password to confirm</label>
+        <input class="form-input" id="deleteAccountPass" type="password" placeholder="Your password" oninput="onDeletePassInput()">
+        <div class="form-err" id="deleteAccountErr" style="margin-top:8px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="deleteAccountErrMsg"></span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeDeleteAccount()">Cancel</button>
+        <button id="deleteAccountBtn" onclick="deleteAccount()" disabled style="font-family:'Lilita One',cursive;font-size:15px;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;border:none;background:#f87171;color:#fff;opacity:.4;transition:opacity .2s"><i class="ti ti-trash" style="font-size:16px"></i> Delete</button>
       </div>
     </div>
   </div>
@@ -2159,6 +2193,79 @@ async function confirmSignOut(){
   updateNav();goStep('landing');
 }
 
+// ── DELETE ACCOUNT ────────────────────────────────────────────
+function openDeleteAccount(){
+  document.getElementById('deleteAccountPass').value='';
+  document.getElementById('deleteAccountErr').style.display='none';
+  document.getElementById('deleteAccountBtn').disabled=true;
+  document.getElementById('deleteAccountBtn').style.opacity='.4';
+  document.getElementById('deleteAccountModal').style.display='flex';
+  applyTheme();
+}
+function closeDeleteAccount(){
+  document.getElementById('deleteAccountModal').style.display='none';
+}
+function onDeletePassInput(){
+  const hasVal=document.getElementById('deleteAccountPass').value.length>0;
+  const btn=document.getElementById('deleteAccountBtn');
+  btn.disabled=!hasVal;
+  btn.style.opacity=hasVal?'1':'.4';
+  btn.style.cursor=hasVal?'pointer':'not-allowed';
+  document.getElementById('deleteAccountErr').style.display='none';
+}
+async function deleteAccount(){
+  const password=document.getElementById('deleteAccountPass').value;
+  if(!password)return;
+  const btn=document.getElementById('deleteAccountBtn');
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader-2" style="font-size:16px;animation:spin .8s linear infinite"></i> Deleting…';
+
+  try{
+    // Re-authenticate to verify the password before deleting
+    const{data:{session},error:authErr}=await sb.auth.getSession();
+    if(authErr||!session)throw new Error('Session expired — please sign in again.');
+
+    // Call the Edge Function which handles the actual account deletion server-side
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/delete-account`,{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${session.access_token}`,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({password})
+    });
+    const result=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(result.error||'Deletion failed. Please try again.');
+
+    // Clean up local state exactly like sign-out
+    await sbSignOut().catch(()=>{});
+    currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;
+    totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
+    allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
+    prefetchedQuestion=null;currentQData=null;
+    clearInterval(timerInterval);
+    ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.value='';
+    });
+    closeDeleteAccount();
+    updateNav();
+    goStep('landing');
+    // Show a goodbye toast
+    const toast=document.createElement('div');
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:Nunito,sans-serif;font-size:14px;font-weight:700;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+    toast.textContent='Your account has been deleted. Goodbye! 👋';
+    document.body.appendChild(toast);
+    setTimeout(()=>toast.remove(),4000);
+  }catch(e){
+    const errMsg=document.getElementById('deleteAccountErrMsg');
+    errMsg.textContent=e.message||'Something went wrong. Please try again.';
+    document.getElementById('deleteAccountErr').style.display='flex';
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-trash" style="font-size:16px"></i> Delete';
+    btn.style.opacity='1';
+  }
+}
+
 // ── EDIT PROFILE ──────────────────────────────────────────────
 function openEditProfile(){
   if(!currentUser)return;
@@ -2422,17 +2529,32 @@ async function savePfp(){
       // Fallback for dev / guest: keep the object URL in memory for the session
       currentPfp={type:'upload',value:pfpUploadDataUrl};
     } else {
-      // Upload to Supabase Storage bucket called "avatars"
-      // File is stored as {userId}/avatar.jpg so the RLS policy (foldername = uid) works
+      // Get the user's live auth token — required for RLS on storage uploads
+      const{data:{session}}=await sb.auth.getSession();
+      const authToken=session?.access_token||SUPABASE_ANON;
+
+      // Upload via raw fetch so the Authorization header is always the user JWT,
+      // not the anon key that the JS client may fall back to if the session
+      // hasn't fully hydrated yet at the time of the call.
       const filePath=`${currentUserId}/avatar.jpg`;
-      const{error:upErr}=await sb.storage.from('avatars').upload(filePath,pfpUploadBlob,{
-        contentType:'image/jpeg',
-        upsert:true   // overwrites previous upload for this user
+      const storageUrl=`${SUPABASE_URL}/storage/v1/object/avatars/${filePath}`;
+      const upRes=await fetch(storageUrl,{
+        method:'POST',
+        headers:{
+          'apikey':SUPABASE_ANON,
+          'Authorization':`Bearer ${authToken}`,
+          'Content-Type':'image/jpeg',
+          'x-upsert':'true'
+        },
+        body:pfpUploadBlob
       });
-      if(upErr)throw upErr;
+      if(!upRes.ok){
+        const msg=await upRes.text().catch(()=>upRes.statusText);
+        throw new Error(msg);
+      }
 
       // Get the permanent public URL
-      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(`${currentUserId}/avatar.jpg`);
+      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
 
       // Cache-bust in memory so the browser picks up the new image immediately,
       // but persist the clean URL (without timestamp) to the DB so it loads correctly on refresh
@@ -3690,6 +3812,9 @@ function renderProfile(){
     card.innerHTML=`<div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div>`;
     bg.appendChild(card);
   });
+  // Danger zone — only for real signed-in users
+  const dangerZone=document.getElementById('profileDangerZone');
+  if(dangerZone)dangerZone.style.display=(!isGuest&&currentUser)?'block':'none';
   applyTheme();
 }
 
