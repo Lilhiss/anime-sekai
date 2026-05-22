@@ -3718,8 +3718,11 @@ goStep=function(name){
   if(name==='lobby-room')renderLobbyRoom();
   if(name==='multiplayer'){
     loadPublicLobbies();
+    subscribeToLobbyList();
     const input=document.getElementById('lobbyNameInput');
     if(input)input.placeholder=currentUser?`${currentUser}'s Lobby`:"My Lobby";
+  } else {
+    unsubscribeFromLobbyList();
   }
 };
 
@@ -4171,6 +4174,26 @@ async function rtDeleteLobby(){
     });
   }catch(e){console.warn('rtDeleteLobby failed:',e);}
 }
+// ── LOBBY LIST LIVE UPDATES ───────────────────────────────────
+let lobbyListChannel = null;
+function subscribeToLobbyList() {
+  if (SUPABASE_URL.includes('YOUR_PROJECT')) return;
+  if (lobbyListChannel) return; // already subscribed
+  lobbyListChannel = sb.channel('public-lobby-list')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'lobbies'
+    }, () => {
+      const onMultiplayerPage = document.getElementById('page-multiplayer').classList.contains('active');
+      if (onMultiplayerPage) loadPublicLobbies();
+    })
+    .subscribe();
+}
+function unsubscribeFromLobbyList() {
+  if (lobbyListChannel) { lobbyListChannel.unsubscribe(); lobbyListChannel = null; }
+}
+
 async function leaveLobbyRoom(){
   clearLobbyTimer();
   intentionalLeave=true; // set early so pagehide handler skips if tab closes during async work
