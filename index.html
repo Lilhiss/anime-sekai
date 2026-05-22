@@ -1750,10 +1750,13 @@ async function sbLoadLeaderboard(){
     const raw = sessionStorage.getItem('pending_lobby_cleanup');
     if(!raw) return;
     sessionStorage.removeItem('pending_lobby_cleanup');
-    const {userId, lobbyCode: code} = JSON.parse(raw);
+    const {userId, lobbyCode: code, authToken} = JSON.parse(raw);
     if(!userId || !code) return;
 
-    const headers = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' };
+    // Use the stored user auth token so RLS policies (auth.uid() = user_id) are satisfied.
+    // Fall back to the anon key if none was saved (older cleanup payloads).
+    const token = authToken || SUPABASE_ANON;
+    const headers = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}`, 'Prefer': 'return=minimal' };
 
     // 1. Find the lobby id
     const lRes = await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(code)}&limit=1`, { headers });
@@ -4800,12 +4803,27 @@ window.addEventListener('pagehide', () => {
   if (!inLobby) return;
   if (intentionalLeave) return; // leaveLobbyRoom already handled this cleanly
 
+  // Read the auth token synchronously from sessionStorage (anon sessions are stored
+  // there by anonSafeStorage) so the cleanup IIFE can authorize its DELETE correctly.
+  // Without this, the IIFE falls back to the bare anon key which fails RLS checks.
+  let authToken = SUPABASE_ANON;
+  try {
+    const sbKey = `sb-${SUPABASE_URL.replace('https://','').split('.')[0]}-auth-token`;
+    const raw = sessionStorage.getItem(sbKey) || localStorage.getItem(sbKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const token = parsed?.access_token || parsed?.session?.access_token;
+      if (token) authToken = token;
+    }
+  } catch(e) {}
+
   // Persist cleanup payload for the on-load IIFE to action on next render
   try {
     sessionStorage.setItem('pending_lobby_cleanup', JSON.stringify({
       userId: effectiveUserId,
       lobbyCode,
-      isHost
+      isHost,
+      authToken
     }));
   } catch(e) {}
 });
