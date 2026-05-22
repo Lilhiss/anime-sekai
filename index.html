@@ -1787,7 +1787,7 @@ async function sbLoadLeaderboard(){
           },
           body: JSON.stringify({
             messages: [{
-              topic: `realtime:lobby:${code}`,
+              topic: `lobby:${code}`,
               event:  'player_left',
               payload: { name: myUsername, wasHost }
             }]
@@ -3506,11 +3506,11 @@ function rtSubscribe(lobbyId){
     // The refresh-cleanup path sends this broadcast so all clients stay in sync.
     lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
     renderLobbyRoom();
-    // If the player who left was the host, run self-election so the remaining
-    // players promote a new host without waiting for a postgres_changes event,
-    // which may not fire reliably when the leave comes from the refresh-cleanup path.
+    // If the player who left was the host, run self-election immediately so remaining
+    // players are promoted without depending on postgres_changes, which fires unreliably
+    // when the leave originates from the refresh-cleanup IIFE.
     if(!payload.wasHost)return;
-    if(isHost)return; // we're already host (shouldn't happen here, but guard anyway)
+    if(isHost)return;
     if(!lobbyPlayers.length)return;
     try{
       const token=await rtGetAuthToken();
