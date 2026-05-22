@@ -549,6 +549,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-btn.approve:hover{opacity:.85}.admin-btn.reject:hover{opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
+/* Lobby expiry countdown banner */
+.lobby-expiry-banner{display:none;align-items:center;gap:12px;background:rgba(251,146,60,.08);border:1.5px solid rgba(251,146,60,.45);border-radius:14px;padding:13px 16px;backdrop-filter:blur(10px);transition:opacity .3s}
+.lobby-expiry-banner.visible{display:flex}
+.lobby-expiry-icon{font-size:20px;flex-shrink:0}
+@keyframes pulseIcon{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+.lobby-expiry-icon{animation:pulseIcon 1.2s ease-in-out infinite}
+.lobby-expiry-text{flex:1;min-width:0}
+.lobby-expiry-label{font-size:12px;font-weight:800;color:#fb923c;letter-spacing:.05em;text-transform:uppercase}
+.lobby-expiry-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.lobby-expiry-timer{font-family:'Lilita One',cursive;font-size:28px;color:#fb923c;flex-shrink:0;letter-spacing:.02em;min-width:52px;text-align:right;line-height:1}
+.lobby-expiry-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
 
 /* MULTIPLAYER HUB */
 .mp-hub-layout{width:100%;max-width:900px;display:grid;grid-template-columns:280px auto 1fr;gap:0;align-items:start}
@@ -1025,9 +1036,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);letter-spacing:.15em;margin-bottom:14px" id="lobbyCodeBig">—</div>
         <button class="ghost-btn" style="margin:0 auto" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
       </div>
-      <div class="slide-in">
-        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
-        <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
+      <div class="lobby-expiry-banner slide-in" id="lobbyExpiryBanner">
+        <div class="lobby-expiry-icon">⏳</div>
+        <div class="lobby-expiry-text">
+          <div class="lobby-expiry-label">Lobby closing soon</div>
+          <div class="lobby-expiry-sub">Start the game before the lobby expires</div>
+        </div>
+        <div class="lobby-expiry-timer" id="lobbyExpiryTimerDisplay">1:00</div>
       </div>
       <div class="slide-in" id="lobbySettingsBox" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;transition:all .3s">
         <div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px" id="lobbySettingsContent">
@@ -1039,6 +1054,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </div>
         </div>
         <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+      </div>
+      <div class="slide-in">
+        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
+        <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
       </div>
       <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <button class="action-btn secondary" onclick="leaveLobbyRoom()"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
@@ -3364,6 +3383,16 @@ function rtSubscribe(lobbyId){
     // before the 60-second countdown finishes. Only one non-host wins the
     // self-election (same pattern used in postgres_changes above).
     const remaining=typeof payload?.remainingSeconds==='number'?payload.remainingSeconds:60;
+    // Non-hosts: show & drive the expiry banner with a local countdown
+    if(!isHost){
+      showLobbyExpiryBanner(remaining);
+      let nonHostSecs=remaining;
+      const nonHostInterval=setInterval(()=>{
+        nonHostSecs--;
+        if(nonHostSecs>0){showLobbyExpiryBanner(nonHostSecs);}
+        else{hideLobbyExpiryBanner();clearInterval(nonHostInterval);}
+      },1000);
+    }
     setTimeout(async()=>{
       // If we became host in the meantime, the timer is already running — skip.
       if(isHost)return;
@@ -3883,6 +3912,10 @@ async function startLobbyTimer(remainingSeconds){
       }catch(e){}
     }
   }
+  // If we're resuming mid-warning (e.g. page refresh with <60s left), show banner immediately
+  if(lobbyTimerSecondsLeft<=60&&lobbyTimerSecondsLeft>0){
+    showLobbyExpiryBanner(lobbyTimerSecondsLeft);
+  }
   lobbyTimerInterval=setInterval(async()=>{
     lobbyTimerSecondsLeft--;
     // Broadcast 1-minute warning to all players
@@ -3893,7 +3926,12 @@ async function startLobbyTimer(remainingSeconds){
         rtChannel.send({type:'broadcast',event:'lobby_expiry_warning',payload:{remainingSeconds:60}});
       }
     }
+    // Show/update the in-page countdown banner once we're in the warning window
+    if(lobbyTimerSecondsLeft<=60&&lobbyTimerSecondsLeft>0){
+      showLobbyExpiryBanner(lobbyTimerSecondsLeft);
+    }
     if(lobbyTimerSecondsLeft<=0){
+      hideLobbyExpiryBanner();
       clearLobbyTimer();
       if(isHost){
         // Notify non-host clients before tearing down so they show the expired modal
@@ -3913,6 +3951,23 @@ async function startLobbyTimer(remainingSeconds){
 function clearLobbyTimer(){
   if(lobbyTimerInterval){clearInterval(lobbyTimerInterval);lobbyTimerInterval=null;}
   lobbyWarningShown=false;
+  hideLobbyExpiryBanner();
+}
+
+function showLobbyExpiryBanner(secsLeft){
+  const banner=document.getElementById('lobbyExpiryBanner');
+  const display=document.getElementById('lobbyExpiryTimerDisplay');
+  if(!banner||!display)return;
+  const m=Math.floor(secsLeft/60);
+  const s=secsLeft%60;
+  display.textContent=m>0?`${m}:${String(s).padStart(2,'0')}`:String(s);
+  display.classList.toggle('urgent',secsLeft<=15);
+  banner.classList.add('visible');
+}
+
+function hideLobbyExpiryBanner(){
+  const banner=document.getElementById('lobbyExpiryBanner');
+  if(banner)banner.classList.remove('visible');
 }
 
 function showLobbyExpiredModal(){
