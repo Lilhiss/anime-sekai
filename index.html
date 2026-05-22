@@ -1150,6 +1150,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </div>
           <div class="fb-auto-next" id="mpAutoNext"></div>
         </div>
+        <div id="mpReportWrap" style="display:none;text-align:right;margin-top:4px">
+          <button class="report-link" onclick="toggleMpReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
+          <div class="report-drop" id="mpReportDrop">
+            <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px">What's the issue?</div>
+            <div class="report-opts">
+              <label class="report-opt"><input type="radio" name="mprpt" value="wrong"> Wrong answer marked correct</label>
+              <label class="report-opt"><input type="radio" name="mprpt" value="unclear"> Question is unclear or ambiguous</label>
+              <label class="report-opt"><input type="radio" name="mprpt" value="outdated"> Information is outdated</label>
+              <label class="report-opt"><input type="radio" name="mprpt" value="duplicate"> Duplicate question</label>
+              <label class="report-opt"><input type="radio" name="mprpt" value="other"> Other</label>
+            </div>
+            <textarea class="report-textarea" id="mpReportDetail" rows="2" placeholder="Optional: describe the issue..."></textarea>
+            <button class="report-submit" id="mpReportSubmitBtn" onclick="submitMpReport()">Submit report</button>
+          </div>
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px">
         <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)">
@@ -1181,6 +1196,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="action-row slide-in d3">
         <button class="action-btn primary" onclick="goStep('lobby-room')"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
         <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
+      </div>
+      <div class="slide-in d4">
+        <div class="recap-header"><div class="recap-title">Answer Recap</div><button class="recap-toggle" onclick="toggleMpRecap()" id="mpRecapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
+        <div class="recap-list" id="mpRecapList"></div>
       </div>
     </div>
   </div>
@@ -3034,6 +3053,7 @@ async function submitReport(){
 let rtChannel=null;
 let isHost=false;
 let mpAutoNextInterval=null;
+let mpAutoNextPaused=false;
 
 async function rtGetOrCreateAnonSession(){
   if(currentUserId)return currentUserId;
@@ -3438,14 +3458,89 @@ function mpShowCountdown(onDone){
 
 function mpStartAutoNext(onDone){
   clearInterval(mpAutoNextInterval);
+  mpAutoNextPaused=false;
   let t=5;
   const el=document.getElementById('mpAutoNext');
   if(el)el.textContent=`Next in ${t}s`;
   mpAutoNextInterval=setInterval(()=>{
+    if(mpAutoNextPaused)return;
     t--;
     if(el)el.textContent=t>0?`Next in ${t}s`:'';
     if(t<=0){clearInterval(mpAutoNextInterval);onDone();}
   },1000);
+}
+
+function toggleMpReport(){
+  const drop=document.getElementById('mpReportDrop');
+  drop.classList.toggle('open');
+}
+
+async function submitMpReport(){
+  const btn=document.getElementById('mpReportSubmitBtn');
+  btn.disabled=true;btn.textContent='Submitting…';
+  const reasonEl=document.querySelector('input[name="mprpt"]:checked');
+  const reason=reasonEl?reasonEl.value:'other';
+  const detail=document.getElementById('mpReportDetail')?.value?.trim()||'';
+  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
+      const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
+      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
+    });
+  }
+  btn.textContent='Reported — thank you!';
+  setTimeout(()=>{
+    document.getElementById('mpReportDrop').classList.remove('open');
+    btn.textContent='Submit report';btn.disabled=false;
+  },2000);
+}
+
+let mpRecapOpen=true;
+function toggleMpRecap(){
+  mpRecapOpen=!mpRecapOpen;
+  document.getElementById('mpRecapList').style.display=mpRecapOpen?'flex':'none';
+  document.getElementById('mpRecapToggleBtn').innerHTML=mpRecapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
+}
+
+function renderMpRecap(){
+  const list=document.getElementById('mpRecapList');
+  if(!list)return;
+  list.innerHTML='';
+  mpRecapOpen=true;
+  const toggleBtn=document.getElementById('mpRecapToggleBtn');
+  if(toggleBtn)toggleBtn.innerHTML='<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide';
+  quizHistory.forEach((a,i)=>{
+    const item=document.createElement('div');
+    item.className='recap-item '+(a.correct?'correct':'wrong');
+    const reportId='mpRecapReport_'+i;
+    const dropId='mpRecapDrop_'+i;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div><div style="margin-top:6px"><button class="report-link" style="font-size:11px" onclick="toggleMpRecapReport(${i})"><i class="ti ti-alert-circle" style="font-size:11px"></i> Report</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="mprr${i}" value="${v}"> ${v.charAt(0).toUpperCase()+v.slice(1).replace('wrong','Wrong answer marked correct').replace('unclear','Unclear or ambiguous').replace('outdated','Information is outdated').replace('duplicate','Duplicate question').replace('other','Other')}</label>`).join('')}</div><textarea class="report-textarea" id="mpRRDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="mpRRBtn_${i}" onclick="submitMpRecapReport(${i},'${a.id||''}')">Submit report</button></div></div></div><span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    list.appendChild(item);
+  });
+}
+
+function toggleMpRecapReport(i){
+  const drop=document.getElementById('mpRecapDrop_'+i);
+  if(drop)drop.classList.toggle('open');
+}
+
+async function submitMpRecapReport(i,qid){
+  const btn=document.getElementById('mpRRBtn_'+i);
+  btn.disabled=true;btn.textContent='Submitting…';
+  const reasonEl=document.querySelector(`input[name="mprr${i}"]:checked`);
+  const reason=reasonEl?reasonEl.value:'other';
+  const detail=document.getElementById('mpRRDetail_'+i)?.value?.trim()||'';
+  const id=qid||quizHistory[i]?.id;
+  if(id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    await sb.rpc('increment_report_count',{question_id:id}).catch(async()=>{
+      const {data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
+      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
+    });
+  }
+  btn.textContent='Reported — thank you!';
+  setTimeout(()=>{
+    document.getElementById('mpRecapDrop_'+i)?.classList.remove('open');
+    btn.textContent='Submit report';btn.disabled=false;
+  },2000);
 }
 
 // ── LEADERBOARD ──────────────────────────────────────────────
@@ -4150,6 +4245,8 @@ function renderMPScoreboard(){
 function mpShowQuestion(qData){
   document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpFeedbackBar').style.display='none';
+  const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
+  const mpRdSQ=document.getElementById('mpReportDrop');if(mpRdSQ)mpRdSQ.classList.remove('open');
   document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';
@@ -4174,7 +4271,7 @@ function mpShowQuestion(qData){
       d.onclick=()=>mpAnswerMC(i,d,qData);grid.appendChild(d);
     });
   }
-  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null});
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null});
   clearInterval(timerInterval);timeLeft=raceTimeLimit;questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
   timerInterval=setInterval(()=>{
@@ -4264,6 +4361,12 @@ function mpTimeOut(){
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   const fb=document.getElementById('mpFeedbackBar');fb.style.display='flex';
+  // Show report button, reset any previously open dropdown
+  const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
+  const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
+  const rb=document.getElementById('mpReportSubmitBtn');if(rb){rb.textContent='Submit report';rb.disabled=false;}
+  document.querySelectorAll('input[name="mprpt"]').forEach(r=>r.checked=false);
+  const rdt=document.getElementById('mpReportDetail');if(rdt)rdt.value='';
   fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
   document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:22px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:22px"></i>';
   const title=override||(playerName?(playerName+(correct?' got it!':' missed!')):correct?'Correct!':'Wrong!');
@@ -4326,6 +4429,8 @@ function mpNextQuestion(){
 async function mpLoadQuestion(){
   answered=false;
   document.getElementById('mpFeedbackBar').style.display='none';
+  const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
+  const mpRdLQ=document.getElementById('mpReportDrop');if(mpRdLQ)mpRdLQ.classList.remove('open');
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
@@ -4367,6 +4472,7 @@ function mpEndGame(){
     standings.appendChild(row);
   });
   if(iWon)launchConfetti();
+  renderMpRecap();
   _origGoStep('mp-results');applyTheme();
 }
 
