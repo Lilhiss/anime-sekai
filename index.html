@@ -1776,9 +1776,6 @@ async function sbLoadLeaderboard(){
     }
     // If others remain, the postgres_changes listener on their clients will detect
     // no host and self-elect + show the toast — no need to promote from here.
-    // Clear stale session data so the refreshed page starts with a clean slate
-    try{ sessionStorage.removeItem('sb-ispagvwuxgbzzycdxdfx-auth-token'); }catch(e){}
-    try{ sessionStorage.removeItem('guest_user_id'); }catch(e){}
   }catch(e){}
 })();
 
@@ -4791,8 +4788,11 @@ async function adminDelete(id){
 applyTheme();
 
 // ── LOBBY PAGE-HIDE HANDLER ──────────────────────────────────
-// Fires on tab close AND refresh. Handles both host and non-host cases.
-// XHR with async=false is used because fetch/sendBeacon won't complete during unload.
+// Fires on tab close AND page refresh.
+// Browsers block synchronous XHR during pagehide (requests are silently dropped),
+// so we only write a pending_lobby_cleanup key to sessionStorage here.
+// The on-load IIFE (above) reads that key on the very next page render and
+// performs the actual Supabase DELETE calls with normal async fetch — reliably.
 window.addEventListener('pagehide', () => {
   const effectiveUserId = currentUserId || (() => { try{ return sessionStorage.getItem('guest_user_id'); }catch(e){ return null; } })();
   if (!effectiveUserId || SUPABASE_URL.includes('YOUR_PROJECT') || !lobbyCode) return;
@@ -4800,97 +4800,13 @@ window.addEventListener('pagehide', () => {
   if (!inLobby) return;
   if (intentionalLeave) return; // leaveLobbyRoom already handled this cleanly
 
-  // Save lobby state so a refresh can clean up the old player row on reload
+  // Persist cleanup payload for the on-load IIFE to action on next render
   try {
     sessionStorage.setItem('pending_lobby_cleanup', JSON.stringify({
       userId: effectiveUserId,
       lobbyCode,
       isHost
     }));
-  } catch(e) {}
-
-  function syncXHR(method, path, body) {
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open(method, SUPABASE_URL + path, false);
-      xhr.setRequestHeader('apikey', SUPABASE_ANON);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-      xhr.setRequestHeader('Prefer', 'return=representation');
-      if (body) xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(body ? JSON.stringify(body) : null);
-      return xhr.status >= 200 && xhr.status < 300 ? xhr.responseText : null;
-    } catch(e) { return null; }
-  }
-
-  if (!isHost) {
-    // Non-host: remove own row, then delete lobby if now empty
-    const lobbyXhr2 = new XMLHttpRequest();
-    lobbyXhr2.open('GET', `${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`, false);
-    lobbyXhr2.setRequestHeader('apikey', SUPABASE_ANON);
-    lobbyXhr2.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-    lobbyXhr2.send();
-    let lobbyId2 = null;
-    try { lobbyId2 = JSON.parse(lobbyXhr2.responseText)?.[0]?.id; } catch(e) {}
-    if (!lobbyId2) return;
-    syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId2}&user_id=eq.${encodeURIComponent(effectiveUserId)}`, null);
-    // Check if anyone remains
-    const checkXhr = new XMLHttpRequest();
-    checkXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId2}&limit=1`, false);
-    checkXhr.setRequestHeader('apikey', SUPABASE_ANON);
-    checkXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-    checkXhr.send();
-    let remaining = [];
-    try { remaining = JSON.parse(checkXhr.responseText) || []; } catch(e) {}
-    if (!remaining.length) {
-      syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId2}`, null);
-      syncXHR('DELETE', `/rest/v1/lobbies?id=eq.${lobbyId2}`, null);
-    }
-    return;
-  }
-
-  // Host: find the lobby id
-  const lobbyXhr = new XMLHttpRequest();
-  lobbyXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`, false);
-  lobbyXhr.setRequestHeader('apikey', SUPABASE_ANON);
-  lobbyXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-  lobbyXhr.send();
-  let lobbyId = null;
-  try { lobbyId = JSON.parse(lobbyXhr.responseText)?.[0]?.id; } catch(e) {}
-  if (!lobbyId) return;
-
-  // Remove departing host first so the remaining-players check is accurate
-  syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${encodeURIComponent(effectiveUserId)}`, null);
-
-  // Now find who's left
-  const playersXhr = new XMLHttpRequest();
-  playersXhr.open('GET', `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`, false);
-  playersXhr.setRequestHeader('apikey', SUPABASE_ANON);
-  playersXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-  playersXhr.send();
-  let nextPlayer = null;
-  try { nextPlayer = JSON.parse(playersXhr.responseText)?.[0]; } catch(e) {}
-
-  if (!nextPlayer) {
-    // No other players — delete the lobby
-    syncXHR('DELETE', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, null);
-    syncXHR('DELETE', `/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`, null);
-    return;
-  }
-
-  // Promote next player: clear all is_host flags, set new host
-  syncXHR('PATCH', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, {is_host: false});
-  syncXHR('PATCH', `/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${nextPlayer.user_id}`, {is_host: true});
-  // Update lobbies table host_id/host_username and keep expires_at accurate for the new host
-  const newExpiry = new Date(Date.now() + lobbyTimerSecondsLeft * 1000).toISOString();
-  syncXHR('PATCH', `/rest/v1/lobbies?id=eq.${lobbyId}`, {host_id: nextPlayer.user_id, host_username: nextPlayer.username, expires_at: newExpiry});
-  // Broadcast host_transferred via a POST to Supabase Realtime REST (best-effort)
-  try {
-    const bcXhr = new XMLHttpRequest();
-    bcXhr.open('POST', `${SUPABASE_URL}/realtime/v1/api/broadcast`, false);
-    bcXhr.setRequestHeader('apikey', SUPABASE_ANON);
-    bcXhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON);
-    bcXhr.setRequestHeader('Content-Type', 'application/json');
-    bcXhr.send(JSON.stringify({messages:[{topic:`realtime:lobby:${lobbyCode}`,event:'host_transferred',payload:{newHost:nextPlayer.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}}]}));
   } catch(e) {}
 });
 
