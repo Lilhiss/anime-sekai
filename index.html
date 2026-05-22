@@ -4096,8 +4096,8 @@ async function rtDeleteLobby(){
 }
 async function leaveLobbyRoom(){
   clearLobbyTimer();
+  intentionalLeave=true; // set early so pagehide handler skips if tab closes during async work
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
-    intentionalLeave=true;
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
     isHost=false;
     goStep('multiplayer');
@@ -4131,7 +4131,7 @@ async function leaveLobbyRoom(){
       // Nobody else — delete lobby entirely
       await rtDeleteLobby();
     } else {
-      // Transfer host to next player
+      // Transfer host to next player — await all writes before navigating
       try{
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${next.user_id}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
@@ -4140,7 +4140,7 @@ async function leaveLobbyRoom(){
       if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}});
     }
   }
-  intentionalLeave=true;
+  // All DB writes done — now safe to navigate
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
   goStep('multiplayer');
@@ -4586,6 +4586,7 @@ window.addEventListener('pagehide', () => {
   if (!currentUserId || SUPABASE_URL.includes('YOUR_PROJECT') || !lobbyCode) return;
   const inLobby = document.getElementById('page-lobby-room').classList.contains('active');
   if (!inLobby) return;
+  if (intentionalLeave) return; // leaveLobbyRoom already handled this cleanly
 
   function syncXHR(method, path, body) {
     try {
