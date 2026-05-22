@@ -2564,7 +2564,7 @@ async function savePfp(){
       const bustedUrl=publicUrl+'?t='+Date.now();
       currentPfp={type:'upload',value:bustedUrl};
       // Use raw fetch with explicit auth token — same reason as the storage upload above
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
+      const patchRes=await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
         method:'PATCH',
         headers:{
           'apikey':SUPABASE_ANON,
@@ -2574,6 +2574,12 @@ async function savePfp(){
         },
         body:JSON.stringify({avatar_url:publicUrl})
       });
+      console.log('PATCH status:', patchRes.status);
+      console.log('PATCH userId:', currentUserId);
+      console.log('PATCH publicUrl:', publicUrl);
+      console.log('PATCH authToken (first 20):', authToken.slice(0,20));
+      const patchText=await patchRes.text();
+      console.log('PATCH response:', patchText);
     }
     closePfpPicker();renderProfile();updateNav();
   }catch(e){
