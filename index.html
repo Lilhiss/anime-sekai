@@ -4059,7 +4059,7 @@ function setLobbyFormat(fmt,el){
   lobbyFormat=fmt;selectedFormat=fmt;
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  patchLobby({format:fmt});
+  // No DB write here — only write on final confirm so lobby list stays clean
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>openLobbyTopicPage(),300);
 }
@@ -4167,12 +4167,9 @@ function setLobbyMode(mode,el){
   lobbyMode=mode;selectedMode=mode;
   document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  // Don't show time suffix yet — picker hasn't confirmed a value.
-  // renderLobbyRoom() on return will show the final correct label.
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
-  patchLobby({mode});
+  // No DB write here — only write on final confirm so lobby list stays clean
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
-  // Show time limit picker for race and survival, then return to lobby room
   if(mode==='race'||mode==='survival'){
     setTimeout(()=>{
       pendingLobbyAfterTimeLimit=true;
