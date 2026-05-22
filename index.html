@@ -2096,7 +2096,7 @@ async function submitGuest(){
       currentUserId=data.user.id;
       // Trigger already created the profile row — just update the username
       await Promise.race([
-        sb.from('profiles').update({username:val,is_guest:true}).eq('id',currentUserId),
+        sb.from('profiles').upsert({id:currentUserId,username:val,is_guest:true},{onConflict:'id'}),
         new Promise(r=>setTimeout(r,3000))
       ]).catch(()=>{});
     }
@@ -3179,7 +3179,7 @@ async function rtCreateLobby(){
   }
   const token=await rtGetAuthToken();
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`,{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
@@ -3223,7 +3223,7 @@ async function rtJoinLobby(code){
   const token=await rtGetAuthToken();
   // Upsert profile for anon/guest users
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`,{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
