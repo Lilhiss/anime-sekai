@@ -359,7 +359,7 @@ h1 .hi{color:var(--accent)}
 .diff-card-check{font-size:14px;color:var(--accent);opacity:0;flex-shrink:0;transition:opacity .2s}
 .diff-card.selected .diff-card-check{opacity:1}
 /* TOPIC PAGE LAYOUT */
-.topic-page-grid{width:100%;max-width:820px;display:flex;flex-direction:column;gap:14px;align-items:stretch}
+.topic-page-grid{width:100%;max-width:820px;display:flex;flex-direction:column;gap:20px;align-items:stretch}
 .topic-chips-row{display:flex;flex-direction:row;gap:14px;align-items:stretch}
 .topic-left{display:flex;flex-direction:column;gap:10px}
 .topic-right{display:flex;flex-direction:column;gap:10px;align-items:stretch}
@@ -418,7 +418,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .nav-drawer-close{align-self:flex-end;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;margin-bottom:8px;display:flex;align-items:center}
 .nav-drawer .ghost-btn,.nav-drawer .primary-btn{width:100%;justify-content:flex-start;padding:11px 14px;font-size:14px;border-radius:10px}
 .nav-drawer-sep{height:1px;background:var(--border);margin:4px 0}
-.nav-overlay{display:none;position:fixed;inset:0;z-index:499}
+.nav-overlay{display:none;position:fixed;inset:0;z-index:499;background:rgba(0,0,0,.45);backdrop-filter:blur(2px)}
 .nav-overlay.open{display:block}
 
 /* ── LEADERBOARD ENHANCEMENTS ── */
@@ -553,6 +553,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .privacy-toggle-row.is-private{border-color:var(--accent)}
 .privacy-toggle-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--text)}
 .privacy-toggle-label span{color:var(--muted);font-weight:600}
+.privacy-pill-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
+.privacy-pill{background:var(--bg3);border:1.5px solid var(--border2);border-radius:9px;padding:7px 0;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s;width:100%}
+.privacy-pill:hover{border-color:var(--accent);color:var(--text)}
+.privacy-pill.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .lobby-visibility-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;border:1px solid var(--border2);background:var(--bg2);color:var(--muted);transition:all .2s;white-space:nowrap}
 .lobby-visibility-badge.public{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
 .lobby-visibility-badge.private{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
@@ -651,35 +655,36 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <i class="ti ti-menu-2"></i>
     </button>
 
-    <!-- Mobile nav drawer -->
-    <div class="nav-overlay" id="navOverlay" onclick="closeNavDrawer()"></div>
-    <div class="nav-drawer" id="navDrawer">
-      <button class="nav-drawer-close" onclick="closeNavDrawer()"><i class="ti ti-x"></i></button>
-      <div id="navDrawerUser" style="display:none;padding:10px 12px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;margin-bottom:4px">
-        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Signed in as</div>
-        <div id="navDrawerUsername" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--accent)"></div>
-      </div>
-      <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-      <button class="ghost-btn" onclick="closeNavDrawer();pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
-      <div class="nav-drawer-sep"></div>
-      <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
-      <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
-      <div class="nav-drawer-sep"></div>
-      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
-      <div class="toggle-row" style="padding:0 2px 10px">
-        <span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span>
-        <button class="tog" id="modeToggleDrawer" onclick="toggleMode()"></button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 2px">
-        <button onclick="setColor('midnight','#a78bfa','Midnight',null);closeNavDrawer()" style="background:#a78bfa;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Midnight"></button>
-        <button onclick="setColor('blossom','#f472b6','Blossom',null);closeNavDrawer()" style="background:#f472b6;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Blossom"></button>
-        <button onclick="setColor('abyss','#38bdf8','Abyss',null);closeNavDrawer()" style="background:#38bdf8;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Abyss"></button>
-        <button onclick="setColor('inferno','#fb923c','Inferno',null);closeNavDrawer()" style="background:#fb923c;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Inferno"></button>
-        <button onclick="setColor('jade','#4ade80','Jade',null);closeNavDrawer()" style="background:#4ade80;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Jade"></button>
-        <button onclick="setColor('arcane','#e879f9','Arcane',null);closeNavDrawer()" style="background:#e879f9;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Arcane"></button>
-      </div>
-    </div>
   </nav>
+
+  <!-- Mobile nav drawer (outside nav so it can overlay the full page) -->
+  <div class="nav-overlay" id="navOverlay" onclick="closeNavDrawer()"></div>
+  <div class="nav-drawer" id="navDrawer">
+    <button class="nav-drawer-close" onclick="closeNavDrawer()"><i class="ti ti-x"></i></button>
+    <div id="navDrawerUser" style="display:none;padding:10px 12px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;margin-bottom:4px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Signed in as</div>
+      <div id="navDrawerUsername" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--accent)"></div>
+    </div>
+    <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
+    <button class="ghost-btn" onclick="closeNavDrawer();pendingDestination='profile';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+    <div class="nav-drawer-sep"></div>
+    <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
+    <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
+    <div class="nav-drawer-sep"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
+    <div class="toggle-row" style="padding:0 2px 10px">
+      <span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span>
+      <button class="tog" id="modeToggleDrawer" onclick="toggleMode()"></button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 2px">
+      <button onclick="setColor('midnight','#a78bfa','Midnight',null);closeNavDrawer()" style="background:#a78bfa;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Midnight"></button>
+      <button onclick="setColor('blossom','#f472b6','Blossom',null);closeNavDrawer()" style="background:#f472b6;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Blossom"></button>
+      <button onclick="setColor('abyss','#38bdf8','Abyss',null);closeNavDrawer()" style="background:#38bdf8;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Abyss"></button>
+      <button onclick="setColor('inferno','#fb923c','Inferno',null);closeNavDrawer()" style="background:#fb923c;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Inferno"></button>
+      <button onclick="setColor('jade','#4ade80','Jade',null);closeNavDrawer()" style="background:#4ade80;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Jade"></button>
+      <button onclick="setColor('arcane','#e879f9','Arcane',null);closeNavDrawer()" style="background:#e879f9;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Arcane"></button>
+    </div>
+  </div>
 
   <!-- LANDING -->
   <div class="page active" id="page-landing">
@@ -718,11 +723,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
         <div class="entry-card-title">Create Lobby</div>
         <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
-        <div style="width:100%;display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
-          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" autocomplete="off" style="font-size:13px;flex:1;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();createLobby()}">
-          <div class="privacy-toggle-row" id="privacyToggleRow" style="flex-shrink:0;margin:0;padding:6px 10px" title="Toggle lobby visibility" onclick="event.stopPropagation();toggleLobbyPrivacy()">
-            <div class="privacy-toggle-label" style="font-size:11px"><i class="ti ti-lock" style="font-size:13px;color:var(--accent)"></i> <span id="privacyToggleDesc">Public</span></div>
-            <button class="tog" id="privacyToggle" style="pointer-events:none" tabindex="-1"></button>
+        <div style="width:100%;display:flex;flex-direction:column;gap:8px" onclick="event.stopPropagation()">
+          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" autocomplete="off" style="font-size:13px;width:100%" onkeydown="if(event.key==='Enter'){event.preventDefault();createLobby()}">
+          <div class="privacy-pill-row" id="privacyPillRow">
+            <button class="privacy-pill active" id="pillPublic" onclick="event.stopPropagation();setPillPrivacy(false)">
+              <i class="ti ti-world" style="font-size:13px"></i> Public
+            </button>
+            <button class="privacy-pill" id="pillPrivate" onclick="event.stopPropagation();setPillPrivacy(true)">
+              <i class="ti ti-lock" style="font-size:13px"></i> Private
+            </button>
           </div>
         </div>
       </div>
@@ -739,7 +748,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="display:flex;flex-direction:column;gap:6px">
           <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
           <div class="lobby-code-bar">
-            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr')" onkeydown="if(event.key==='Enter')joinLobby()">
+            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr');const jb=document.querySelector('.lobby-code-btn');if(jb){jb.disabled=false;jb.style.opacity='';jb.style.cursor=''}" onkeydown="if(event.key==='Enter')joinLobby()">
             <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join</button>
           </div>
           <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
@@ -865,8 +874,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="topic-page-grid slide-in">
       <div class="topic-chips-row">
         <!-- General Anime chip -->
-        <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()" style="flex:1;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:180px">
-          <span style="font-size:42px">🌐</span>
+        <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()" style="flex:1;padding:28px 24px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;min-height:220px">
+          <span style="font-size:52px">🌐</span>
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
             <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text);letter-spacing:.3px">General Anime</div>
             <div style="font-size:13px;color:var(--muted);line-height:1.6">Questions from across the entire anime universe</div>
@@ -874,19 +883,19 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <i class="ti ti-check" id="generalCheck" style="font-size:20px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
         </div>
         <!-- Search card with tabs -->
-        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:180px">
+        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:220px">
           <div style="display:flex;border-bottom:1px solid var(--border2)">
-            <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')" style="flex:1;border-radius:0;padding:10px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
-            <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')" style="flex:1;border-radius:0;padding:10px 0">📚 Genre</button>
+            <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')" style="flex:1;border-radius:0;padding:13px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
+            <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')" style="flex:1;border-radius:0;padding:13px 0">📚 Genre</button>
           </div>
-          <div style="padding:10px 12px;border-bottom:1px solid var(--border2)">
-            <div class="topic-search-input-wrap" style="padding:7px 11px">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border2)">
+            <div class="topic-search-input-wrap" style="padding:9px 12px">
               <i class="ti ti-search"></i>
               <input class="topic-search-input" id="topicSearchInput" type="text" placeholder="Search..." oninput="filterTopics()" autocomplete="off">
               <button id="topicSearchClear" onclick="clearTopicSearch()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0;display:none;align-items:center"><i class="ti ti-x"></i></button>
             </div>
           </div>
-          <div class="topic-results" id="topicResultsList" style="padding:6px 8px;max-height:200px"></div>
+          <div class="topic-results" id="topicResultsList" style="padding:8px 10px;max-height:240px"></div>
         </div>
       </div>
       <!-- Selected tags -->
@@ -1044,9 +1053,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="slide-in" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:24px;backdrop-filter:blur(10px);text-align:center">
         <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Share this code</div>
         <div style="font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);letter-spacing:.15em;margin-bottom:14px" id="lobbyCodeBig">—</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
-          <button class="ghost-btn" style="margin:0 auto" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
-          <span class="lobby-visibility-badge" id="lobbyVisibilityBadge"><i class="ti ti-world" style="font-size:11px"></i> Public</span>
+        <div style="position:relative;display:flex;align-items:center;justify-content:center">
+          <button class="ghost-btn" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
+          <span class="lobby-visibility-badge" id="lobbyVisibilityBadge" style="position:absolute;right:0"><i class="ti ti-world" style="font-size:11px"></i> Public</span>
         </div>
       </div>
       <div class="lobby-expiry-banner slide-in" id="lobbyExpiryBanner">
@@ -1066,7 +1075,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <span style="font-size:11px" id="lobbySettingsHint">Change format &amp; mode before starting</span>
           </div>
         </div>
-        <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="ghost-btn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
+          <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
+        </div>
       </div>
       <div class="slide-in">
         <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
@@ -1101,21 +1113,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div class="topic-page-grid slide-in">
       <div class="topic-chips-row">
-        <div class="topic-general-opt" id="lobbyTopicGeneralOpt" onclick="toggleLobbyGeneral()" style="flex:1;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:180px">
-          <span style="font-size:42px">🌐</span>
+        <div class="topic-general-opt" id="lobbyTopicGeneralOpt" onclick="toggleLobbyGeneral()" style="flex:1;padding:28px 24px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;min-height:220px">
+          <span style="font-size:52px">🌐</span>
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
             <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text)">General Anime</div>
             <div style="font-size:13px;color:var(--muted);line-height:1.6">Questions from across the entire anime universe</div>
           </div>
           <i class="ti ti-check" id="lobbyGeneralCheck" style="font-size:20px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
         </div>
-        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:180px">
+        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:220px">
           <div style="display:flex;border-bottom:1px solid var(--border2)">
             <button class="topic-tab active" id="lobbyTabAnime" onclick="switchLobbyTopicTab('anime')" style="flex:1;border-radius:0;padding:10px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
             <button class="topic-tab" id="lobbyTabGenre" onclick="switchLobbyTopicTab('genre')" style="flex:1;border-radius:0;padding:10px 0">📚 Genre</button>
           </div>
-          <div style="padding:10px 12px;border-bottom:1px solid var(--border2)">
-            <div class="topic-search-input-wrap" style="padding:7px 11px">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border2)">
+            <div class="topic-search-input-wrap" style="padding:9px 12px">
               <i class="ti ti-search"></i>
               <input class="topic-search-input" id="lobbyTopicSearchInput" type="text" placeholder="Search..." oninput="filterLobbyTopics()" autocomplete="off">
             </div>
@@ -1611,6 +1623,47 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- HOW TO PLAY MODAL -->
+  <div id="howToPlayModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">How to Play</div>
+        <button onclick="document.getElementById('howToPlayModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <!-- Format section -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Format</div>
+        <div style="display:flex;align-items:flex-start;gap:14px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px">
+          <div id="htpFormatIcon" style="width:42px;height:42px;border-radius:11px;background:var(--bg2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0"></div>
+          <div>
+            <div id="htpFormatName" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text);margin-bottom:4px"></div>
+            <div id="htpFormatDesc" style="font-size:13px;color:var(--muted);line-height:1.6"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Mode section -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Mode &amp; Scoring</div>
+        <div style="display:flex;align-items:flex-start;gap:14px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px">
+          <div id="htpModeIcon" style="width:42px;height:42px;border-radius:11px;background:var(--bg2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0"></div>
+          <div>
+            <div id="htpModeName" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text);margin-bottom:4px"></div>
+            <div id="htpModeDesc" style="font-size:13px;color:var(--muted);line-height:1.6"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Topic section -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Topic</div>
+        <div style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:10px">
+          <i class="ti ti-books" style="font-size:20px;color:var(--accent);flex-shrink:0"></i>
+          <div id="htpTopic" style="font-size:13px;color:var(--muted);line-height:1.6"></div>
+        </div>
+      </div>
+      <button class="action-btn primary" onclick="document.getElementById('howToPlayModal').style.display='none'">Got it!</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2092,12 +2145,20 @@ function showAuthMode(mode){
     document.getElementById('regPass').value='';
     document.getElementById('regEmail').value='';
     clearErr('regErr');
+    ['regUser','regPass','regEmail'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){el.onkeydown=e=>{if(e.key==='Enter')submitRegister();}}
+    });
   } else if(mode==='guest'){
     document.getElementById('guestName').value='';
     clearErr('guestErr');
+    const gn=document.getElementById('guestName');
+    if(gn){gn.onkeydown=e=>{if(e.key==='Enter')submitGuest();}}
   } else if(mode==='forgot'){
     document.getElementById('forgotUser').value='';
     clearErr('forgotErr');
+    const fu=document.getElementById('forgotUser');
+    if(fu){fu.onkeydown=e=>{if(e.key==='Enter')submitForgotPassword();}}
   }
 }
 function afterAuth(){
@@ -3861,14 +3922,8 @@ goStep=function(name){
     subscribeToLobbyList();
     const input=document.getElementById('lobbyNameInput');
     if(input)input.placeholder=currentUser?`${currentUser}'s Lobby`:"My Lobby";
-    // Reset privacy toggle to default (public)
-    lobbyIsPrivate=false;
-    const privBtn=document.getElementById('privacyToggle');
-    const privRow=document.getElementById('privacyToggleRow');
-    const privDesc=document.getElementById('privacyToggleDesc');
-    if(privBtn)privBtn.classList.remove('on');
-    if(privRow)privRow.classList.remove('is-private');
-    if(privDesc)privDesc.textContent='Public';
+    // Reset privacy pills to default (public)
+    setPillPrivacy(false);
   } else {
     unsubscribeFromLobbyList();
   }
@@ -3877,17 +3932,13 @@ goStep=function(name){
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
 let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false;
 function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
-function toggleLobbyPrivacy(){
-  lobbyIsPrivate=!lobbyIsPrivate;
-  const btn=document.getElementById('privacyToggle');
-  const row=document.getElementById('privacyToggleRow');
-  const desc=document.getElementById('privacyToggleDesc');
-  const icon=row?row.querySelector('i'):null;
-  const label=row?row.querySelector('.privacy-toggle-label'):null;
-  if(btn)btn.classList.toggle('on',lobbyIsPrivate);
-  if(row)row.classList.toggle('is-private',lobbyIsPrivate);
-  if(icon)icon.className=lobbyIsPrivate?'ti ti-lock-open':'ti ti-lock';
-  if(desc)desc.textContent=lobbyIsPrivate?'Private':'Public';
+function toggleLobbyPrivacy(){setPillPrivacy(!lobbyIsPrivate)}
+function setPillPrivacy(isPrivate){
+  lobbyIsPrivate=isPrivate;
+  const pillPublic=document.getElementById('pillPublic');
+  const pillPrivate=document.getElementById('pillPrivate');
+  if(pillPublic)pillPublic.classList.toggle('active',!isPrivate);
+  if(pillPrivate)pillPrivate.classList.toggle('active',isPrivate);
 }
 function createLobby(){
   if(!currentUser){choosePath('create');return}
@@ -3905,8 +3956,34 @@ async function joinLobby(){
   const code=document.getElementById('lobbyCodeInput').value.trim().toUpperCase();
   if(code.length<6){showErr('lobbyJoinErr','lobbyJoinErrMsg','Please enter a valid lobby code.');return}
   if(!currentUser){choosePath('join');return}
+  const joinBtn=document.querySelector('.lobby-code-btn');
+  const origHTML=joinBtn?joinBtn.innerHTML:'';
+  function lockBtn(){if(joinBtn){joinBtn.disabled=true;joinBtn.innerHTML='<i class="ti ti-loader-2" style="font-size:14px;animation:spin .8s linear infinite"></i>';}}
+  function resetBtn(){if(joinBtn){joinBtn.disabled=false;joinBtn.innerHTML=origHTML;joinBtn.style.opacity='';joinBtn.style.cursor='';}}
+  lockBtn();
+  // Pre-check: fetch lobby and player count before attempting to join
+  try{
+    const lobbyRes=await fetch(
+      SUPABASE_URL+'/rest/v1/lobbies?select=id,mode,status&code=eq.'+encodeURIComponent(code)+'&limit=1',
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}}
+    );
+    const lobbyRows=await lobbyRes.json();
+    const lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
+    if(!lobby||lobby.status!=='waiting'){resetBtn();showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return;}
+    const countRes=await fetch(
+      SUPABASE_URL+'/rest/v1/lobby_players?select=user_id&lobby_id=eq.'+lobby.id,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}}
+    );
+    const countRows=await countRes.json();
+    const maxPlayers=lobby.mode==='hp'?8:12;
+    if(Array.isArray(countRows)&&countRows.length>=maxPlayers){
+      if(joinBtn){joinBtn.disabled=true;joinBtn.innerHTML=origHTML;joinBtn.style.opacity='.5';joinBtn.style.cursor='not-allowed';}
+      showErr('lobbyJoinErr','lobbyJoinErrMsg','This lobby is full ('+maxPlayers+'/'+maxPlayers+' players).');
+      return;
+    }
+  }catch(e){resetBtn();}
   const ok=await rtJoinLobby(code);
-  if(!ok)return;
+  if(!ok){resetBtn();return;}
   goStep('lobby-room');
 }
 
@@ -4305,6 +4382,37 @@ function updateLobbyTopicsLabel(){
   el.style.display='block';
 }
 function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':'Hot Potato 🥔'}
+function openHowToPlay(){
+  const fmtDescs={
+    mc:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',
+    type:'No options are shown — you must type the correct answer from memory. Partial matches and common aliases are accepted.',
+    img:'A screenshot from an anime is shown. Identify which series it\'s from before time runs out.',
+    char:'A character description or image is shown. Name the character correctly to score points.'
+  };
+  const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
+  const modeDescs={
+    race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts — the longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
+    survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going — lose all 3 and you\'re out. Last one standing wins.',
+    hp:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.'
+  };
+  const modeIcons={race:'ti-trophy',survival:'ti-heart',hp:'ti-flame'};
+  const modeEmojis={race:'⚡',survival:'❤️',hp:'🥔'};
+  const fmt=lobbyFormat||'mc';
+  const mode=lobbyMode||'race';
+  document.getElementById('htpFormatIcon').innerHTML='<i class="ti '+fmtIcons[fmt]+'" style="font-size:20px"></i>';
+  document.getElementById('htpFormatName').textContent=fmtLabels[fmt]||fmt;
+  document.getElementById('htpFormatDesc').textContent=fmtDescs[fmt]||'';
+  document.getElementById('htpModeIcon').innerHTML=modeEmojis[mode]||'';
+  document.getElementById('htpModeName').textContent=lobbyModeLabel(mode);
+  document.getElementById('htpModeDesc').textContent=modeDescs[mode]||'';
+  const topicText=(lobbyIsGeneral||lobbyTopics.length===0)
+    ?'General Anime — questions from across the entire anime universe.'
+    :lobbyTopics.map(t=>(t.emoji?t.emoji+' ':'')+t.name).join(', ');
+  document.getElementById('htpTopic').textContent=topicText;
+  const modal=document.getElementById('howToPlayModal');
+  modal.style.display='flex';
+  applyTheme();
+}
 function setLobbyMode(mode,el){
   lobbyMode=mode;selectedMode=mode;
   document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
