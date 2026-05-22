@@ -3028,9 +3028,7 @@ function confirmTimeLimit(){
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
     // Flush final confirmed format+mode to DB so the lobby list reflects the real state
-    if(lobbyCode&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-      try{sb.from('lobbies').update({format:lobbyFormat,mode:lobbyMode}).eq('code',lobbyCode);}catch(e){}
-    }
+    patchLobby({format:lobbyFormat,mode:lobbyMode});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
@@ -4024,11 +4022,22 @@ function copyLobbyCode(){
   const lbl=document.getElementById('copyCodeLabel');lbl.textContent='Copied!';
   setTimeout(()=>{lbl.textContent='Copy Code'},2000);
 }
+async function patchLobby(fields){
+  if(!lobbyCode||!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{
+    const token=await rtGetAuthToken();
+    await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(fields)
+    });
+  }catch(e){}
+}
 function setLobbyFormat(fmt,el){
   lobbyFormat=fmt;selectedFormat=fmt;
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({format:fmt}).eq('code',lobbyCode);}catch(e){}}
+  patchLobby({format:fmt});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>openLobbyTopicPage(),300);
 }
@@ -4139,7 +4148,7 @@ function setLobbyMode(mode,el){
   // Don't show time suffix yet — picker hasn't confirmed a value.
   // renderLobbyRoom() on return will show the final correct label.
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
-  if(lobbyCode&&currentUserId){try{sb.from('lobbies').update({mode}).eq('code',lobbyCode);}catch(e){}}
+  patchLobby({mode});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   // Show time limit picker for race and survival, then return to lobby room
   if(mode==='race'||mode==='survival'){
@@ -4149,9 +4158,7 @@ function setLobbyMode(mode,el){
     },300);
   } else {
     // Hot Potato skips the time limit picker — flush final state to DB now
-    if(lobbyCode&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-      try{sb.from('lobbies').update({format:lobbyFormat,mode:lobbyMode}).eq('code',lobbyCode);}catch(e){}
-    }
+    patchLobby({format:lobbyFormat,mode:lobbyMode});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
