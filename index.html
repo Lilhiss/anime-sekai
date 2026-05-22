@@ -2694,11 +2694,7 @@ async function submitGuest(){
     const {data,error}=await Promise.race([signInPromise,timeoutPromise]);
     if(!error&&data?.user){
       currentUserId=data.user.id;
-      // Trigger already created the profile row — just update the username
-      await Promise.race([
-        sb.from('profiles').upsert({id:currentUserId,username:val,is_guest:true},{onConflict:'id'}),
-        new Promise(r=>setTimeout(r,3000))
-      ]).catch(()=>{});
+      // Don't persist guest rows to profiles — they accumulate as dead rows
     }
   }catch(e){
     // Silent fail — app works without Supabase for solo play
@@ -3922,7 +3918,6 @@ async function rtGetOrCreateAnonSession(){
     if(error){console.error('Anon sign in error:',error.message);return null;}
     currentUserId=data.user?.id||null;
     if(currentUserId){
-      try{ await sb.from('profiles').upsert({id:currentUserId,username:currentUser,is_guest:true},{onConflict:'id'}); }catch(e){}
       // Persist guest userId so pagehide can read it synchronously on refresh
       try{ sessionStorage.setItem('guest_user_id', currentUserId); }catch(e){}
     }
