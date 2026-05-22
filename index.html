@@ -3027,6 +3027,10 @@ function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
+    // Flush final confirmed format+mode to DB so the lobby list reflects the real state
+    if(lobbyCode&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+      try{sb.from('lobbies').update({format:lobbyFormat,mode:lobbyMode}).eq('code',lobbyCode);}catch(e){}
+    }
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
@@ -3356,7 +3360,7 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     currentQData=payload.qData;qIndex=payload.qIndex;
     document.getElementById('mpQLoading').style.display='none';
-    mpShowQuestion(payload.qData);renderMPHUD();
+    mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
@@ -3533,7 +3537,8 @@ async function mpHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
   const qData=await fetchQuestion();
   currentQData=qData;
-  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex}});
+  const hpFuse=lobbyMode==='potato'?(5+Math.random()*5):null; // host generates fuse so all clients sync
+  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
 }
 
 function mpShowCountdown(onDone){
@@ -4143,6 +4148,10 @@ function setLobbyMode(mode,el){
       showTimeLimitPicker(mode);
     },300);
   } else {
+    // Hot Potato skips the time limit picker — flush final state to DB now
+    if(lobbyCode&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+      try{sb.from('lobbies').update({format:lobbyFormat,mode:lobbyMode}).eq('code',lobbyCode);}catch(e){}
+    }
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
@@ -4391,7 +4400,7 @@ function renderMPScoreboard(){
   });
 }
 
-function mpShowQuestion(qData){
+function mpShowQuestion(qData,hpFuse){
   document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpFeedbackBar').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
@@ -4421,10 +4430,11 @@ function mpShowQuestion(qData){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null});
-  clearInterval(timerInterval);timeLeft=raceTimeLimit;questionStartTime=Date.now();
+  const questionTimeLimit=isHP?(hpFuse||5+Math.random()*5):raceTimeLimit; // use host-broadcast fuse for HP
+  clearInterval(timerInterval);timeLeft=questionTimeLimit;questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
   timerInterval=setInterval(()=>{
-    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/raceTimeLimit)*100);
+    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/questionTimeLimit)*100);
     mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
     if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
   },100);
@@ -4595,7 +4605,8 @@ async function mpLoadQuestion(){
   if(!rtChannel){
     const qData=prefetchedQuestion||await fetchQuestion();
     prefetchedQuestion=null;currentQData=qData;
-    mpShowQuestion(qData);
+    const offlineFuse=lobbyMode==='potato'?(5+Math.random()*5):null;
+    mpShowQuestion(qData,offlineFuse);
     fetchQuestion().then(q=>{prefetchedQuestion=q});
   }
 }
