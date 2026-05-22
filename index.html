@@ -1787,7 +1787,7 @@ async function sbLoadLeaderboard(){
           },
           body: JSON.stringify({
             messages: [{
-              topic: `lobby:${code}`,
+              topic: `realtime:lobby:${code}`,
               event:  'player_left',
               payload: { name: myUsername, wasHost }
             }]
@@ -3179,7 +3179,7 @@ async function rtCreateLobby(){
   }
   const token=await rtGetAuthToken();
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`,{
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
@@ -3223,7 +3223,7 @@ async function rtJoinLobby(code){
   const token=await rtGetAuthToken();
   // Upsert profile for anon/guest users
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`,{
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
@@ -3501,32 +3501,11 @@ function rtSubscribe(lobbyId){
       }
     }
   });
-  rtChannel.on('broadcast',{event:'player_left'},async({payload})=>{
+  rtChannel.on('broadcast',{event:'player_left'},({payload})=>{
     // Update every remaining player's UI — not just the host's.
     // The refresh-cleanup path sends this broadcast so all clients stay in sync.
     lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
     renderLobbyRoom();
-    // If the player who left was the host, run self-election immediately so remaining
-    // players are promoted without depending on postgres_changes, which fires unreliably
-    // when the leave originates from the refresh-cleanup IIFE.
-    if(!payload.wasHost)return;
-    if(isHost)return;
-    if(!lobbyPlayers.length)return;
-    try{
-      const token=await rtGetAuthToken();
-      const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
-      const pData=await pRes.json();
-      const first=Array.isArray(pData)?pData[0]:null;
-      if(!first||first.user_id!==currentUserId)return; // not our turn to claim
-      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
-      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
-      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
-      isHost=true;
-      lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
-      renderLobbyRoom();
-      showLobbyToast(`👑 The host left — you're now the host!`,'warning');
-      if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:payload.name,remainingSeconds:lobbyTimerSecondsLeft}});
-    }catch(e){}
   });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
     if(currentUser===payload.kicked){
