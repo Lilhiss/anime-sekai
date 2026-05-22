@@ -714,17 +714,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="mp-hub-layout slide-in">
 
       <!-- LEFT: CREATE LOBBY -->
-      <div class="entry-card mp-hub-create">
+      <div class="entry-card mp-hub-create" onclick="createLobby()" style="cursor:pointer">
         <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
         <div class="entry-card-title">Create Lobby</div>
         <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
-        <div style="width:100%;display:flex;flex-direction:column;gap:6px" onclick="event.stopPropagation()">
-          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" autocomplete="off" style="text-align:center;font-size:14px;width:100%;box-sizing:border-box">
-          <div class="privacy-toggle-row" id="privacyToggleRow">
-            <div class="privacy-toggle-label"><i class="ti ti-lock" style="font-size:14px;color:var(--accent)"></i> Private lobby <span id="privacyToggleDesc">— hidden from list</span></div>
-            <button class="tog" id="privacyToggle" onclick="toggleLobbyPrivacy()" title="Toggle lobby visibility"></button>
+        <div style="width:100%;display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
+          <input class="form-input" id="lobbyNameInput" type="text" maxlength="30" placeholder="Loading…" autocomplete="off" style="font-size:13px;flex:1;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();createLobby()}">
+          <div class="privacy-toggle-row" id="privacyToggleRow" style="flex-shrink:0;margin:0;padding:6px 10px" title="Toggle lobby visibility" onclick="event.stopPropagation();toggleLobbyPrivacy()">
+            <div class="privacy-toggle-label" style="font-size:11px"><i class="ti ti-lock" style="font-size:13px;color:var(--accent)"></i> <span id="privacyToggleDesc">Public</span></div>
+            <button class="tog" id="privacyToggle" style="pointer-events:none" tabindex="-1"></button>
           </div>
-          <button class="form-submit" style="width:100%" onclick="createLobby()"><i class="ti ti-plus" style="font-size:15px"></i> Create Lobby</button>
         </div>
       </div>
 
@@ -3866,10 +3865,10 @@ goStep=function(name){
     lobbyIsPrivate=false;
     const privBtn=document.getElementById('privacyToggle');
     const privRow=document.getElementById('privacyToggleRow');
-    const privLabel=privRow?privRow.querySelector('.privacy-toggle-label'):null;
+    const privDesc=document.getElementById('privacyToggleDesc');
     if(privBtn)privBtn.classList.remove('on');
     if(privRow)privRow.classList.remove('is-private');
-    if(privLabel)privLabel.innerHTML=`<i class="ti ti-lock" style="font-size:14px;color:var(--accent)"></i> Private lobby <span id="privacyToggleDesc">— hidden from list</span>`;
+    if(privDesc)privDesc.textContent='Public';
   } else {
     unsubscribeFromLobbyList();
   }
@@ -3888,12 +3887,7 @@ function toggleLobbyPrivacy(){
   if(btn)btn.classList.toggle('on',lobbyIsPrivate);
   if(row)row.classList.toggle('is-private',lobbyIsPrivate);
   if(icon)icon.className=lobbyIsPrivate?'ti ti-lock-open':'ti ti-lock';
-  // Rebuild label text
-  if(label){
-    label.innerHTML=lobbyIsPrivate
-      ?`<i class="ti ti-lock-open" style="font-size:14px;color:var(--accent)"></i> Public lobby <span id="privacyToggleDesc">— visible in list</span>`
-      :`<i class="ti ti-lock" style="font-size:14px;color:var(--accent)"></i> Private lobby <span id="privacyToggleDesc">— hidden from list</span>`;
-  }
+  if(desc)desc.textContent=lobbyIsPrivate?'Private':'Public';
 }
 function createLobby(){
   if(!currentUser){choosePath('create');return}
