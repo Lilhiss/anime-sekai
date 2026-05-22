@@ -3156,6 +3156,11 @@ async function rtJoinLobby(code){
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
+  // Block rejoining if this user was previously kicked
+  if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(uid)){
+    showErr('lobbyJoinErr','lobbyJoinErrMsg','You have been removed from this lobby.');
+    return false;
+  }
   // Enforce mode-dependent player limit
   try{
     const countRes=await fetch(
@@ -4269,15 +4274,26 @@ async function kickPlayer(name){
   }
   // Remove from local list
   lobbyPlayers=lobbyPlayers.filter(p=>p.name!==name);
-  // Remove from Supabase
+  // Remove from Supabase and record in kicked_players
   if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     try{
       const token=await rtGetAuthToken();
-      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id,kicked_players&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
       const lData=await lRes.json();
-      const lid=Array.isArray(lData)?lData[0]?.id:null;
+      const lobbyRow=Array.isArray(lData)?lData[0]:null;
+      const lid=lobbyRow?.id;
       if(lid){
+        // Get the kicked player's user_id before deleting their row
+        const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(name)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+        const pData=await pRes.json();
+        const kickedUid=Array.isArray(pData)?pData[0]?.user_id:null;
+        // Delete the player row
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(name)}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+        // Append their uid to kicked_players so they can't rejoin
+        if(kickedUid){
+          const existing=Array.isArray(lobbyRow.kicked_players)?lobbyRow.kicked_players:[];
+          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({kicked_players:[...existing,kickedUid]})});
+        }
       }
     }catch(e){}
   }
