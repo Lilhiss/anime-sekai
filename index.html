@@ -2531,7 +2531,10 @@ async function savePfp(){
     } else {
       // Get the user's live auth token — required for RLS on storage uploads
       const{data:{session}}=await sb.auth.getSession();
-      const authToken=session?.access_token||SUPABASE_ANON;
+      if(!session?.access_token){
+        throw new Error('No active session — please sign out and sign back in.');
+      }
+      const authToken=session.access_token;
 
       // Upload via raw fetch so the Authorization header is always the user JWT,
       // not the anon key that the JS client may fall back to if the session
