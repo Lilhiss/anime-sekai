@@ -3187,8 +3187,9 @@ async function rtJoinLobby(code){
   await rtRefreshPlayers(lobby.id);
 
   // ── HOST RECLAIM ──────────────────────────────────────────────
-  // If this user was the original host (their user_id matches lobby.host_id but
-  // they're currently not marked is_host), auto-promote them back.
+  // Only reclaim if this user is still the designated host in the DB.
+  // If host was manually transferred away, lobby.host_id will no longer
+  // match uid, so we skip entirely and join as a regular player.
   if(uid===lobby.host_id){
     try{
       // Check who currently holds is_host
@@ -3198,8 +3199,7 @@ async function rtJoinLobby(code){
       );
       const curHostData=await curHostRes.json();
       const curHostId=Array.isArray(curHostData)?curHostData[0]?.user_id:null;
-      // Only reclaim if the current host isn't already us (covers the edge case
-      // where the DB row somehow survived the pagehide)
+      // Only reclaim if nobody else currently holds host
       if(curHostId&&curHostId!==uid){
         // Transfer host: clear all flags, set ours
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
@@ -3407,9 +3407,11 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
     if(currentUser===payload.kicked){
-      // This player was kicked — show modal and leave
-      if(rtChannel)rtChannel.unsubscribe();
+      // This player was kicked — clear lobbyCode so they can't rejoin, then show modal
+      intentionalLeave=true;
+      if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
       lobbyPlayers=[];
+      lobbyCode=''; // prevent any rejoin attempt
       document.getElementById('kickedModal').classList.add('open');
       applyTheme();
       return;
@@ -4242,9 +4244,17 @@ async function confirmTransferHost(){
       const lData=await lRes.json();
       const lid=Array.isArray(lData)?lData[0]?.id:null;
       if(lid){
+        // Get the new host's user_id so we can update lobbies.host_id
+        const nhRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+        const nhData=await nhRes.json();
+        const newHostUid=Array.isArray(nhData)?nhData[0]?.user_id:null;
         // Set all is_host=false then set new host
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+        // Update lobbies.host_id so the old host can't reclaim on rejoin
+        if(newHostUid){
+          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
+        }
       }
     }catch(e){}
   }
