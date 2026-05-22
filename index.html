@@ -3392,6 +3392,16 @@ function rtSubscribe(lobbyId){
       }catch(e){}
     },(remaining+2)*1000); // +2 s buffer so the host always wins the race if present
   });
+  rtChannel.on('broadcast',{event:'lobby_expired'},()=>{
+    // Host broadcast this just before deleting the lobby — non-hosts navigate away
+    // and show the expired modal. This catches players who joined after the
+    // lobby_expiry_warning was sent and never had a failsafe timer armed.
+    if(isHost)return; // host handles its own teardown in startLobbyTimer
+    intentionalLeave=true;
+    if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+    goStep('multiplayer');
+    setTimeout(()=>showLobbyExpiredModal(),300);
+  });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
     selectedFormat=payload.format;selectedMode=payload.mode;
     lobbyFormat=payload.format;lobbyMode=payload.mode;
@@ -3886,6 +3896,9 @@ async function startLobbyTimer(remainingSeconds){
     if(lobbyTimerSecondsLeft<=0){
       clearLobbyTimer();
       if(isHost){
+        // Notify non-host clients before tearing down so they show the expired modal
+        // regardless of whether they were present when the 60-second warning fired.
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'lobby_expired',payload:{}});
         await rtDeleteLobby();
         intentionalLeave=true;
         if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
