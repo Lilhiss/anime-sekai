@@ -3157,7 +3157,7 @@ async function rtJoinLobby(code){
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
   // Block rejoining if this user was previously kicked
-  if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(uid)){
+  if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(currentUser)){
     showErr('lobbyJoinErr','lobbyJoinErrMsg','You have been removed from this lobby.');
     return false;
   }
@@ -4283,16 +4283,12 @@ async function kickPlayer(name){
       const lobbyRow=Array.isArray(lData)?lData[0]:null;
       const lid=lobbyRow?.id;
       if(lid){
-        // Get the kicked player's user_id before deleting their row
-        const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(name)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
-        const pData=await pRes.json();
-        const kickedUid=Array.isArray(pData)?pData[0]?.user_id:null;
         // Delete the player row
         await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(name)}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
-        // Append their uid to kicked_players so they can't rejoin
-        if(kickedUid){
-          const existing=Array.isArray(lobbyRow.kicked_players)?lobbyRow.kicked_players:[];
-          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({kicked_players:[...existing,kickedUid]})});
+        // Append their username to kicked_players so they can't rejoin
+        const existing=Array.isArray(lobbyRow.kicked_players)?lobbyRow.kicked_players:[];
+        if(!existing.includes(name)){
+          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({kicked_players:[...existing,name]})});
         }
       }
     }catch(e){}
