@@ -2563,7 +2563,17 @@ async function savePfp(){
       // but persist the clean URL (without timestamp) to the DB so it loads correctly on refresh
       const bustedUrl=publicUrl+'?t='+Date.now();
       currentPfp={type:'upload',value:bustedUrl};
-      await sb.from('profiles').update({avatar_url:publicUrl}).eq('id',currentUserId);
+      // Use raw fetch with explicit auth token — same reason as the storage upload above
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
+        method:'PATCH',
+        headers:{
+          'apikey':SUPABASE_ANON,
+          'Authorization':`Bearer ${authToken}`,
+          'Content-Type':'application/json',
+          'Prefer':'return=minimal'
+        },
+        body:JSON.stringify({avatar_url:publicUrl})
+      });
     }
     closePfpPicker();renderProfile();updateNav();
   }catch(e){
