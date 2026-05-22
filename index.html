@@ -2535,51 +2535,32 @@ async function savePfp(){
         throw new Error('No active session — please sign out and sign back in.');
       }
       const authToken=session.access_token;
-
-      // Upload via raw fetch so the Authorization header is always the user JWT,
-      // not the anon key that the JS client may fall back to if the session
-      // hasn't fully hydrated yet at the time of the call.
       const filePath=`${currentUserId}/avatar.jpg`;
-      const storageUrl=`${SUPABASE_URL}/storage/v1/object/avatars/${filePath}`;
-      const upRes=await fetch(storageUrl,{
-        method:'POST',
-        headers:{
-          'apikey':SUPABASE_ANON,
-          'Authorization':`Bearer ${authToken}`,
-          'Content-Type':'image/jpeg',
-          'x-upsert':'true'
-        },
-        body:pfpUploadBlob
+
+      // Create a fresh Supabase client scoped to the user's token so storage
+      // RLS always sees the correct auth.uid() regardless of client hydration state
+      const authedSb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{
+        global:{headers:{Authorization:`Bearer ${authToken}`}},
+        auth:{persistSession:false}
       });
-      if(!upRes.ok){
-        const msg=await upRes.text().catch(()=>upRes.statusText);
-        throw new Error(msg);
-      }
+
+      const{error:upErr}=await authedSb.storage.from('avatars').upload(filePath,pfpUploadBlob,{
+        contentType:'image/jpeg',
+        upsert:true
+      });
+      if(upErr)throw upErr;
 
       // Get the permanent public URL
-      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
+      const{data:{publicUrl}}=authedSb.storage.from('avatars').getPublicUrl(filePath);
 
       // Cache-bust in memory so the browser picks up the new image immediately,
       // but persist the clean URL (without timestamp) to the DB so it loads correctly on refresh
       const bustedUrl=publicUrl+'?t='+Date.now();
       currentPfp={type:'upload',value:bustedUrl};
-      // Use raw fetch with explicit auth token — same reason as the storage upload above
-      const patchRes=await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
-        method:'PATCH',
-        headers:{
-          'apikey':SUPABASE_ANON,
-          'Authorization':`Bearer ${authToken}`,
-          'Content-Type':'application/json',
-          'Prefer':'return=minimal'
-        },
-        body:JSON.stringify({avatar_url:publicUrl})
-      });
-      console.log('PATCH status:', patchRes.status);
-      console.log('PATCH userId:', currentUserId);
-      console.log('PATCH publicUrl:', publicUrl);
-      console.log('PATCH authToken (first 20):', authToken.slice(0,20));
-      const patchText=await patchRes.text();
-      console.log('PATCH response:', patchText);
+
+      // Update profiles using the same authed client
+      const{error:updateErr}=await authedSb.from('profiles').update({avatar_url:publicUrl}).eq('id',currentUserId);
+      if(updateErr)console.error('Profile update error:',updateErr);
     }
     closePfpPicker();renderProfile();updateNav();
   }catch(e){
