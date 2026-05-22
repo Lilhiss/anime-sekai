@@ -4246,18 +4246,44 @@ async function rtDeleteLobby(){
 let lobbyListChannel = null;
 function subscribeToLobbyList() {
   if (SUPABASE_URL.includes('YOUR_PROJECT')) return;
-  if (lobbyListChannel) return; // already subscribed
+  if (lobbyListChannel) return;
   lobbyListChannel = sb.channel('public-lobby-list')
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'lobbies'
-    }, () => {
+    }, (change) => {
       const onMultiplayerPage = document.getElementById('page-multiplayer').classList.contains('active');
-      if (onMultiplayerPage) loadPublicLobbies();
+      if (!onMultiplayerPage) return;
+
+      if (change.eventType === 'UPDATE') {
+        // Surgically update just the affected card — no fetch, no spinner
+        patchLobbyListCard(change.new);
+      } else {
+        // INSERT or DELETE — card count changes, do a full reload
+        loadPublicLobbies();
+      }
     })
     .subscribe();
 }
+
+function patchLobbyListCard(lobby) {
+  // Find the card by its join button's lobby id
+  const btn = document.querySelector(`button[onclick="joinLobbyById('${lobby.id}','${lobby.code}')"]`);
+  const card = btn ? btn.closest('.lobby-list-card') : null;
+  if (!card) return; // card not visible (e.g. lobby just became full/active), do a quiet full reload
+  const fmt = lobby.format || 'mc';
+  const mode = lobby.mode || 'race';
+  const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
+  const modeName = {race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode] || mode;
+  const metaEl = card.querySelector('.lobby-list-meta');
+  if (metaEl) {
+    metaEl.innerHTML = `
+      <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
+      <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>`;
+  }
+}
+
 function unsubscribeFromLobbyList() {
   if (lobbyListChannel) { lobbyListChannel.unsubscribe(); lobbyListChannel = null; }
 }
