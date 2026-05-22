@@ -1593,6 +1593,12 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const anonSafeStorage = {
   getItem: (key) => {
     try{
+      // Check sessionStorage first for anon sessions (survives refresh, not tab close)
+      const sess = sessionStorage.getItem(key);
+      if(sess){
+        const parsed = JSON.parse(sess);
+        if(parsed?.user?.is_anonymous === true) return sess;
+      }
       const raw = localStorage.getItem(key);
       if(!raw) return null;
       const parsed = JSON.parse(raw);
@@ -1603,11 +1609,18 @@ const anonSafeStorage = {
   setItem: (key, value) => {
     try{
       const parsed = JSON.parse(value);
-      if(parsed?.user?.is_anonymous === true) return; // never persist anonymous sessions
+      if(parsed?.user?.is_anonymous === true){
+        // Store anon sessions in sessionStorage only — survives refresh but not tab close
+        sessionStorage.setItem(key, value);
+        return;
+      }
       localStorage.setItem(key, value);
     }catch(e){ localStorage.setItem(key, value); }
   },
-  removeItem: (key) => { try{ localStorage.removeItem(key); }catch(e){} }
+  removeItem: (key) => {
+    try{ localStorage.removeItem(key); }catch(e){}
+    try{ sessionStorage.removeItem(key); }catch(e){}
+  }
 };
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -1726,6 +1739,26 @@ async function sbLoadLeaderboard(){
         localStorage.removeItem(key);
       }
     }
+  }catch(e){}
+})();
+
+// ── REFRESH LOBBY CLEANUP ─────────────────────────────────────
+// If the user refreshed while in a lobby, clean up their old player row.
+// We do this immediately on load before a new session is created.
+(async function(){
+  try{
+    const raw = sessionStorage.getItem('pending_lobby_cleanup');
+    if(!raw) return;
+    sessionStorage.removeItem('pending_lobby_cleanup');
+    const {userId, lobbyCode: code, isHost: wasHost} = JSON.parse(raw);
+    if(!userId || !code) return;
+
+    // Fire-and-forget: delete the old player row
+    // If wasHost and no players remain after deletion, the DB trigger handles lobby cleanup
+    fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(userId)}&lobby_id=in.(select%20id%20from%20lobbies%20where%20code%3Deq.${encodeURIComponent(code)})`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' }
+    }).catch(()=>{});
   }catch(e){}
 })();
 
@@ -4702,6 +4735,15 @@ window.addEventListener('pagehide', () => {
   const inLobby = document.getElementById('page-lobby-room').classList.contains('active');
   if (!inLobby) return;
   if (intentionalLeave) return; // leaveLobbyRoom already handled this cleanly
+
+  // Save lobby state so a refresh can clean up the old player row on reload
+  try {
+    sessionStorage.setItem('pending_lobby_cleanup', JSON.stringify({
+      userId: currentUserId,
+      lobbyCode,
+      isHost
+    }));
+  } catch(e) {}
 
   function syncXHR(method, path, body) {
     try {
