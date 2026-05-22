@@ -1388,18 +1388,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   </div>
 
   <!-- GUEST DISCONNECT MODAL -->
-  <div id="guestDisconnectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:32px 28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;text-align:center">
-      <div style="font-size:48px">🔌</div>
-      <div>
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:8px">You've been disconnected</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.6">Guests can't rejoin a session after disconnecting. Create a free account to keep your progress and never lose your spot again.</div>
-      </div>
-      <button class="action-btn primary" onclick="document.getElementById('guestDisconnectModal').style.display='none';goStep('auth');showAuthMode('register')" style="width:100%">
-        <i class="ti ti-user-plus" style="font-size:15px"></i> Create Free Account
+  <!-- DISCONNECTED MODAL -->
+  <div class="kicked-modal-overlay" id="disconnectModal">
+    <div class="kicked-modal">
+      <div class="kicked-modal-icon">🔌</div>
+      <div class="kicked-modal-title">You've been disconnected</div>
+      <div class="kicked-modal-sub" id="disconnectModalSub">Your connection to the lobby was lost.</div>
+      <button class="action-btn primary" style="width:100%" id="disconnectRejoinBtn" onclick="disconnectRejoin()">
+        <i class="ti ti-refresh" style="font-size:15px"></i> Rejoin Lobby
       </button>
-      <button class="action-btn secondary" onclick="document.getElementById('guestDisconnectModal').style.display='none';goStep('landing')" style="width:100%">
-        <i class="ti ti-home" style="font-size:15px"></i> Back to Home
+      <button class="action-btn secondary" style="width:100%" onclick="document.getElementById('disconnectModal').classList.remove('open');goStep('multiplayer')">
+        <i class="ti ti-layout-grid" style="font-size:15px"></i> Back to Multiplayer
       </button>
     </div>
   </div>
@@ -1550,8 +1549,18 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="kicked-modal">
       <div class="kicked-modal-icon">🚫</div>
       <div class="kicked-modal-title">You've been kicked</div>
-      <div class="kicked-modal-sub">The host removed you from this lobby. You can join another game or create your own.</div>
-      <button class="action-btn primary" style="margin-top:4px" onclick="document.getElementById('kickedModal').classList.remove('open');goStep('landing')"><i class="ti ti-home" style="font-size:15px"></i> Back to Home</button>
+      <div class="kicked-modal-sub">You've been removed from this lobby.</div>
+      <button class="action-btn primary" style="margin-top:4px" onclick="document.getElementById('kickedModal').classList.remove('open');goStep('multiplayer')"><i class="ti ti-layout-grid" style="font-size:15px"></i> Back to Multiplayer</button>
+    </div>
+  </div>
+
+  <!-- LOBBY EXPIRED MODAL -->
+  <div class="kicked-modal-overlay" id="lobbyExpiredModal">
+    <div class="kicked-modal">
+      <div class="kicked-modal-icon">⏰</div>
+      <div class="kicked-modal-title">Lobby Expired</div>
+      <div class="kicked-modal-sub" id="lobbyExpiredSub">The lobby has expired.</div>
+      <button class="action-btn primary" style="margin-top:4px" id="lobbyExpiredBtn" onclick="document.getElementById('lobbyExpiredModal').classList.remove('open');goStep('multiplayer')"><i class="ti ti-refresh" style="font-size:15px"></i> Back to Multiplayer</button>
     </div>
   </div>
 
@@ -3214,10 +3223,21 @@ async function rtJoinLobby(code){
   return true;
 }
 
-function showGuestDisconnectModal(){
-  if(!isGuest)return;
-  document.getElementById('guestDisconnectModal').style.display='flex';
+function showDisconnectModal(msg){
+  const sub=document.getElementById('disconnectModalSub');
+  if(sub)sub.textContent=msg||'Your connection to the lobby was lost. You can try rejoining or head back to multiplayer.';
+  const rejoinBtn=document.getElementById('disconnectRejoinBtn');
+  if(rejoinBtn)rejoinBtn.style.display=lobbyCode?'flex':'none';
+  document.getElementById('disconnectModal').classList.add('open');
   applyTheme();
+}
+
+async function disconnectRejoin(){
+  document.getElementById('disconnectModal').classList.remove('open');
+  if(!lobbyCode){goStep('multiplayer');return;}
+  const ok=await rtJoinLobby(lobbyCode);
+  if(ok){goStep('lobby-room');}
+  else{showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
 }
 
 function rtSubscribe(lobbyId){
@@ -3277,7 +3297,7 @@ function rtSubscribe(lobbyId){
         intentionalLeave=true;
         if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
         goStep('multiplayer');
-        setTimeout(()=>showLobbyToast('The lobby expired and was closed.','danger'),300);
+        setTimeout(()=>showLobbyExpiredModal(),300);
       }catch(e){}
     },(remaining+2)*1000); // +2 s buffer so the host always wins the race if present
   });
@@ -3403,20 +3423,56 @@ function rtSubscribe(lobbyId){
       if(intentionalLeave){intentionalLeave=false;return;} // user left on purpose, skip modal
       const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
       const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
-      if(isGuest&&(inMpQuiz||inLobby)){
-        showGuestDisconnectModal();
+      if(inMpQuiz||inLobby){
+        showDisconnectModal();
       }
     }
   });
 
   // Also detect tab visibility change — if guest comes back after hiding tab mid-game
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'&&isGuest&&rtChannel){
+    if(document.visibilityState==='visible'&&rtChannel){
       const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
-      if(inMpQuiz&&rtChannel.state!=='joined'){
-        showGuestDisconnectModal();
+      const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+      if((inMpQuiz||inLobby)&&rtChannel.state!=='joined'){
+        showDisconnectModal();
       }
     }
+  },{once:false});
+
+  // Detect tab visibility change for the HOST — re-validate lobby against DB when
+  // they return to a tab that may have been throttled/suspended by the browser.
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState!=='visible'||!isHost||!lobbyCode)return;
+    const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+    if(!inLobby)return;
+    if(SUPABASE_URL.includes('YOUR_PROJECT'))return;
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobbies?select=expires_at,status&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const d=await r.json();
+      const lobby=Array.isArray(d)?d[0]:null;
+      // Lobby is gone or expired in the DB
+      if(!lobby||lobby.status!=='waiting'||new Date(lobby.expires_at)<=new Date()){
+        clearLobbyTimer();
+        await rtDeleteLobby().catch(()=>{});
+        intentionalLeave=true;
+        if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+        isHost=false;
+        goStep('multiplayer');
+        setTimeout(()=>showLobbyExpiredModal(),300);
+        return;
+      }
+      // Lobby still alive — recalibrate the local countdown to match DB truth,
+      // correcting for however long the tab was throttled.
+      const secsLeft=Math.round((new Date(lobby.expires_at)-Date.now())/1000);
+      if(secsLeft>0){
+        clearLobbyTimer();
+        startLobbyTimer(secsLeft);
+      }
+    }catch(e){}
   },{once:false});
 }
 
@@ -3737,7 +3793,7 @@ async function startLobbyTimer(remainingSeconds){
         if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
         isHost=false;
         goStep('multiplayer');
-        setTimeout(()=>showLobbyToast('Your lobby expired after 10 minutes.','danger'),300);
+        setTimeout(()=>showLobbyExpiredModal(),300);
       }
     }
   },1000);
@@ -3746,6 +3802,20 @@ async function startLobbyTimer(remainingSeconds){
 function clearLobbyTimer(){
   if(lobbyTimerInterval){clearInterval(lobbyTimerInterval);lobbyTimerInterval=null;}
   lobbyWarningShown=false;
+}
+
+function showLobbyExpiredModal(){
+  const sub=document.getElementById('lobbyExpiredSub');
+  const btn=document.getElementById('lobbyExpiredBtn');
+  if(isHost){
+    if(sub)sub.textContent='The lobby has expired. Create a new one to play with friends.';
+    if(btn){btn.innerHTML='<i class="ti ti-plus" style="font-size:15px"></i> Create New Lobby';btn.onclick=()=>{document.getElementById('lobbyExpiredModal').classList.remove('open');createLobby();};}
+  } else {
+    if(sub)sub.textContent='The lobby has expired.';
+    if(btn){btn.innerHTML='<i class="ti ti-layout-grid" style="font-size:15px"></i> Back to Multiplayer';btn.onclick=()=>{document.getElementById('lobbyExpiredModal').classList.remove('open');goStep('multiplayer');};}
+  }
+  document.getElementById('lobbyExpiredModal').classList.add('open');
+  applyTheme();
 }
 
 function showLobbyToast(msg,type='warning'){
