@@ -2247,6 +2247,7 @@ function openPfpPicker(){
   document.getElementById('pfpUploadPreview').style.display='none';
   document.getElementById('pfpUploadErr').style.display='none';
   document.getElementById('pfpFileInput').value='';
+  document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
   document.getElementById('pfpModal').style.display='flex';
   // Only show remove button if user already has a pfp
   const removeBtn=document.getElementById('pfpRemoveBtn');
@@ -2371,20 +2372,44 @@ function processUploadFile(file){
     document.getElementById('pfpUploadImg').src=previewUrl;
     document.getElementById('pfpUploadPreview').style.display='block';
     zone.style.display='none';
-    // Show approx size to user
+    // Remove any previous hint/change-btn if re-selecting
+    document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
+    // Show approx size + a "Change image" button so the user can pick a different file
     const kb=Math.round(blob.size/1024);
     const hint=document.createElement('div');
-    hint.style.cssText='font-size:11px;color:var(--muted);text-align:center;margin-top:8px';
-    hint.textContent=`Resized to 256×256 · ${kb}KB — ready to save`;
+    hint.className='pfp-upload-hint';
+    hint.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px';
+    hint.innerHTML=`
+      <div style="font-size:11px;color:var(--muted)">Resized to 256×256 · ${kb}KB — ready to save</div>
+      <button onclick="pfpResetUpload()" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s" onmouseover="this.style.background='var(--accent)';this.style.borderColor='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border2)';this.style.color='var(--text)'"><i class="ti ti-refresh" style="font-size:12px"></i> Change image</button>`;
     document.getElementById('pfpUploadTab').appendChild(hint);
   }).catch(()=>{
     // Restore zone on error
+    zone.style.display='';
     zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
       <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
       <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;
+    document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
     errMsg.textContent='Could not process image. Please try another file.';
     errEl.style.display='flex';
   });
+}
+
+function pfpResetUpload(){
+  // Clear the pending upload state and restore the drop zone so the user can pick a new file
+  pfpUploadBlob=null;
+  pfpUploadDataUrl=null;
+  pfpPendingSelection=null;
+  document.getElementById('pfpFileInput').value='';
+  document.getElementById('pfpUploadPreview').style.display='none';
+  document.getElementById('pfpUploadImg').src='';
+  document.getElementById('pfpUploadErr').style.display='none';
+  document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
+  const zone=document.getElementById('pfpUploadZone');
+  zone.style.display='';
+  zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+    <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
+    <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;
 }
 
 async function savePfp(){
@@ -3574,12 +3599,15 @@ async function submitQuestion(){
   }
   const aliases=document.getElementById('sqAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
-    const {error}=await sb.from('questions').insert({
-      question:q,options,answer:answerVal,aliases,
-      format:fmt,topic_type:'anime',topic_value:topic,
-      difficulty:'normal',report_count:0,
-      submitted_by:currentUser,status:'pending'
-    }).catch(e=>({error:e}));
+    let error;
+    try{
+      ({error}=await sb.from('questions').insert({
+        question:q,options,answer:answerVal,aliases,
+        format:fmt,topic_type:'anime',topic_value:topic,
+        difficulty:'normal',report_count:0,
+        submitted_by:currentUser,status:'pending'
+      }));
+    }catch(e){error=e;}
     if(error&&error.code==='23505'){showErr('sqErr','sqErrMsg','This question already exists in the bank.');return}
     if(error){showErr('sqErr','sqErrMsg','Could not submit. Try again.');return}
   }
