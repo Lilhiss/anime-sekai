@@ -3215,7 +3215,7 @@ async function rtJoinLobby(code){
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
   // Block rejoining if this user was previously kicked
   if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(currentUser)){
-    showErr('lobbyJoinErr','lobbyJoinErrMsg','You have been removed from this lobby.');
+    showLobbyToast('🚫 You\'ve been removed from this lobby and cannot rejoin.','danger');
     return false;
   }
   // Enforce mode-dependent player limit
