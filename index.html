@@ -1925,29 +1925,22 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Look up the auth email from profiles — could be real or @animesekai.guest
-  const guestEmail=`${username}@animesekai.guest`;
-  let email=guestEmail;
+  // Look up the auth email from profiles. Accounts that have added a real email
+  // via Edit Profile will have had auth.updateUser() called, so Supabase Auth
+  // holds the real email as the identity. Accounts without a real email still
+  // use the @animesekai.guest placeholder in both profiles and Auth.
+  let email=`${username}@animesekai.guest`;
   try{
-    const res = await fetch(
+    const res=await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
-      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
-    const rows = await res.json();
-    if(Array.isArray(rows) && rows[0]?.email) email = rows[0].email;
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows[0]?.email) email=rows[0].email;
   }catch(e){}
-  // Try signing in with the stored email first
-  const { data, error } = await sb.auth.signInWithPassword({email, password});
-  if(!error) return data.user;
-  // If the stored email failed AND it's a real email (not the guest placeholder),
-  // fall back to the guest email. This handles the edge case where a user added
-  // a real email via Edit Profile but the Supabase Auth email change is still
-  // pending confirmation — the guest address is still the active auth identity.
-  if(email !== guestEmail){
-    const { data: fallbackData, error: fallbackError } = await sb.auth.signInWithPassword({email: guestEmail, password});
-    if(!fallbackError) return fallbackData.user;
-  }
-  throw error; // surface the original error if both attempts fail
+  const{data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error) throw error;
+  return data.user;
 }
 
 async function sbSignOut(){
@@ -2390,13 +2383,16 @@ async function saveEditProfile(){
         showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
       }
     }
-    // Save email only to profiles — sbSignIn uses this column for login lookup.
-    // We intentionally skip sb.auth.updateUser() here: accounts created without
-    // a real email use a @animesekai.guest placeholder in Supabase Auth, and
-    // calling updateUser({email}) on those sessions returns a 400.
+    // Update Supabase Auth email first so the auth identity and profiles stay in sync.
+    // Requires email confirmations to be disabled in Supabase Auth settings, which
+    // makes updateUser() take effect instantly with no confirmation link needed.
+    if(newEmail){
+      const{error:authErr}=await sb.auth.updateUser({email:newEmail});
+      if(authErr){showErr('editEmailErr','editEmailErrMsg','Could not update email: '+authErr.message);return;}
+    }
     const updates={username:newName,theme_color:newColor};
     if(newEmail)updates.email=newEmail;
-    const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
+    const{error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
     if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
     if(newEmail)currentEmail=newEmail;
   }
