@@ -330,6 +330,8 @@ h1 .hi{color:var(--accent)}
 .pfp-preview-edit-hint i{color:#fff}
 .pfp-upload-preview img{width:100%;height:100%;object-fit:cover}
 .pfp-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+#pfpLetterAvatar{position:relative}
+#pfpUploadZone:hover #pfpLetterAvatar{opacity:.85}
 
 /* PLAY AGAIN CTA */
 .profile-cta{background:var(--accent-soft);border:1px solid var(--border2);border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -1475,10 +1477,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               <button onclick="pfpDropdownRemove()" style="width:100%;background:none;border:none;color:#f87171;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s" onmouseover="this.style.background='#f8717115'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:15px"></i> Remove photo</button>
             </div>
           </div>
-          <div class="pfp-upload-zone" id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" ondragover="pfpDragOver(event)" ondragleave="pfpDragLeave(event)" ondrop="pfpDrop(event)">
-            <i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
-            <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
-            <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 2MB</div>
+          <div id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" ondragover="pfpDragOver(event)" ondragleave="pfpDragLeave(event)" ondrop="pfpDrop(event)" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer">
+            <div id="pfpLetterAvatar" class="user-avatar" style="width:100px;height:100px;font-size:38px;border-radius:50%;cursor:pointer;transition:opacity .2s;position:relative;flex-shrink:0"></div>
+            <div style="font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;text-align:center;line-height:1.6">Tap to upload · JPG, PNG, GIF · max 10MB</div>
           </div>
           <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="pfpFileSelected(event)">
           <div id="pfpUploadErr" style="margin-top:10px;display:none;font-size:12px;color:#f87171;font-weight:700;align-items:center;gap:5px"><i class="ti ti-alert-circle"></i> <span id="pfpUploadErrMsg"></span></div>
@@ -1487,7 +1488,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;gap:10px">
           <button class="action-btn secondary" style="flex:1" onclick="closePfpPicker()">Cancel</button>
-          <button class="action-btn primary" style="flex:1" onclick="savePfp()"><i class="ti ti-check" style="font-size:15px"></i> Save Picture</button>
+          <button class="action-btn primary" style="flex:1" onclick="savePfp()"><i class="ti ti-check" style="font-size:15px"></i> Confirm</button>
         </div>
 
       </div>
@@ -2407,21 +2408,21 @@ function openPfpPicker(){
   document.getElementById('pfpFileInput').value='';
   document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
   document.getElementById('pfpPreviewDropdown').style.display='none';
+  // Set the letter avatar initial
+  const letterEl=document.getElementById('pfpLetterAvatar');
+  if(letterEl&&currentUser)letterEl.textContent=currentUser[0].toUpperCase();
   // If user already has an uploaded pfp, show it immediately in the upload tab
   if(currentPfp?.type==='upload'){
     switchPfpTab('upload');
-    const img=document.getElementById('pfpUploadImg');
-    img.src=currentPfp.value;
+    document.getElementById('pfpUploadImg').src=currentPfp.value;
     document.getElementById('pfpUploadPreview').style.display='block';
     document.getElementById('pfpUploadZone').style.display='none';
     document.getElementById('pfpPreviewHint').style.display='block';
-    // Show remove option since they already have a pfp
-    const dd=document.getElementById('pfpPreviewDropdown');
-    dd.querySelector('button:last-child').style.display='flex';
+    document.getElementById('pfpPreviewDropdown').querySelector('button:last-child').style.display='flex';
   } else {
     document.getElementById('pfpUploadPreview').style.display='none';
     document.getElementById('pfpPreviewHint').style.display='none';
-    document.getElementById('pfpUploadZone').style.display='block';
+    document.getElementById('pfpUploadZone').style.display='flex';
   }
   document.getElementById('pfpModal').style.display='flex';
   applyTheme();
@@ -2429,7 +2430,20 @@ function openPfpPicker(){
 function closePfpPicker(){
   document.getElementById('pfpModal').style.display='none';
 }
-async function removePfp(){
+function removePfp(){
+  // Just stage the removal — don't save yet, user still needs to hit Confirm
+  pfpPendingSelection={type:'remove'};
+  // Hide the preview and restore the letter avatar zone
+  document.getElementById('pfpUploadPreview').style.display='none';
+  document.getElementById('pfpUploadImg').src='';
+  document.getElementById('pfpPreviewHint').style.display='none';
+  document.getElementById('pfpPreviewDropdown').style.display='none';
+  document.getElementById('pfpUploadZone').style.display='flex';
+  const letterEl=document.getElementById('pfpLetterAvatar');
+  if(letterEl&&currentUser)letterEl.textContent=currentUser[0].toUpperCase();
+}
+
+async function applyRemovePfp(){
   try{
     // Delete from Supabase Storage if it was an uploaded file
     if(currentPfp?.type==='upload'&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
@@ -2456,7 +2470,6 @@ async function removePfp(){
       }).catch(()=>{});
     }
     currentPfp=null;
-    closePfpPicker();
     renderProfile();
     updateNav();
   }catch(e){
@@ -2567,10 +2580,9 @@ function processUploadFile(file){
     document.getElementById('pfpPreviewDropdown').querySelector('button:last-child').style.display=currentPfp?'flex':'none';
   }).catch(()=>{
     // Restore zone on error
-    zone.style.display='';
-    zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
-      <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
-      <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;
+    zone.style.display='flex';
+    const letterEl=document.getElementById('pfpLetterAvatar');
+    if(letterEl&&currentUser)letterEl.textContent=currentUser[0].toUpperCase();
     document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
     errMsg.textContent='Could not process image. Please try another file.';
     errEl.style.display='flex';
@@ -2579,6 +2591,13 @@ function processUploadFile(file){
 
 async function savePfp(){
   if(!pfpPendingSelection){closePfpPicker();return;}
+
+  // ── REMOVE: user staged a removal via dropdown ─────────────────
+  if(pfpPendingSelection.type==='remove'){
+    await applyRemovePfp();
+    closePfpPicker();
+    return;
+  }
 
   // ── PRESET: just save the key, no storage needed ──────────────
   if(pfpPendingSelection.type==='preset'){
@@ -2656,7 +2675,7 @@ async function savePfp(){
     errEl.style.display='flex';
     console.error('PFP upload error:',e);
   }finally{
-    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save Picture';}
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Confirm';}
   }
 }
 
