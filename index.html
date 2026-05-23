@@ -1911,7 +1911,8 @@ async function sbSignUp(username, password, email=''){
   });
   if(error) throw error;
   if(data.user){
-    await sb.from('profiles').update({username, email: email||null}).eq('id', data.user.id);
+    const storedEmail = email || `${username}@animesekai.guest`;
+    await sb.from('profiles').update({username, email: storedEmail}).eq('id', data.user.id);
   }
   if(!data.session) throw new Error('Account created! Please sign in.');
   return data.user;
@@ -1929,9 +1930,6 @@ async function sbSignIn(username, password){
     const rows = await res.json();
     if(Array.isArray(rows) && rows[0]?.email) email = rows[0].email;
   }catch(e){}
-  if(email.endsWith('@animesekai.guest')){
-    throw new Error('Could not find your account. Please check your username.');
-  }
   const { data, error } = await sb.auth.signInWithPassword({email, password});
   if(error) throw error;
   return data.user;
@@ -5087,7 +5085,6 @@ async function loadPublicLobbies(){
       const card=document.createElement('div');
       card.className='lobby-list-card'+(full?' lobby-guest-lock':'');
       card.innerHTML=`
-        <div class="lobby-list-avatar" style="background:${color}">${hostInitial}</div>
         <div class="lobby-list-info">
           <div class="lobby-list-host">${lobby.lobby_name || (lobby.host_username ? lobby.host_username+"'s Lobby" : lobby.code)}</div>
           <div class="lobby-list-meta">
