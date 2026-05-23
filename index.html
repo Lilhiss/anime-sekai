@@ -1469,7 +1469,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               <div class="pfp-preview-edit-hint"><i class="ti ti-dots" style="font-size:16px"></i></div>
             </div>
             <div id="pfpPreviewHint" style="display:none;font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700">Tap to change</div>
-            <div id="pfpPreviewDropdown" style="display:none;position:absolute;top:108px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:10;min-width:160px">
+            <div id="pfpPreviewDropdown" style="display:none;position:absolute;top:50%;left:calc(50% + 58px);transform:translateY(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:10;min-width:160px">
               <button onclick="pfpDropdownChange()" style="width:100%;background:none;border:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'"><i class="ti ti-camera" style="font-size:15px;color:var(--accent)"></i> Change photo</button>
               <div style="height:1px;background:var(--border2);margin:0 12px"></div>
               <button onclick="pfpDropdownRemove()" style="width:100%;background:none;border:none;color:#f87171;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s" onmouseover="this.style.background='#f8717115'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:15px"></i> Remove photo</button>
@@ -2403,12 +2403,26 @@ function openPfpPicker(){
   if(zone){zone.style.display='block';zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
     <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">Drop an image here</div>
     <div style="font-size:12px;color:var(--muted)">or click to browse &middot; JPG, PNG, GIF &middot; max 10MB</div>`;}
-  document.getElementById('pfpUploadPreview').style.display='none';
   document.getElementById('pfpUploadErr').style.display='none';
   document.getElementById('pfpFileInput').value='';
   document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
-  document.getElementById('pfpPreviewHint').style.display='none';
   document.getElementById('pfpPreviewDropdown').style.display='none';
+  // If user already has an uploaded pfp, show it immediately in the upload tab
+  if(currentPfp?.type==='upload'){
+    switchPfpTab('upload');
+    const img=document.getElementById('pfpUploadImg');
+    img.src=currentPfp.value;
+    document.getElementById('pfpUploadPreview').style.display='block';
+    document.getElementById('pfpUploadZone').style.display='none';
+    document.getElementById('pfpPreviewHint').style.display='block';
+    // Show remove option since they already have a pfp
+    const dd=document.getElementById('pfpPreviewDropdown');
+    dd.querySelector('button:last-child').style.display='flex';
+  } else {
+    document.getElementById('pfpUploadPreview').style.display='none';
+    document.getElementById('pfpPreviewHint').style.display='none';
+    document.getElementById('pfpUploadZone').style.display='block';
+  }
   document.getElementById('pfpModal').style.display='flex';
   applyTheme();
 }
