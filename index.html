@@ -1925,7 +1925,8 @@ async function sbSignUp(username, password, email=''){
 
 async function sbSignIn(username, password){
   // Look up the auth email from profiles — could be real or @animesekai.guest
-  let email=`${username}@animesekai.guest`;
+  const guestEmail=`${username}@animesekai.guest`;
+  let email=guestEmail;
   try{
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
@@ -1934,9 +1935,18 @@ async function sbSignIn(username, password){
     const rows = await res.json();
     if(Array.isArray(rows) && rows[0]?.email) email = rows[0].email;
   }catch(e){}
+  // Try signing in with the stored email first
   const { data, error } = await sb.auth.signInWithPassword({email, password});
-  if(error) throw error;
-  return data.user;
+  if(!error) return data.user;
+  // If the stored email failed AND it's a real email (not the guest placeholder),
+  // fall back to the guest email. This handles the edge case where a user added
+  // a real email via Edit Profile but the Supabase Auth email change is still
+  // pending confirmation — the guest address is still the active auth identity.
+  if(email !== guestEmail){
+    const { data: fallbackData, error: fallbackError } = await sb.auth.signInWithPassword({email: guestEmail, password});
+    if(!fallbackError) return fallbackData.user;
+  }
+  throw error; // surface the original error if both attempts fail
 }
 
 async function sbSignOut(){
@@ -2379,16 +2389,20 @@ async function saveEditProfile(){
         showErr('editProfileErr','editProfileErrMsg','That email is already associated with another account.');return;
       }
     }
-    const updates={username:newName,theme_color:newColor};
-    if(newEmail)updates.email=newEmail;
-    const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
-    if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
-    // Update Supabase Auth email instantly (email confirmation is disabled)
+    // If adding an email, update Supabase Auth FIRST — the profiles.email column
+    // is what sbSignIn uses to look up the login email, so we must not write the
+    // new address there until Auth actually accepts it. Writing it before Auth is
+    // ready causes sign-in to break (Auth still has the old @animesekai.guest
+    // address but profiles already advertises the new one).
     if(newEmail){
       const {error:authErr}=await sb.auth.updateUser({email:newEmail});
       if(authErr){showErr('editProfileErr','editProfileErrMsg','Could not update email. Try again.');return;}
       currentEmail=newEmail;
     }
+    const updates={username:newName,theme_color:newColor};
+    if(newEmail)updates.email=newEmail;
+    const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
+    if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
   }
   currentUser=newName;currentColor=newColor;
   updateNav();renderProfile();applyTheme();
