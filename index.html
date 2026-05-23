@@ -2101,8 +2101,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
   if(session?.user && !currentUser && !session.user.is_anonymous){
     const profile = await sbLoadProfile(session.user.id);
     if(profile){
-      currentUser = profile.username;
+      currentUser   = profile.username;
       currentUserId = session.user.id;
+      currentEmail  = profile.email||null;
       isGuest = false;
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
@@ -2369,6 +2370,11 @@ async function saveEditProfile(){
   const emailInput=document.getElementById('editEmailInput');
   const newEmail=emailInput?.value.trim()||'';
   if(newEmail&&!newEmail.includes('@')){showErr('editEmailErr','editEmailErrMsg','Please enter a valid email address.');return}
+  // Disable Save for the duration of the async operation to prevent double-clicks
+  // (auth.updateUser is rate-limited to ~2 calls/min — a second call = 429)
+  const saveBtn=document.querySelector('#editProfileModal .action-btn.primary');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  try{
   // Update Supabase profile if logged in
   if(currentUserId&&!isGuest){
     // Check if email is already in use
@@ -2383,14 +2389,13 @@ async function saveEditProfile(){
       }
     }
     // Update Auth email first so the identity and profiles stay in sync.
-    // Both "Enable email confirmations" and "Secure email change" must be off in
-    // Supabase Auth settings so the change takes effect instantly.
-    // Note: auth.updateUser is rate-limited — avoid double-clicking Save as a
-    // second call within ~60s will return a 429.
+    // Requires "Enable email confirmations" and "Secure email change" to be off
+    // in Supabase Auth settings. auth.updateUser is rate-limited to ~2 calls/min.
     if(newEmail){
       const{data:{session},error:sessErr}=await sb.auth.getSession();
       if(sessErr||!session){showErr('editEmailErr','editEmailErrMsg','Session expired — please sign out and back in.');return;}
-      const{error:authErr}=await sb.auth.updateUser({email:newEmail});
+      const{data:authData,error:authErr}=await sb.auth.updateUser({email:newEmail});
+      console.log('[updateUser] data:', authData, 'error:', authErr);
       if(authErr){
         if(authErr.status===429){
           showErr('editEmailErr','editEmailErrMsg','Too many attempts — please wait a minute and try again.');
@@ -2415,6 +2420,11 @@ async function saveEditProfile(){
   toast.textContent=newEmail?'Email added successfully! ✅':'Profile updated! ✅';
   document.body.appendChild(toast);
   setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},3000);
+  }catch(e){
+    showErr('editProfileErr','editProfileErrMsg','Something went wrong. Please try again.');
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save';}
+  }
 }
 
 // ── PROFILE PICTURE ───────────────────────────────────────────
