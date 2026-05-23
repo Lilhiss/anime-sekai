@@ -3063,8 +3063,7 @@ async function submitForgotPassword(){
       showErr('forgotErr','forgotErrMsg','No email on this account. Add one in your profile to enable password recovery.');
       return;
     }
-    const guestEmail=`${u}@animesekai.guest`;
-    const {error}=await sb.auth.resetPasswordForEmail(guestEmail,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
+    const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
     if(error)throw error;
     document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
   }catch(e){
