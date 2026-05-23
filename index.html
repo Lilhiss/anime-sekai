@@ -2733,7 +2733,10 @@ async function savePfp(){
   // ── PRESET: just save the key, no storage needed ──────────────
   if(pfpPendingSelection.type==='preset'){
     currentPfp=pfpPendingSelection;
-    if(currentUserId&&!isGuest){
+    if(isGuest){
+      // Guests have no DB row — persist to sessionStorage for the session
+      try{sessionStorage.setItem('guest_pfp',JSON.stringify(currentPfp));}catch(e){}
+    } else if(currentUserId){
       sb.from('profiles').update({avatar_url:'preset:'+currentPfp.value}).eq('id',currentUserId).catch(()=>{});
     }
     closePfpPicker();renderProfile();updateNav();
@@ -2780,12 +2783,11 @@ async function savePfp(){
       // Get the permanent public URL
       const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
 
-      // Cache-bust in memory so the browser picks up the new image immediately,
-      // but persist the clean URL (without timestamp) to the DB so it loads correctly on refresh
+      // Cache-bust both in memory and in the DB so refreshes always pick up the new image
       const bustedUrl=publicUrl+'?t='+Date.now();
       currentPfp={type:'upload',value:bustedUrl};
 
-      // Persist the clean URL to profiles via raw fetch with the same auth token
+      // Persist the cache-busted URL to profiles so the browser never serves a stale version on refresh
       const patchRes=await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
         method:'PATCH',
         headers:{
@@ -2794,7 +2796,7 @@ async function savePfp(){
           'Content-Type':'application/json',
           'Prefer':'return=minimal'
         },
-        body:JSON.stringify({avatar_url:publicUrl})
+        body:JSON.stringify({avatar_url:bustedUrl})
       });
       if(!patchRes.ok)console.error('Profile update error:',await patchRes.text());
     }
@@ -2935,7 +2937,13 @@ async function submitGuest(){
   }catch(e){
     // Silent fail — app works without Supabase for solo play
   }
-  currentUser=val;isGuest=true;updateNav();afterAuth();
+  currentUser=val;isGuest=true;
+  // Restore any preset pfp the guest picked in a previous session
+  try{
+    const saved=sessionStorage.getItem('guest_pfp');
+    if(saved)currentPfp=JSON.parse(saved);
+  }catch(e){}
+  updateNav();afterAuth();
   btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
 }
 async function submitSignin(){
