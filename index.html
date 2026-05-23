@@ -5618,11 +5618,12 @@ async function confirmTransferHost(){
         const nhRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
         const nhData=await nhRes.json();
         const newHostUid=Array.isArray(nhData)?nhData[0]?.user_id:null;
-        // Set all is_host=false then set new host
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
-        // Update lobbies.host_id so the old host can't reclaim on rejoin
         if(newHostUid){
+          // 1. Demote current host's own row (auth.uid()=user_id passes RLS)
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+          // 2. Promote new host's row — current user is still host in lobbies table so RLS passes
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${newHostUid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+          // 3. Update lobbies.host_id last — current user still passes host RLS check up to this point
           await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
         }
       }
