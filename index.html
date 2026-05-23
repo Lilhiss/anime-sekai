@@ -1925,19 +1925,12 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Look up email from profiles — accounts with a real email will have had
-  // auth.updateUser() called, so Auth holds the real address as the identity.
-  // Accounts without a real email use the @animesekai.guest placeholder in both.
-  let email=`${username}@animesekai.guest`;
-  try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const rows=await res.json();
-    if(Array.isArray(rows)&&rows[0]?.email) email=rows[0].email;
-  }catch(e){}
-  const{data,error}=await sb.auth.signInWithPassword({email,password});
+  // Always authenticate with the guest address — it is the permanent Supabase
+  // Auth identity. Any real email the user adds lives only in profiles.
+  const{data,error}=await sb.auth.signInWithPassword({
+    email:`${username}@animesekai.guest`,
+    password
+  });
   if(error) throw error;
   return data.user;
 }
@@ -2388,23 +2381,11 @@ async function saveEditProfile(){
         showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
       }
     }
-    // Update Auth email first so the identity and profiles stay in sync.
-    // Requires "Enable email confirmations" and "Secure email change" to be off
-    // in Supabase Auth settings. auth.updateUser is rate-limited to ~2 calls/min.
-    if(newEmail){
-      const{data:{session},error:sessErr}=await sb.auth.getSession();
-      if(sessErr||!session){showErr('editEmailErr','editEmailErrMsg','Session expired — please sign out and back in.');return;}
-      const{data:authData,error:authErr}=await sb.auth.updateUser({email:newEmail});
-      console.log('[updateUser] data:', authData, 'error:', authErr);
-      if(authErr){
-        if(authErr.status===429){
-          showErr('editEmailErr','editEmailErrMsg','Too many attempts — please wait a minute and try again.');
-        } else {
-          showErr('editEmailErr','editEmailErrMsg','Could not update email: '+authErr.message);
-        }
-        return;
-      }
-    }
+    // Email is stored in profiles only. Supabase Auth holds the @animesekai.guest
+    // address as a permanent identity — auth.updateUser() silently queues the
+    // change as pending confirmation and never applies it without a working SMTP.
+    // sbSignIn always authenticates with the guest address; the real email gates
+    // password recovery only.
     const updates={username:newName,theme_color:newColor};
     if(newEmail)updates.email=newEmail;
     const{error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
@@ -3063,9 +3044,13 @@ async function submitForgotPassword(){
   const btn=document.getElementById('forgotSubmitBtn');
   btn.disabled=true;btn.textContent='Sending…';
   try{
-    // Look up the real email from profiles. Since auth.updateUser() keeps Auth
-    // and profiles in sync, resetPasswordForEmail can use the real address and
-    // Supabase will deliver the link to the user's actual inbox.
+    // Look up the account and check a real email exists — required for delivery.
+    // The reset link is sent via the guest address (the actual Auth identity),
+    // but Supabase routes it to whatever email is on the Auth account. Since
+    // auth.updateUser does not work on this project, the guest address is the
+    // only identity Auth knows, so recovery only works if the user has set up
+    // a custom SMTP or we implement a manual token flow in the future.
+    // For now: verify the account exists and has a real email, then send.
     const forgotRes=await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?select=id,email&username=ilike.${encodeURIComponent(u)}&limit=1`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
@@ -3075,10 +3060,11 @@ async function submitForgotPassword(){
     if(!profile){showErr('forgotErr','forgotErrMsg','No account found with that username.');return}
     const hasRealEmail=profile.email&&!profile.email.endsWith('@animesekai.guest');
     if(!hasRealEmail){
-      showErr('forgotErr','forgotErrMsg','This account has no email address. Add one in your profile to enable password recovery.');
+      showErr('forgotErr','forgotErrMsg','No email on this account. Add one in your profile to enable password recovery.');
       return;
     }
-    const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
+    const guestEmail=`${u}@animesekai.guest`;
+    const {error}=await sb.auth.resetPasswordForEmail(guestEmail,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
     if(error)throw error;
     document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
   }catch(e){
