@@ -1500,6 +1500,33 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- PFP CROP EDITOR MODAL -->
+  <div id="pfpCropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:1100;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:24px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">Adjust Photo</div>
+        <button onclick="closePfpCrop()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <!-- Circular crop viewport -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+        <div style="position:relative;width:220px;height:220px;border-radius:50%;overflow:hidden;border:3px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.55);cursor:grab;flex-shrink:0" id="pfpCropViewport">
+          <canvas id="pfpCropCanvas" width="220" height="220" style="position:absolute;top:0;left:0;touch-action:none;user-select:none"></canvas>
+        </div>
+        <!-- Zoom slider -->
+        <div style="width:100%;display:flex;align-items:center;gap:10px">
+          <i class="ti ti-zoom-out" style="font-size:16px;color:var(--muted)"></i>
+          <input type="range" id="pfpZoomSlider" min="100" max="300" value="100" style="flex:1;accent-color:var(--accent)">
+          <i class="ti ti-zoom-in" style="font-size:16px;color:var(--muted)"></i>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700">Drag to reposition · scroll or pinch to zoom</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closePfpCrop()">Back</button>
+        <button class="action-btn primary" onclick="confirmPfpCrop()"><i class="ti ti-check" style="font-size:15px"></i> Use Photo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SIGN OUT CONFIRMATION MODAL -->
   <div id="signOutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
@@ -2526,70 +2553,157 @@ function pfpDrop(e){
   const file=e.dataTransfer?.files?.[0];
   if(file)processUploadFile(file);
 }
+// ── PFP CROP EDITOR ───────────────────────────────────────────
+let _cropImg=null,_cropX=0,_cropY=0,_cropScale=1;
+let _cropDragging=false,_cropLastX=0,_cropLastY=0;
+let _cropPinchDist=0,_cropScaleAtPinch=1;
+const CROP_SIZE=220, EXPORT_SIZE=256;
+
 function pfpFileSelected(e){
   const file=e.target.files?.[0];
-  if(file)processUploadFile(file);
-}
-// Resize an image file to a square canvas (max 256px) and return a Blob (~JPEG, q=0.82)
-function resizeImageToBlob(file){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    const url=URL.createObjectURL(file);
-    img.onload=()=>{
-      URL.revokeObjectURL(url);
-      const SIZE=256;
-      // Crop to square from centre, then scale to SIZE×SIZE
-      const s=Math.min(img.width,img.height);
-      const ox=(img.width-s)/2, oy=(img.height-s)/2;
-      const canvas=document.createElement('canvas');
-      canvas.width=SIZE;canvas.height=SIZE;
-      const ctx=canvas.getContext('2d');
-      ctx.drawImage(img,ox,oy,s,s,0,0,SIZE,SIZE);
-      canvas.toBlob(blob=>{
-        if(blob)resolve(blob);
-        else reject(new Error('Canvas toBlob failed'));
-      },'image/jpeg',0.82);
-    };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Image load failed'));};
-    img.src=url;
-  });
+  if(file)openPfpCropEditor(file);
+  e.target.value='';
 }
 
-function processUploadFile(file){
+function openPfpCropEditor(file){
   const errEl=document.getElementById('pfpUploadErr');
   const errMsg=document.getElementById('pfpUploadErrMsg');
   errEl.style.display='none';
   if(!file.type.startsWith('image/')){errMsg.textContent='Please choose an image file.';errEl.style.display='flex';return;}
-  // 10MB pre-resize cap — plenty generous, we'll shrink it down anyway
   if(file.size>10*1024*1024){errMsg.textContent='Image must be under 10MB.';errEl.style.display='flex';return;}
-  // Show a spinner in the zone while we resize
-  const zone=document.getElementById('pfpUploadZone');
-  zone.style.display='none';
-  resizeImageToBlob(file).then(blob=>{
-    // Store the resized blob for upload, show preview from it
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    URL.revokeObjectURL(url);
+    _cropImg=img;
+    // Default scale: fit the shortest side to CROP_SIZE
+    const minSide=Math.min(img.width,img.height);
+    _cropScale=CROP_SIZE/minSide;
+    // Center the image
+    _cropX=(CROP_SIZE-img.width*_cropScale)/2;
+    _cropY=(CROP_SIZE-img.height*_cropScale)/2;
+    // Sync slider min to current fit scale (can't zoom out below fit)
+    const slider=document.getElementById('pfpZoomSlider');
+    slider.min=100; slider.max=300; slider.value=100;
+    _drawCrop();
+    document.getElementById('pfpCropModal').style.display='flex';
+    applyTheme();
+    _attachCropEvents();
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);errEl.style.display='flex';errMsg.textContent='Could not load image.';};
+  img.src=url;
+}
+
+function _drawCrop(){
+  const canvas=document.getElementById('pfpCropCanvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,CROP_SIZE,CROP_SIZE);
+  ctx.save();
+  ctx.translate(_cropX,_cropY);
+  ctx.drawImage(_cropImg,0,0,_cropImg.width*_cropScale,_cropImg.height*_cropScale);
+  ctx.restore();
+}
+
+function _clampCrop(){
+  // Prevent panning so the viewport shows empty space — image must always fill the circle
+  const w=_cropImg.width*_cropScale, h=_cropImg.height*_cropScale;
+  if(_cropX>0)_cropX=0;
+  if(_cropY>0)_cropY=0;
+  if(_cropX+w<CROP_SIZE)_cropX=CROP_SIZE-w;
+  if(_cropY+h<CROP_SIZE)_cropY=CROP_SIZE-h;
+}
+
+function _attachCropEvents(){
+  const canvas=document.getElementById('pfpCropCanvas');
+  // Pointer events (mouse + pen)
+  canvas.onpointerdown=e=>{
+    canvas.setPointerCapture(e.pointerId);
+    _cropDragging=true;_cropLastX=e.clientX;_cropLastY=e.clientY;
+    canvas.style.cursor='grabbing';
+  };
+  canvas.onpointermove=e=>{
+    if(!_cropDragging)return;
+    _cropX+=e.clientX-_cropLastX;
+    _cropY+=e.clientY-_cropLastY;
+    _cropLastX=e.clientX;_cropLastY=e.clientY;
+    _clampCrop();_drawCrop();
+  };
+  canvas.onpointerup=canvas.onpointercancel=()=>{
+    _cropDragging=false;canvas.style.cursor='grab';
+  };
+  // Scroll to zoom
+  canvas.onwheel=e=>{
+    e.preventDefault();
+    const delta=e.deltaY>0?-0.05:0.05;
+    _applyCropZoom(_cropScale+delta,CROP_SIZE/2,CROP_SIZE/2);
+    const minScale=CROP_SIZE/Math.min(_cropImg.width,_cropImg.height);
+    const pct=Math.round((_cropScale/minScale-1)/(2)*100);
+    document.getElementById('pfpZoomSlider').value=Math.min(300,Math.max(100,100+pct*2));
+  };
+  // Pinch to zoom (touch)
+  canvas.ontouchstart=e=>{
+    if(e.touches.length===2){
+      _cropPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      _cropScaleAtPinch=_cropScale;
+    }
+  };
+  canvas.ontouchmove=e=>{
+    e.preventDefault();
+    if(e.touches.length===2){
+      const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      const newScale=_cropScaleAtPinch*(dist/_cropPinchDist);
+      _applyCropZoom(newScale,CROP_SIZE/2,CROP_SIZE/2);
+    }
+  };
+  // Zoom slider
+  document.getElementById('pfpZoomSlider').oninput=e=>{
+    const minScale=CROP_SIZE/Math.min(_cropImg.width,_cropImg.height);
+    const newScale=minScale*(1+(e.target.value-100)/100);
+    _applyCropZoom(newScale,CROP_SIZE/2,CROP_SIZE/2);
+  };
+}
+
+function _applyCropZoom(newScale,cx,cy){
+  const minScale=CROP_SIZE/Math.min(_cropImg.width,_cropImg.height);
+  const maxScale=minScale*3;
+  newScale=Math.max(minScale,Math.min(maxScale,newScale));
+  // Zoom toward the center point
+  _cropX=cx-(_cropImg.width*newScale)*(cx-_cropX)/(_cropImg.width*_cropScale);
+  _cropY=cy-(_cropImg.height*newScale)*(cy-_cropY)/(_cropImg.height*_cropScale);
+  _cropScale=newScale;
+  _clampCrop();_drawCrop();
+}
+
+function closePfpCrop(){
+  document.getElementById('pfpCropModal').style.display='none';
+  _cropImg=null;
+}
+
+function confirmPfpCrop(){
+  // Export the cropped circle at EXPORT_SIZE×EXPORT_SIZE
+  const exportCanvas=document.createElement('canvas');
+  exportCanvas.width=EXPORT_SIZE;exportCanvas.height=EXPORT_SIZE;
+  const ctx=exportCanvas.getContext('2d');
+  // Clip to circle
+  ctx.beginPath();ctx.arc(EXPORT_SIZE/2,EXPORT_SIZE/2,EXPORT_SIZE/2,0,Math.PI*2);ctx.clip();
+  // Scale coords from CROP_SIZE viewport to EXPORT_SIZE export
+  const ratio=EXPORT_SIZE/CROP_SIZE;
+  ctx.drawImage(_cropImg,_cropX*ratio,_cropY*ratio,_cropImg.width*_cropScale*ratio,_cropImg.height*_cropScale*ratio);
+  exportCanvas.toBlob(blob=>{
+    if(!blob){document.getElementById('pfpUploadErrMsg').textContent='Export failed.';document.getElementById('pfpUploadErr').style.display='flex';return;}
     pfpUploadBlob=blob;
     const previewUrl=URL.createObjectURL(blob);
-    pfpUploadDataUrl=previewUrl; // used for preview only
-    pfpPendingSelection={type:'upload',value:'pending'}; // real URL set after upload
+    pfpUploadDataUrl=previewUrl;
+    pfpPendingSelection={type:'upload',value:'pending'};
     document.getElementById('pfpUploadImg').src=previewUrl;
     document.getElementById('pfpUploadPreview').style.display='block';
-    zone.style.display='none';
-    // Remove any previous hint if re-selecting
+    document.getElementById('pfpUploadZone').style.display='none';
     document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
-    // Show hint and enable dropdown
     document.getElementById('pfpPreviewHint').style.display='block';
     document.getElementById('pfpPreviewDropdown').style.display='none';
-    // Only show remove option in dropdown if user already has a saved pfp
     document.getElementById('pfpPreviewDropdown').querySelector('button:last-child').style.display=currentPfp?'flex':'none';
-  }).catch(()=>{
-    // Restore zone on error
-    zone.style.display='flex';
-    const letterEl=document.getElementById('pfpLetterAvatar');
-    if(letterEl&&currentUser)letterEl.textContent=currentUser[0].toUpperCase();
-    document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
-    errMsg.textContent='Could not process image. Please try another file.';
-    errEl.style.display='flex';
-  });
+    closePfpCrop();
+  },'image/jpeg',0.9);
 }
 
 async function savePfp(){
