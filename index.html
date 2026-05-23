@@ -898,7 +898,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div id="authForgot" style="display:none;width:100%;max-width:420px" class="slide-in">
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode('signin')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
-        <div><label class="form-label">Username</label><input class="form-input" id="forgotUser" type="text" placeholder="YourUsername" oninput="clearErr('forgotErr')"><div class="form-hint" style="margin-top:6px">We'll look up your email and send a reset link.</div></div>
+        <div><label class="form-label">Username</label><input class="form-input" id="forgotUser" type="text" placeholder="YourUsername" oninput="clearErr('forgotErr')"><div class="form-hint" style="margin-top:6px">Enter your username and we'll send a reset link to your email.</div></div>
         <div class="form-err" id="forgotErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="forgotErrMsg"></span></div>
         <button class="form-submit" id="forgotSubmitBtn" onclick="submitForgotPassword()"><i class="ti ti-mail" style="font-size:16px"></i> Send Reset Link</button>
       </div>
@@ -1925,10 +1925,9 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Look up the auth email from profiles. Accounts that have added a real email
-  // via Edit Profile will have had auth.updateUser() called, so Supabase Auth
-  // holds the real email as the identity. Accounts without a real email still
-  // use the @animesekai.guest placeholder in both profiles and Auth.
+  // Look up email from profiles — accounts with a real email will have had
+  // auth.updateUser() called, so Auth holds the real address as the identity.
+  // Accounts without a real email use the @animesekai.guest placeholder in both.
   let email=`${username}@animesekai.guest`;
   try{
     const res=await fetch(
@@ -2383,12 +2382,12 @@ async function saveEditProfile(){
         showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
       }
     }
-    // Update Supabase Auth email first so the auth identity and profiles stay in sync.
-    // Requires email confirmations to be disabled in Supabase Auth settings so
-    // updateUser() takes effect instantly with no confirmation link needed.
+    // Update Auth email first so the identity and profiles stay in sync.
+    // Both "Enable email confirmations" and "Secure email change" must be off in
+    // Supabase Auth settings so the change takes effect instantly.
+    // Note: auth.updateUser is rate-limited — avoid double-clicking Save as a
+    // second call within ~60s will return a 429.
     if(newEmail){
-      // Ensure we have a live session before calling updateUser — a stale or
-      // missing session causes a silent 400/401 from Supabase Auth.
       const{data:{session},error:sessErr}=await sb.auth.getSession();
       if(sessErr||!session){showErr('editEmailErr','editEmailErrMsg','Session expired — please sign out and back in.');return;}
       const{error:authErr}=await sb.auth.updateUser({email:newEmail});
@@ -3054,13 +3053,21 @@ async function submitForgotPassword(){
   const btn=document.getElementById('forgotSubmitBtn');
   btn.disabled=true;btn.textContent='Sending…';
   try{
+    // Look up the real email from profiles. Since auth.updateUser() keeps Auth
+    // and profiles in sync, resetPasswordForEmail can use the real address and
+    // Supabase will deliver the link to the user's actual inbox.
     const forgotRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(u)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/profiles?select=id,email&username=ilike.${encodeURIComponent(u)}&limit=1`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const forgotRows=await forgotRes.json();
     const profile=Array.isArray(forgotRows)&&forgotRows[0]?forgotRows[0]:null;
-    if(!profile?.email){showErr('forgotErr','forgotErrMsg','No email found for this account. Password cannot be recovered.');return}
+    if(!profile){showErr('forgotErr','forgotErrMsg','No account found with that username.');return}
+    const hasRealEmail=profile.email&&!profile.email.endsWith('@animesekai.guest');
+    if(!hasRealEmail){
+      showErr('forgotErr','forgotErrMsg','This account has no email address. Add one in your profile to enable password recovery.');
+      return;
+    }
     const {error}=await sb.auth.resetPasswordForEmail(profile.email,{redirectTo:'https://anime-sekai-quiz.vercel.app'});
     if(error)throw error;
     document.getElementById('forgotSubmitBtn').innerHTML='✅ Reset link sent!';
