@@ -1461,6 +1461,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div id="pfpPresetTab">
           <div class="pfp-section-label" style="margin-bottom:12px">Choose a character</div>
           <div class="pfp-preset-grid" id="pfpPresetGrid"></div>
+          <div id="pfpGuestHint" style="display:none;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;margin-top:16px">
+            <i class="ti ti-lock" style="font-size:18px;color:var(--accent);flex-shrink:0"></i>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Want to upload your own photo? <a onclick="closePfpPicker();goStep('auth');showAuthMode('register')" style="color:var(--accent);font-weight:800;cursor:pointer">Create a free account</a> to use a custom profile picture.</div>
+          </div>
         </div>
         <div id="pfpUploadTab" style="display:none">
           <div class="pfp-section-label">Upload your own</div>
@@ -1470,7 +1474,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                 <img id="pfpUploadImg" src="" alt="">
                 <div class="pfp-preview-edit-hint"><i class="ti ti-dots" style="font-size:16px"></i></div>
               </div>
-              <div style="position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent);opacity:.4;pointer-events:none"></div>
+              <div style="position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent);opacity:.4;pointer-events:none;visibility:hidden"></div>
             </div>
             <div id="pfpPreviewHint" style="display:none;font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700">Tap to change</div>
             <div id="pfpPreviewDropdown" style="display:none;position:absolute;top:50%;left:calc(50% + 58px);transform:translateY(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:10;min-width:160px">
@@ -2425,11 +2429,21 @@ function pfpDropdownRemove(){
 }
 
 function openPfpPicker(){
-  if(isGuest){return;} // guests can't save; avatar click does nothing for them
   pfpPendingSelection = currentPfp ? {...currentPfp} : null;
   pfpUploadDataUrl = null;
   pfpUploadBlob = null;
-  switchPfpTab('upload');
+  // Guests: presets only — hide upload tab and show account hint
+  const uploadTab=document.getElementById('pfpTabUpload');
+  const guestHint=document.getElementById('pfpGuestHint');
+  if(isGuest){
+    if(uploadTab)uploadTab.style.display='none';
+    if(guestHint)guestHint.style.display='flex';
+    switchPfpTab('preset');
+  } else {
+    if(uploadTab)uploadTab.style.display='';
+    if(guestHint)guestHint.style.display='none';
+    switchPfpTab('upload');
+  }
   buildPfpPresetGrid();
   // Reset upload tab fully
   const zone=document.getElementById('pfpUploadZone');
@@ -3982,11 +3996,11 @@ function renderProfile(){
         oldAvatar.style.fontSize='';
       }
     }
-    // Guests: no pfp click
-    avatarWrap.style.cursor=isGuest?'default':'pointer';
-    avatarWrap.onclick=isGuest?null:openPfpPicker;
+    // Guests can pick presets too
+    avatarWrap.style.cursor='pointer';
+    avatarWrap.onclick=openPfpPicker;
     const hint=avatarWrap.querySelector('.profile-avatar-edit-hint');
-    if(hint)hint.style.display=isGuest?'none':'';
+    if(hint)hint.style.display='';
   }
   document.getElementById('profileUsername').textContent=user;
   // compute rank from bestScore
