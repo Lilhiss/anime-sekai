@@ -1441,8 +1441,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <div id="editEmailWrap" style="display:none">
         <label class="form-label"><i class="ti ti-mail" style="font-size:14px;color:var(--accent)"></i> Add Email Address <span class="optional-tag">Optional</span></label>
-        <input class="form-input" id="editEmailInput" type="email" placeholder="you@example.com" oninput="clearErr('editProfileErr')">
+        <input class="form-input" id="editEmailInput" type="email" placeholder="you@example.com" oninput="clearErr('editEmailErr')">
         <div class="form-hint" style="margin-top:6px">Allows password recovery. Won't be shown publicly.</div>
+        <div class="form-err" id="editEmailErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="editEmailErrMsg"></span></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeEditProfile()">Cancel</button>
@@ -2375,7 +2376,7 @@ async function saveEditProfile(){
   // Check for new email
   const emailInput=document.getElementById('editEmailInput');
   const newEmail=emailInput?.value.trim()||'';
-  if(newEmail&&!newEmail.includes('@')){showErr('editProfileErr','editProfileErrMsg','Please enter a valid email address.');return}
+  if(newEmail&&!newEmail.includes('@')){showErr('editEmailErr','editEmailErrMsg','Please enter a valid email address.');return}
   // Update Supabase profile if logged in
   if(currentUserId&&!isGuest){
     // Check if email is already in use
@@ -2386,23 +2387,18 @@ async function saveEditProfile(){
       );
       const checkRows=await checkRes.json();
       if(Array.isArray(checkRows)&&checkRows.length>0){
-        showErr('editProfileErr','editProfileErrMsg','That email is already associated with another account.');return;
+        showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
       }
     }
-    // If adding an email, update Supabase Auth FIRST — the profiles.email column
-    // is what sbSignIn uses to look up the login email, so we must not write the
-    // new address there until Auth actually accepts it. Writing it before Auth is
-    // ready causes sign-in to break (Auth still has the old @animesekai.guest
-    // address but profiles already advertises the new one).
-    if(newEmail){
-      const {error:authErr}=await sb.auth.updateUser({email:newEmail});
-      if(authErr){showErr('editProfileErr','editProfileErrMsg','Could not update email. Try again.');return;}
-      currentEmail=newEmail;
-    }
+    // Save email only to profiles — sbSignIn uses this column for login lookup.
+    // We intentionally skip sb.auth.updateUser() here: accounts created without
+    // a real email use a @animesekai.guest placeholder in Supabase Auth, and
+    // calling updateUser({email}) on those sessions returns a 400.
     const updates={username:newName,theme_color:newColor};
     if(newEmail)updates.email=newEmail;
     const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
     if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
+    if(newEmail)currentEmail=newEmail;
   }
   currentUser=newName;currentColor=newColor;
   updateNav();renderProfile();applyTheme();
