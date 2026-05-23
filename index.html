@@ -5477,28 +5477,16 @@ async function rtSetLobbyStatus(status){
 }
 
 async function rtDeleteLobby(){
-  // Called when host leaves — removes the lobby and all its players entirely
+  // Called when host leaves and lobby is empty.
+  // Deletes only the lobby row — lobby_players rows are removed automatically
+  // via the ON DELETE CASCADE FK constraint, so no separate player delete needed
+  // and no RLS issues from trying to delete other users' rows.
   if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode)return;
   try{
-    // Must use the host's real session token so the RLS host_id check passes
     const token=await rtGetAuthToken();
-    const authHeaders={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
-    // Fetch the lobby id first so we can delete lobby_players too
-    const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{
-      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}
-    });
-    const lData=await lRes.json();
-    const lid=Array.isArray(lData)?lData[0]?.id:null;
-    // Delete all players first (FK constraint), then the lobby row
-    if(lid){
-      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{
-        method:'DELETE',
-        headers:authHeaders
-      });
-    }
     await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${lobbyCode}`,{
       method:'DELETE',
-      headers:authHeaders
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}
     });
   }catch(e){console.warn('rtDeleteLobby failed:',e);}
 }
