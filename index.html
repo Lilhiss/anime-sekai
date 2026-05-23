@@ -719,7 +719,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <button class="ghost-btn" onclick="closeNavDrawer();isGuest||currentUser?goStep('profile'):(pendingDestination='profile',goStep('auth'))"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
     <div class="nav-drawer-sep"></div>
     <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
-    <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();showSignOutModal()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
+    <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
     <div class="nav-drawer-sep"></div>
     <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
     <div class="toggle-row" style="padding:0 2px 10px">
@@ -1924,8 +1924,7 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Use plain fetch for the email lookup — bypasses the Supabase JS client
-  // which hangs waiting for an auth session before sending the query
+  // Look up the auth email from profiles — could be real or @animesekai.guest
   let email=`${username}@animesekai.guest`;
   try{
     const res = await fetch(
@@ -2384,9 +2383,10 @@ async function saveEditProfile(){
     if(newEmail)updates.email=newEmail;
     const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
     if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
-    // Also update Supabase Auth email so sign-in works with the new address
+    // Update Supabase Auth email instantly (email confirmation is disabled)
     if(newEmail){
-      await sb.auth.updateUser({email:newEmail}).catch(()=>{});
+      const {error:authErr}=await sb.auth.updateUser({email:newEmail});
+      if(authErr){showErr('editProfileErr','editProfileErrMsg','Could not update email. Try again.');return;}
       currentEmail=newEmail;
     }
   }
