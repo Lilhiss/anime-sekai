@@ -1439,6 +1439,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <label class="form-label">Theme Color</label>
         <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px" id="editColorPicker"></div>
       </div>
+      <div id="editEmailWrap" style="display:none">
+        <label class="form-label"><i class="ti ti-mail" style="font-size:14px;color:var(--accent)"></i> Add Email Address <span class="optional-tag">Optional</span></label>
+        <input class="form-input" id="editEmailInput" type="email" placeholder="you@example.com" oninput="clearErr('editProfileErr')">
+        <div class="form-hint" style="margin-top:6px">Allows password recovery. Won't be shown publicly.</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeEditProfile()">Cancel</button>
         <button class="action-btn primary" onclick="saveEditProfile()"><i class="ti ti-check" style="font-size:15px"></i> Save</button>
@@ -1946,14 +1951,15 @@ async function sbLoadProfile(userId){
     const [statsRes, profileRes]=await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url&id=eq.${userId}&limit=1`,
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,email&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
     ]);
     const [statsRows, profileRows]=await Promise.all([statsRes.json(), profileRes.json()]);
     const stats=Array.isArray(statsRows)&&statsRows[0]?statsRows[0]:null;
     if(!stats)return null;
     const avatar_url=(Array.isArray(profileRows)&&profileRows[0]?.avatar_url)||null;
-    return {...stats, avatar_url};
+    const email=(Array.isArray(profileRows)&&profileRows[0]?.email)||null;
+    return {...stats, avatar_url, email};
   }catch(e){return null;}
 }
 
@@ -2116,7 +2122,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 </script>
 
 <script>
-let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false;
+let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false,currentEmail=null;
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
@@ -2229,7 +2235,7 @@ function closeSignOutModal(){
 async function confirmSignOut(){
   closeSignOutModal();
   await sbSignOut().catch(()=>{});
-  currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;
+  currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
@@ -2339,6 +2345,12 @@ function openEditProfile(){
     picker.appendChild(btn);
   });
   document.getElementById('editProfileModal').style.display='flex';
+  // Show email field only for accounts without a real email
+  const emailWrap=document.getElementById('editEmailWrap');
+  const emailInput=document.getElementById('editEmailInput');
+  const hasRealEmail=currentEmail&&!currentEmail.endsWith('@animesekai.guest');
+  if(emailWrap){emailWrap.style.display=hasRealEmail?'none':'block';}
+  if(emailInput)emailInput.value='';
   applyTheme();
 }
 function closeEditProfile(){
@@ -2351,10 +2363,32 @@ async function saveEditProfile(){
   // Get selected color
   const selectedBtn=document.querySelector('#editColorPicker button[data-selected]');
   const newColor=selectedBtn?.dataset.color||currentColor;
+  // Check for new email
+  const emailInput=document.getElementById('editEmailInput');
+  const newEmail=emailInput?.value.trim()||'';
+  if(newEmail&&!newEmail.includes('@')){showErr('editProfileErr','editProfileErrMsg','Please enter a valid email address.');return}
   // Update Supabase profile if logged in
   if(currentUserId&&!isGuest){
-    const {error}=await sb.from('profiles').update({username:newName,theme_color:newColor}).eq('id',currentUserId);
+    // Check if email is already in use
+    if(newEmail){
+      const checkRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?select=id&email=eq.${encodeURIComponent(newEmail)}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const checkRows=await checkRes.json();
+      if(Array.isArray(checkRows)&&checkRows.length>0){
+        showErr('editProfileErr','editProfileErrMsg','That email is already associated with another account.');return;
+      }
+    }
+    const updates={username:newName,theme_color:newColor};
+    if(newEmail)updates.email=newEmail;
+    const {error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
     if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
+    // Also update Supabase Auth email so sign-in works with the new address
+    if(newEmail){
+      await sb.auth.updateUser({email:newEmail}).catch(()=>{});
+      currentEmail=newEmail;
+    }
   }
   currentUser=newName;currentColor=newColor;
   updateNav();renderProfile();applyTheme();
@@ -2954,6 +2988,7 @@ async function submitSignin(){
     const user=await sbSignIn(u,p);
     const profile=await sbLoadProfile(user.id);
     currentUser=profile?.username||u;currentUserId=user.id;isGuest=false;
+    currentEmail=profile?.email||null;
     totalGames    =parseInt(profile?.total_games)   ||0;
     bestScore     =parseInt(profile?.best_score)    ||0;
     totalCorrect  =parseInt(profile?.total_correct) ||0;
