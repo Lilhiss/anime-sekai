@@ -324,10 +324,10 @@ h1 .hi{color:var(--accent)}
 .pfp-preset-label{font-size:9px;font-weight:700;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pfp-upload-zone{border:2px dashed var(--border2);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
 .pfp-upload-zone:hover,.pfp-upload-zone.dragover{border-color:var(--accent);background:var(--accent-soft)}
-.pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto 16px;overflow:hidden;border:3px solid var(--accent);display:none;position:relative;cursor:pointer}
+.pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto;overflow:hidden;border:3px solid var(--accent);display:none;position:relative;cursor:pointer}
 .pfp-preview-edit-hint{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
-.pfp-upload-preview:hover .pfp-preview-edit-hint{opacity:1}
-.pfp-preview-edit-hint i{font-size:22px;color:#fff}
+.pfp-upload-preview:hover .pfp-preview-edit-hint,.pfp-upload-preview.dropdown-open .pfp-preview-edit-hint{opacity:1}
+.pfp-preview-edit-hint i{color:#fff}
 .pfp-upload-preview img{width:100%;height:100%;object-fit:cover}
 .pfp-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 
@@ -1463,9 +1463,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div id="pfpUploadTab" style="display:none">
           <div class="pfp-section-label">Upload your own</div>
-          <div class="pfp-upload-preview" id="pfpUploadPreview" onclick="document.getElementById('pfpFileInput').click()" title="Click to change image" style="cursor:pointer;position:relative">
-            <img id="pfpUploadImg" src="" alt="Preview">
-            <div class="pfp-preview-edit-hint"><i class="ti ti-camera"></i></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative">
+            <div class="pfp-upload-preview" id="pfpUploadPreview" onclick="togglePfpDropdown(event)" title="Tap to change" style="cursor:pointer;position:relative">
+              <img id="pfpUploadImg" src="" alt="Preview">
+              <div class="pfp-preview-edit-hint"><i class="ti ti-dots" style="font-size:16px"></i></div>
+            </div>
+            <div id="pfpPreviewHint" style="display:none;font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700">Tap to change</div>
+            <div id="pfpPreviewDropdown" style="display:none;position:absolute;top:108px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:10;min-width:160px">
+              <button onclick="pfpDropdownChange()" style="width:100%;background:none;border:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'"><i class="ti ti-camera" style="font-size:15px;color:var(--accent)"></i> Change photo</button>
+              <div style="height:1px;background:var(--border2);margin:0 12px"></div>
+              <button onclick="pfpDropdownRemove()" style="width:100%;background:none;border:none;color:#f87171;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s" onmouseover="this.style.background='#f8717115'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:15px"></i> Remove photo</button>
+            </div>
           </div>
           <div class="pfp-upload-zone" id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" ondragover="pfpDragOver(event)" ondragleave="pfpDragLeave(event)" ondrop="pfpDrop(event)">
             <i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
@@ -1481,7 +1489,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button class="action-btn secondary" style="flex:1" onclick="closePfpPicker()">Cancel</button>
           <button class="action-btn primary" style="flex:1" onclick="savePfp()"><i class="ti ti-check" style="font-size:15px"></i> Save Picture</button>
         </div>
-        <button id="pfpRemoveBtn" onclick="removePfp()" style="display:none;width:100%;background:none;border:1px solid #f87171;color:#f87171;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:8px;border-radius:10px;cursor:pointer;transition:all .2s;display:none;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='#f8717115'" onmouseout="this.style.background='none'"><i class="ti ti-trash" style="font-size:13px"></i> Remove current photo</button>
+
       </div>
     </div>
   </div>
@@ -2356,6 +2364,33 @@ let currentPfp = null;        // {type:'preset'|'upload', value: presetId | data
 let pfpPendingSelection = null; // selection in the modal before saving
 let pfpUploadDataUrl = null;   // data URL for uploaded image
 
+function togglePfpDropdown(e){
+  e.stopPropagation();
+  const dd=document.getElementById('pfpPreviewDropdown');
+  const preview=document.getElementById('pfpUploadPreview');
+  const isOpen=dd.style.display==='block';
+  dd.style.display=isOpen?'none':'block';
+  preview.classList.toggle('dropdown-open',!isOpen);
+  if(!isOpen){
+    // Close on next outside click
+    setTimeout(()=>document.addEventListener('click',closePfpDropdown,{once:true}),0);
+  }
+}
+function closePfpDropdown(){
+  const dd=document.getElementById('pfpPreviewDropdown');
+  if(dd)dd.style.display='none';
+  const preview=document.getElementById('pfpUploadPreview');
+  if(preview)preview.classList.remove('dropdown-open');
+}
+function pfpDropdownChange(){
+  closePfpDropdown();
+  document.getElementById('pfpFileInput').click();
+}
+function pfpDropdownRemove(){
+  closePfpDropdown();
+  removePfp();
+}
+
 function openPfpPicker(){
   if(isGuest){return;} // guests can't save; avatar click does nothing for them
   pfpPendingSelection = currentPfp ? {...currentPfp} : null;
@@ -2372,33 +2407,46 @@ function openPfpPicker(){
   document.getElementById('pfpUploadErr').style.display='none';
   document.getElementById('pfpFileInput').value='';
   document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
+  document.getElementById('pfpPreviewHint').style.display='none';
+  document.getElementById('pfpPreviewDropdown').style.display='none';
   document.getElementById('pfpModal').style.display='flex';
-  // Only show remove button if user already has a pfp
-  const removeBtn=document.getElementById('pfpRemoveBtn');
-  if(removeBtn)removeBtn.style.display=currentPfp?'flex':'none';
   applyTheme();
 }
 function closePfpPicker(){
   document.getElementById('pfpModal').style.display='none';
 }
 async function removePfp(){
-  const removeBtn=document.getElementById('pfpRemoveBtn');
-  if(removeBtn){removeBtn.disabled=true;removeBtn.innerHTML='<i class="ti ti-loader" style="font-size:13px"></i> Removing…';}
   try{
     // Delete from Supabase Storage if it was an uploaded file
     if(currentPfp?.type==='upload'&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-      await sb.storage.from('avatars').remove([`${currentUserId}/avatar.jpg`]).catch(()=>{});
+      const{data:{session}}=await sb.auth.getSession();
+      const authToken=session?.access_token||SUPABASE_ANON;
+      await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${currentUserId}/avatar.jpg`,{
+        method:'DELETE',
+        headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${authToken}`}
+      }).catch(()=>{});
     }
     // Clear avatar_url in profiles table
     if(currentUserId&&!isGuest&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-      await sb.from('profiles').update({avatar_url:null}).eq('id',currentUserId).catch(()=>{});
+      const{data:{session}}=await sb.auth.getSession();
+      const authToken=session?.access_token||SUPABASE_ANON;
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUserId}`,{
+        method:'PATCH',
+        headers:{
+          'apikey':SUPABASE_ANON,
+          'Authorization':`Bearer ${authToken}`,
+          'Content-Type':'application/json',
+          'Prefer':'return=minimal'
+        },
+        body:JSON.stringify({avatar_url:null})
+      }).catch(()=>{});
     }
     currentPfp=null;
     closePfpPicker();
     renderProfile();
     updateNav();
-  }finally{
-    if(removeBtn){removeBtn.disabled=false;removeBtn.innerHTML='<i class="ti ti-trash" style="font-size:13px"></i> Remove current photo';}
+  }catch(e){
+    console.error('Remove pfp error:',e);
   }
 }
 function closePfpPicker(){
@@ -2498,6 +2546,11 @@ function processUploadFile(file){
     zone.style.display='none';
     // Remove any previous hint if re-selecting
     document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
+    // Show hint and enable dropdown
+    document.getElementById('pfpPreviewHint').style.display='block';
+    document.getElementById('pfpPreviewDropdown').style.display='none';
+    // Only show remove option in dropdown if user already has a saved pfp
+    document.getElementById('pfpPreviewDropdown').querySelector('button:last-child').style.display=currentPfp?'flex':'none';
   }).catch(()=>{
     // Restore zone on error
     zone.style.display='';
