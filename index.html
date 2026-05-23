@@ -2384,11 +2384,22 @@ async function saveEditProfile(){
       }
     }
     // Update Supabase Auth email first so the auth identity and profiles stay in sync.
-    // Requires email confirmations to be disabled in Supabase Auth settings, which
-    // makes updateUser() take effect instantly with no confirmation link needed.
+    // Requires email confirmations to be disabled in Supabase Auth settings so
+    // updateUser() takes effect instantly with no confirmation link needed.
     if(newEmail){
+      // Ensure we have a live session before calling updateUser — a stale or
+      // missing session causes a silent 400/401 from Supabase Auth.
+      const{data:{session},error:sessErr}=await sb.auth.getSession();
+      if(sessErr||!session){showErr('editEmailErr','editEmailErrMsg','Session expired — please sign out and back in.');return;}
       const{error:authErr}=await sb.auth.updateUser({email:newEmail});
-      if(authErr){showErr('editEmailErr','editEmailErrMsg','Could not update email: '+authErr.message);return;}
+      if(authErr){
+        if(authErr.status===429){
+          showErr('editEmailErr','editEmailErrMsg','Too many attempts — please wait a minute and try again.');
+        } else {
+          showErr('editEmailErr','editEmailErrMsg','Could not update email: '+authErr.message);
+        }
+        return;
+      }
     }
     const updates={username:newName,theme_color:newColor};
     if(newEmail)updates.email=newEmail;
