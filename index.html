@@ -3042,10 +3042,9 @@ async function submitRegister(){
 // Bypasses Supabase's built-in reset email (which always sends to the
 // @animesekai.guest auth identity). Instead we:
 //   1. Generate a token, store it in password_resets table (expires 1hr)
-//   2. Call Resend API directly to email the user's real profile email
+//   2. Call /api/send-reset (Vercel serverless) — RESEND_API_KEY stays in env, never in repo
 //   3. On redirect, read token from URL, call an RPC that validates the
 //      token and updates auth.users — no active recovery session needed.
-const RESEND_API_KEY='re_BQqyTrA6_4cQX6NF1KkDMbzyBAuEhtJQ7'; // 🔑 replace with your Resend API key
 
 async function submitForgotPassword(){
   const u=document.getElementById('forgotUser').value.trim();
@@ -3080,26 +3079,14 @@ async function submitForgotPassword(){
     });
     if(!storeRes.ok){const t=await storeRes.text();throw new Error('Could not create reset token: '+t)}
 
-    // 3. Send the email via Resend directly
+    // 3. Send the email via our Vercel serverless function (key stays server-side)
     const resetLink=`https://anime-sekai-quiz.vercel.app?reset_token=${token}`;
-    const emailRes=await fetch('https://api.resend.com/emails',{
+    const emailRes=await fetch('/api/send-reset',{
       method:'POST',
-      headers:{'Authorization':`Bearer ${RESEND_API_KEY}`,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        from:'"Anime Sekai Quiz" <onboarding@resend.dev>',
-        to:[profile.email],
-        subject:'Reset your Anime Sekai password',
-        html:`
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
-            <h2 style="font-size:22px;margin-bottom:8px">Reset your password</h2>
-            <p style="color:#666;margin-bottom:24px">Hi <strong>${profile.username}</strong>, we received a request to reset your Anime Sekai Quiz password. Click the button below — the link expires in 1 hour.</p>
-            <a href="${resetLink}" style="display:inline-block;background:#a78bfa;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:700;font-size:15px">Reset Password</a>
-            <p style="color:#999;font-size:12px;margin-top:28px">If you didn't request this, you can safely ignore this email. The link expires in 1 hour.</p>
-          </div>`,
-        text:`Hi ${profile.username},\n\nReset your Anime Sekai Quiz password here:\n${resetLink}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:profile.email,username:profile.username,resetLink})
     });
-    if(!emailRes.ok){const t=await emailRes.json();throw new Error(t?.message||'Email delivery failed.')}
+    if(!emailRes.ok){const t=await emailRes.json();throw new Error(t?.error||'Email delivery failed.')}
 
     btn.innerHTML='✅ Reset link sent! Check your email.';
   }catch(e){
