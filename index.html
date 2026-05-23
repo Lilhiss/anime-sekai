@@ -1465,9 +1465,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div id="pfpUploadTab" style="display:none">
           <div class="pfp-section-label">Upload your own</div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative">
-            <div class="pfp-upload-preview" id="pfpUploadPreview" onclick="togglePfpDropdown(event)" title="Tap to change" style="cursor:pointer;position:relative">
-              <img id="pfpUploadImg" src="" alt="Preview">
-              <div class="pfp-preview-edit-hint"><i class="ti ti-dots" style="font-size:16px"></i></div>
+            <div style="position:relative;flex-shrink:0">
+              <div class="pfp-upload-preview" id="pfpUploadPreview" onclick="togglePfpDropdown(event)" title="Tap to change" style="cursor:pointer;position:relative">
+                <img id="pfpUploadImg" src="" alt="Preview">
+                <div class="pfp-preview-edit-hint"><i class="ti ti-dots" style="font-size:16px"></i></div>
+              </div>
+              <div style="position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent);opacity:.4;pointer-events:none"></div>
             </div>
             <div id="pfpPreviewHint" style="display:none;font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700">Tap to change</div>
             <div id="pfpPreviewDropdown" style="display:none;position:absolute;top:50%;left:calc(50% + 58px);transform:translateY(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:10;min-width:160px">
@@ -1477,7 +1480,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             </div>
           </div>
           <div id="pfpUploadZone" onclick="document.getElementById('pfpFileInput').click()" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer">
-            <div id="pfpLetterAvatar" class="user-avatar" style="width:100px;height:100px;font-size:38px;border-radius:50%;cursor:pointer;transition:opacity .2s;position:relative;flex-shrink:0"></div>
+            <div style="position:relative;flex-shrink:0">
+              <div id="pfpLetterAvatar" class="user-avatar" style="width:100px;height:100px;font-size:38px;border-radius:50%;cursor:pointer;transition:opacity .2s"></div>
+              <div style="position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent);opacity:.4;pointer-events:none"></div>
+            </div>
             <div style="font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;text-align:center;line-height:1.6">Tap to upload · JPG, PNG, GIF · max 10MB</div>
           </div>
           <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="pfpFileSelected(event)">
