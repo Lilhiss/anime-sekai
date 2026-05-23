@@ -322,8 +322,7 @@ h1 .hi{color:var(--accent)}
 .pfp-preset-check{position:absolute;bottom:0;right:0;width:18px;height:18px;border-radius:50%;background:var(--accent);display:none;align-items:center;justify-content:center;font-size:10px;color:#fff;border:2px solid var(--bg2)}
 .pfp-preset-item.selected .pfp-preset-check{display:flex}
 .pfp-preset-label{font-size:9px;font-weight:700;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pfp-upload-zone{border:2px dashed var(--border2);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
-.pfp-upload-zone:hover,.pfp-upload-zone.dragover{border-color:var(--accent);background:var(--accent-soft)}
+.pfp-upload-zone{cursor:pointer}
 .pfp-upload-preview{width:100px;height:100px;border-radius:50%;margin:0 auto;overflow:hidden;border:3px solid var(--accent);display:none;position:relative;cursor:pointer}
 .pfp-preview-edit-hint{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
 .pfp-upload-preview:hover .pfp-preview-edit-hint,.pfp-upload-preview.dropdown-open .pfp-preview-edit-hint{opacity:1}
@@ -2401,8 +2400,7 @@ function openPfpPicker(){
   buildPfpPresetGrid();
   // Reset upload tab fully
   const zone=document.getElementById('pfpUploadZone');
-  if(zone){zone.style.display='block';zone.innerHTML=`<i class="ti ti-photo-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
-`;}
+  if(zone){zone.style.display='flex';}
   document.getElementById('pfpUploadErr').style.display='none';
   document.getElementById('pfpFileInput').value='';
   document.getElementById('pfpUploadTab').querySelectorAll('.pfp-upload-hint').forEach(el=>el.remove());
@@ -2560,7 +2558,7 @@ function processUploadFile(file){
   if(file.size>10*1024*1024){errMsg.textContent='Image must be under 10MB.';errEl.style.display='flex';return;}
   // Show a spinner in the zone while we resize
   const zone=document.getElementById('pfpUploadZone');
-  zone.innerHTML='<div class="spinner" style="margin:0 auto"></div>';
+  zone.style.display='none';
   resizeImageToBlob(file).then(blob=>{
     // Store the resized blob for upload, show preview from it
     pfpUploadBlob=blob;
