@@ -2393,6 +2393,12 @@ async function saveEditProfile(){
   currentUser=newName;currentColor=newColor;
   updateNav();renderProfile();applyTheme();
   closeEditProfile();
+  // Toast confirmation
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
+  toast.textContent=newEmail?'Email added successfully! ✅':'Profile updated! ✅';
+  document.body.appendChild(toast);
+  setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},3000);
 }
 
 // ── PROFILE PICTURE ───────────────────────────────────────────
