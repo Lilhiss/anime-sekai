@@ -1454,8 +1454,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button onclick="closePfpPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
       <div class="pfp-tabs">
-        <button class="pfp-tab active" id="pfpTabPreset" onclick="switchPfpTab('preset')"><i class="ti ti-layout-grid" style="font-size:13px"></i> Presets</button>
-        <button class="pfp-tab" id="pfpTabUpload" onclick="switchPfpTab('upload')"><i class="ti ti-upload" style="font-size:13px"></i> Upload</button>
+        <button class="pfp-tab active" id="pfpTabUpload" onclick="switchPfpTab('upload')"><i class="ti ti-upload" style="font-size:13px"></i> Upload</button>
+        <button class="pfp-tab" id="pfpTabPreset" onclick="switchPfpTab('preset')"><i class="ti ti-layout-grid" style="font-size:13px"></i> Presets</button>
       </div>
       <div class="pfp-body">
         <div id="pfpPresetTab">
@@ -2429,7 +2429,7 @@ function openPfpPicker(){
   pfpPendingSelection = currentPfp ? {...currentPfp} : null;
   pfpUploadDataUrl = null;
   pfpUploadBlob = null;
-  switchPfpTab('preset');
+  switchPfpTab('upload');
   buildPfpPresetGrid();
   // Reset upload tab fully
   const zone=document.getElementById('pfpUploadZone');
