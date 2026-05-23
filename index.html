@@ -4426,6 +4426,7 @@ function showDisconnectModal(msg){
 
 async function disconnectRejoin(){
   document.getElementById('disconnectModal').classList.remove('open');
+  intentionalLeave=false; // reset so the channel error handler works again after rejoin
   if(!lobbyCode){goStep('multiplayer');return;}
   const ok=await rtJoinLobby(lobbyCode);
   if(ok){goStep('lobby-room');}
@@ -4449,6 +4450,14 @@ function rtSubscribe(lobbyId){
       const pData=await pRes.json();
       const first=Array.isArray(pData)?pData[0]:null;
       if(!first||first.user_id!==currentUserId)return; // not our turn to claim
+      // Wait briefly then re-check — prevents two clients both winning the race
+      // when they read the DB before either has written their claim.
+      await new Promise(r=>setTimeout(r,200));
+      // Re-confirm nobody else claimed host in the meantime
+      const recheckRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&is_host=eq.true&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
+      const recheckData=await recheckRes.json();
+      const alreadyClaimed=Array.isArray(recheckData)&&recheckData.length>0&&recheckData[0].user_id!==currentUserId;
+      if(alreadyClaimed)return; // someone else already claimed it
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
       await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
@@ -4691,17 +4700,27 @@ function rtSubscribe(lobbyId){
   },{once:false});
 }
 
+let _refreshPlayersTimer=null;
 async function rtRefreshPlayers(lobbyId){
-  try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}&order=joined_at.asc`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const data=await res.json();
-    if(!Array.isArray(data)||!data.length)return;
-    lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
-    renderLobbyRoom();
-  }catch(e){}
+  // Debounce: if multiple postgres_changes events fire in quick succession (e.g.
+  // a player leave triggers both a DELETE on lobby_players and an UPDATE on lobbies),
+  // only run the last one — avoids racing the DELETE commit and showing stale data.
+  clearTimeout(_refreshPlayersTimer);
+  _refreshPlayersTimer=setTimeout(async()=>{
+    // Don't refresh if we've already left the lobby
+    const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+    if(!inLobby)return;
+    try{
+      const res=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}&order=joined_at.asc`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const data=await res.json();
+      if(!Array.isArray(data)||!data.length)return;
+      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
+      renderLobbyRoom();
+    }catch(e){}
+  },300); // 300 ms debounce gives the DB DELETE time to commit
 }
 
 async function mpHostFetchAndBroadcast(){
@@ -5585,6 +5604,7 @@ async function leaveLobbyRoom(){
   // All DB writes done — now safe to navigate
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
+  lobbyIsPrivate=false; // reset so the next lobby creation defaults to public
   goStep('multiplayer');
 }
 let _transferTarget=null;
