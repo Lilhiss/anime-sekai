@@ -5641,7 +5641,9 @@ async function confirmTransferHost(){
     }catch(e){}
   }
   _transferTarget=null;
-  renderLobbyRoom();
+  // Leave the lobby now that host has been transferred — removes our own row
+  // so the new host isn't left with a ghost player that prevents lobby deletion.
+  await leaveLobbyRoom();
 }
 async function kickPlayer(name){
   if(!isHost)return;
