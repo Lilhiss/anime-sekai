@@ -4299,7 +4299,7 @@ async function rtCreateLobby(){
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
+        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
       },
       body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
     });
@@ -4343,7 +4343,7 @@ async function rtJoinLobby(code){
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
+        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
       },
       body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
     });
@@ -4382,7 +4382,7 @@ async function rtJoinLobby(code){
       method:'POST',
       headers:{
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'
+        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
       },
       body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
     });
