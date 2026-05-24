@@ -5667,37 +5667,36 @@ function promptTransferHost(name){
 async function confirmTransferHost(){
   if(!isHost||!_transferTarget)return;
   document.getElementById('transferHostModal').style.display='none';
-  // Update local state
+  // Update local player list immediately for UI
   lobbyPlayers.forEach(p=>{p.isHost=(p.name===_transferTarget);});
-  isHost=false;
-  // Broadcast to all players
+  // Broadcast to all players BEFORE touching isHost so the broadcast still fires as host
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:_transferTarget,reason:'manual',remainingSeconds:lobbyTimerSecondsLeft}});
   }
-  // Update Supabase lobby_players if we have a real session
+  // Update Supabase — keep isHost=true until all writes are done so RLS passes
   if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     try{
       const token=await rtGetAuthToken();
-      // Get lobby id from code
       const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
       const lData=await lRes.json();
       const lid=Array.isArray(lData)?lData[0]?.id:null;
       if(lid){
-        // Get the new host's user_id so we can update lobbies.host_id
         const nhRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
         const nhData=await nhRes.json();
         const newHostUid=Array.isArray(nhData)?nhData[0]?.user_id:null;
         if(newHostUid){
-          // 1. Demote current host's own row (auth.uid()=user_id passes RLS)
+          // 1. Demote current host's own row
           await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
-          // 2. Promote new host's row — current user is still host in lobbies table so RLS passes
+          // 2. Promote new host's row
           await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${newHostUid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
-          // 3. Update lobbies.host_id last — current user still passes host RLS check up to this point
+          // 3. Update lobbies.host_id LAST — isHost is still true here so RLS (auth.uid()=host_id) passes
           await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
         }
       }
     }catch(e){}
   }
+  // Only drop host status after all DB writes are complete
+  isHost=false;
   _transferTarget=null;
   renderLobbyRoom();
 }
