@@ -4358,7 +4358,11 @@ async function rtJoinLobby(code){
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
-  // Block rejoining if this user was previously kicked
+  // Block rejoining — check sessionStorage first (race-safe), then DB kicked_players array
+  try{
+    const kickedLobbies=JSON.parse(sessionStorage.getItem('kicked_from_lobbies')||'[]');
+    if(kickedLobbies.includes(code)){showLobbyToast('🚫 You\'ve been removed from this lobby and cannot rejoin.','danger');return false;}
+  }catch(e){}
   if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(currentUser)){
     showLobbyToast('🚫 You\'ve been removed from this lobby and cannot rejoin.','danger');
     return false;
@@ -4649,6 +4653,11 @@ function rtSubscribe(lobbyId){
       intentionalLeave=true;
       if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
       clearLobbyTimer();
+      // Record the kicked lobby code in sessionStorage so rejoin is blocked even if DB write races
+      try{
+        const kicked=JSON.parse(sessionStorage.getItem('kicked_from_lobbies')||'[]');
+        if(lobbyCode&&!kicked.includes(lobbyCode)){kicked.push(lobbyCode);sessionStorage.setItem('kicked_from_lobbies',JSON.stringify(kicked));}
+      }catch(e){}
       // Delete own lobby_players row so we don't phantom-appear in counts
       if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&payload.lobby_id){
         try{
