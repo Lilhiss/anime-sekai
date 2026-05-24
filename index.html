@@ -2078,9 +2078,32 @@ async function sbLoadLeaderboard(){
       // Nobody left — delete the lobby entirely
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
       await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'DELETE', headers });
+    } else if(wasHost){
+      // Host hard-exited — promote the next player immediately so remaining players
+      // don't have to wait for the postgres_changes self-election race.
+      // The self-election is still the safety net; this just ensures it happens
+      // synchronously with the tab-close cleanup rather than after a round-trip.
+      try{
+        const nextRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobbyId}&order=joined_at.asc&limit=1`, { headers });
+        const nextData = await nextRes.json();
+        const next = Array.isArray(nextData) ? nextData[0] : null;
+        if(next){
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method:'PATCH', headers:{ ...headers, 'Content-Type':'application/json', 'Prefer':'return=minimal' }, body: JSON.stringify({is_host:false}) });
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}&user_id=eq.${next.user_id}`, { method:'PATCH', headers:{ ...headers, 'Content-Type':'application/json', 'Prefer':'return=minimal' }, body: JSON.stringify({is_host:true}) });
+          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method:'PATCH', headers:{ ...headers, 'Content-Type':'application/json', 'Prefer':'return=minimal' }, body: JSON.stringify({host_id:next.user_id, host_username:next.username}) });
+          // Broadcast host transfer so remaining clients update their UI without waiting for postgres_changes
+          try{
+            await fetch(`${SUPABASE_URL}/realtime/v1/api/broadcast`, {
+              method: 'POST',
+              headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ messages:[{ topic:`realtime:lobby:${code}`, event:'host_transferred', payload:{ newHost:next.username, reason:'left', originalHostName:myUsername||'The host' } }] })
+            });
+          }catch(e){}
+        }
+      }catch(e){}
     }
-    // If others remain: the player_left broadcast above will update their UI instantly.
-    // The existing postgres_changes → host self-election logic handles host promotion if needed.
+    // The player_left broadcast above updates remaining players' UI instantly.
+    // postgres_changes → self-election is the safety net for any clients that missed the broadcast.
   }catch(e){}
 })();
 
@@ -5531,6 +5554,20 @@ function subscribeToLobbyList() {
         loadPublicLobbies();
       }
     })
+    // Also listen for lobby_players changes so player counts update in real time
+    // without waiting for a full reload.
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'lobby_players'
+    }, () => {
+      const onMultiplayerPage = document.getElementById('page-multiplayer').classList.contains('active');
+      if (!onMultiplayerPage) return;
+      // Re-fetch just the player counts and patch each visible card
+      const cards = document.querySelectorAll('.lobby-list-card');
+      if (!cards.length) return;
+      loadPublicLobbies();
+    })
     .subscribe();
 }
 
@@ -5538,7 +5575,7 @@ function patchLobbyListCard(lobby) {
   // Find the card by its join button's lobby id
   const btn = document.querySelector(`button[onclick="joinLobbyById('${lobby.id}','${lobby.code}')"]`);
   const card = btn ? btn.closest('.lobby-list-card') : null;
-  if (!card) return; // card not visible (e.g. lobby just became full/active), do a quiet full reload
+  if (!card) { loadPublicLobbies(); return; } // card not visible — do a full reload
   const fmt = lobby.format || 'mc';
   const mode = lobby.mode || 'race';
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
@@ -5548,6 +5585,18 @@ function patchLobbyListCard(lobby) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
       <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>`;
+  }
+  // Also refresh the player count from the DB so it doesn't go stale
+  if (!SUPABASE_URL.includes('YOUR_PROJECT') && lobby.id) {
+    fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=eq.${lobby.id}`, { headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`} })
+      .then(r=>r.json()).then(rows=>{
+        const count = Array.isArray(rows) ? rows.length : 1;
+        const max = mode==='hp' ? 8 : 12;
+        const countEl = card.querySelector('.lobby-list-players');
+        if (countEl) countEl.innerHTML = `<i class="ti ti-users" style="font-size:12px"></i> ${count}/${max}`;
+        // If lobby just filled up, lock the join button
+        if (count >= max && btn) { btn.disabled = true; btn.textContent = 'Full'; btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none'; }
+      }).catch(()=>{});
   }
 }
 
