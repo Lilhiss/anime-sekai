@@ -2075,7 +2075,10 @@ async function sbLoadLeaderboard(){
     const hasPlayers = Array.isArray(pData) && pData.length > 0;
 
     if(!hasPlayers){
-      // Nobody left — delete the lobby entirely
+      // Nobody left — claim host_id first so RLS (auth.uid()=host_id) passes for the
+      // DELETE even if a prior host_transfer PATCH failed to update it (e.g. tab-close
+      // with a stale/anon token). Then delete the lobby.
+      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ host_id: userId }) }).catch(()=>{});
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
       await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, { method: 'DELETE', headers });
     } else if(wasHost){
@@ -5638,7 +5641,12 @@ async function leaveLobbyRoom(){
     }catch(e){}
     const next=Array.isArray(others)&&others.length?others[0]:null;
     if(!next){
-      // Nobody else — delete lobby entirely
+      // Nobody else — ensure host_id points to current user before deleting,
+      // in case a prior host_transfer PATCH failed (e.g. tab-close with stale token)
+      // and the RLS policy (auth.uid()=host_id) would otherwise block the DELETE.
+      try{
+        await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
+      }catch(e){}
       await rtDeleteLobby();
     } else {
       // Transfer host to next player — await all writes before navigating
