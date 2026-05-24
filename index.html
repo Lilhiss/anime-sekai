@@ -121,6 +121,12 @@ h1 .hi{color:var(--accent)}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
 .time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.q-count-opt{background:var(--bg3);border:2px solid var(--border);border-radius:12px;padding:12px 6px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.q-count-opt:hover{border-color:var(--accent);background:var(--card-bg)}
+.q-count-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.q-count-custom-input{width:100%;background:var(--bg3);border:2px solid var(--border2);border-radius:10px;padding:9px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;outline:none;transition:border-color .2s;text-align:center}
+.q-count-custom-input:focus{border-color:var(--accent)}
+.q-count-custom-input.selected{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
 .mode-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
 .mode-icon{width:52px;height:52px;border-radius:14px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--accent)}
 .mode-title{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
@@ -1604,18 +1610,41 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- TIME LIMIT PICKER MODAL -->
   <div id="timeLimitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:20px;max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">&#x23F1; Time Limit</div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">&#x23F1; Game Settings</div>
         <button onclick="document.getElementById('timeLimitModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
       <div id="timeLimitDesc" style="color:var(--muted);font-size:13px;line-height:1.5"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
-        <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(25)" data-val="25"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">25s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
-        <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
+
+      <!-- Question Count Picker -->
+      <div id="questionCountSection">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-list-numbers" style="font-size:13px"></i> Questions</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px" id="questionCountGrid">
+          <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(15,this)" data-qval="15"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">Short</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="flex:1">
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Type any number from 1–50, or pick a preset above.</div>
       </div>
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <!-- Time Limit Picker -->
+      <div>
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-clock" style="font-size:13px"></i> Time Per Question</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
+          <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(25)" data-val="25"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">25s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
+        </div>
+      </div>
+
       <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> <span id="timeLimitStartLabel">Start Race</span></button>
     </div>
   </div>
@@ -2122,6 +2151,7 @@ let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
 let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
+let selectedQuestionLimit=10;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
@@ -3353,6 +3383,7 @@ function buildDifficultyContext(){
 }
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
   document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':'Survival');
   document.getElementById('qBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
@@ -3360,7 +3391,7 @@ function startQuiz(mode){
 }
 function renderHUD(){
   document.getElementById('scoreDisplay').textContent=score+' pts';
-  document.getElementById('qCount').textContent='Q'+(qIndex+1);
+  document.getElementById('qCount').textContent='Q'+(qIndex+1)+'/'+selectedQuestionLimit;
   const ld=document.getElementById('livesDisplay');ld.innerHTML='';
   if(selectedMode==='survival'){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
 }
@@ -3770,7 +3801,7 @@ function nextQuestion(){
   clearInterval(soloAutoNextInterval);
   qIndex++;
   if(selectedMode==='survival'&&lives<=0){endQuiz();return}
-  if(selectedMode==='race'&&score>=100){endQuiz();return}
+  if(qIndex>=selectedQuestionLimit){endQuiz();return}
   loadQuestion();
 }
 
@@ -4160,12 +4191,53 @@ function showTimeLimitPicker(mode){
     ? 'Choose how long you have per question. You get full points for the first 5s, then points drop — down to a minimum of 3 pts.'
     : 'Choose how long you have to answer each question. Run out of time and you lose a life.';
   document.getElementById('timeLimitStartLabel').textContent=isRace?'Start Race':'Start Survival';
+  // Sync time limit selection
   const grid=document.getElementById('timeLimitGrid');
   grid.querySelectorAll('.time-limit-opt').forEach(el=>{
     el.classList.toggle('selected',parseInt(el.dataset.val)===raceTimeLimit);
   });
+  // Sync question count selection
+  const qCountGrid=document.getElementById('questionCountGrid');
+  const presets=[10,15,20,30];
+  const customInput=document.getElementById('questionCountCustom');
+  if(presets.includes(selectedQuestionLimit)){
+    qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>{
+      el.classList.toggle('selected',parseInt(el.dataset.qval)===selectedQuestionLimit);
+    });
+    customInput.value='';
+    customInput.classList.remove('selected');
+  } else {
+    qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>el.classList.remove('selected'));
+    customInput.value=selectedQuestionLimit;
+    customInput.classList.add('selected');
+  }
+  // Hide question count section when coming from lobby settings
+  document.getElementById('questionCountSection').style.display=pendingLobbyAfterTimeLimit?'none':'block';
+  document.getElementById('questionCountSection').nextElementSibling.style.display=pendingLobbyAfterTimeLimit?'none':'block';
   document.getElementById('timeLimitModal').style.display='flex';
   applyTheme();
+}
+function selectQuestionCount(val,el){
+  selectedQuestionLimit=val;
+  document.querySelectorAll('.q-count-opt').forEach(e=>e.classList.remove('selected'));
+  if(el)el.classList.add('selected');
+  const customInput=document.getElementById('questionCountCustom');
+  customInput.value='';
+  customInput.classList.remove('selected');
+}
+function onCustomQCount(input){
+  const raw=parseInt(input.value);
+  if(isNaN(raw)||input.value==='')return;
+  const val=Math.max(1,Math.min(50,raw));
+  selectedQuestionLimit=val;
+  document.querySelectorAll('.q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+  // clamp display if needed
+  if(raw>50)input.value=50;
+}
+function onCustomQCountFocus(input){
+  document.querySelectorAll('.q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
 }
 function selectTimeLimit(val){
   raceTimeLimit=val;
