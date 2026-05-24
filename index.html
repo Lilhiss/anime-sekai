@@ -4730,7 +4730,7 @@ function rtSubscribe(lobbyId){
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
-      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel+qCountLabel;}
+      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+qCountLabel+timeLimitLabel;}
       if(hint)hint.style.display='';
       if(settingsBtn)settingsBtn.style.display='';
       if(topicsLabel){
@@ -5331,8 +5331,8 @@ async function loadPublicLobbies(silent=false){
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-            ${timeBadge}
             <span class="lobby-list-badge">📋 ${qCount}Q</span>
+            ${timeBadge}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
@@ -5384,7 +5384,7 @@ function renderLobbyRoom(){
   if(lobbyMaxEl)lobbyMaxEl.textContent=maxPlayers;
   const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
   const qCountLabel=` · ${selectedQuestionLimit}Q`;
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+timeLimitLabel+qCountLabel;
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qCountLabel+timeLimitLabel;
   updateLobbyTopicsLabel();
   const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
   lobbyPlayers.forEach(p=>{
@@ -5687,8 +5687,8 @@ function patchLobbyListCard(lobby) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
       <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-      ${timeBadge}
-      <span class="lobby-list-badge">📋 ${qCount}Q</span>`;
+      <span class="lobby-list-badge">📋 ${qCount}Q</span>
+      ${timeBadge}`;
   }
   // Also refresh the player count from the DB so it doesn't go stale
   if (!SUPABASE_URL.includes('YOUR_PROJECT') && lobby.id) {
