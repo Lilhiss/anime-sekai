@@ -4740,7 +4740,7 @@ async function rtRefreshPlayers(lobbyId){
       );
       const data=await res.json();
       if(!Array.isArray(data)||!data.length)return;
-      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated}));
+      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id}));
       renderLobbyRoom();
     }catch(e){}
   },300); // 300 ms debounce gives the DB DELETE time to commit
@@ -4996,7 +4996,7 @@ function createLobby(){
   lobbyName=(nameInput&&nameInput.value.trim())||`${currentUser}'s Lobby`;
   if(nameInput)nameInput.value='';
   lobbyCode=generateCode();
-  lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor],eliminated:false}];
+  lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor],eliminated:false,userId:currentUserId}];
   lobbyFormat=selectedFormat||'mc';lobbyMode=selectedMode||'race';
   isHost=true;
   goStep('lobby-room');
@@ -5681,9 +5681,11 @@ async function confirmTransferHost(){
       const lData=await lRes.json();
       const lid=Array.isArray(lData)?lData[0]?.id:null;
       if(lid){
-        const nhRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&username=eq.${encodeURIComponent(_transferTarget)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
-        const nhData=await nhRes.json();
-        const newHostUid=Array.isArray(nhData)?nhData[0]?.user_id:null;
+        // Get the new host's user_id from the in-memory lobbyPlayers array — avoids
+        // a round-trip DB lookup and the encodeURIComponent encoding issues that caused
+        // the previous username-based query to silently return nothing.
+        const newHostPlayer=lobbyPlayers.find(p=>p.name===_transferTarget);
+        const newHostUid=newHostPlayer?.userId||null;
         if(newHostUid){
           // 1. Demote current host's own row
           const d1=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
@@ -5695,7 +5697,8 @@ async function confirmTransferHost(){
           const d3=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
           if(!d3.ok)console.error('[Transfer] lobbies host_id update failed:',d3.status,await d3.text());
           else console.log('[Transfer] lobbies.host_id updated to',newHostUid,'(',_transferTarget,')');
-          console.log('[Transfer] currentUserId:',currentUserId,'token uid claim:',(JSON.parse(atob(token.split('.')[1]))).sub,'lid:',lid,'newHostUid:',newHostUid);
+        } else {
+          console.error('[Transfer] newHostUid not found in lobbyPlayers for',_transferTarget,lobbyPlayers);
         }
       }
     }catch(e){}
