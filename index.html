@@ -4644,13 +4644,22 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
     renderLobbyRoom();
   });
-  rtChannel.on('broadcast',{event:'player_kicked'},({payload})=>{
+  rtChannel.on('broadcast',{event:'player_kicked'},async({payload})=>{
     if(currentUser===payload.kicked){
-      // This player was kicked — clear lobbyCode so they can't rejoin, then show modal
       intentionalLeave=true;
       if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+      clearLobbyTimer();
+      // Delete own lobby_players row so we don't phantom-appear in counts
+      if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&payload.lobby_id){
+        try{
+          const token=await rtGetAuthToken();
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${payload.lobby_id}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
+        }catch(e){}
+      }
       lobbyPlayers=[];
-      lobbyCode=''; // prevent any rejoin attempt
+      lobbyCode='';
+      // Navigate to multiplayer first, then show modal on top
+      goStep('multiplayer');
       document.getElementById('kickedModal').classList.add('open');
       applyTheme();
       return;
@@ -5704,17 +5713,32 @@ async function confirmTransferHost(){
       }
     }catch(e){}
   }
-  // Only drop host status after all DB writes are complete
+  // All DB writes done — outgoing host leaves the lobby cleanly
   isHost=false;
   _transferTarget=null;
-  renderLobbyRoom();
+  // Remove own lobby_players row so we do not phantom-appear in player counts
+  if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+    try{
+      const token2=await rtGetAuthToken();
+      const lRes2=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token2}`}});
+      const lData2=await lRes2.json();
+      const lid2=Array.isArray(lData2)?lData2[0]?.id:null;
+      if(lid2){
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid2}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token2}`,'Prefer':'return=minimal'}});
+      }
+    }catch(e){}
+  }
+  // Unsubscribe from channel so we stop receiving lobby events
+  // Broadcast departure first so remaining players remove us from their list
+  if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
+  intentionalLeave=true;
+  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+  clearLobbyTimer();
+  lobbyCode='';
+  goStep('multiplayer');
 }
 async function kickPlayer(name){
   if(!isHost)return;
-  // Broadcast kick event before removing
-  if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'player_kicked',payload:{kicked:name}});
-  }
   // Remove from local list
   lobbyPlayers=lobbyPlayers.filter(p=>p.name!==name);
   // Remove from Supabase and record in kicked_players
@@ -5733,8 +5757,14 @@ async function kickPlayer(name){
         if(!existing.includes(name)){
           await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({kicked_players:[...existing,name]})});
         }
+        // Broadcast with lobby_id so kicked player can delete their own row
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'player_kicked',payload:{kicked:name,lobby_id:lid}});
       }
-    }catch(e){}
+    }catch(e){
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'player_kicked',payload:{kicked:name}});
+    }
+  } else {
+    if(rtChannel)rtChannel.send({type:'broadcast',event:'player_kicked',payload:{kicked:name}});
   }
   renderLobbyRoom();
 }
