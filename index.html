@@ -808,7 +808,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <!-- LIST HEADER -->
         <div class="lobby-list-header">
           <div class="lobby-join-col-header"><i class="ti ti-world" style="font-size:14px"></i> Open Lobbies <span class="lobby-count-label" id="lobbyCountLabel"></span></div>
-          <button class="lobby-refresh-btn" onclick="loadPublicLobbies()">
+          <button class="lobby-refresh-btn" onclick="refreshLobbyList()">
             <i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh
           </button>
         </div>
@@ -5136,16 +5136,20 @@ function showLobbyToast(msg,type='warning'){
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
 const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔'};
 
-async function loadPublicLobbies(){
+function refreshLobbyList(){
+  const refreshIcon=document.getElementById('lobbyRefreshIcon');
+  if(refreshIcon){refreshIcon.classList.add('spinning');setTimeout(()=>refreshIcon.classList.remove('spinning'),500);}
+  loadPublicLobbies();
+}
+async function loadPublicLobbies(silent=false){
   const list=document.getElementById('lobbyBrowseList');
   const countLabel=document.getElementById('lobbyCountLabel');
-  const refreshIcon=document.getElementById('lobbyRefreshIcon');
   if(!list)return;
 
-  refreshIcon.classList.add('spinning');
-  setTimeout(()=>refreshIcon.classList.remove('spinning'),500);
-  list.innerHTML='<div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>';
-  countLabel.textContent='';
+  if(!silent){
+    list.innerHTML='<div class="lobby-list-loading"><div class="spinner"></div><span>Finding open games…</span></div>';
+    countLabel.textContent='';
+  }
 
   if(SUPABASE_URL.includes('YOUR_PROJECT')){
     list.innerHTML='<div class="lobby-list-empty">🔌 Connect Supabase to see live lobbies.</div>';
@@ -5521,8 +5525,8 @@ function subscribeToLobbyList() {
         // Surgically update just the affected card — no fetch, no spinner
         patchLobbyListCard(change.new);
       } else {
-        // INSERT or DELETE — card count changes, do a full reload
-        loadPublicLobbies();
+        // INSERT or DELETE — card count changes, reload silently (no spinner)
+        loadPublicLobbies(true);
       }
     })
     // Also listen for lobby_players changes so player counts update in real time
@@ -5537,7 +5541,7 @@ function subscribeToLobbyList() {
       // Re-fetch just the player counts and patch each visible card
       const cards = document.querySelectorAll('.lobby-list-card');
       if (!cards.length) return;
-      loadPublicLobbies();
+      loadPublicLobbies(true);
     })
     .subscribe();
 }
