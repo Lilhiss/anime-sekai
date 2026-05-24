@@ -3356,52 +3356,7 @@ function proceedFromTopic(){
   goStep('mode');
 }
 
-function buildTopicContext(){
-  if(isGeneralSelected||selectedTopics.length===0)return '';
-  const animeMap={
-    'one-piece':'One Piece','naruto':'Naruto (including Naruto Shippuden and Boruto)',
-    'dragon-ball':'Dragon Ball (including Dragon Ball Z, Super, GT)','attack-on-titan':'Attack on Titan (Shingeki no Kyojin)',
-    'demon-slayer':'Demon Slayer (Kimetsu no Yaiba)','my-hero-academia':'My Hero Academia (Boku no Hero Academia)',
-    'hunter-x-hunter':'Hunter x Hunter','fullmetal-alchemist':'Fullmetal Alchemist (including Brotherhood)',
-    'jujutsu-kaisen':'Jujutsu Kaisen','death-note':'Death Note','bleach':'Bleach (including Thousand-Year Blood War)',
-    'sword-art-online':'Sword Art Online','fairy-tail':'Fairy Tail','vinland-saga':'Vinland Saga',
-    'tokyo-revengers':'Tokyo Revengers','chainsaw-man':'Chainsaw Man','spy-x-family':'Spy x Family',
-    'mob-psycho':'Mob Psycho 100','cowboy-bebop':'Cowboy Bebop','neon-genesis':'Neon Genesis Evangelion',
-    'code-geass':'Code Geass','re-zero':'Re:Zero','steins-gate':'Steins;Gate',
-    'your-lie-in-april':'Your Lie in April','toradora':'Toradora','haikyuu':'Haikyuu!!',
-    'black-clover':'Black Clover','overlord':'Overlord','konosuba':'KonoSuba','fruits-basket':'Fruits Basket',
-  };
-  const genreMap={
-    'shonen':'Shōnen anime (action-focused series like Naruto, One Piece, Dragon Ball)',
-    'isekai':'Isekai anime (transported-to-another-world series like Re:Zero, SAO, That Time I Got Reincarnated as a Slime)',
-    'shoujo':'Shōjo anime (romance/drama like Sailor Moon, Fruits Basket, Kimi ni Todoke)',
-    'seinen':'Seinen anime (mature themes like Berserk, Vinland Saga, Tokyo Ghoul)',
-    'mecha':'Mecha anime (giant robots like Gundam, Evangelion, Code Geass)',
-    'slice-of-life':'Slice of Life anime (everyday life stories like K-On!, Barakamon)',
-    'romance':'Romance anime (love stories like Toradora, Your Lie in April, Clannad)',
-    'horror':'Horror anime (like Parasyte, Higurashi, Another)',
-    'sports':'Sports anime (like Haikyuu, Kuroko no Basket, Free!)',
-    'fantasy':'Fantasy anime (like Overlord, Black Clover, Magi)',
-    'sci-fi':'Sci-fi anime (like Steins;Gate, Psycho-Pass, Trigun)',
-    'comedy':'Comedy anime (like Gintama, Konosuba, Daily Lives of High School Boys)',
-    'psychological':'Psychological anime (like Death Note, Monster, Paranoia Agent)',
-    'action':'Action anime (intense fight sequences and action-heavy series)',
-    'adventure':'Adventure anime (journey and exploration-focused series)',
-    'mystery':'Mystery anime (like Detective Conan, The Promised Neverland)',
-  };
-  const resolved=selectedTopics.map(t=>animeMap[t.key]||genreMap[t.key]||t.name).join(' OR ');
-  const names=selectedTopics.map(t=>t.name).join(', ');
-  return ` The question MUST be specifically about one of these: ${resolved}. Only ask about characters, events, arcs, or facts from ${names}.`
-}
 
-function buildDifficultyContext(){
-  const map={
-    easy:`\n\nDIFFICULTY: EASY — This is NON-NEGOTIABLE. You MUST ask about very well-known, mainstream facts that any casual anime fan would know after watching a few popular series. Examples of EASY questions: "What is Naruto's village called?", "Which fruit did Luffy eat?", "What is the name of the notebook in Death Note?". Do NOT ask about minor characters, specific episode numbers, obscure techniques, or deep lore. Keep it simple and accessible.`,
-    normal:`\n\nDIFFICULTY: NORMAL — This is NON-NEGOTIABLE. Ask about facts that a regular anime fan with decent knowledge of the series would know. You can reference named techniques, supporting characters, and key story arcs — but avoid highly obscure trivia, specific episode references, or facts only superfans would know.`,
-    hard:`\n\nDIFFICULTY: HARD — This is NON-NEGOTIABLE. You MUST ask about deep lore, obscure characters, specific episode or chapter details, exact technique names and their mechanics, or facts only a dedicated superfan would know. Examples of HARD questions: exact devil fruit awakening mechanics, the name of a minor antagonist's backstory, the specific episode a technique was first used. Do NOT ask surface-level questions — make it genuinely challenging.`,
-  };
-  return map[selectedDifficulty]||map.easy;
-}
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
   if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
@@ -3424,63 +3379,6 @@ async function fetchQuestion(){
   return getFallback();
 }
 
-async function fetchQuestionFromAI(){
-  const usedQs=quizHistory.map(h=>h.q).slice(-5).join(' | ');
-  const topicClause=buildTopicContext();
-  const diffClause=buildDifficultyContext();
-  const avoidClause=usedQs?`\n\nAVOID these recently used questions: ${usedQs}`:'';
-  const topicWarning=topicClause?`\n\nCRITICAL REMINDER: ${topicClause.trim()} Do NOT generate questions about any other anime or series.`:'';
-
-  const baseInstructions=`You are an anime trivia question generator. Return ONLY a single valid JSON object with no explanation, no markdown, no code fences — just raw JSON.${diffClause}${avoidClause}`;
-
-  const prompts={
-    mc:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
-
-Generate a multiple choice trivia question with EXACTLY 4 options.
-Return this exact JSON shape:
-{"question":"...","options":["A","B","C","D"],"answer":0,"aliases":[]}
-- "answer" is the 0-based index of the correct option
-- "aliases" must include ALL alternate names: abbreviations (AOT, MHA, SNK, BNHA, JJK, DBZ), Japanese titles, alternate English titles${topicWarning}`,
-
-    type:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
-
-Generate a trivia question with a SHORT answer (1-4 words).
-Return this exact JSON shape:
-{"question":"...","answer":"canonical answer","aliases":["alternate1","alternate2"]}
-- "aliases" MUST include every common abbreviation, Japanese title, nickname, and alternate spelling${topicWarning}`,
-
-    img:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
-
-Generate a trivia question describing an anime scene or visual, with 4 options.
-Return this exact JSON shape:
-{"question":"You see [describe a recognizable scene or visual]. Which anime is this from?","options":["A","B","C","D"],"answer":0,"aliases":[]}${topicWarning}`,
-
-    char:`${baseInstructions}${topicClause?'\n\nTOPIC REQUIREMENT: '+topicClause.trim():''}
-
-Describe an anime character WITHOUT naming them, then ask who they are. Type-answer format.
-Return this exact JSON shape:
-{"question":"This character [detailed description of appearance, personality, abilities]. Who are they?","answer":"Character Full Name","aliases":["nickname","alternate name","alternate spelling"]}${topicWarning}`,
-  };
-
-  try{
-    const res=await fetch('/.netlify/functions/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'gemini-2.0-flash',max_tokens:800,messages:[{role:'user',content:prompts[selectedFormat]}]})});
-    if(!res.ok){
-      const errText=await res.text();
-      console.error('Gemini proxy error:',res.status,errText);
-      return getFallback();
-    }
-    const data=await res.json();
-    if(data.error){console.error('Gemini API error:',data.error);return getFallback();}
-    const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(raw);
-    const saveTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
-    sbSaveQuestion(parsed,selectedFormat,saveTopic);
-    return parsed;
-  }catch(e){
-    console.error('fetchQuestionFromAI error:',e);
-    return getFallback();
-  }
-}
 
 function getFallback(){
   const fb=[
@@ -3592,70 +3490,70 @@ function getFallback(){
 }
 
 // ── QUESTION BANK ─────────────────────────────────────────────
-async function sbSaveQuestion(qData,format,topic){
-  if(!qData?.question||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  try{
-    // Dedup check
-    const checkRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=id&question=eq.${encodeURIComponent(qData.question)}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const existing=await checkRes.json();
-    if(Array.isArray(existing)&&existing.length)return;
-    // Insert
-    await fetch(`${SUPABASE_URL}/rest/v1/questions`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
-        'Content-Type':'application/json','Prefer':'return=minimal'
-      },
-      body:JSON.stringify({
-        question:qData.question,options:qData.options||null,
-        answer:typeof qData.answer==='number'?String(qData.answer):qData.answer,
-        aliases:qData.aliases||[],format,
-        topic_type:topic.type,topic_value:topic.value||null,
-        difficulty:selectedDifficulty||'easy',report_count:0
-      })
-    });
-  }catch(e){}
+
+// Guest seen-question tracking (persists for the browser session)
+function guestSeenIds(){
+  try{const raw=sessionStorage.getItem('guest_seen_ids');return raw?JSON.parse(raw):[];}catch(e){return [];}
+}
+function guestAddSeen(id){
+  try{const ids=guestSeenIds();if(!ids.includes(id)){ids.push(id);sessionStorage.setItem('guest_seen_ids',JSON.stringify(ids));}}catch(e){}
 }
 
 async function sbGetQuestion(format,topic){
   if(SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    // Build topic filter
+    // Build topic filter — General Anime has no filter so it draws from all 600 questions
     let topicFilter='';
     if(topic.type==='anime')topicFilter=`&topic_type=eq.anime&topic_value=eq.${encodeURIComponent(topic.value)}`;
     else if(topic.type==='genre')topicFilter=`&topic_type=eq.genre&topic_value=eq.${encodeURIComponent(topic.value)}`;
-    else topicFilter='&topic_type=eq.all';
-    // Fetch seen question ids for this user
+    // else: general — no filter, full pool
+    // Collect seen question ids (DB for logged-in users + sessionStorage for guests)
     const seenQs=quizHistory.map(h=>h.q);
-    let seenIds=[];
+    let seenIds=guestSeenIds(); // always start with guest-session seen list
     if(currentUserId){
       const seenRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/seen_questions?select=question_id&user_id=eq.${currentUserId}&limit=200`,
+        `${SUPABASE_URL}/rest/v1/seen_questions?select=question_id&user_id=eq.${currentUserId}&limit=500`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
       );
       const seenData=await seenRes.json();
-      if(Array.isArray(seenData))seenIds=seenData.map(s=>s.question_id);
+      if(Array.isArray(seenData)){
+        const dbIds=seenData.map(s=>s.question_id);
+        // Merge without duplicates
+        seenIds=[...new Set([...seenIds,...dbIds])];
+      }
     }
     // Build exclusion filter
     const excludeFilter=seenIds.length?`&id=not.in.(${seenIds.join(',')})`:'';
-    // Fetch candidate questions
+    // Fetch exactly as many questions as the quiz needs, shuffled randomly
+    const fetchLimit=selectedQuestionLimit||10;
     const qRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&limit=20`,
+      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&order=random()&limit=${fetchLimit}`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const data=await qRes.json();
-    if(!Array.isArray(data)||!data.length)return null;
+    if(!Array.isArray(data)||!data.length){
+      // All questions seen — reset guest list and retry without exclusions
+      if(!currentUserId)sessionStorage.removeItem('guest_seen_ids');
+      const retryRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}&order=random()&limit=${fetchLimit}`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const retryData=await retryRes.json();
+      if(!Array.isArray(retryData)||!retryData.length)return null;
+      const row=retryData[Math.floor(Math.random()*retryData.length)];
+      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null};
+    }
     const filtered=data.filter(q=>!seenQs.includes(q.question));
-    if(!filtered.length)return null;
-    const row=filtered[Math.floor(Math.random()*filtered.length)];
+    const pool=filtered.length?filtered:data;
+    const row=pool[Math.floor(Math.random()*pool.length)];
     return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null};
   }catch(e){return null}
 }
 
 async function sbMarkSeen(userId,questionId){
+  // Always record in guest session storage so guests also avoid repeats
+  guestAddSeen(questionId);
+  if(!userId)return;
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/seen_questions`,{
       method:'POST',
