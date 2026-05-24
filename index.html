@@ -5686,11 +5686,16 @@ async function confirmTransferHost(){
         const newHostUid=Array.isArray(nhData)?nhData[0]?.user_id:null;
         if(newHostUid){
           // 1. Demote current host's own row
-          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+          const d1=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
+          if(!d1.ok)console.error('[Transfer] demote self failed:',d1.status,await d1.text());
           // 2. Promote new host's row
-          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${newHostUid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+          const d2=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${newHostUid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+          if(!d2.ok)console.error('[Transfer] promote new host failed:',d2.status,await d2.text());
           // 3. Update lobbies.host_id LAST — isHost is still true here so RLS (auth.uid()=host_id) passes
-          await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
+          const d3=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
+          if(!d3.ok)console.error('[Transfer] lobbies host_id update failed:',d3.status,await d3.text());
+          else console.log('[Transfer] lobbies.host_id updated to',newHostUid,'(',_transferTarget,')');
+          console.log('[Transfer] currentUserId:',currentUserId,'token uid claim:',(JSON.parse(atob(token.split('.')[1]))).sub,'lid:',lid,'newHostUid:',newHostUid);
         }
       }
     }catch(e){}
