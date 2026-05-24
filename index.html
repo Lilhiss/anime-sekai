@@ -5713,29 +5713,10 @@ async function confirmTransferHost(){
       }
     }catch(e){}
   }
-  // All DB writes done — outgoing host leaves the lobby cleanly
+  // All DB writes done — drop host status and stay in lobby as a regular player
   isHost=false;
   _transferTarget=null;
-  // Remove own lobby_players row so we do not phantom-appear in player counts
-  if(currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
-    try{
-      const token2=await rtGetAuthToken();
-      const lRes2=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token2}`}});
-      const lData2=await lRes2.json();
-      const lid2=Array.isArray(lData2)?lData2[0]?.id:null;
-      if(lid2){
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid2}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token2}`,'Prefer':'return=minimal'}});
-      }
-    }catch(e){}
-  }
-  // Unsubscribe from channel so we stop receiving lobby events
-  // Broadcast departure first so remaining players remove us from their list
-  if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:currentUser}});
-  intentionalLeave=true;
-  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
-  clearLobbyTimer();
-  lobbyCode='';
-  goStep('multiplayer');
+  renderLobbyRoom();
 }
 async function kickPlayer(name){
   if(!isHost)return;
