@@ -1608,44 +1608,65 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- TIME LIMIT PICKER MODAL -->
+  <!-- GAME SETTINGS MODAL -->
   <div id="timeLimitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:20px;max-height:90vh;overflow-y:auto">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:24px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:20px">
+
+      <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">&#x23F1; Game Settings</div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">⚙️ Game Settings</div>
         <button onclick="document.getElementById('timeLimitModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div id="timeLimitDesc" style="color:var(--muted);font-size:13px;line-height:1.5"></div>
 
-      <!-- Question Count Picker -->
-      <div id="questionCountSection">
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-list-numbers" style="font-size:13px"></i> Questions</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px" id="questionCountGrid">
-          <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(15,this)" data-qval="15"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">Short</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="flex:1">
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:5px">Type any number from 1–50, or pick a preset above.</div>
+      <!-- Tabs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:4px;gap:4px">
+        <button id="gsTabQuestions" onclick="switchGameSettingsTab('questions')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff">
+          <i class="ti ti-list-numbers" style="font-size:13px"></i> Questions
+        </button>
+        <button id="gsTabTimer" onclick="switchGameSettingsTab('timer')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:none;color:var(--muted)">
+          <i class="ti ti-clock" style="font-size:13px"></i> Timer
+        </button>
       </div>
 
-      <div style="height:1px;background:var(--border)"></div>
+      <!-- Summary strip -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--accent)">
+          <i class="ti ti-list-numbers" style="font-size:12px"></i>
+          <span id="gsSummaryQuestions">10 Questions</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--accent)">
+          <i class="ti ti-clock" style="font-size:12px"></i>
+          <span id="gsSummaryTimer">20s / question</span>
+        </div>
+      </div>
 
-      <!-- Time Limit Picker -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-clock" style="font-size:13px"></i> Time Per Question</div>
+      <!-- Questions panel -->
+      <div id="gsQuestionPanel">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="questionCountGrid">
+          <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(15,this)" data-qval="15"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">Short</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
+          <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
+        </div>
+        <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom — type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
+      </div>
+
+      <!-- Timer panel -->
+      <div id="gsTimerPanel" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="timeLimitGrid">
-          <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
-          <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
-          <div class="time-limit-opt" onclick="selectTimeLimit(25)" data-val="25"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">25s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
-          <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:26px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(15)" data-val="15"><div style="font-family:'Lilita One',cursive;font-size:28px;color:var(--accent)">15s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Fast</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(20)" data-val="20"><div style="font-family:'Lilita One',cursive;font-size:28px;color:var(--accent)">20s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Normal</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(25)" data-val="25"><div style="font-family:'Lilita One',cursive;font-size:28px;color:var(--accent)">25s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Relaxed</div></div>
+          <div class="time-limit-opt" onclick="selectTimeLimit(30)" data-val="30"><div style="font-family:'Lilita One',cursive;font-size:28px;color:var(--accent)">30s</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Chill</div></div>
         </div>
+        <div id="timeLimitDesc" style="color:var(--muted);font-size:12px;line-height:1.5;margin-top:10px"></div>
       </div>
 
-      <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%"><i class="ti ti-player-play" style="font-size:16px"></i> <span id="timeLimitStartLabel">Start Race</span></button>
+      <!-- Start button -->
+      <button class="action-btn primary" onclick="confirmTimeLimit()" style="width:100%">
+        <i class="ti ti-player-play" style="font-size:16px"></i> <span id="timeLimitStartLabel">Start Race</span>
+      </button>
+
     </div>
   </div>
 
@@ -4183,13 +4204,31 @@ function renderProfile(){
   applyTheme();
 }
 
+function switchGameSettingsTab(tab){
+  const isQ=tab==='questions';
+  document.getElementById('gsQuestionPanel').style.display=isQ?'block':'none';
+  document.getElementById('gsTimerPanel').style.display=isQ?'none':'block';
+  const qBtn=document.getElementById('gsTabQuestions');
+  const tBtn=document.getElementById('gsTabTimer');
+  qBtn.style.background=isQ?'var(--accent)':'none';
+  qBtn.style.color=isQ?'#fff':'var(--muted)';
+  tBtn.style.background=isQ?'none':'var(--accent)';
+  tBtn.style.color=isQ?'var(--muted)':'#fff';
+}
+function updateGsSummary(){
+  const qEl=document.getElementById('gsSummaryQuestions');
+  const tEl=document.getElementById('gsSummaryTimer');
+  if(qEl)qEl.textContent=selectedQuestionLimit+' Questions';
+  if(tEl)tEl.textContent=raceTimeLimit+'s / question';
+}
+
 // ── TIME LIMIT PICKER ─────────────────────────────────────────
-function showTimeLimitPicker(mode){
+function showTimeLimitPicker(mode,fromLobby){
   pendingMode=mode;
   const isRace=mode==='race';
   document.getElementById('timeLimitDesc').textContent=isRace
-    ? 'Choose how long you have per question. You get full points for the first 5s, then points drop — down to a minimum of 3 pts.'
-    : 'Choose how long you have to answer each question. Run out of time and you lose a life.';
+    ? 'Full points for the first 5s, then drops to a minimum of 3 pts.'
+    : 'Run out of time and you lose a life.';
   document.getElementById('timeLimitStartLabel').textContent=isRace?'Start Race':'Start Survival';
   // Sync time limit selection
   const grid=document.getElementById('timeLimitGrid');
@@ -4211,9 +4250,13 @@ function showTimeLimitPicker(mode){
     customInput.value=selectedQuestionLimit;
     customInput.classList.add('selected');
   }
-  // Hide question count section when coming from lobby settings
-  document.getElementById('questionCountSection').style.display=pendingLobbyAfterTimeLimit?'none':'block';
-  document.getElementById('questionCountSection').nextElementSibling.style.display=pendingLobbyAfterTimeLimit?'none':'block';
+  // Set max depending on context
+  const isLobby=!!fromLobby;
+  customInput.max=isLobby?100:50;
+  customInput.placeholder=isLobby?'Custom — type any number (max 100)':'Custom — type any number (max 50)';
+  // Always start on Questions tab
+  switchGameSettingsTab('questions');
+  updateGsSummary();
   document.getElementById('timeLimitModal').style.display='flex';
   applyTheme();
 }
@@ -4224,16 +4267,18 @@ function selectQuestionCount(val,el){
   const customInput=document.getElementById('questionCountCustom');
   customInput.value='';
   customInput.classList.remove('selected');
+  updateGsSummary();
 }
 function onCustomQCount(input){
   const raw=parseInt(input.value);
   if(isNaN(raw)||input.value==='')return;
-  const val=Math.max(1,Math.min(50,raw));
+  const maxVal=parseInt(input.max)||50;
+  const val=Math.max(1,Math.min(maxVal,raw));
   selectedQuestionLimit=val;
   document.querySelectorAll('.q-count-opt').forEach(e=>e.classList.remove('selected'));
   input.classList.add('selected');
-  // clamp display if needed
-  if(raw>50)input.value=50;
+  if(raw>maxVal)input.value=maxVal;
+  updateGsSummary();
 }
 function onCustomQCountFocus(input){
   document.querySelectorAll('.q-count-opt').forEach(e=>e.classList.remove('selected'));
@@ -4244,14 +4289,15 @@ function selectTimeLimit(val){
   document.querySelectorAll('.time-limit-opt').forEach(el=>{
     el.classList.toggle('selected',parseInt(el.dataset.val)===val);
   });
+  updateGsSummary();
 }
 function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
     // Flush final confirmed format+mode to DB so the lobby list reflects the real state
-    patchLobby({format:lobbyFormat,mode:lobbyMode});
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
     startQuiz(pendingMode);
@@ -4670,6 +4716,7 @@ function rtSubscribe(lobbyId){
     const spinner=document.getElementById('lobbyChangingSpinner');
     const settingsBtn=document.getElementById('lobbySettingsBtn');
     const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
+    const qCountLabel=` · ${payload.questionCount||selectedQuestionLimit}Q`;
     const topicsLabel=document.getElementById('lobbyTopicsLabel');
     if(payload.changing){
       if(spinner)spinner.style.display='block';
@@ -4679,10 +4726,11 @@ function rtSubscribe(lobbyId){
       if(topicsLabel)topicsLabel.style.display='none';
     } else {
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
+      if(payload.questionCount)selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
-      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel;}
+      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+timeLimitLabel+qCountLabel;}
       if(hint)hint.style.display='';
       if(settingsBtn)settingsBtn.style.display='';
       if(topicsLabel){
@@ -5270,8 +5318,10 @@ async function loadPublicLobbies(silent=false){
       const color=colors[i%colors.length];
       const fmt=lobby.format||'mc';
       const mode=lobby.mode||'race';
+      const qCount=lobby.question_count||10;
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
       const modeName={race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode]||mode;
+      const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
 
       const card=document.createElement('div');
       card.className='lobby-list-card'+(full?' lobby-guest-lock':'');
@@ -5281,6 +5331,8 @@ async function loadPublicLobbies(silent=false){
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
+            ${timeBadge}
+            <span class="lobby-list-badge">📋 ${qCount}Q</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
@@ -5331,7 +5383,8 @@ function renderLobbyRoom(){
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
   if(lobbyMaxEl)lobbyMaxEl.textContent=maxPlayers;
   const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+timeLimitLabel;
+  const qCountLabel=` · ${selectedQuestionLimit}Q`;
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+timeLimitLabel+qCountLabel;
   updateLobbyTopicsLabel();
   const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
   lobbyPlayers.forEach(p=>{
@@ -5377,7 +5430,7 @@ function setLobbyFormat(fmt,el){
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   // No DB write here — only write on final confirm so lobby list stays clean
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>openLobbyTopicPage(),300);
 }
 function openLobbyTopicPage(){
@@ -5515,18 +5568,18 @@ function setLobbyMode(mode,el){
   lobbyMode=mode;selectedMode=mode;
   document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode);
+  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+` · ${selectedQuestionLimit}Q`;
   // No DB write here — only write on final confirm so lobby list stays clean
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   if(mode==='race'||mode==='survival'){
     setTimeout(()=>{
       pendingLobbyAfterTimeLimit=true;
-      showTimeLimitPicker(mode);
+      showTimeLimitPicker(mode,true);
     },300);
   } else {
     // Hot Potato skips the time limit picker — flush final state to DB now
-    patchLobby({format:lobbyFormat,mode:lobbyMode});
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
 }
@@ -5625,13 +5678,17 @@ function patchLobbyListCard(lobby) {
   if (!card) { loadPublicLobbies(); return; } // card not visible — do a full reload
   const fmt = lobby.format || 'mc';
   const mode = lobby.mode || 'race';
+  const qCount = lobby.question_count || 10;
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
   const modeName = {race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode] || mode;
+  const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
   const metaEl = card.querySelector('.lobby-list-meta');
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
-      <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>`;
+      <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
+      ${timeBadge}
+      <span class="lobby-list-badge">📋 ${qCount}Q</span>`;
   }
   // Also refresh the player count from the DB so it doesn't go stale
   if (!SUPABASE_URL.includes('YOUR_PROJECT') && lobby.id) {
