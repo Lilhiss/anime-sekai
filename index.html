@@ -4920,6 +4920,8 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       const data=await res.json();
       if(Array.isArray(data)&&data.length){
         lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id}));
+        // If we locally know we're host, correct any stale DB read that may not reflect it yet
+        if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
       }
     }catch(e){}
     return;
@@ -4937,6 +4939,8 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       const data=await res.json();
       if(!Array.isArray(data)||!data.length)return;
       lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id}));
+      // If we locally know we're host, correct any stale DB read that may not reflect it yet
+      if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
       renderLobbyRoom();
     }catch(e){}
   },300); // 300 ms debounce gives the DB DELETE time to commit
