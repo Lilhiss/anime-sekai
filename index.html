@@ -2077,7 +2077,39 @@ if(typeof isGuest==='undefined')window.isGuest=false;
 if(typeof currentPfp==='undefined')window.currentPfp=null;
 
 sb.auth.onAuthStateChange(async (event, session) => {
-  if(session?.user && !currentUser && !session.user.is_anonymous){
+  if(!session?.user) return;
+
+  // ── Anon session restored after refresh ──────────────────────
+  // onAuthStateChange fires for anonymous users too, but we previously
+  // ignored them. Repopulate currentUserId so rtGetOrCreateAnonSession
+  // returns the correct id and lobby rejoin works correctly.
+  if(session.user.is_anonymous){
+    if(!currentUserId){
+      currentUserId = session.user.id;
+      try{ sessionStorage.setItem('guest_user_id', currentUserId); }catch(e){}
+      // If the user was in a lobby before the refresh, rejoin it automatically.
+      const savedLobbyId = sessionStorage.getItem('current_lobby_id');
+      if(savedLobbyId && (event==='INITIAL_SESSION'||event==='SIGNED_IN')){
+        try{
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/lobbies?select=code,status&id=eq.${savedLobbyId}&limit=1`,
+            {headers:{apikey:SUPABASE_ANON,Authorization:`Bearer ${SUPABASE_ANON}`}}
+          );
+          const rows = await res.json();
+          if(Array.isArray(rows)&&rows[0]&&rows[0].status==='waiting'){
+            await rtJoinLobby(rows[0].code);
+          } else {
+            // Lobby gone or already started — clear the stale id
+            try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
+          }
+        }catch(e){}
+      }
+    }
+    return;
+  }
+
+  // ── Registered user session restored ─────────────────────────
+  if(!currentUser){
     const profile = await sbLoadProfile(session.user.id);
     if(profile){
       currentUser   = profile.username;
