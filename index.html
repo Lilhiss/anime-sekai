@@ -5255,13 +5255,13 @@ async function loadPublicLobbies(silent=false){
       return;
     }
 
-    // Fetch player counts for each lobby
+    // Fetch player counts for all lobbies in one aggregated query
     const ids=lobbies.map(l=>l.id);
     let playerCounts={};
     try{
       const pcRes=await fetch(
         `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Prefer':'count=exact'}}
       );
       const pcData=await pcRes.json();
       if(Array.isArray(pcData))pcData.forEach(r=>{playerCounts[r.lobby_id]=(playerCounts[r.lobby_id]||0)+1;});
@@ -5270,7 +5270,7 @@ async function loadPublicLobbies(silent=false){
     list.innerHTML='';
     const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#e879f9'];
     lobbies.forEach((lobby,i)=>{
-      const count=playerCounts[lobby.id]||1;
+      const count=playerCounts[lobby.id]||0;
       const max=lobby.mode==='hp'?8:12;
       const full=count>=max;
       const hostInitial=(lobby.lobby_name||lobby.host_username||'?')[0].toUpperCase();
@@ -5614,18 +5614,45 @@ function subscribeToLobbyList() {
       }
     })
     // Also listen for lobby_players changes so player counts update in real time
-    // without waiting for a full reload.
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'lobby_players'
-    }, () => {
+    }, async () => {
       const onMultiplayerPage = document.getElementById('page-multiplayer').classList.contains('active');
       if (!onMultiplayerPage) return;
-      // Re-fetch just the player counts and patch each visible card
+      // Surgically patch just the player count on each visible card — no full re-render
       const cards = document.querySelectorAll('.lobby-list-card');
       if (!cards.length) return;
-      loadPublicLobbies(true);
+      // Collect visible lobby ids from join buttons
+      const idMap={};
+      cards.forEach(card=>{
+        const btn=card.querySelector('button[onclick^="joinLobbyById"]');
+        if(!btn)return;
+        const match=btn.getAttribute('onclick').match(/joinLobbyById\('([^']+)','([^']+)'\)/);
+        if(match)idMap[match[1]]={card,code:match[2]};
+      });
+      const ids=Object.keys(idMap);
+      if(!ids.length)return;
+      try{
+        const pcRes=await fetch(
+          `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id&lobby_id=in.(${ids.join(',')})`,
+          {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+        );
+        const pcData=await pcRes.json();
+        const counts={};
+        if(Array.isArray(pcData))pcData.forEach(r=>{counts[r.lobby_id]=(counts[r.lobby_id]||0)+1;});
+        ids.forEach(id=>{
+          const {card}=idMap[id];
+          const countEl=card.querySelector('.lobby-list-players');
+          if(!countEl)return;
+          const max=parseInt(countEl.textContent.split('/')[1])||12;
+          const count=counts[id]||0;
+          countEl.innerHTML=`<i class="ti ti-users" style="font-size:12px"></i> ${count}/${max}`;
+          const full=count>=max;
+          card.classList.toggle('lobby-guest-lock',full);
+        });
+      }catch(e){}
     })
     .subscribe();
 }
