@@ -4566,6 +4566,34 @@ function rtSubscribe(lobbyId){
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
     if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
     renderMPScoreboard();
+    // Host checks if all active players have answered — if so, advance early
+    if(isHost){
+      const isHP=lobbyMode==='potato';
+      const activePlayers=isHP
+        ?[hpActivePlayer()]  // HP: only the active player needs to answer
+        :lobbyPlayers.filter(lp=>!lp.eliminated);
+      const allAnswered=activePlayers.length>0&&activePlayers.every(lp=>lp.roundAnswered);
+      if(allAnswered){
+        clearInterval(timerInterval); // stop the question timer early
+        mpStartAutoNext(()=>{
+          if(isHP){
+            hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+            while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+            const remaining=hpActivePlayers();
+            if(remaining.length<=1){
+              if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+              else mpEndGame();return;
+            }
+          } else {
+            if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+            if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          }
+          qIndex++;
+          if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
+          else{mpLoadQuestion();}
+        });
+      }
+    }
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
@@ -5897,6 +5925,8 @@ function mpCheckTypeAnswer(){
 
 function mpTimeOut(){
   if(answered)return;answered=true;
+  clearInterval(timerInterval);
+  clearInterval(mpAutoNextInterval); // cancel any in-progress auto-next from all-answered path
   document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
   const inp=document.getElementById('mpTypeInput');
   if(inp){inp.disabled=true;inp.classList.remove('wrong-attempt');}
