@@ -4397,7 +4397,7 @@ async function rtJoinLobby(code){
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   rtSubscribe(lobby.id);
-  await rtRefreshPlayers(lobby.id);
+  await rtRefreshPlayers(lobby.id,true); // immediate=true skips debounce so goStep sees populated lobbyPlayers
   // Navigate to lobby room only after players are loaded — prevents 0/12 flash
   goStep('lobby-room');
 
@@ -4773,10 +4773,24 @@ function rtSubscribe(lobbyId){
 }
 
 let _refreshPlayersTimer=null;
-async function rtRefreshPlayers(lobbyId){
+async function rtRefreshPlayers(lobbyId,immediate=false){
   // Debounce: if multiple postgres_changes events fire in quick succession (e.g.
   // a player leave triggers both a DELETE on lobby_players and an UPDATE on lobbies),
   // only run the last one — avoids racing the DELETE commit and showing stale data.
+  // Pass immediate=true to skip the debounce (used on initial join).
+  if(immediate){
+    try{
+      const res=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=*&lobby_id=eq.${lobbyId}&order=joined_at.asc`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const data=await res.json();
+      if(Array.isArray(data)&&data.length){
+        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id}));
+      }
+    }catch(e){}
+    return;
+  }
   clearTimeout(_refreshPlayersTimer);
   _refreshPlayersTimer=setTimeout(async()=>{
     // Don't refresh if we've already left the lobby
