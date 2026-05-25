@@ -4289,7 +4289,6 @@ async function rtGetAuthToken(){
 }
 
 async function rtCreateLobby(){
-  intentionalLeave=false; // reset from any previous lobby/navigation session
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){
     console.warn('No Supabase session — lobby will be local only');
@@ -4341,7 +4340,6 @@ async function rtCreateLobby(){
 async function rtJoinLobby(code){
   // Clear stale player list immediately so the lobby room never flashes old players
   lobbyPlayers=[];
-  intentionalLeave=false; // reset from any previous lobby/navigation session
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');return false;}
   const token=await rtGetAuthToken();
