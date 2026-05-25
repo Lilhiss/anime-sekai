@@ -804,7 +804,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="display:flex;flex-direction:column;gap:6px">
           <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
           <div class="lobby-code-bar">
-            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="12" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr');const jb=document.querySelector('.lobby-code-btn');if(jb){jb.disabled=false;jb.style.opacity='';jb.style.cursor=''}" onkeydown="if(event.key==='Enter')joinLobby()">
+            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="10" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr');const jb=document.querySelector('.lobby-code-btn');if(jb){jb.disabled=false;jb.style.opacity='';jb.style.cursor=''};const v=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');this.value=v.length>5?v.slice(0,5)+'-'+v.slice(5):v;" onkeydown="if(event.key==='Enter')joinLobby()">
             <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join</button>
           </div>
           <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
@@ -3014,10 +3014,33 @@ function afterAuth(){
   }
   goStep('format');
 }
+// ── USERNAME MODERATION ───────────────────────────────────────
+// Normalizes common character substitutions then checks against a blocklist.
+// This catches deliberate bypasses like "sh1t", "a$$", "f@ck" etc.
+function isCleanUsername(name){
+  const norm=name.toLowerCase()
+    .replace(/[@4]/g,'a').replace(/3/g,'e').replace(/[1!|]/g,'i')
+    .replace(/0/g,'o').replace(/[$5]/g,'s').replace(/[7+]/g,'t')
+    .replace(/[^a-z0-9]/g,''); // strip remaining special chars
+  const banned=[
+    'fuck','fuk','fck','shit','sht','ass','arse','bitch','btch',
+    'cunt','cnt','dick','dik','cock','cok','pussy','puss','nigger',
+    'nigga','nigg','niga','fag','fagg','fagot','faggot','whore',
+    'slut','rape','rapist','retard','retarded','bastard','bastrd',
+    'prick','twat','wank','wanker','tosser','dipshit','asshole',
+    'arsehole','motherfucker','mofo','mf','kike','spic','chink',
+    'tranny','nazi','hitler','sex','porn','nude','naked','penis',
+    'vagina','boob','boobs','tits','tit','dildo','cumshot','jizz',
+    'cum','cum','sperm','boner','erection','horny','hentai',
+  ];
+  return !banned.some(w=>new RegExp('\\b'+w+'\\b').test(norm));
+}
+
 async function submitGuest(){
   const val=document.getElementById('guestName').value.trim();
   if(val.length<3){showErr('guestErr','guestErrMsg','Username must be at least 3 characters.');return}
   if(/\s/.test(val)){showErr('guestErr','guestErrMsg','No spaces allowed.');return}
+  if(!isCleanUsername(val)){showErr('guestErr','guestErrMsg','That username isn\'t allowed. Please choose a different one.');return}
   const btn=document.getElementById('guestSubmitBtn');
   btn.disabled=true;btn.textContent='Entering…';
   try{
@@ -3074,6 +3097,7 @@ async function submitRegister(){
   const e=document.getElementById('regEmail').value.trim();
   if(u.length<3){showErr('regErr','regErrMsg','Username must be at least 3 characters.');return}
   if(/\s/.test(u)){showErr('regErr','regErrMsg','No spaces allowed.');return}
+  if(!isCleanUsername(u)){showErr('regErr','regErrMsg','That username isn\'t allowed. Please choose a different one.');return}
   if(p.length<6){showErr('regErr','regErrMsg','Password must be at least 6 characters.');return}
   if(e&&!e.includes('@')){showErr('regErr','regErrMsg','Please enter a valid email address.');return}
   const btn=document.getElementById('regSubmitBtn');
