@@ -4398,6 +4398,8 @@ async function rtJoinLobby(code){
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   rtSubscribe(lobby.id);
   await rtRefreshPlayers(lobby.id);
+  // Navigate to lobby room only after players are loaded — prevents 0/12 flash
+  goStep('lobby-room');
 
   // ── HOST RECLAIM ──────────────────────────────────────────────
   // Only reclaim if this user is still the designated host in the DB.
@@ -4450,8 +4452,7 @@ async function disconnectRejoin(){
   intentionalLeave=false; // reset so the channel error handler works again after rejoin
   if(!lobbyCode){goStep('multiplayer');return;}
   const ok=await rtJoinLobby(lobbyCode);
-  if(ok){goStep('lobby-room');}
-  else{showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
+  if(!ok){showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
 }
 
 let _rtVisibilityAbort=null;
@@ -5089,7 +5090,6 @@ async function joinLobby(){
   }catch(e){resetBtn();}
   const ok=await rtJoinLobby(code);
   if(!ok){resetBtn();return;}
-  goStep('lobby-room');
 }
 
 // ── LOBBY TIMER ───────────────────────────────────────────────
@@ -5316,7 +5316,6 @@ async function joinLobbyById(lobbyId,code){
   if(!currentUser){choosePath('join');return;}
   const ok=await rtJoinLobby(code);
   if(!ok)return;
-  goStep('lobby-room');
 }
 
 function renderLobbyRoom(){
