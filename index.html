@@ -5044,6 +5044,11 @@ goStep=function(name){
     if(input)input.placeholder=currentUser?`${currentUser}'s Lobby`:"My Lobby";
     // Reset privacy pills to default (public)
     setPillPrivacy(false);
+    // Reset the join-by-code input and button so they're never stale on return
+    const codeInput=document.getElementById('lobbyCodeInput');
+    if(codeInput)codeInput.value='';
+    const joinBtn=document.querySelector('.lobby-code-btn');
+    if(joinBtn){joinBtn.disabled=false;joinBtn.innerHTML='<i class="ti ti-door-enter" style="font-size:15px"></i> Join';joinBtn.style.opacity='';joinBtn.style.cursor='';}
   } else {
     unsubscribeFromLobbyList();
   }
