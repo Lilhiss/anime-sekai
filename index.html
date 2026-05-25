@@ -804,7 +804,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="display:flex;flex-direction:column;gap:6px">
           <span style="font-size:13px;font-weight:800;color:var(--text)">Lobby Code</span>
           <div class="lobby-code-bar">
-            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="10" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr');const jb=document.querySelector('.lobby-code-btn');if(jb){jb.disabled=false;jb.style.opacity='';jb.style.cursor=''};const v=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');this.value=v.length>5?v.slice(0,5)+'-'+v.slice(5):v;" onkeydown="if(event.key==='Enter')joinLobby()">
+            <input class="lobby-code-input" id="lobbyCodeInput" type="text" placeholder="E.G. OTAKU-7842" maxlength="10" style="text-transform:uppercase" oninput="clearErr('lobbyJoinErr');const jb=document.querySelector('.lobby-code-btn');if(jb){jb.disabled=false;jb.style.opacity='';jb.style.cursor=''};const v=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');this.value=(v.length>=5&&!this._deleting)?v.slice(0,5)+'-'+v.slice(5):v;this._deleting=false;" onkeydown="if(event.key==='Enter')joinLobby();if(event.key==='Backspace'||event.key==='Delete'){const cv=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(cv.length<=5)this._deleting=true;}">
             <button class="lobby-code-btn" onclick="joinLobby()"><i class="ti ti-door-enter" style="font-size:15px"></i> Join</button>
           </div>
           <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
@@ -5911,6 +5911,7 @@ function renderMPScoreboard(){
 }
 
 function mpShowQuestion(qData,hpFuse){
+  answered=false;
   document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpFeedbackBar').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
