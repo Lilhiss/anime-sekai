@@ -4738,21 +4738,17 @@ function rtSubscribe(lobbyId){
   });
 
   rtChannel.on('presence',{event:'leave'},async({leftPresences})=>{
-    // Skip if we intentionally left (leaveLobbyRoom already handled cleanup).
-    // NOTE: We intentionally do NOT guard on page-lobby-room being .active here.
-    // The presence leave can fire during the brief window when the remaining client
-    // is navigating or re-subscribing, and the page-active check would silently
-    // swallow the disconnect. lobbyCode being set is the only meaningful guard we need.
-    if(intentionalLeave) return;
-    if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode) return;
+    console.log('[presence:leave] fired. intentionalLeave='+intentionalLeave+' lobbyCode='+lobbyCode+' leftPresences=',leftPresences);
+    if(intentionalLeave){console.log('[presence:leave] skipped — intentionalLeave');return;}
+    if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){console.log('[presence:leave] skipped — no lobbyCode or placeholder URL');return;}
 
     for(const presence of leftPresences){
       const goneUserId=presence.userId;
       const goneUsername=presence.username;
-      if(!goneUserId) continue;
+      console.log('[presence:leave] processing gone user:',goneUserId,goneUsername);
+      if(!goneUserId){console.log('[presence:leave] skipped — no userId in presence');continue;}
 
-      // Skip if this is our own presence echo (shouldn't happen, but guard anyway)
-      if(goneUserId===currentUserId) continue;
+      if(goneUserId===currentUserId){console.log('[presence:leave] skipped — own presence echo');continue;}
 
       const token=await rtGetAuthToken();
       const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
@@ -4772,14 +4768,17 @@ function rtSubscribe(lobbyId){
       try{
         const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=is_host&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
         const chkData=await chkRes.json();
-        if(!Array.isArray(chkData)||!chkData.length) continue; // already removed
+        console.log('[presence:leave] chkData for gone user:',chkData);
+        if(!Array.isArray(chkData)||!chkData.length){console.log('[presence:leave] row already gone — skipping');continue;} // already removed
         wasThisPlayerHost=chkData[0]?.is_host||false;
-      }catch(e){ continue; }
+        console.log('[presence:leave] wasThisPlayerHost='+wasThisPlayerHost);
+      }catch(e){console.error('[presence:leave] error checking row',e);continue;}
 
       // 3. Delete their player row
       try{
-        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}`,{method:'DELETE',headers});
-      }catch(e){}
+        const delRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}`,{method:'DELETE',headers});
+        console.log('[presence:leave] delete row status:',delRes.status);
+      }catch(e){console.error('[presence:leave] error deleting row',e);}
 
       // 4. Update local player list immediately so the UI is responsive
       lobbyPlayers=lobbyPlayers.filter(p=>p.userId!==goneUserId);
@@ -4809,21 +4808,25 @@ function rtSubscribe(lobbyId){
       // 6. If the disconnected player was the host, elect the first remaining player as host.
       //    Use the same stable-order self-election as the existing postgres_changes path —
       //    only the client whose userId matches the first remaining row claims host.
+      console.log('[presence:leave] wasThisPlayerHost='+wasThisPlayerHost+' remaining=',remaining);
       if(wasThisPlayerHost){
         const next=remaining[0];
+        console.log('[presence:leave] next in line:',next,'currentUserId='+currentUserId);
         if(next.user_id===currentUserId){
           // We're first in line — claim host
+          console.log('[presence:leave] claiming host for ourselves');
           try{
             await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
             await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
             await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
-          }catch(e){}
+          }catch(e){console.error('[presence:leave] error claiming host',e);}
           isHost=true;
           lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
           if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:goneUsername||'The host',remainingSeconds:lobbyTimerSecondsLeft}});
           clearLobbyTimer();
           startLobbyTimer(lobbyTimerSecondsLeft||null);
         } else {
+          console.log('[presence:leave] not our turn — another client will claim host');
           // Another client will claim host — just broadcast the leave so UIs update
           if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:goneUsername}});
         }
