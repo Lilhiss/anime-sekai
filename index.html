@@ -4696,10 +4696,11 @@ function rtSubscribe(lobbyId){
 
   rtChannel.on('presence',{event:'leave'},async({leftPresences})=>{
     // Skip if we intentionally left (leaveLobbyRoom already handled cleanup).
-    // Also skip if we're not in the lobby UI — game is running or we navigated away.
+    // NOTE: We intentionally do NOT guard on page-lobby-room being .active here.
+    // The presence leave can fire during the brief window when the remaining client
+    // is navigating or re-subscribing, and the page-active check would silently
+    // swallow the disconnect. lobbyCode being set is the only meaningful guard we need.
     if(intentionalLeave) return;
-    const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
-    if(!inLobby) return;
     if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode) return;
 
     for(const presence of leftPresences){
@@ -6324,20 +6325,33 @@ window.addEventListener('pagehide', () => {
   if(intentionalLeave) return;           // already handled by leaveLobbyRoom()
   if(!currentLobbyId || !currentUserId) return;
   if(SUPABASE_URL.includes('YOUR_PROJECT')) return;
-  const url = `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`;
-  const headers = { type: 'application/json' };
-  // sendBeacon only supports POST; Supabase REST DELETE via fetch isn't reliable
-  // at page unload. We use the pg-meta "delete via POST+method override" approach
-  // but Supabase doesn't support that — so instead we store the data and let the
-  // Presence `leave` handler clean up. As an extra safety net we also do a
-  // synchronous XHR (async:false is deprecated but still fires before unload).
+
+  // Step 1 — DELETE our lobby_players row so remaining clients can detect the departure.
+  // Uses a synchronous XHR (async:false) because fetch/sendBeacon are not guaranteed
+  // to complete before the page tears down.
   try {
     const xhr = new XMLHttpRequest();
-    xhr.open('DELETE', url, false); // false = synchronous
+    xhr.open('DELETE', `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`, false);
     xhr.setRequestHeader('apikey', SUPABASE_ANON);
     xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON}`);
     xhr.setRequestHeader('Prefer', 'return=minimal');
     xhr.send();
+  } catch(e) {}
+
+  // Step 2 — PATCH lobbies.updated_at on the same lobby row.
+  // Supabase Realtime sometimes silently drops the lobby_players DELETE change event
+  // (observed as binary WS frames that don't decode to postgres_changes). Bumping
+  // updated_at on the lobbies row guarantees that remaining clients' postgres_changes
+  // UPDATE listener fires and triggers rtRefreshPlayers(), covering the gap.
+  // Presence leave is the primary path; this is a belt-and-suspenders fallback.
+  try {
+    const xhr2 = new XMLHttpRequest();
+    xhr2.open('PATCH', `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${currentLobbyId}`, false);
+    xhr2.setRequestHeader('apikey', SUPABASE_ANON);
+    xhr2.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON}`);
+    xhr2.setRequestHeader('Content-Type', 'application/json');
+    xhr2.setRequestHeader('Prefer', 'return=minimal');
+    xhr2.send(JSON.stringify({ updated_at: new Date().toISOString() }));
   } catch(e) {}
 });
 
