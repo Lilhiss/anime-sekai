@@ -4229,11 +4229,20 @@ let mpAutoNextPaused=false;
 async function rtGetOrCreateAnonSession(){
   if(currentUserId)return currentUserId;
   try{
+    // Check for an existing session first (anon session persisted in sessionStorage
+    // across refresh). This prevents a new anon identity being created on every reload,
+    // which would leave ghost rows in lobby_players and break host transfer.
+    const {data:sessionData}=await sb.auth.getSession();
+    if(sessionData?.session?.user){
+      currentUserId=sessionData.session.user.id;
+      try{ sessionStorage.setItem('guest_user_id', currentUserId); }catch(e){}
+      return currentUserId;
+    }
+    // No existing session — create a fresh anon one
     const {data,error}=await sb.auth.signInAnonymously();
     if(error){console.error('Anon sign in error:',error.message);return null;}
     currentUserId=data.user?.id||null;
     if(currentUserId){
-      // Persist guest userId so pagehide can read it synchronously on refresh
       try{ sessionStorage.setItem('guest_user_id', currentUserId); }catch(e){}
     }
     return currentUserId;
