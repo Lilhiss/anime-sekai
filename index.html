@@ -4627,7 +4627,10 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
-    mpShowCountdown(()=>{if(isHost)mpHostFetchAndBroadcast();});
+    document.getElementById('mpQuestionText').style.display='none';
+    document.getElementById('mpAnswersGrid').innerHTML='';
+    document.getElementById('mpQLoading').style.display='flex';
+    if(isHost)mpHostFetchAndBroadcast();
   });
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
