@@ -4783,12 +4783,13 @@ function rtSubscribe(lobbyId){
       // 4. Update local player list immediately so the UI is responsive
       lobbyPlayers=lobbyPlayers.filter(p=>p.userId!==goneUserId);
 
-      // 5. Check who remains
+      // 5. Check who remains — explicitly exclude the gone user in case Supabase
+      //    serves a stale read and their row still appears after the DELETE.
       let remaining=[];
       try{
         const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lid}&order=joined_at.asc`,{headers});
         const pData=await pRes.json();
-        remaining=Array.isArray(pData)?pData:[];
+        remaining=(Array.isArray(pData)?pData:[]).filter(p=>p.user_id!==goneUserId);
       }catch(e){}
 
       if(!remaining.length){
