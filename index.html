@@ -4454,8 +4454,13 @@ async function disconnectRejoin(){
   else{showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
 }
 
+let _rtVisibilityAbort=null;
 function rtSubscribe(lobbyId){
   if(rtChannel)rtChannel.unsubscribe();
+  // Cancel any visibilitychange listeners from a previous session
+  if(_rtVisibilityAbort){_rtVisibilityAbort.abort();}
+  _rtVisibilityAbort=new AbortController();
+  const _rtSignal={signal:_rtVisibilityAbort.signal};
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
     await rtRefreshPlayers(lobbyId);
@@ -4727,11 +4732,12 @@ function rtSubscribe(lobbyId){
         showDisconnectModal();
       }
     }
-  },{once:false});
+  },{..._rtSignal,once:false});
 
   // Detect tab visibility change for the HOST — re-validate lobby against DB when
   // they return to a tab that may have been throttled/suspended by the browser.
   document.addEventListener('visibilitychange',async()=>{
+    if(_rtVisibilityAbort?.signal.aborted)return;
     if(document.visibilityState!=='visible'||!isHost||!lobbyCode)return;
     const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
     if(!inLobby)return;
@@ -4762,7 +4768,7 @@ function rtSubscribe(lobbyId){
         startLobbyTimer(secsLeft);
       }
     }catch(e){}
-  },{once:false});
+  },{..._rtSignal,once:false});
 }
 
 let _refreshPlayersTimer=null;
@@ -5006,6 +5012,13 @@ async function renderFriendsLb(){
 }
 const _origGoStep=goStep;
 goStep=function(name){
+  // If navigating away from an active game/lobby session, clean up channel state
+  // so the CLOSED status doesn't trigger the disconnect modal on the next page
+  const leavingGame=document.getElementById('page-mp-quiz').classList.contains('active');
+  const leavingLobby=document.getElementById('page-lobby-room').classList.contains('active');
+  if((leavingGame||leavingLobby)&&name!=='mp-quiz'&&name!=='lobby-room'&&name!=='lobby-settings'&&name!=='lobby-mode'){
+    intentionalLeave=true;
+  }
   _origGoStep(name);
   if(name==='leaderboard'){lbTab='global';switchLbTab('global');renderLb();}
   if(name==='lobby-room')renderLobbyRoom();
