@@ -2097,27 +2097,18 @@ async function sbLoadLeaderboard(){
     await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(userId)}&lobby_id=eq.${lobbyId}`, { method: 'DELETE', headers });
 
     // 4. Broadcast player_left so remaining players' rtChannel handlers fire immediately.
-    // This is the critical step that was missing — without it, other clients' lobbyPlayers
-    // arrays never get updated even though the DB row is correctly removed.
-    if(myUsername){
-      try{
-        await fetch(`${SUPABASE_URL}/realtime/v1/api/broadcast`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            messages: [{
-              topic: `realtime:lobby:${code}`,
-              event:  'player_left',
-              payload: { name: myUsername, wasHost }
-            }]
-          })
-        });
-      }catch(e){}
-    }
+    // Bump the lobbies row so remaining clients' postgres_changes listener on the
+    // lobbies table fires and triggers rtRefreshPlayers. This is more reliable than
+    // the HTTP broadcast API (which requires a service role key and silently fails
+    // with the anon key). Even if lobby_players DELETE events are dropped by Supabase
+    // Realtime due to missing REPLICA IDENTITY FULL, the lobbies UPDATE always fires.
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyId}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updated_at: new Date().toISOString() })
+      });
+    }catch(e){}
 
     // 5. Check if anyone else is still in the lobby
     const pRes = await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lobbyId}&limit=1`, { headers });
@@ -4487,6 +4478,12 @@ function rtSubscribe(lobbyId){
   _rtVisibilityAbort=new AbortController();
   const _rtSignal={signal:_rtVisibilityAbort.signal};
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
+  // Also listen for changes on the lobbies row itself (e.g. updated_at bumped by the
+  // refresh-cleanup IIFE) so remaining clients re-fetch players even when the
+  // lobby_players DELETE event is silently dropped by Supabase Realtime.
+  rtChannel.on('postgres_changes',{event:'UPDATE',schema:'public',table:'lobbies',filter:`id=eq.${lobbyId}`},async()=>{
+    await rtRefreshPlayers(lobbyId);
+  });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
     await rtRefreshPlayers(lobbyId);
     // If the host_transferred broadcast already handled this, lobbyPlayers will have a host — skip.
