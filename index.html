@@ -4292,6 +4292,7 @@ async function rtCreateLobby(){
   }catch(e){}
   isHost=true;
   currentLobbyId=lobbyId;
+  try{ sessionStorage.setItem('current_lobby_id', lobbyId); }catch(e){}
   rtSubscribe(lobbyId);
 }
 
@@ -4359,6 +4360,7 @@ async function rtJoinLobby(code){
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   currentLobbyId=lobby.id;
+  try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   rtSubscribe(lobby.id);
   await rtRefreshPlayers(lobby.id,true); // immediate=true skips debounce so goStep sees populated lobbyPlayers
   // Navigate to lobby room only after players are loaded — prevents 0/12 flash
@@ -5802,6 +5804,7 @@ async function leaveLobbyRoom(){
   clearLobbyTimer();
   intentionalLeave=true; // set early so Presence leave handler skips (we're cleaning up ourselves)
   currentLobbyId=null;   // prevent pagehide fallback from double-firing
+  try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
     isHost=false;
@@ -6323,15 +6326,24 @@ applyTheme();
 // Supabase REST API, so the record is cleaned up even if Presence misfires.
 window.addEventListener('pagehide', () => {
   if(intentionalLeave) return;           // already handled by leaveLobbyRoom()
-  if(!currentLobbyId || !currentUserId) return;
   if(SUPABASE_URL.includes('YOUR_PROJECT')) return;
+
+  // Read from sessionStorage — JS variables may be null/stale if the page
+  // is reloading (e.g. currentLobbyId is null before the new session sets it).
+  const lobbyIdToClean  = currentLobbyId  || sessionStorage.getItem('current_lobby_id');
+  const userIdToClean   = currentUserId   || sessionStorage.getItem('guest_user_id');
+
+  if(!lobbyIdToClean || !userIdToClean) return;
+
+  // Clear sessionStorage now so a bfcache restore doesn't re-fire cleanup.
+  try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
 
   // Step 1 — DELETE our lobby_players row so remaining clients can detect the departure.
   // Uses a synchronous XHR (async:false) because fetch/sendBeacon are not guaranteed
   // to complete before the page tears down.
   try {
     const xhr = new XMLHttpRequest();
-    xhr.open('DELETE', `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`, false);
+    xhr.open('DELETE', `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobbyIdToClean}&user_id=eq.${userIdToClean}`, false);
     xhr.setRequestHeader('apikey', SUPABASE_ANON);
     xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON}`);
     xhr.setRequestHeader('Prefer', 'return=minimal');
@@ -6346,7 +6358,7 @@ window.addEventListener('pagehide', () => {
   // Presence leave is the primary path; this is a belt-and-suspenders fallback.
   try {
     const xhr2 = new XMLHttpRequest();
-    xhr2.open('PATCH', `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${currentLobbyId}`, false);
+    xhr2.open('PATCH', `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lobbyIdToClean}`, false);
     xhr2.setRequestHeader('apikey', SUPABASE_ANON);
     xhr2.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON}`);
     xhr2.setRequestHeader('Content-Type', 'application/json');
