@@ -4433,6 +4433,7 @@ function rtSubscribe(lobbyId){
     await rtRefreshPlayers(lobbyId);
   });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
+    console.log('lobby_players change detected');
     await rtRefreshPlayers(lobbyId);
     // If the host_transferred broadcast already handled this, lobbyPlayers will have a host — skip.
     if(isHost)return;
