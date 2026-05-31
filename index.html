@@ -4844,6 +4844,7 @@ function rtSubscribe(lobbyId){
       if(currentUserId){
         await rtChannel.track({userId:currentUserId,username:currentUser});
       }
+      startHeartbeat();
     }
     if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
       if(intentionalLeave){intentionalLeave=false;return;} // user left on purpose, skip modal
@@ -5191,6 +5192,21 @@ goStep=function(name){
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
 let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
+
+let heartbeatInterval=null;
+function startHeartbeat(){
+  stopHeartbeat();
+  heartbeatInterval=setInterval(async()=>{
+    if(!currentLobbyId||!currentUserId)return;
+    await sb.from('lobby_players')
+      .update({last_seen:new Date().toISOString()})
+      .eq('lobby_id',currentLobbyId)
+      .eq('user_id',currentUserId);
+  },5000);
+}
+function stopHeartbeat(){
+  if(heartbeatInterval){clearInterval(heartbeatInterval);heartbeatInterval=null;}
+}
 function generateCode(){return ['OTAKU','ANIME','MANGA','MECHA','SHONEN'][Math.floor(Math.random()*5)]+'-'+Math.floor(1000+Math.random()*9000)}
 function toggleLobbyPrivacy(){setPillPrivacy(!lobbyIsPrivate)}
 function setPillPrivacy(isPrivate){
@@ -5848,6 +5864,7 @@ function unsubscribeFromLobbyList() {
 }
 
 async function leaveLobbyRoom(){
+  stopHeartbeat();
   clearLobbyTimer();
   intentionalLeave=true; // set early so Presence leave handler skips (we're cleaning up ourselves)
   currentLobbyId=null;   // prevent pagehide fallback from double-firing
