@@ -6307,7 +6307,19 @@ async function mpLoadQuestion(){
 
 function mpEndGame(){
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
+  intentionalLeave=true;
+  stopHeartbeat();
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+  if(currentLobbyId&&currentUserId&&!SUPABASE_URL.includes("YOUR_PROJECT")){
+    rtGetAuthToken().then(token=>{
+      fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}`,{
+        method:"DELETE",
+        headers:{"apikey":SUPABASE_ANON,"Authorization":`Bearer ${token}`,"Prefer":"return=minimal"}
+      }).catch(()=>{});
+    });
+  }
+  currentLobbyId=null;
+  try{sessionStorage.removeItem("current_lobby_id");}catch(e){}
   const isHP=lobbyMode==='potato';
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
   const sorted=isHP
