@@ -4719,34 +4719,42 @@ function rtSubscribe(lobbyId){
 
     if(payload.changing){
       // ── Live update: show real settings as host changes them ──────────
-      if(spinner)spinner.style.display='none'; // spinner not needed — we show live data
+      if(spinner)spinner.style.display='none';
       if(settingsBtn)settingsBtn.style.display='none';
       if(hint)hint.style.display='none';
 
-      // Flash the label if format/mode/count changed
+      // Flash the label only when format/mode/count actually changed
       if(label){
         const newLabelText=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+qCountLabel+timeLimitLabel;
         if(label.textContent!==newLabelText){
           label.textContent=newLabelText;
           label.classList.remove('lobby-label-flash');
-          void label.offsetWidth; // reflow to restart animation
+          void label.offsetWidth;
           label.classList.add('lobby-label-flash');
         }
       }
 
-      // Animate topic tags in one by one with a stagger
+      // Only update topics when there's something meaningful to show.
+      // An empty topics array with isGeneral=false is a transient reset
+      // while the host navigates between settings pages — skip it to
+      // avoid showing a confusing blank or "General Anime" flash mid-flow.
       if(topicsLabel){
-        topicsLabel.style.display='block';
         const topics=payload.topics||[];
         const isGeneral=payload.isGeneral??true;
-        if(isGeneral||topics.length===0){
-          topicsLabel.innerHTML='<span class="lobby-live-tag">✨ General Anime</span>';
-        } else {
-          // Render each tag; stagger the animation delay so they pop in sequentially
-          topicsLabel.innerHTML=topics.map((t,i)=>
-            `<span class="lobby-live-tag" style="animation-delay:${i*60}ms">${t.emoji} ${t.name}</span>`
-          ).join(' ');
+        const hasContent=isGeneral||topics.length>0;
+        if(hasContent){
+          topicsLabel.style.display='block';
+          if(isGeneral){
+            topicsLabel.innerHTML='<span class="lobby-live-tag">✨ General Anime</span>';
+          } else {
+            // Each tag pops in with a staggered delay so they appear one by one
+            topicsLabel.innerHTML=topics.map((t,i)=>
+              `<span class="lobby-live-tag" style="animation-delay:${i*60}ms">${t.emoji} ${t.name}</span>`
+            ).join(' ');
+          }
         }
+        // If hasContent is false (empty, non-general mid-flow) — leave whatever
+        // was shown before untouched so the display doesn't flicker.
       }
 
     } else {
@@ -4761,7 +4769,6 @@ function rtSubscribe(lobbyId){
       if(settingsBtn)settingsBtn.style.display='';
       if(topicsLabel){
         topicsLabel.style.display='block';
-        // Settle into plain text after the animated tags
         if(lobbyIsGeneral||lobbyTopics.length===0){topicsLabel.textContent='General Anime';}
         else{topicsLabel.textContent=lobbyTopics.map(t=>t.emoji+' '+t.name).join(', ');}
       }
