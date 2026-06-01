@@ -1283,6 +1283,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="mp-countdown-overlay" id="mpCountdownOverlay" style="display:none">
     <div class="mp-countdown-num" id="mpCountdownNum">3</div>
     <div class="mp-countdown-label" id="mpCountdownLabel">Get ready!</div>
+    <button id="mpCountdownCancelBtn" onclick="mpCancelCountdown()" style="display:none;margin-top:18px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:99px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 22px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'"><i class="ti ti-arrow-back-up" style="font-size:14px"></i> Cancel</button>
   </div>
 
   <!-- MULTIPLAYER RESULTS -->
@@ -4676,6 +4677,16 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
   });
+  rtChannel.on('broadcast',{event:'game_cancelled'},()=>{
+    if(isHost)return; // host handles this in mpCancelCountdown directly
+    clearInterval(_countdownTick);_countdownTick=null;
+    document.getElementById('mpCountdownOverlay').style.display='none';
+    document.getElementById('mpCountdownCancelBtn').style.display='none';
+    // Reset state and return to lobby room to wait for the host's next start
+    lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+    goStep('lobby-room');
+  });
   rtChannel.on('broadcast',{event:'host_transferred'},({payload})=>{
     lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
     if(currentUser===payload.newHost){
@@ -5092,20 +5103,40 @@ async function mpHostFetchAndBroadcast(){
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
 }
 
+let _countdownTick=null;
 function mpShowCountdown(onDone){
   const overlay=document.getElementById('mpCountdownOverlay');
   const numEl=document.getElementById('mpCountdownNum');
   const lblEl=document.getElementById('mpCountdownLabel');
+  const cancelBtn=document.getElementById('mpCountdownCancelBtn');
   overlay.style.display='flex';
+  if(cancelBtn)cancelBtn.style.display=isHost?'inline-flex':'none';
   let count=3;
   numEl.textContent=count;lblEl.textContent='Get ready!';
   numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='';
-  const tick=setInterval(()=>{
+  clearInterval(_countdownTick);
+  _countdownTick=setInterval(()=>{
     count--;
-    if(count<=0){clearInterval(tick);overlay.style.display='none';onDone();return;}
+    if(count<=0){clearInterval(_countdownTick);_countdownTick=null;overlay.style.display='none';if(cancelBtn)cancelBtn.style.display='none';onDone();return;}
     numEl.textContent=count;
     numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
   },1000);
+}
+
+function mpCancelCountdown(){
+  if(!isHost)return;
+  clearInterval(_countdownTick);_countdownTick=null;
+  document.getElementById('mpCountdownOverlay').style.display='none';
+  document.getElementById('mpCountdownCancelBtn').style.display='none';
+  // Notify all other clients to dismiss their countdown and return to lobby
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'game_cancelled',payload:{}});
+  }
+  // Reset lobby state so the host can make changes and start again
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
+  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+  rtSetLobbyStatus('waiting');
+  goStep('lobby-room');
 }
 
 function mpStartAutoNext(onDone){
@@ -6198,7 +6229,7 @@ function renderMPScoreboard(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
