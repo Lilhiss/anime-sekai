@@ -621,6 +621,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-expiry-banner.visible{display:flex}
 .lobby-expiry-icon{font-size:20px;flex-shrink:0}
 @keyframes pulseIcon{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+@keyframes tagPop{0%{opacity:0;transform:scale(.6) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes labelFlash{0%{color:var(--text)}30%{color:var(--accent)}100%{color:var(--text)}}
+.lobby-live-tag{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800;color:var(--accent);animation:tagPop .28s cubic-bezier(.34,1.56,.64,1) both}
+.lobby-label-flash{animation:labelFlash .6s ease forwards}
 .lobby-expiry-icon{animation:pulseIcon 1.2s ease-in-out infinite}
 .lobby-expiry-text{flex:1;min-width:0}
 .lobby-expiry-label{font-size:12px;font-weight:800;color:#fb923c;letter-spacing:.05em;text-transform:uppercase}
@@ -4709,26 +4713,55 @@ function rtSubscribe(lobbyId){
     const hint=document.getElementById('lobbySettingsHint');
     const spinner=document.getElementById('lobbyChangingSpinner');
     const settingsBtn=document.getElementById('lobbySettingsBtn');
+    const topicsLabel=document.getElementById('lobbyTopicsLabel');
     const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
     const qCountLabel=` · ${payload.questionCount||selectedQuestionLimit}Q`;
-    const topicsLabel=document.getElementById('lobbyTopicsLabel');
+
     if(payload.changing){
-      if(spinner)spinner.style.display='block';
-      if(label){label.style.color='var(--accent)';label.textContent='Host is making changes…';}
-      if(hint)hint.style.display='none';
+      // ── Live update: show real settings as host changes them ──────────
+      if(spinner)spinner.style.display='none'; // spinner not needed — we show live data
       if(settingsBtn)settingsBtn.style.display='none';
-      if(topicsLabel)topicsLabel.style.display='none';
+      if(hint)hint.style.display='none';
+
+      // Flash the label if format/mode/count changed
+      if(label){
+        const newLabelText=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+qCountLabel+timeLimitLabel;
+        if(label.textContent!==newLabelText){
+          label.textContent=newLabelText;
+          label.classList.remove('lobby-label-flash');
+          void label.offsetWidth; // reflow to restart animation
+          label.classList.add('lobby-label-flash');
+        }
+      }
+
+      // Animate topic tags in one by one with a stagger
+      if(topicsLabel){
+        topicsLabel.style.display='block';
+        const topics=payload.topics||[];
+        const isGeneral=payload.isGeneral??true;
+        if(isGeneral||topics.length===0){
+          topicsLabel.innerHTML='<span class="lobby-live-tag">✨ General Anime</span>';
+        } else {
+          // Render each tag; stagger the animation delay so they pop in sequentially
+          topicsLabel.innerHTML=topics.map((t,i)=>
+            `<span class="lobby-live-tag" style="animation-delay:${i*60}ms">${t.emoji} ${t.name}</span>`
+          ).join(' ');
+        }
+      }
+
     } else {
+      // ── Final commit: host confirmed settings ─────────────────────────
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
       if(payload.questionCount)selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
-      if(label){label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+qCountLabel+timeLimitLabel;}
+      if(label){label.classList.remove('lobby-label-flash');label.style.color='';label.textContent=fmtLabels[payload.format]+' · '+lobbyModeLabel(payload.mode)+qCountLabel+timeLimitLabel;}
       if(hint)hint.style.display='';
       if(settingsBtn)settingsBtn.style.display='';
       if(topicsLabel){
         topicsLabel.style.display='block';
+        // Settle into plain text after the animated tags
         if(lobbyIsGeneral||lobbyTopics.length===0){topicsLabel.textContent='General Anime';}
         else{topicsLabel.textContent=lobbyTopics.map(t=>t.emoji+' '+t.name).join(', ');}
       }
