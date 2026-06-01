@@ -4627,10 +4627,26 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
+    document.getElementById('mpFeedbackBar').style.display='none';
+    const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
+    const mpRdNQ=document.getElementById('mpReportDrop');if(mpRdNQ)mpRdNQ.classList.remove('open');
+    const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQLoading').style.display='flex';
     if(isHost)mpHostFetchAndBroadcast();
+  });
+  rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
+    if(isHost)return; // host already runs its own countdown
+    let t=payload.seconds||5;
+    const el=document.getElementById('mpAutoNext');
+    if(el)el.textContent=`Next in ${t}s`;
+    clearInterval(mpAutoNextInterval);
+    mpAutoNextInterval=setInterval(()=>{
+      t--;
+      if(el)el.textContent=t>0?`Next in ${t}s`:'';
+      if(t<=0)clearInterval(mpAutoNextInterval);
+    },1000);
   });
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
@@ -4992,6 +5008,9 @@ function mpStartAutoNext(onDone){
   let t=5;
   const el=document.getElementById('mpAutoNext');
   if(el)el.textContent=`Next in ${t}s`;
+  if(rtChannel&&isHost){
+    rtChannel.send({type:'broadcast',event:'show_auto_next',payload:{seconds:t}});
+  }
   mpAutoNextInterval=setInterval(()=>{
     if(mpAutoNextPaused)return;
     t--;
