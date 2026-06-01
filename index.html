@@ -1225,7 +1225,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </div>
           <div class="hud-right">
             <span class="q-count" id="mpQCount">Q1</span>
-            <button class="ghost-btn" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
+            <button class="ghost-btn" onclick="mpQuitGame()"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
           </div>
         </div>
         <div class="timer-wrap"><div class="timer-bar" id="mpTimerBar"></div></div>
@@ -4711,6 +4711,12 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
     renderLobbyRoom();
   });
+  rtChannel.on('broadcast',{event:'player_quit'},({payload})=>{
+    // Mid-game quit — keep the player visible but mark them as quit
+    const p=lobbyPlayers.find(p=>p.name===payload.name);
+    if(p){p.quit=true;}
+    renderMPScoreboard();
+  });
   rtChannel.on('broadcast',{event:'player_kicked'},async({payload})=>{
     if(currentUser===payload.kicked){
       intentionalLeave=true;
@@ -6039,16 +6045,29 @@ function renderMPScoreboard(){
   sorted.forEach((p,i)=>{
     const isMe=p.name===currentUser;
     const isActive=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
+    const hasQuit=!!p.quit;
     const row=document.createElement('div');row.className='mp-score-row'+(isMe?' me':'');
+    if(hasQuit)row.style.opacity='.4';
     if(isActive)row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
-    const ansIcon=p.roundAnswered?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
-    const roundMeta=p.roundAnswered&&!isHP?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
+    const ansIcon=p.roundAnswered&&!hasQuit?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
+    const roundMeta=p.roundAnswered&&!isHP&&!hasQuit?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
+    const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
     const rightCol=isHP
       ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${rightCol}`;
     sb.appendChild(row);
   });
+}
+
+function mpQuitGame(){
+  intentionalLeave=true;
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'player_quit',payload:{name:currentUser}});
+  }
+  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+  stopHeartbeat();
+  goStep('landing');
 }
 
 function mpShowQuestion(qData,hpFuse){
