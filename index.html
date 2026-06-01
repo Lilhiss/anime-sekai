@@ -4403,7 +4403,7 @@ async function rtJoinLobby(code){
       },
       body:JSON.stringify({lobby_id:lobby.id,user_id:uid,username:currentUser,color:accentHex[currentColor],is_host:false,score:0,lives:3})
     });
-    if(!joinRes.ok){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
+    if(!joinRes.ok && joinRes.status !== 409){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
@@ -5415,7 +5415,7 @@ async function loadPublicLobbies(silent=false){
   try{
     // Use anon key directly — lobbies list is public, no auth needed
     const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&is_private=eq.false&limit=30`,
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&status=eq.waiting&is_private=eq.false&order=created_at.desc&limit=30`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     if(!res.ok){
