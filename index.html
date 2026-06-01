@@ -4962,6 +4962,25 @@ function rtSubscribe(lobbyId){
 }
 
 let _refreshPlayersTimer=null;
+// Apply avatars from the Realtime presence state snapshot to lobbyPlayers.
+// Called after rtRefreshPlayers populates the list from the DB — covers the case
+// where presence fired before the DB row existed, so the presence:join patch
+// found no entry to update and the avatar was silently dropped.
+function applyPresenceAvatars(){
+  if(!rtChannel)return;
+  const state=rtChannel.presenceState();
+  if(!state)return;
+  let changed=false;
+  for(const presences of Object.values(state)){
+    for(const p of presences){
+      if(!p.userId||!p.avatar)continue;
+      const player=lobbyPlayers.find(lp=>lp.userId===p.userId);
+      if(player&&!player.avatar){player.avatar=p.avatar;changed=true;}
+    }
+  }
+  return changed;
+}
+
 async function rtRefreshPlayers(lobbyId,immediate=false){
   // Debounce: if multiple postgres_changes events fire in quick succession (e.g.
   // a player leave triggers both a DELETE on lobby_players and an UPDATE on lobbies),
@@ -4975,12 +4994,12 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(Array.isArray(data)&&data.length){
-        // Snapshot any avatars already known from presence so we don't lose them
-        // if the DB join hasn't propagated yet (avatar_url still null in profiles).
-        const knownAvatars=Object.fromEntries(lobbyPlayers.filter(p=>p.avatar).map(p=>[p.userId,p.avatar]));
-        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||knownAvatars[p.user_id]||null}));
+        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
         // If we locally know we're host, correct any stale DB read that may not reflect it yet
         if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
+        // Fill any missing avatars from presence — covers players whose presence fired
+        // before this DB fetch ran, so the presence:join patch had nothing to update.
+        applyPresenceAvatars();
       }
     }catch(e){}
     return;
@@ -4997,11 +5016,11 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(!Array.isArray(data)||!data.length)return;
-      // Preserve avatars already shown via presence — don't flash them away if DB hasn't caught up
-      const knownAvatars=Object.fromEntries(lobbyPlayers.filter(p=>p.avatar).map(p=>[p.userId,p.avatar]));
-      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||knownAvatars[p.user_id]||null}));
+      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
       // If we locally know we're host, correct any stale DB read that may not reflect it yet
       if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
+      // Fill any missing avatars from presence state snapshot
+      applyPresenceAvatars();
       renderLobbyRoom();
     }catch(e){}
   },300); // 300 ms debounce gives the DB DELETE time to commit
