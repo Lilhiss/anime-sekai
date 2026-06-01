@@ -2892,8 +2892,8 @@ function getAvatarHTML(size, initial){
 }
 function getLobbyAvatarHTML(avatarUrl, color, initial, size=36, loading=false){
   if(loading){
-    // Player joined but avatar hasn't arrived from presence/DB yet — show greyed spinner
-    return `<div class="lobby-player-avatar" style="background:#44444a;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div class="spinner" style="width:${Math.round(size*0.44)}px;height:${Math.round(size*0.44)}px;border-width:2px;border-color:rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.55)"></div></div>`;
+    // Player has a pfp but it hasn't arrived from presence/DB yet — very subtle overlay
+    return `<div class="lobby-player-avatar" style="background:${color};opacity:.55;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div class="spinner" style="width:${Math.round(size*0.44)}px;height:${Math.round(size*0.44)}px;border-width:2px;border-color:rgba(255,255,255,0.2);border-top-color:rgba(255,255,255,0.7)"></div></div>`;
   }
   if(!avatarUrl){
     return `<div class="lobby-player-avatar" style="background:${color};font-size:${Math.round(size*0.42)}px">${initial}</div>`;
@@ -4818,9 +4818,12 @@ function rtSubscribe(lobbyId){
     if(!Array.isArray(newPresences))return;
     let changed=false;
     for(const p of newPresences){
-      if(!p.userId||!p.avatar)continue;
+      if(!p.userId)continue;
       const existing=lobbyPlayers.find(lp=>lp.userId===p.userId);
-      if(existing&&!existing.avatar){existing.avatar=p.avatar;changed=true;}
+      if(existing){
+        if(p.avatar&&!existing.avatar){existing.avatar=p.avatar;changed=true;}
+        if(typeof p.hasPfp==='boolean'&&existing.hasPfp===undefined){existing.hasPfp=p.hasPfp;changed=true;}
+      }
     }
     if(changed)renderLobbyRoom();
   });
@@ -4936,7 +4939,7 @@ function rtSubscribe(lobbyId){
         if(currentPfp){
           presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;
         }
-        await rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar});
+        await rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp});
       }
       startHeartbeat();
     }
@@ -5010,9 +5013,12 @@ function applyPresenceAvatars(){
   let changed=false;
   for(const presences of Object.values(state)){
     for(const p of presences){
-      if(!p.userId||!p.avatar)continue;
+      if(!p.userId)continue;
       const player=lobbyPlayers.find(lp=>lp.userId===p.userId);
-      if(player&&!player.avatar){player.avatar=p.avatar;changed=true;}
+      if(player){
+        if(p.avatar&&!player.avatar){player.avatar=p.avatar;changed=true;}
+        if(typeof p.hasPfp==='boolean'&&player.hasPfp===undefined){player.hasPfp=p.hasPfp;changed=true;}
+      }
     }
   }
   return changed;
@@ -5640,7 +5646,7 @@ function renderLobbyRoom(){
     const row=document.createElement('div');row.className='lobby-player';
     const isMe=p.name===currentUser;
     const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
-    const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.avatar===null);
+    const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
     row.innerHTML=`${avatarHtml}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
