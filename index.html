@@ -4626,6 +4626,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
+    lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQLoading').style.display='flex';
