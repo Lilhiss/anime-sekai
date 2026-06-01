@@ -3376,10 +3376,15 @@ function startQuiz(mode){
   goStep('quiz');renderHUD();loadQuestion();
 }
 function renderHUD(){
-  document.getElementById('scoreDisplay').textContent=score+' pts';
+  const isSurvival=selectedMode==='survival';
+  const scoreEl=document.getElementById('scoreDisplay');
+  // In survival, replace the pts counter with a correct-answer count
+  scoreEl.textContent=isSurvival
+    ? quizHistory.filter(h=>h.correct).length+' correct'
+    : score+' pts';
   document.getElementById('qCount').textContent='Q'+(qIndex+1)+'/'+selectedQuestionLimit;
   const ld=document.getElementById('livesDisplay');ld.innerHTML='';
-  if(selectedMode==='survival'){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
+  if(isSurvival){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
 }
 
 async function fetchQuestion(){
@@ -3711,8 +3716,6 @@ function showFeedback(correct,correctAns,userAns,override){
   if(correct && selectedMode==='race'){
     const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
     document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
-  } else if(correct && selectedMode==='survival'){
-    document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} added to your score`;
   } else {
     document.getElementById('fbPts').textContent='';
   }
@@ -3771,17 +3774,21 @@ function endQuiz(){
 }
 function getRank(s){return ranks.find(r=>s>=r.min&&s<=r.max)||ranks[0]}
 function renderResults(){
+  const isSurvival=selectedMode==='survival';
+  const correct=quizHistory.filter(h=>h.correct).length,total=quizHistory.length;
   const rank=getRank(score);
   document.getElementById('rankBadge').textContent=rank.emoji;
   const words=rank.title.split(' ');const last=words.pop();
   document.getElementById('rankTitle').innerHTML=words.join(' ')+(words.length?' ':'')+' <span>'+last+'</span>';
-  document.getElementById('rankSub').textContent=rank.sub;
-  document.getElementById('scoreBig').textContent=score;
-  const correct=quizHistory.filter(h=>h.correct).length,total=quizHistory.length;
+  document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated — better luck next time!'):(rank.sub);
+  // Survival: headline shows correct count, not pts
+  document.getElementById('scoreBig').textContent=isSurvival?correct:score;
+  const unitEl=document.querySelector('.score-display .score-unit');
+  if(unitEl)unitEl.textContent=isSurvival?'correct':' pts';
   document.getElementById('statCorrect').textContent=correct+' / '+total;
   document.getElementById('statAccuracy').textContent=(total?Math.round((correct/total)*100):0)+'%';
-  document.getElementById('statLives').textContent=selectedMode==='survival'?lives+' ❤️':'—';
-  buildRecap();if(score>=80)launchConfetti();
+  document.getElementById('statLives').textContent=isSurvival?lives+' ❤️':'—';
+  buildRecap();if(!isSurvival&&score>=80)launchConfetti();if(isSurvival&&lives>0)launchConfetti();
   document.getElementById('viewProfileWrap').style.display=(!currentUser||isGuest)?'none':'block';
   applyTheme();
 }
@@ -6142,15 +6149,19 @@ function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.le
 function hpIsMyTurn(){return lobbyMode==='potato'&&hpActivePlayer().name===currentUser}
 
 function renderMPHUD(){
-  // In hot potato show current player's lives; in others show own score
   const isHP=lobbyMode==='potato';
+  const isSurvival=selectedMode==='survival';
   const active=isHP?hpActivePlayer():null;
-  const displayLives=isHP?active.lives:lives;
-  const displayScore=isHP?'🥔 '+active.name+"'s turn":score+' pts';
+  const displayScore=isHP
+    ?'🥔 '+active.name+"'s turn"
+    :isSurvival
+      ? quizHistory.filter(h=>h.correct).length+' correct'
+      : score+' pts';
   document.getElementById('mpScoreDisplay').textContent=displayScore;
   document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
   const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
   if(selectedMode==='survival'||selectedMode==='potato'){
+    const displayLives=isHP?active.lives:lives;
     for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
   }
   renderMPScoreboard();
@@ -6159,7 +6170,13 @@ function renderMPHUD(){
 function renderMPScoreboard(){
   const sb=document.getElementById('mpScoreboard');sb.innerHTML='';
   const isHP=lobbyMode==='potato';
-  const sorted=isHP?[...lobbyPlayers]:[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+  const isSurvival=selectedMode==='survival';
+  const sorted=isHP
+    ?[...lobbyPlayers]
+    :isSurvival
+      // Survival: alive first, then by lives remaining, then by correct answers
+      ?[...lobbyPlayers].sort((a,b)=>(a.eliminated===b.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives||(b.roundPts||0)-(a.roundPts||0))
+      :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   sorted.forEach((p,i)=>{
     const isMe=p.name===currentUser;
     const isActive=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
@@ -6168,9 +6185,10 @@ function renderMPScoreboard(){
     if(hasQuit)row.style.opacity='.4';
     if(isActive)row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
     const ansIcon=p.roundAnswered&&!hasQuit?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
-    const roundMeta=p.roundAnswered&&!isHP&&!hasQuit?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
+    // Only show +pts round meta in race mode
+    const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
-    const rightCol=isHP
+    const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
     row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${rightCol}`;
@@ -6346,7 +6364,11 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
   const mpPtsLabel=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
-  document.getElementById('mpFbPts').textContent=correct&&!isHP&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:correct&&!isHP?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} added to your score`:isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
+  document.getElementById('mpFbPts').textContent=
+    isHP&&correct?'Potato passes to the next player!':
+    isHP?'Lost a life — potato passes':
+    correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:
+    '';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
   if(currentQData?.submitted_by){
     mpSubEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
@@ -6410,21 +6432,29 @@ function mpEndGame(){
   stopHeartbeat();
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   const isHP=lobbyMode==='potato';
+  const isSurvival=selectedMode==='survival';
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
   const sorted=isHP
     ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
-    :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+    :isSurvival
+      ?[...lobbyPlayers].sort((a,b)=>(a.eliminated===b.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
+      :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   const winner=sorted[0];const iWon=winner.name===currentUser;
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
   document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span> — So close!';
-  document.getElementById('mpWinnerSub').textContent=iWon?(isHP?'Last one standing — you survived the potato!':'You outscored everyone — legendary run!'):'Better luck next time. Challenge them again!';
+  document.getElementById('mpWinnerSub').textContent=iWon
+    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':'You outscored everyone — legendary run!')
+    :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
   sorted.forEach((p,i)=>{
     const isMe=p.name===currentUser;
     const row=document.createElement('div');row.className='standing-row';
     if(isMe)row.style.borderColor='var(--accent)';
-    const rightCol=isHP?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`:`<div class="lb-score">${p.score} pts</div>`;
-    row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${isHP?(p.eliminated?'Eliminated':'Survived'):(getRank(p.score).emoji+' '+getRank(p.score).title)}</div></div>${rightCol}`;
+    const rightCol=isHP||isSurvival
+      ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
+      :`<div class="lb-score">${p.score} pts</div>`;
+    const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):(getRank(p.score).emoji+' '+getRank(p.score).title);
+    row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
   if(iWon)launchConfetti();
