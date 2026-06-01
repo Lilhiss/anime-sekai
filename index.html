@@ -3694,8 +3694,10 @@ function showFeedback(correct,correctAns,userAns,override){
   if(correct && selectedMode==='race'){
     const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
     document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
+  } else if(correct && selectedMode==='survival'){
+    document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} added to your score`;
   } else {
-    document.getElementById('fbPts').textContent=correct?'+10 points added to your score':'';
+    document.getElementById('fbPts').textContent='';
   }
   // Show submitted_by credit if question came from a user
   const subEl=document.getElementById('fbSubmittedBy');
@@ -6203,7 +6205,8 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   const ya=document.getElementById('mpFbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
-  document.getElementById('mpFbPts').textContent=correct&&!isHP?'+10 points added to your score':isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
+  const mpPtsLabel=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
+  document.getElementById('mpFbPts').textContent=correct&&!isHP&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:correct&&!isHP?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} added to your score`:isHP&&correct?'Potato passes to the next player!':isHP?'Lost a life — potato passes':'';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
   if(currentQData?.submitted_by){
     mpSubEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
