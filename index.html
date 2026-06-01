@@ -4285,7 +4285,14 @@ async function rtGetOrCreateAnonSession(){
 }
 
 async function rtGetAuthToken(){
-  try{const{data}=await sb.auth.getSession();return data?.session?.access_token||SUPABASE_ANON;}catch(e){return SUPABASE_ANON;}
+  try{
+    const{data}=await sb.auth.getSession();
+    if(data?.session?.access_token) return data.session.access_token;
+    // Session missing or expired — attempt a silent refresh before falling back
+    const{data:refreshed}=await sb.auth.refreshSession();
+    if(refreshed?.session?.access_token) return refreshed.session.access_token;
+  }catch(e){}
+  return SUPABASE_ANON;
 }
 
 async function rtCreateLobby(){
