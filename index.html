@@ -4617,6 +4617,7 @@ function rtSubscribe(lobbyId){
             if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           }
           qIndex++;
+          if(qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
           else{mpLoadQuestion();}
         });
@@ -6184,6 +6185,7 @@ function mpTimeOut(){
       if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
     }
     qIndex++;
+    if(qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
     if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
     else{mpLoadQuestion();}
   });
