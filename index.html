@@ -2886,7 +2886,11 @@ function getAvatarHTML(size, initial){
     : currentPfp.value;
   return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;padding:0;background:var(--bg3)"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
 }
-function getLobbyAvatarHTML(avatarUrl, color, initial, size=36){
+function getLobbyAvatarHTML(avatarUrl, color, initial, size=36, loading=false){
+  if(loading){
+    // Player joined but avatar hasn't arrived from presence/DB yet — show greyed spinner
+    return `<div class="lobby-player-avatar" style="background:#44444a;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div class="spinner" style="width:${Math.round(size*0.44)}px;height:${Math.round(size*0.44)}px;border-width:2px;border-color:rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.55)"></div></div>`;
+  }
   if(!avatarUrl){
     return `<div class="lobby-player-avatar" style="background:${color};font-size:${Math.round(size*0.42)}px">${initial}</div>`;
   }
@@ -5603,7 +5607,7 @@ function renderLobbyRoom(){
     const row=document.createElement('div');row.className='lobby-player';
     const isMe=p.name===currentUser;
     const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
-    const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase());
+    const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.avatar===null);
     row.innerHTML=`${avatarHtml}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
