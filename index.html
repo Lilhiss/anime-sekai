@@ -4775,8 +4775,17 @@ function rtSubscribe(lobbyId){
   // Each client tracks itself on the channel. When a WebSocket drops for any reason
   // (refresh, tab close, crash, bfcache restore), Supabase fires a `leave` event on
   // all remaining subscribers immediately — no pagehide, no sessionStorage needed.
-  rtChannel.on('presence',{event:'join'},()=>{
-    // No UI action needed on join — rtRefreshPlayers already handles the DB state.
+  rtChannel.on('presence',{event:'join'},({newPresences})=>{
+    // Instantly apply avatars from the presence payload so the lobby player list
+    // shows avatars immediately — before rtRefreshPlayers completes its DB fetch.
+    if(!Array.isArray(newPresences))return;
+    let changed=false;
+    for(const p of newPresences){
+      if(!p.userId||!p.avatar)continue;
+      const existing=lobbyPlayers.find(lp=>lp.userId===p.userId);
+      if(existing&&!existing.avatar){existing.avatar=p.avatar;changed=true;}
+    }
+    if(changed)renderLobbyRoom();
   });
 
   rtChannel.on('presence',{event:'leave'},async({leftPresences})=>{
@@ -4884,7 +4893,13 @@ function rtSubscribe(lobbyId){
     if(status==='SUBSCRIBED'){
       // Track ourselves so the presence `leave` handler on other clients fires when we disconnect
       if(currentUserId){
-        await rtChannel.track({userId:currentUserId,username:currentUser});
+        // Include avatar in presence so other clients get it instantly on join,
+        // without waiting for the DB join in rtRefreshPlayers (eliminates 3-5s delay).
+        let presenceAvatar=null;
+        if(currentPfp){
+          presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;
+        }
+        await rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar});
       }
       startHeartbeat();
     }
@@ -4960,7 +4975,10 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(Array.isArray(data)&&data.length){
-        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
+        // Snapshot any avatars already known from presence so we don't lose them
+        // if the DB join hasn't propagated yet (avatar_url still null in profiles).
+        const knownAvatars=Object.fromEntries(lobbyPlayers.filter(p=>p.avatar).map(p=>[p.userId,p.avatar]));
+        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||knownAvatars[p.user_id]||null}));
         // If we locally know we're host, correct any stale DB read that may not reflect it yet
         if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
       }
@@ -4979,7 +4997,9 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(!Array.isArray(data)||!data.length)return;
-      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
+      // Preserve avatars already shown via presence — don't flash them away if DB hasn't caught up
+      const knownAvatars=Object.fromEntries(lobbyPlayers.filter(p=>p.avatar).map(p=>[p.userId,p.avatar]));
+      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||knownAvatars[p.user_id]||null}));
       // If we locally know we're host, correct any stale DB read that may not reflect it yet
       if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
       renderLobbyRoom();
