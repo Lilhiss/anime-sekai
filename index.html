@@ -1451,12 +1451,6 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button onclick="closeEditProfile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
       <div>
-        <label class="form-label">Username</label>
-        <input class="form-input" id="editUsernameInput" type="text" maxlength="20" placeholder="Your username" oninput="clearErr('editProfileErr')">
-        <div class="form-hint" style="margin-top:6px">3–20 characters, no spaces.</div>
-        <div class="form-err" id="editProfileErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="editProfileErrMsg"></span></div>
-      </div>
-      <div>
         <label class="form-label">Theme Color</label>
         <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px" id="editColorPicker"></div>
       </div>
@@ -1990,12 +1984,19 @@ async function sbSignUp(username, password, email=''){
 }
 
 async function sbSignIn(username, password){
-  // Always authenticate with the guest address — it is the permanent Supabase
-  // Auth identity. Any real email the user adds lives only in profiles.
-  const{data,error}=await sb.auth.signInWithPassword({
-    email:`${username}@animesekai.guest`,
-    password
-  });
+  // Look up the stored auth email from profiles — it's the original
+  // username@animesekai.guest address created at signup and never changes
+  // in Supabase Auth, even if the user later renames their profile.
+  let authEmail=`${username}@animesekai.guest`; // fallback for legacy accounts
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows[0]?.email){authEmail=rows[0].email;}
+  }catch(e){}
+  const{data,error}=await sb.auth.signInWithPassword({email:authEmail,password});
   if(error) throw error;
   return data.user;
 }
@@ -2354,7 +2355,6 @@ async function deleteAccount(){
 // ── EDIT PROFILE ──────────────────────────────────────────────
 function openEditProfile(){
   if(!currentUser)return;
-  document.getElementById('editUsernameInput').value=currentUser;
   // Build color picker
   const picker=document.getElementById('editColorPicker');picker.innerHTML='';
   const colors={midnight:'#a78bfa',sakura:'#f472b6',ocean:'#38bdf8',ember:'#fb923c',forest:'#4ade80',rose:'#e879f9'};
@@ -2387,9 +2387,45 @@ function closeEditProfile(){
   document.getElementById('editProfileModal').style.display='none';
 }
 async function saveEditProfile(){
-  const newName=document.getElementById('editUsernameInput').value.trim();
-  if(newName.length<3){showErr('editProfileErr','editProfileErrMsg','Username must be at least 3 characters.');return}
-  if(/\s/.test(newName)){showErr('editProfileErr','editProfileErrMsg','No spaces allowed.');return}
+  const selectedBtn=document.querySelector('#editColorPicker button[data-selected]');
+  const newColor=selectedBtn?.dataset.color||currentColor;
+  const emailInput=document.getElementById('editEmailInput');
+  const newEmail=emailInput?.value.trim()||'';
+  if(newEmail&&!newEmail.includes('@')){showErr('editEmailErr','editEmailErrMsg','Please enter a valid email address.');return}
+  const saveBtn=document.querySelector('#editProfileModal .action-btn.primary');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
+  try{
+  if(currentUserId&&!isGuest){
+    if(newEmail){
+      const checkRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?select=id&email=eq.${encodeURIComponent(newEmail)}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+      );
+      const checkRows=await checkRes.json();
+      if(Array.isArray(checkRows)&&checkRows.length>0){
+        showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
+      }
+    }
+    const updates={theme_color:newColor};
+    if(newEmail)updates.email=newEmail;
+    const{error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
+    if(error){showErr('editEmailErr','editEmailErrMsg','Could not save. Try again.');return}
+    if(newEmail)currentEmail=newEmail;
+  }
+  currentColor=newColor;
+  updateNav();renderProfile();applyTheme();
+  closeEditProfile();
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
+  toast.textContent=newEmail?'Email added successfully! ✅':'Profile updated! ✅';
+  document.body.appendChild(toast);
+  setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},3000);
+  }catch(e){
+    showErr('editEmailErr','editEmailErrMsg','Something went wrong. Please try again.');
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save';}
+  }
+}
   // Get selected color
   const selectedBtn=document.querySelector('#editColorPicker button[data-selected]');
   const newColor=selectedBtn?.dataset.color||currentColor;
@@ -2423,7 +2459,7 @@ async function saveEditProfile(){
     const updates={username:newName,theme_color:newColor};
     if(newEmail)updates.email=newEmail;
     const{error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
-    if(error){showErr('editProfileErr','editProfileErrMsg','Could not save. Try again.');return}
+    if(error){showErr('editEmailErr','editEmailErrMsg','Could not save. Try again.');return}
     if(newEmail)currentEmail=newEmail;
   }
   currentUser=newName;currentColor=newColor;
@@ -2436,7 +2472,7 @@ async function saveEditProfile(){
   document.body.appendChild(toast);
   setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},3000);
   }catch(e){
-    showErr('editProfileErr','editProfileErrMsg','Something went wrong. Please try again.');
+    showErr('editEmailErr','editEmailErrMsg','Something went wrong. Please try again.');
   }finally{
     if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save';}
   }
