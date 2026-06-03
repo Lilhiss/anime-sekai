@@ -600,19 +600,20 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .admin-tab.active{background:var(--accent);color:#fff}
 .admin-q-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
-.admin-q-card.flagged{border-color:#f87171}
+.admin-q-card.reported{border-color:#f87171}
 .admin-q-text{font-size:14px;font-weight:700;color:var(--text);line-height:1.5}
 .admin-q-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .admin-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;border:1px solid var(--border2);color:var(--muted);background:var(--bg3);text-transform:uppercase;letter-spacing:.04em}
 .admin-badge.format{color:var(--accent);border-color:var(--border2);background:var(--accent-soft)}
 .admin-badge.reported{color:#f87171;border-color:#f87171;background:rgba(248,113,113,.1)}
 .admin-badge.submitted{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
+.admin-report-counter{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:13px;color:#f87171;background:rgba(248,113,113,.1);border:1.5px solid #f87171;border-radius:99px;padding:3px 10px}
 .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
 .admin-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
 .admin-btn.approve{background:#4ade80;color:#0a0a0a}
-.admin-btn.reject{background:#f87171;color:#fff}
+.admin-btn.dismiss{background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent)}
 .admin-btn.delete{background:var(--bg3);border:1px solid var(--border2);color:var(--muted)}
-.admin-btn.approve:hover{opacity:.85}.admin-btn.reject:hover{opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
+.admin-btn.approve:hover{opacity:.85}.admin-btn.dismiss:hover{border-color:var(--accent);opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
 .privacy-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:8px 12px;margin-top:2px;transition:border-color .2s}
@@ -1598,16 +1599,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <!-- Stats row -->
       <div class="admin-stat-row slide-in" id="adminStatRow">
-        <div class="stat-card"><div class="stat-val" id="adminStatPending">—</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card"><div class="stat-val" id="adminStatSubmitted">—</div><div class="stat-label">Submitted</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatApproved">—</div><div class="stat-label">Approved</div></div>
-        <div class="stat-card"><div class="stat-val" id="adminStatFlagged">—</div><div class="stat-label">Flagged</div></div>
+        <div class="stat-card"><div class="stat-val" id="adminStatReported">—</div><div class="stat-label">Reported</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatTotal">—</div><div class="stat-label">Total Questions</div></div>
       </div>
       <!-- Tabs -->
       <div class="admin-tabs slide-in">
-        <button class="admin-tab active" id="adminTabPending" onclick="switchAdminTab('pending')">⏳ Pending</button>
-        <button class="admin-tab" id="adminTabFlagged" onclick="switchAdminTab('flagged')">🚩 Flagged</button>
-        <button class="admin-tab" id="adminTabAll" onclick="switchAdminTab('all')">📋 All</button>
+        <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
+        <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
       </div>
       <!-- Question list -->
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
@@ -1856,7 +1856,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- LOGO NAV INTERCEPT MODAL (shown when navigating away from lobby/mp-quiz via logo) -->
+  <!-- LOGO NAV INTERCEPT MODAL -->
   <div id="lobbyNavModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1001;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
       <div style="font-size:40px">🎮</div>
@@ -6125,8 +6125,8 @@ function unsubscribeFromLobbyList() {
 async function leaveLobbyRoom(){
   stopHeartbeat();
   clearLobbyTimer();
-  intentionalLeave=true; // set early so Presence leave handler skips (we're cleaning up ourselves)
-  currentLobbyId=null;   // prevent pagehide fallback from double-firing
+  intentionalLeave=true;
+  currentLobbyId=null;
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
@@ -6135,18 +6135,14 @@ async function leaveLobbyRoom(){
     return;
   }
   const token=await rtGetAuthToken();
-  // Fetch lobby id
   let lid=null;
   try{
     const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${lobbyCode}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
     const lData=await lRes.json();
     lid=Array.isArray(lData)?lData[0]?.id:null;
   }catch(e){}
-
   if(lid){
-    // Remove own player row — any player, host or not
     try{await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});}catch(e){}
-    // Check if anyone else remains
     let remaining=[];
     try{
       const pRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lid}&order=joined_at.asc&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}});
@@ -6154,11 +6150,8 @@ async function leaveLobbyRoom(){
     }catch(e){}
     const next=Array.isArray(remaining)&&remaining.length?remaining[0]:null;
     if(!next){
-      // Nobody left — delete the lobby
       await rtDeleteLobby();
     } else {
-      // Players remain — broadcast departure. If we were host, also transfer host flag
-      // so remaining players' UI updates and reclaim logic stays intact.
       if(isHost){
         try{
           await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
@@ -6170,10 +6163,9 @@ async function leaveLobbyRoom(){
       }
     }
   }
-  // All DB writes done — now safe to navigate
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
-  lobbyIsPrivate=false; // reset so the next lobby creation defaults to public
+  lobbyIsPrivate=false;
   goStep('landing');
 }
 let _transferTarget=null;
@@ -6585,7 +6577,7 @@ function mpEndGame(){
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
 let isAdmin=false;
-let adminTab='pending';
+let adminTab='submitted';
 
 async function checkAdminRole(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
@@ -6605,20 +6597,19 @@ function goAdmin(){
 
 async function loadAdminStats(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  const {data:all}=await sb.from('questions').select('status,report_count').catch(()=>({data:[]}));
-  if(!all)return;
-  document.getElementById('adminStatPending').textContent=all.filter(q=>q.status==='pending').length;
+  let all=[];
+  try{const{data}=await sb.from('questions').select('status,report_count');all=data||[];}catch(e){}
+  if(!all.length)return;
+  document.getElementById('adminStatSubmitted').textContent=all.filter(q=>q.status==='pending').length;
   document.getElementById('adminStatApproved').textContent=all.filter(q=>q.status==='approved').length;
-  document.getElementById('adminStatFlagged').textContent=all.filter(q=>q.report_count>=3).length;
+  document.getElementById('adminStatReported').textContent=all.filter(q=>q.report_count>0).length;
   document.getElementById('adminStatTotal').textContent=all.length;
 }
 
 function switchAdminTab(tab){
   adminTab=tab;
-  ['Pending','Flagged','All'].forEach(t=>{
-    const el=document.getElementById(`adminTab${t}`);
-    if(el)el.classList.toggle('active',t.toLowerCase()===tab);
-  });
+  document.getElementById('adminTabSubmitted').classList.toggle('active',tab==='submitted');
+  document.getElementById('adminTabReported').classList.toggle('active',tab==='reported');
   loadAdminQuestions();
 }
 
@@ -6627,11 +6618,16 @@ async function loadAdminQuestions(){
   const list=document.getElementById('adminQuestionList');
   list.innerHTML='<div class="admin-empty">Loading…</div>';
   let query=sb.from('questions').select('*').order('created_at',{ascending:false}).limit(50);
-  if(adminTab==='pending')query=query.eq('status','pending');
-  else if(adminTab==='flagged')query=query.gte('report_count',3);
+  if(adminTab==='submitted'){
+    query=query.eq('status','pending');
+  } else {
+    // Reported: approved questions with at least 1 report, sorted highest first
+    query=sb.from('questions').select('*').gt('report_count',0).order('report_count',{ascending:false}).limit(50);
+  }
   const {data,error}=await query;
   if(error||!data?.length){
-    list.innerHTML=`<div class="admin-empty">${adminTab==='pending'?'No pending questions 🎉':adminTab==='flagged'?'No flagged questions 🎉':'No questions yet.'}</div>`;
+    const msg=adminTab==='submitted'?'No submitted questions — all clear! 🎉':'No reported questions — all clear! 🎉';
+    list.innerHTML=`<div class="admin-empty">${msg}</div>`;
     return;
   }
   list.innerHTML='';
@@ -6642,11 +6638,29 @@ async function loadAdminQuestions(){
 function buildAdminCard(q){
   const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
   const card=document.createElement('div');
-  card.className='admin-q-card'+(q.report_count>=3?' flagged':'');
+  const isReported=adminTab==='reported';
+  card.className='admin-q-card'+(isReported?' reported':'');
   card.id=`adminCard_${q.id}`;
+
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${q.answer}</div>`:'';
   const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
+
+  // Report counter — prominent warning, only meaningful in reported tab
+  const reportBadge=q.report_count>0
+    ?`<span class="admin-report-counter"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${q.report_count} report${q.report_count===1?'':'s'}</span>`
+    :'';
+
+  // Date
+  const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
+
+  // Actions differ by tab
+  const actionsHtml=isReported
+    ?`<button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
+       <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
+    :`<button class="admin-btn approve" onclick="adminApprove('${q.id}')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
+       <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`;
+
   card.innerHTML=`
     <div>
       <div class="admin-q-text">${q.question}</div>
@@ -6654,31 +6668,32 @@ function buildAdminCard(q){
     </div>
     <div class="admin-q-meta">
       <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
-      <span class="admin-badge">${q.topic_value||q.topic_type}</span>
-      <span class="admin-badge">${q.difficulty||'easy'}</span>
-      ${q.report_count>0?`<span class="admin-badge reported">⚑ ${q.report_count} reports</span>`:''}
-      ${q.submitted_by?`<span class="admin-badge submitted">👤 ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
-      <span class="admin-badge" style="margin-left:auto">${q.status}</span>
+      <span class="admin-badge">${q.topic_value||q.topic_type||'—'}</span>
+      <span class="admin-badge">${q.difficulty||'normal'}</span>
+      ${q.submitted_by?`<span class="admin-badge submitted"><i class="ti ti-user" style="font-size:10px"></i> ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
+      ${dateStr?`<span class="admin-badge"><i class="ti ti-calendar" style="font-size:10px"></i> ${dateStr}</span>`:''}
+      ${reportBadge}
     </div>
-    <div class="admin-actions">
-      ${q.status!=='approved'?`<button class="admin-btn approve" onclick="adminSetStatus('${q.id}','approved')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>`:''}
-      ${q.status!=='rejected'?`<button class="admin-btn reject" onclick="adminSetStatus('${q.id}','rejected')"><i class="ti ti-x" style="font-size:12px"></i> Reject</button>`:''}
-      <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>
-    </div>`;
+    <div class="admin-actions">${actionsHtml}</div>`;
   return card;
 }
 
-async function adminSetStatus(id,status){
-  await sb.from('questions').update({status}).eq('id',id);
-  const card=document.getElementById(`adminCard_${id}`);
-  if(card)card.remove();
+async function adminApprove(id){
+  await sb.from('questions').update({status:'approved'}).eq('id',id);
+  document.getElementById(`adminCard_${id}`)?.remove();
+  loadAdminStats();
+}
+
+async function adminDismiss(id){
+  // Clear report count — question stays approved in the bank
+  await sb.from('questions').update({report_count:0}).eq('id',id);
+  document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
 }
 
 async function adminDelete(id){
   await sb.from('questions').delete().eq('id',id);
-  const card=document.getElementById(`adminCard_${id}`);
-  if(card)card.remove();
+  document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
 }
 
