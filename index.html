@@ -4375,7 +4375,7 @@ async function rtCreateLobby(){
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=representation'
       },
-      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName,expires_at:new Date(Date.now()+10*60*1000).toISOString(),is_private:lobbyIsPrivate})
+      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName,expires_at:new Date(Date.now()+10*60*1000).toISOString(),is_private:lobbyIsPrivate,question_count:selectedQuestionLimit})
     });
     if(!lobbyRes.ok){console.error('Create lobby error:',lobbyRes.status);return;}
     const lobbyRows=await lobbyRes.json();
