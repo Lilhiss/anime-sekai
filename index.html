@@ -4167,7 +4167,7 @@ function showTimeLimitPicker(mode,fromLobby){
   document.getElementById('timeLimitDesc').textContent=isRace
     ? 'Full points for the first 5s, then drops to a minimum of 3 pts.'
     : 'Run out of time and you lose a life.';
-  document.getElementById('timeLimitStartLabel').textContent=isRace?'Start Race':'Start Survival';
+  document.getElementById('timeLimitStartLabel').textContent=fromLobby?'Confirm':isRace?'Start Race':'Start Survival';
   // Sync time limit selection
   const grid=document.getElementById('timeLimitGrid');
   grid.querySelectorAll('.time-limit-opt').forEach(el=>{
