@@ -2151,7 +2151,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 </script>
 
 <script>
-let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false,currentEmail=null;
+let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false,currentEmail=null,guestSessionId=null;
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
@@ -2818,9 +2818,28 @@ async function savePfp(){
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
 
   try{
-    if(!currentUserId||isGuest||SUPABASE_URL.includes('YOUR_PROJECT')){
-      // Fallback for dev / guest: keep the object URL in memory for the session
+    if(SUPABASE_URL.includes('YOUR_PROJECT')){
+      // Dev fallback — no Supabase configured, keep data URL in memory
       currentPfp={type:'upload',value:pfpUploadDataUrl};
+    } else if(isGuest){
+      // Guest upload — use anon key with deterministic path so re-uploads overwrite
+      const guestPath=`guest/${guestSessionId}/avatar.jpg`;
+      const upRes=await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${guestPath}`,{
+        method:'POST',
+        headers:{
+          'apikey':SUPABASE_ANON,
+          'Authorization':`Bearer ${SUPABASE_ANON}`,
+          'Content-Type':'image/jpeg',
+          'x-upsert':'true'
+        },
+        body:pfpUploadBlob
+      });
+      if(!upRes.ok){
+        const errBody=await upRes.json().catch(()=>({}));
+        throw new Error(errBody.message||upRes.statusText);
+      }
+      const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(guestPath);
+      currentPfp={type:'upload',value:publicUrl+'?t='+Date.now()};
     } else {
       // Get the user's live auth token — required for RLS on storage uploads
       const{data:{session}}=await sb.auth.getSession();
@@ -3042,6 +3061,9 @@ async function submitGuest(){
     // Silent fail — app works without Supabase for solo play
   }
   currentUser=val;isGuest=true;
+  // Generate a stable session ID for this guest — used as a deterministic
+  // storage path so re-uploads overwrite the same file rather than accumulating
+  if(!guestSessionId){guestSessionId=Math.random().toString(36).slice(2)+Date.now().toString(36);}
   // Restore any preset pfp the guest picked in a previous session
   try{
     const saved=sessionStorage.getItem('guest_pfp');
