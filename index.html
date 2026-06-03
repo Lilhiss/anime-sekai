@@ -1862,10 +1862,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="font-size:40px">🎮</div>
       <div>
         <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Still in a lobby!</div>
-        <div style="font-size:13px;color:var(--muted)" id="lobbyNavModalSub">Do you want to go back to the lobby or leave it?</div>
+        <div style="font-size:13px;color:var(--muted)" id="lobbyNavModalSub">Do you want to stay in the lobby or leave it?</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="action-btn primary" onclick="closeLobbyNavModal()"><i class="ti ti-arrow-left" style="font-size:15px"></i> Return to Lobby</button>
+        <button class="action-btn primary" onclick="closeLobbyNavModal()"><i class="ti ti-arrow-left" style="font-size:15px"></i> Stay in Lobby</button>
         <button class="action-btn secondary" onclick="closeLobbyNavModal();leaveLobbyRoom()"><i class="ti ti-x" style="font-size:15px"></i> Leave Lobby</button>
       </div>
     </div>
@@ -6131,7 +6131,7 @@ async function leaveLobbyRoom(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
     isHost=false;
-    goStep('multiplayer');
+    goStep('landing');
     return;
   }
   const token=await rtGetAuthToken();
@@ -6174,7 +6174,7 @@ async function leaveLobbyRoom(){
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   isHost=false;
   lobbyIsPrivate=false; // reset so the next lobby creation defaults to public
-  goStep('multiplayer');
+  goStep('landing');
 }
 let _transferTarget=null;
 function promptTransferHost(name){
@@ -6685,9 +6685,6 @@ async function adminDelete(id){
 applyTheme();
 
 // ── LOGO NAVIGATION INTERCEPT ─────────────────────────────────
-// If the player clicks the logo while in a lobby or active mp game,
-// show a modal asking them to return or leave rather than silently
-// dropping them from the lobby.
 function logoNav(){
   const lm=document.getElementById('logoMark');
   lm.classList.remove('logo-bounce');void lm.offsetWidth;lm.classList.add('logo-bounce');
@@ -6695,7 +6692,7 @@ function logoNav(){
   const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
   if(inLobby||inMpQuiz){
     const sub=document.getElementById('lobbyNavModalSub');
-    if(sub)sub.textContent=inMpQuiz?'Do you want to go back to the game or quit?':'Do you want to go back to the lobby or leave it?';
+    if(sub)sub.textContent=inMpQuiz?'Do you want to stay in the game or quit?':'Do you want to stay in the lobby or leave it?';
     document.getElementById('lobbyNavModal').style.display='flex';
     applyTheme();
     return;
