@@ -148,14 +148,17 @@ h1 .hi{color:var(--accent)}
 .timer-bar{height:100%;border-radius:99px;background:var(--accent);transition:width .1s linear,background .5s}
 .timer-bar.warn{background:#fbbf24}
 .timer-bar.danger{background:#f87171}
-.q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:52px 38px;backdrop-filter:blur(10px);text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:center}
+.q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 38px 36px;backdrop-filter:blur(10px);text-align:center;min-height:300px;display:flex;flex-direction:column}
 .q-card.answered{border-color:var(--accent);background:var(--accent-soft)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
 .q-meta{margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px}
 .q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
-.q-text{font-family:"Lilita One",cursive;font-size:clamp(17px,2.6vw,24px);color:var(--text);line-height:1.4}
+.q-card-top-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:0}
+.q-card-meta-pill{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
+.q-card-timer-wrap{height:6px;background:var(--bg3);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.q-text{font-family:"Lilita One",cursive;font-size:clamp(20px,3vw,28px);color:var(--text);line-height:1.4}
 .q-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0}
 .spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -1009,19 +1012,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="hud-lives" id="livesDisplay"></div>
         </div>
         <div class="hud-right">
-          <span class="q-count" id="qCount">Q1</span>
           <button class="ghost-btn" onclick="goStep('format')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
         </div>
       </div>
       <div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
       <div class="q-card">
-        <div class="q-meta" style="display:none"><span class="q-badge" id="qBadge"></span></div>
-        <div id="questionArea">
+        <div class="q-card-top-meta">
+          <span class="q-card-meta-pill" id="qBadge"></span>
+          <span class="q-card-meta-pill" id="qCount">Q1</span>
+        </div>
+        <div id="questionArea" style="flex:1;display:flex;align-items:center;justify-content:center">
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
         <!-- Inline feedback shown inside the card after answer/timeout -->
-        <div id="qCardFeedback" style="display:none;margin-top:18px;margin-top:22px;text-align:center">
+        <div id="qCardFeedback" style="display:none;margin-top:22px;text-align:center">
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
             <span id="fbIcon"></span>
             <span class="fb-title" id="fbTitle"></span>
@@ -1229,19 +1234,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div class="hud-lives" id="mpLivesDisplay"></div>
           </div>
           <div class="hud-right">
-            <span class="q-count" id="mpQCount">Q1</span>
             <button class="ghost-btn" onclick="mpQuitGame()"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
           </div>
         </div>
         <div class="timer-wrap"><div class="timer-bar" id="mpTimerBar"></div></div>
         <div class="q-card">
-          <div class="q-meta" style="display:none"><span class="q-badge" id="mpQBadge"></span></div>
-          <div id="mpQuestionArea">
+          <div class="q-card-top-meta">
+            <span class="q-card-meta-pill" id="mpQBadge"></span>
+            <span class="q-card-meta-pill" id="mpQCount">Q1</span>
+          </div>
+          <div id="mpQuestionArea" style="flex:1;display:flex;align-items:center;justify-content:center">
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
-          <div id="mpQCardFeedback" style="display:none;margin-top:18px;margin-top:22px;text-align:center">
+          <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
             <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               <span id="mpFbIcon"></span>
               <span class="fb-title" id="mpFbTitle"></span>
@@ -3372,7 +3379,7 @@ function startQuiz(mode){
   if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
   document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':'Survival');
-  document.getElementById('qBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+  document.getElementById('qBadge').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':'Survival');
   goStep('quiz');renderHUD();loadQuestion();
 }
 function renderHUD(){
@@ -4611,7 +4618,7 @@ function rtSubscribe(lobbyId){
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
-    document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+    document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     _origGoStep('mp-quiz');renderMPHUD();
     // Non-hosts: show countdown then wait for the host's 'question' broadcast
     mpShowCountdown(()=>{});
@@ -5909,7 +5916,7 @@ function startLobbyGame(){
   hpActiveIdx=0;
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
-  document.getElementById('mpQBadge').innerHTML=`<i class="ti ${fmtIcons[selectedFormat]}" style="font-size:11px"></i> ${fmtLabels[selectedFormat]}`;
+  document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral}});
     // Supabase does not echo broadcasts to the sender, so the host must
