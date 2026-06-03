@@ -4258,7 +4258,7 @@ function confirmTimeLimit(){
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
     // Flush final confirmed format+mode to DB so the lobby list reflects the real state
-    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
@@ -4489,6 +4489,8 @@ async function rtJoinLobby(code){
   }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
+  if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
+  if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   currentLobbyId=lobby.id;
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   rtSubscribe(lobby.id);
@@ -5941,7 +5943,7 @@ function setLobbyMode(mode,el){
     },300);
   } else {
     // Hot Potato skips the time limit picker — flush final state to DB now
-    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     setTimeout(()=>goStep('lobby-room'),300);
   }
