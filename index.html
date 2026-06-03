@@ -2323,8 +2323,10 @@ async function deleteAccount(){
     const result=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(result.error||'Deletion failed. Please try again.');
 
-    // Clean up local state exactly like sign-out
-    await sbSignOut().catch(()=>{});
+    // Clear session locally — don't call sbSignOut() since the auth user
+    // was just deleted and the logout endpoint would return 403
+    try{await sb.auth.setSession({access_token:'',refresh_token:''});}catch(_){}
+    try{localStorage.removeItem('sb-'+new URL(SUPABASE_URL).hostname.split('.')[0]+'-auth-token');}catch(_){}
     currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;
     totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
     allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
