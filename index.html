@@ -4235,8 +4235,15 @@ function calcSpeedPoints(elapsed,limit){
 }
 
 function startTimer(){
-  clearInterval(timerInterval);timeLeft=raceTimeLimit;questionStartTime=Date.now();updateTimerBar();
-  timerInterval=setInterval(()=>{timeLeft-=0.1;updateTimerBar();if(timeLeft<=0){clearInterval(timerInterval);timeOut()}},100);
+  clearInterval(timerInterval);
+  questionStartTime=Date.now();
+  timeLeft=raceTimeLimit;
+  updateTimerBar();
+  timerInterval=setInterval(()=>{
+    timeLeft=Math.max(0,raceTimeLimit-(Date.now()-questionStartTime)/1000);
+    updateTimerBar();
+    if(timeLeft<=0){clearInterval(timerInterval);timeOut();}
+  },100);
 }
 function updateTimerBar(){
   const pct=Math.max(0,(timeLeft/raceTimeLimit)*100);
@@ -6276,10 +6283,13 @@ function mpShowQuestion(qData,hpFuse){
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null});
   const questionTimeLimit=isHP?(hpFuse||5+Math.random()*5):raceTimeLimit; // use host-broadcast fuse for HP
-  clearInterval(timerInterval);timeLeft=questionTimeLimit;questionStartTime=Date.now();
+  clearInterval(timerInterval);
+  timeLeft=questionTimeLimit;
+  questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
   timerInterval=setInterval(()=>{
-    timeLeft-=0.1;const pct=Math.max(0,(timeLeft/questionTimeLimit)*100);
+    timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
+    const pct=(timeLeft/questionTimeLimit)*100;
     mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
     if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
   },100);
