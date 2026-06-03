@@ -1474,20 +1474,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Profile Picture</div>
         <button onclick="closePfpPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div class="pfp-tabs">
+      <div class="pfp-tabs" style="display:none">
         <button class="pfp-tab active" id="pfpTabUpload" onclick="switchPfpTab('upload')"><i class="ti ti-upload" style="font-size:13px"></i> Upload</button>
         <button class="pfp-tab" id="pfpTabPreset" onclick="switchPfpTab('preset')"><i class="ti ti-layout-grid" style="font-size:13px"></i> Presets</button>
       </div>
       <div class="pfp-body">
-        <div id="pfpPresetTab">
-          <div class="pfp-section-label" style="margin-bottom:12px">Choose a character</div>
+        <div id="pfpPresetTab" style="display:none">
           <div class="pfp-preset-grid" id="pfpPresetGrid"></div>
-          <div id="pfpGuestHint" style="display:none;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;margin-top:16px">
-            <i class="ti ti-lock" style="font-size:18px;color:var(--accent);flex-shrink:0"></i>
-            <div style="font-size:12px;color:var(--muted);line-height:1.5">Want to upload your own photo? <a onclick="closePfpPicker();goStep('auth');showAuthMode('register')" style="color:var(--accent);font-weight:800;cursor:pointer">Create a free account</a> to use a custom profile picture.</div>
-          </div>
         </div>
-        <div id="pfpUploadTab" style="display:none">
+        <div id="pfpUploadTab">
           <div class="pfp-section-label">Upload your own</div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative">
             <div style="position:relative;flex-shrink:0">
@@ -1512,6 +1507,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div style="font-size:11px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;text-align:center;line-height:1.6">Tap to upload · JPG, PNG, GIF · max 10MB</div>
           </div>
           <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="pfpFileSelected(event)">
+          <div id="pfpGuestSessionNote" style="display:none;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:11px;color:var(--muted);line-height:1.5">
+            <i class="ti ti-info-circle" style="font-size:15px;color:var(--accent);flex-shrink:0"></i>
+            <span>Your photo will only last this session. <a onclick="closePfpPicker();goStep('auth');showAuthMode('register')" style="color:var(--accent);font-weight:800;cursor:pointer">Create an account</a> to keep it.</span>
+          </div>
           <div id="pfpUploadErr" style="margin-top:10px;display:none;font-size:12px;color:#f87171;font-weight:700;align-items:center;gap:5px"><i class="ti ti-alert-circle"></i> <span id="pfpUploadErrMsg"></span></div>
         </div>
       </div>
@@ -2547,18 +2546,7 @@ function openPfpPicker(){
   pfpPendingSelection = currentPfp ? {...currentPfp} : null;
   pfpUploadDataUrl = null;
   pfpUploadBlob = null;
-  // Guests: presets only — hide upload tab and show account hint
-  const uploadTab=document.getElementById('pfpTabUpload');
-  const guestHint=document.getElementById('pfpGuestHint');
-  if(isGuest){
-    if(uploadTab)uploadTab.style.display='none';
-    if(guestHint)guestHint.style.display='flex';
-    switchPfpTab('preset');
-  } else {
-    if(uploadTab)uploadTab.style.display='';
-    if(guestHint)guestHint.style.display='none';
-    switchPfpTab('upload');
-  }
+  switchPfpTab('upload');
   buildPfpPresetGrid();
   // Reset upload tab fully
   const zone=document.getElementById('pfpUploadZone');
@@ -2583,6 +2571,9 @@ function openPfpPicker(){
     document.getElementById('pfpPreviewHint').style.display='none';
     document.getElementById('pfpUploadZone').style.display='flex';
   }
+  // Show a note for guests that their pfp is session-only
+  const guestNote=document.getElementById('pfpGuestSessionNote');
+  if(guestNote)guestNote.style.display=isGuest?'flex':'none';
   document.getElementById('pfpModal').style.display='flex';
   applyTheme();
 }
