@@ -1578,13 +1578,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-size:13px;color:var(--text);line-height:1.6">This is <strong>permanent and irreversible.</strong> Your account, stats, game history, and profile picture will be deleted and cannot be recovered.</div>
       </div>
       <div>
-        <label class="form-label" style="margin-bottom:8px;display:block">Enter your password to confirm</label>
-        <input class="form-input" id="deleteAccountPass" type="password" placeholder="Your password" oninput="onDeletePassInput()">
-        <div class="form-err" id="deleteAccountErr" style="margin-top:8px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="deleteAccountErrMsg"></span></div>
+        <label class="form-label" style="margin-bottom:8px;display:block">Type your username to confirm</label>
+        <input class="form-input" id="deleteAccountConfirm" type="text" placeholder="" autocomplete="off" oninput="onDeleteConfirmInput(this)">
       </div>
+      <div class="form-err" id="deleteAccountErr" style="margin-top:4px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="deleteAccountErrMsg"></span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeDeleteAccount()">Cancel</button>
-        <button id="deleteAccountBtn" onclick="deleteAccount()" disabled style="font-family:'Lilita One',cursive;font-size:15px;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;border:none;background:#f87171;color:#fff;opacity:.4;transition:opacity .2s"><i class="ti ti-trash" style="font-size:16px"></i> Delete</button>
+        <button id="deleteAccountBtn" onclick="deleteAccount()" disabled style="font-family:'Lilita One',cursive;font-size:15px;padding:14px;border-radius:13px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;border:none;background:#f87171;color:#fff;opacity:.4;transition:opacity .2s"><i class="ti ti-trash" style="font-size:16px"></i> Delete</button>
       </div>
     </div>
   </div>
@@ -2280,27 +2280,28 @@ async function confirmSignOut(){
 
 // ── DELETE ACCOUNT ────────────────────────────────────────────
 function openDeleteAccount(){
-  document.getElementById('deleteAccountPass').value='';
+  const input=document.getElementById('deleteAccountConfirm');
+  if(input){input.value='';input.placeholder=currentUser||'your username';}
   document.getElementById('deleteAccountErr').style.display='none';
-  document.getElementById('deleteAccountBtn').disabled=true;
-  document.getElementById('deleteAccountBtn').style.opacity='.4';
+  const btn=document.getElementById('deleteAccountBtn');
+  btn.disabled=true;btn.style.opacity='.4';btn.style.cursor='not-allowed';
   document.getElementById('deleteAccountModal').style.display='flex';
   applyTheme();
 }
 function closeDeleteAccount(){
+  const input=document.getElementById('deleteAccountConfirm');
+  if(input)input.value='';
   document.getElementById('deleteAccountModal').style.display='none';
 }
-function onDeletePassInput(){
-  const hasVal=document.getElementById('deleteAccountPass').value.length>0;
+function onDeleteConfirmInput(el){
+  const matches=el.value.trim()===currentUser;
   const btn=document.getElementById('deleteAccountBtn');
-  btn.disabled=!hasVal;
-  btn.style.opacity=hasVal?'1':'.4';
-  btn.style.cursor=hasVal?'pointer':'not-allowed';
+  btn.disabled=!matches;
+  btn.style.opacity=matches?'1':'.4';
+  btn.style.cursor=matches?'pointer':'not-allowed';
   document.getElementById('deleteAccountErr').style.display='none';
 }
 async function deleteAccount(){
-  const password=document.getElementById('deleteAccountPass').value;
-  if(!password)return;
   const btn=document.getElementById('deleteAccountBtn');
   btn.disabled=true;
   btn.innerHTML='<i class="ti ti-loader-2" style="font-size:16px;animation:spin .8s linear infinite"></i> Deleting…';
@@ -2317,7 +2318,7 @@ async function deleteAccount(){
         'Authorization':`Bearer ${session.access_token}`,
         'Content-Type':'application/json'
       },
-      body:JSON.stringify({password})
+      body:JSON.stringify({})
     });
     const result=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(result.error||'Deletion failed. Please try again.');
