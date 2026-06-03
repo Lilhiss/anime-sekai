@@ -2528,6 +2528,19 @@ function openPfpPicker(){
 function closePfpPicker(){
   document.getElementById('pfpModal').style.display='none';
 }
+function afterPfpSave(){
+  closePfpPicker();renderProfile();updateNav();
+  // Re-track presence with new avatar so lobby players see it instantlytly
+  if(rtChannel&&currentUserId){
+    let presenceAvatar=null;
+    if(currentPfp){presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;}
+    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp}).catch(()=>{});
+    const me=lobbyPlayers.find(p=>p.userId===currentUserId);
+    if(me){me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;}
+    const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
+    if(inLobby)renderLobbyRoom();
+  }
+}
 function removePfp(){
   // Just stage the removal — don't save yet, user still needs to hit Confirm
   pfpPendingSelection={type:'remove'};
@@ -2793,7 +2806,7 @@ async function savePfp(){
     } else if(currentUserId){
       sb.from('profiles').update({avatar_url:'preset:'+currentPfp.value}).eq('id',currentUserId).catch(()=>{});
     }
-    closePfpPicker();renderProfile();updateNav();
+    afterPfpSave();
     return;
   }
 
@@ -2854,7 +2867,7 @@ async function savePfp(){
       });
       if(!patchRes.ok)console.error('Profile update error:',await patchRes.text());
     }
-    closePfpPicker();renderProfile();updateNav();
+    afterPfpSave();
   }catch(e){
     const errEl=document.getElementById('pfpUploadErr');
     const errMsg=document.getElementById('pfpUploadErrMsg');
@@ -5099,6 +5112,7 @@ async function mpHostFetchAndBroadcast(){
 
 let _countdownTick=null;
 function mpShowCountdown(onDone){
+  closePfpPicker(); // close if a player was changing their pfp when host started
   const overlay=document.getElementById('mpCountdownOverlay');
   const numEl=document.getElementById('mpCountdownNum');
   const lblEl=document.getElementById('mpCountdownLabel');
@@ -5687,7 +5701,10 @@ function renderLobbyRoom(){
     const isMe=p.name===currentUser;
     const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
     const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
-    row.innerHTML=`${avatarHtml}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
+    const avatarWrap=isMe
+      ?`<div style="position:relative;cursor:pointer;flex-shrink:0" onclick="openPfpPicker()" title="Change profile picture">${avatarHtml}<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"><i class="ti ti-pencil" style="font-size:13px;color:#fff"></i></div></div>`
+      :avatarHtml;
+    row.innerHTML=`${avatarWrap}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
   // Lock controls for non-host players
