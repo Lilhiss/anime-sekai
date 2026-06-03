@@ -691,7 +691,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="dots-bg"></div>
 
   <nav>
-    <div class="logo" onclick="goStep('landing');const lm=document.getElementById('logoMark');lm.classList.remove('logo-bounce');void lm.offsetWidth;lm.classList.add('logo-bounce')">
+    <div class="logo" onclick="logoNav()">
       <div class="logo-mark" id="logoMark">AS</div>
       <span class="logo-name">Anime <span>Sekai</span></span>
     </div>
@@ -1853,6 +1853,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="kicked-modal-title">Lobby Expired</div>
       <div class="kicked-modal-sub" id="lobbyExpiredSub">The lobby has expired.</div>
       <button class="action-btn primary" style="margin-top:4px" id="lobbyExpiredBtn" onclick="document.getElementById('lobbyExpiredModal').classList.remove('open');goStep('multiplayer')"><i class="ti ti-refresh" style="font-size:15px"></i> Back to Multiplayer</button>
+    </div>
+  </div>
+
+  <!-- LOGO NAV INTERCEPT MODAL (shown when navigating away from lobby/mp-quiz via logo) -->
+  <div id="lobbyNavModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1001;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
+      <div style="font-size:40px">🎮</div>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Still in a lobby!</div>
+        <div style="font-size:13px;color:var(--muted)" id="lobbyNavModalSub">Do you want to go back to the lobby or leave it?</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="action-btn primary" onclick="closeLobbyNavModal()"><i class="ti ti-arrow-left" style="font-size:15px"></i> Return to Lobby</button>
+        <button class="action-btn secondary" onclick="closeLobbyNavModal();leaveLobbyRoom()"><i class="ti ti-x" style="font-size:15px"></i> Leave Lobby</button>
+      </div>
     </div>
   </div>
 
@@ -6668,6 +6683,28 @@ async function adminDelete(id){
 }
 
 applyTheme();
+
+// ── LOGO NAVIGATION INTERCEPT ─────────────────────────────────
+// If the player clicks the logo while in a lobby or active mp game,
+// show a modal asking them to return or leave rather than silently
+// dropping them from the lobby.
+function logoNav(){
+  const lm=document.getElementById('logoMark');
+  lm.classList.remove('logo-bounce');void lm.offsetWidth;lm.classList.add('logo-bounce');
+  const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+  const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
+  if(inLobby||inMpQuiz){
+    const sub=document.getElementById('lobbyNavModalSub');
+    if(sub)sub.textContent=inMpQuiz?'Do you want to go back to the game or quit?':'Do you want to go back to the lobby or leave it?';
+    document.getElementById('lobbyNavModal').style.display='flex';
+    applyTheme();
+    return;
+  }
+  goStep('landing');
+}
+function closeLobbyNavModal(){
+  document.getElementById('lobbyNavModal').style.display='none';
+}
 
 // ── REFRESH / TAB-CLOSE FALLBACK ──────────────────────────────────────────
 // Supabase Presence is the primary mechanism for detecting disconnects, but
