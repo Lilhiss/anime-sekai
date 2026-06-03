@@ -4379,16 +4379,20 @@ async function rtCreateLobby(){
     return; // Lobby still shows locally, just won't sync to other devices
   }
   const token=await rtGetAuthToken();
-  try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
-      },
-      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
-    });
-  }catch(e){}
+  // Only persist a profile row for registered users — guest rows accumulate
+  // as dead data since guests have no persistent state worth storing
+  if(!isGuest){
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+        method:'POST',
+        headers:{
+          'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
+          'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
+        },
+        body:JSON.stringify({id:uid,username:currentUser,is_guest:false})
+      });
+    }catch(e){}
+  }
   let lobbyId=null;
   try{
     const lobbyRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies`,{
