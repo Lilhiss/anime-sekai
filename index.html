@@ -3111,11 +3111,32 @@ async function submitRegister(){
   const btn=document.getElementById('regSubmitBtn');
   btn.disabled=true;btn.textContent='Creating account…';
   try{
+    // Pre-check username availability before hitting auth
+    const checkRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=id&username=ilike.${encodeURIComponent(u)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
+    );
+    const rows=await checkRes.json();
+    if(Array.isArray(rows)&&rows.length>0){
+      showErr('regErr','regErrMsg','That username is already taken. Please choose a different one.');
+      return;
+    }
     const user=await sbSignUp(u,p,e);
     currentUser=u;currentUserId=user?.id||null;isGuest=false;
     updateNav();await checkAdminRole();afterAuth();
   }catch(err){
-    showErr('regErr','regErrMsg',err.message||'Could not create account. Username may already be taken.');
+    const msg=err.message||'';
+    let friendly='Could not create account. Please try again.';
+    if(msg.toLowerCase().includes('already registered')||msg.toLowerCase().includes('user already exists')){
+      friendly='An account with that username already exists.';
+    } else if(msg.toLowerCase().includes('database error')||msg.toLowerCase().includes('saving new user')){
+      friendly='That username is already taken. Please choose a different one.';
+    } else if(msg.toLowerCase().includes('password')){
+      friendly='Password must be at least 6 characters.';
+    } else if(msg){
+      friendly=msg;
+    }
+    showErr('regErr','regErrMsg',friendly);
   }finally{
     btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus" style="font-size:16px"></i> Create Account';
   }
