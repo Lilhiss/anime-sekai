@@ -134,7 +134,7 @@ h1 .hi{color:var(--accent)}
 .mode-tag{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 11px;font-size:11px;font-weight:800;color:var(--accent);width:fit-content}
 
 /* QUIZ */
-.quiz-wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:20px}
+.quiz-wrap{width:100%;max-width:860px;display:flex;flex-direction:column;gap:20px}
 .quiz-hud{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hud-left{display:flex;align-items:center;gap:14px}
 .hud-score{font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)}
@@ -148,11 +148,14 @@ h1 .hi{color:var(--accent)}
 .timer-bar{height:100%;border-radius:99px;background:var(--accent);transition:width .1s linear,background .5s}
 .timer-bar.warn{background:#fbbf24}
 .timer-bar.danger{background:#f87171}
-.q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 24px;backdrop-filter:blur(10px)}
+.q-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:52px 38px;backdrop-filter:blur(10px);text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:center}
+.q-card.answered{border-color:var(--accent);background:var(--accent-soft)}
+.q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
+.q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
-.q-meta{margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.q-meta{margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px}
 .q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
-.q-text{font-family:'Lilita One',cursive;font-size:clamp(16px,2.5vw,22px);color:var(--text);line-height:1.4}
+.q-text{font-family:"Lilita One",cursive;font-size:clamp(17px,2.6vw,24px);color:var(--text);line-height:1.4}
 .q-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0}
 .spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -502,8 +505,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   /* Quiz */
   .quiz-wrap{gap:14px}
-  .q-card{padding:16px 14px}
-  .q-text{font-size:15px}
+  .q-card{padding:28px 18px;min-height:220px}
+  .q-text{font-size:16px}
   .hud-score{font-size:20px}
   .hud-score-label{font-size:10px}
   .feedback{flex-direction:column;gap:10px}
@@ -1012,26 +1015,24 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
       <div class="q-card">
-        <div class="q-meta"><span class="q-badge" id="qBadge"></span></div>
+        <div class="q-meta" style="display:none"><span class="q-badge" id="qBadge"></span></div>
         <div id="questionArea">
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
+        <!-- Inline feedback shown inside the card after answer/timeout -->
+        <div id="qCardFeedback" style="display:none;margin-top:18px;margin-top:22px;text-align:center">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+            <span id="fbIcon"></span>
+            <span class="fb-title" id="fbTitle"></span>
+          </div>
+          <div id="fbYourAns" class="fb-your-ans" style="display:none;text-align:center"></div>
+          <div class="fb-pts" id="fbPts" style="margin-top:4px;text-align:center"></div>
+          <div id="fbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:6px;font-style:italic"></div>
+          <div style="margin-top:10px"><span style="font-family:'Lilita One',cursive;font-size:13px;color:var(--muted)" id="soloAutoNext"></span></div>
+        </div>
       </div>
       <div class="answers" id="answersGrid"></div>
-      <div class="feedback" id="feedbackBar" style="display:none">
-        <div class="fb-left">
-          <span class="fb-icon" id="fbIcon"></span>
-          <div style="flex:1;min-width:0">
-            <div class="fb-title" id="fbTitle"></div>
-            <div id="fbYourAns" class="fb-your-ans" style="display:none"></div>
-            <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="fbCorrectAns"></span></div>
-            <div class="fb-pts" id="fbPts"></div>
-            <div id="fbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:5px;font-style:italic"></div>
-          </div>
-        </div>
-        <div class="fb-auto-next" id="soloAutoNext"></div>
-      </div>
       <div style="text-align:right">
         <button class="report-link" onclick="toggleReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
         <div class="report-drop" id="reportDrop">
@@ -1234,26 +1235,24 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div class="timer-wrap"><div class="timer-bar" id="mpTimerBar"></div></div>
         <div class="q-card">
-          <div class="q-meta"><span class="q-badge" id="mpQBadge"></span></div>
+          <div class="q-meta" style="display:none"><span class="q-badge" id="mpQBadge"></span></div>
           <div id="mpQuestionArea">
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
+          <!-- Inline feedback shown inside the card after answer/timeout -->
+          <div id="mpQCardFeedback" style="display:none;margin-top:18px;margin-top:22px;text-align:center">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+              <span id="mpFbIcon"></span>
+              <span class="fb-title" id="mpFbTitle"></span>
+            </div>
+            <div id="mpFbYourAns" class="fb-your-ans" style="display:none;text-align:center"></div>
+            <div class="fb-pts" id="mpFbPts" style="margin-top:4px;text-align:center"></div>
+            <div id="mpFbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:6px;font-style:italic"></div>
+            <div style="margin-top:10px"><span style="font-family:'Lilita One',cursive;font-size:13px;color:var(--muted)" id="mpAutoNext"></span></div>
+          </div>
         </div>
         <div class="answers" id="mpAnswersGrid"></div>
-        <div class="feedback" id="mpFeedbackBar" style="display:none">
-          <div class="fb-left">
-            <span class="fb-icon" id="mpFbIcon"></span>
-            <div style="flex:1;min-width:0">
-              <div class="fb-title" id="mpFbTitle"></div>
-              <div id="mpFbYourAns" class="fb-your-ans" style="display:none"></div>
-              <div class="fb-answer"><span class="fb-answer-label">Correct answer:</span><span class="fb-answer-val" id="mpFbCorrectAns"></span></div>
-              <div class="fb-pts" id="mpFbPts"></div>
-              <div id="mpFbSubmittedBy" style="display:none;font-size:11px;color:var(--muted);margin-top:5px;font-style:italic"></div>
-            </div>
-          </div>
-          <div class="fb-auto-next" id="mpAutoNext"></div>
-        </div>
         <div id="mpReportWrap" style="display:none;text-align:right;margin-top:4px">
           <button class="report-link" onclick="toggleMpReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
           <div class="report-drop" id="mpReportDrop">
@@ -3591,12 +3590,13 @@ function checkAnswer(userInput,qData){
 async function loadQuestion(){
   answered=false;
   clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
-  document.getElementById('feedbackBar').style.display='none';
+  document.getElementById('qCardFeedback').style.display='none';
   document.getElementById('reportDrop').classList.remove('open');
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
-  document.querySelector('.q-card')?.classList.remove('type-mode','shake');
+  const qCard=document.querySelector('#page-quiz .q-card');
+  if(qCard){qCard.classList.remove('type-mode','shake','answered');}
   renderHUD();
   const qData=prefetchedQuestion||await fetchQuestion();
   prefetchedQuestion=null;currentQData=qData;
@@ -3706,28 +3706,26 @@ function startSoloAutoNext(){
 }
 
 function showFeedback(correct,correctAns,userAns,override){
-  const fb=document.getElementById('feedbackBar');fb.style.display='flex';
-  fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
-  document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:22px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:22px"></i>';
+  // Show inline card feedback section
+  const fb=document.getElementById('qCardFeedback');fb.style.display='block';
+  document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   document.getElementById('fbTitle').textContent=override||(correct?'Correct!':'Wrong!');
-  document.getElementById('fbCorrectAns').textContent=correctAns;
   const ya=document.getElementById('fbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Your answer: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
-  if(correct && selectedMode==='race'){
+  if(correct&&selectedMode==='race'){
     const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
     document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
   } else {
     document.getElementById('fbPts').textContent='';
   }
-  // Show submitted_by credit if question came from a user
-  const subEl=document.getElementById('fbSubmittedBy');
-  if(currentQData?.submitted_by){
-    subEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
-    subEl.style.display='block';
-  } else {
-    subEl.style.display='none';
-  }
+  // Reveal answer in the question card
+  const qCard=document.querySelector('#page-quiz .q-card');
+  const qText=document.getElementById('questionText');
+  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  qText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+  if(qCard)qCard.classList.add('answered');
+  document.getElementById('fbSubmittedBy').style.display='none';
   applyTheme();
   startSoloAutoNext();
 }
@@ -4660,13 +4658,15 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-    document.getElementById('mpFeedbackBar').style.display='none';
+    document.getElementById('mpQCardFeedback').style.display='none';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
     const mpRdNQ=document.getElementById('mpReportDrop');if(mpRdNQ)mpRdNQ.classList.remove('open');
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQLoading').style.display='flex';
+    const mpQCard=document.querySelector('#page-mp-quiz .q-card');
+    if(mpQCard)mpQCard.classList.remove('answered');
     if(isHost)mpHostFetchAndBroadcast();
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
@@ -6254,7 +6254,7 @@ function mpQuitGame(){
 function mpShowQuestion(qData,hpFuse){
   answered=false;
   document.getElementById('mpQLoading').style.display='none';
-  document.getElementById('mpFeedbackBar').style.display='none';
+  document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
   const mpRdSQ=document.getElementById('mpReportDrop');if(mpRdSQ)mpRdSQ.classList.remove('open');
   document.getElementById('mpQuestionText').style.display='block';
@@ -6396,18 +6396,16 @@ function mpTimeOut(){
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName){
-  const fb=document.getElementById('mpFeedbackBar');fb.style.display='flex';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset any previously open dropdown
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
   const rb=document.getElementById('mpReportSubmitBtn');if(rb){rb.textContent='Submit report';rb.disabled=false;}
   document.querySelectorAll('input[name="mprpt"]').forEach(r=>r.checked=false);
   const rdt=document.getElementById('mpReportDetail');if(rdt)rdt.value='';
-  fb.className='feedback '+(correct?'correct-fb':'wrong-fb');
-  document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:22px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:22px"></i>';
+  document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const title=override||(playerName?(playerName+(correct?' got it!':' missed!')):correct?'Correct!':'Wrong!');
   document.getElementById('mpFbTitle').textContent=title;
-  document.getElementById('mpFbCorrectAns').textContent=correctAns;
   const ya=document.getElementById('mpFbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
@@ -6418,12 +6416,13 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
     correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:
     '';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
-  if(currentQData?.submitted_by){
-    mpSubEl.textContent=`Question submitted by ${currentQData.submitted_by}`;
-    mpSubEl.style.display='block';
-  } else {
-    mpSubEl.style.display='none';
-  }
+  // Reveal answer in the question card; submitted_by shown there instead of feedback bar
+  const mpQCard=document.querySelector('#page-mp-quiz .q-card');
+  const mpQText=document.getElementById('mpQuestionText');
+  const mpSubBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  mpQText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${mpSubBy}`;
+  if(mpQCard)mpQCard.classList.add('answered');
+  if(mpSubEl)mpSubEl.style.display='none';
   applyTheme();
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
@@ -6451,12 +6450,14 @@ function mpNextQuestion(){
 async function mpLoadQuestion(){
   answered=false;
   lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-  document.getElementById('mpFeedbackBar').style.display='none';
+  document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   const mpRdLQ=document.getElementById('mpReportDrop');if(mpRdLQ)mpRdLQ.classList.remove('open');
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
+  const mpQCardLQ=document.querySelector('#page-mp-quiz .q-card');
+  if(mpQCardLQ)mpQCardLQ.classList.remove('answered');
   renderMPHUD();
   if(lobbyMode==='potato'){
     const active=hpActivePlayer();
