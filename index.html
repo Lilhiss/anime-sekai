@@ -2425,58 +2425,6 @@ async function saveEditProfile(){
     if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save';}
   }
 }
-  // Get selected color
-  const selectedBtn=document.querySelector('#editColorPicker button[data-selected]');
-  const newColor=selectedBtn?.dataset.color||currentColor;
-  // Check for new email
-  const emailInput=document.getElementById('editEmailInput');
-  const newEmail=emailInput?.value.trim()||'';
-  if(newEmail&&!newEmail.includes('@')){showErr('editEmailErr','editEmailErrMsg','Please enter a valid email address.');return}
-  // Disable Save for the duration of the async operation to prevent double-clicks
-  // (auth.updateUser is rate-limited to ~2 calls/min — a second call = 429)
-  const saveBtn=document.querySelector('#editProfileModal .action-btn.primary');
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='Saving…';}
-  try{
-  // Update Supabase profile if logged in
-  if(currentUserId&&!isGuest){
-    // Check if email is already in use
-    if(newEmail){
-      const checkRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?select=id&email=eq.${encodeURIComponent(newEmail)}&limit=1`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-      );
-      const checkRows=await checkRes.json();
-      if(Array.isArray(checkRows)&&checkRows.length>0){
-        showErr('editEmailErr','editEmailErrMsg','That email is already associated with another account.');return;
-      }
-    }
-    // Email is stored in profiles only. Supabase Auth holds the @animesekai.guest
-    // address as a permanent identity — auth.updateUser() silently queues the
-    // change as pending confirmation and never applies it without a working SMTP.
-    // sbSignIn always authenticates with the guest address; the real email gates
-    // password recovery only.
-    const updates={username:newName,theme_color:newColor};
-    if(newEmail)updates.email=newEmail;
-    const{error}=await sb.from('profiles').update(updates).eq('id',currentUserId);
-    if(error){showErr('editEmailErr','editEmailErrMsg','Could not save. Try again.');return}
-    if(newEmail)currentEmail=newEmail;
-  }
-  currentUser=newName;currentColor=newColor;
-  updateNav();renderProfile();applyTheme();
-  closeEditProfile();
-  // Toast confirmation
-  const toast=document.createElement('div');
-  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
-  toast.textContent=newEmail?'Email added successfully! ✅':'Profile updated! ✅';
-  document.body.appendChild(toast);
-  setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},3000);
-  }catch(e){
-    showErr('editEmailErr','editEmailErrMsg','Something went wrong. Please try again.');
-  }finally{
-    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Save';}
-  }
-}
-
 // ── PROFILE PICTURE ───────────────────────────────────────────
 const PFP_PRESETS = [
   // Shonen staples
