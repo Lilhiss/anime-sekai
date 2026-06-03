@@ -608,12 +608,19 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-badge.reported{color:#f87171;border-color:#f87171;background:rgba(248,113,113,.1)}
 .admin-badge.submitted{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
 .admin-report-counter{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:13px;color:#f87171;background:rgba(248,113,113,.1);border:1.5px solid #f87171;border-radius:99px;padding:3px 10px}
-.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.admin-report-details{display:none;flex-direction:column;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-top:2px}
+.admin-report-details.open{display:flex}
+.admin-report-row{display:flex;flex-direction:column;gap:3px;padding:8px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px}
+.admin-report-reason{font-size:12px;font-weight:800;color:var(--text)}
+.admin-report-detail{font-size:11px;color:var(--muted);line-height:1.5}
+.admin-report-meta{font-size:10px;color:var(--muted);display:flex;gap:10px;margin-top:2px}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .admin-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
 .admin-btn.approve{background:#4ade80;color:#0a0a0a}
 .admin-btn.dismiss{background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent)}
 .admin-btn.delete{background:var(--bg3);border:1px solid var(--border2);color:var(--muted)}
-.admin-btn.approve:hover{opacity:.85}.admin-btn.dismiss:hover{border-color:var(--accent);opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}
+.admin-btn.view-reports{background:none;border:1px solid var(--border2);color:var(--muted)}
+.admin-btn.approve:hover{opacity:.85}.admin-btn.dismiss:hover{border-color:var(--accent);opacity:.85}.admin-btn.delete:hover{border-color:#f87171;color:#f87171}.admin-btn.view-reports:hover{border-color:var(--accent);color:var(--accent)}
 .admin-empty{text-align:center;padding:40px 24px;color:var(--muted);font-size:14px}
 .lobby-guest-lock{opacity:.45;pointer-events:none;cursor:not-allowed;user-select:none}
 .privacy-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:8px 12px;margin-top:2px;transition:border-color .2s}
@@ -1597,19 +1604,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Admin Panel</div>
         <h1>🛡️ <span class="hi">Admin</span></h1>
       </div>
-      <!-- Stats row -->
       <div class="admin-stat-row slide-in" id="adminStatRow">
         <div class="stat-card"><div class="stat-val" id="adminStatSubmitted">—</div><div class="stat-label">Submitted</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatApproved">—</div><div class="stat-label">Approved</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatReported">—</div><div class="stat-label">Reported</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatTotal">—</div><div class="stat-label">Total Questions</div></div>
       </div>
-      <!-- Tabs -->
       <div class="admin-tabs slide-in">
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
         <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
       </div>
-      <!-- Question list -->
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
       </div>
@@ -4320,22 +4324,17 @@ function launchConfetti(){
 async function submitReport(){
   const btn=document.getElementById('reportSubmitBtn');
   btn.disabled=true;btn.textContent='Submitting…';
-  // Get selected reason
   const reasonEl=document.querySelector('input[name="rpt"]:checked');
   const reason=reasonEl?reasonEl.value:'other';
   const detail=document.getElementById('reportDetail')?.value?.trim()||'';
-  // Increment report_count in Supabase if question has an id
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.from('questions')
-      .update({report_count:sb.rpc?undefined:undefined}) // fallback below
-      .eq('id',currentQData.id)
-      .catch(()=>{});
-    // Use raw increment since supabase-js v2 doesn't have .increment() shorthand
     await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
-      // fallback: fetch current count then update
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
+    await sb.from('question_reports').insert({
+      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
+    }).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
   setTimeout(()=>{
@@ -5248,6 +5247,9 @@ async function submitMpReport(){
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
+    await sb.from('question_reports').insert({
+      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
+    }).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
   setTimeout(()=>{
@@ -5297,6 +5299,9 @@ async function submitMpRecapReport(i,qid){
       const {data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
     });
+    await sb.from('question_reports').insert({
+      question_id:id,reason,detail:detail||null,reported_by:currentUser||null
+    }).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
   setTimeout(()=>{
@@ -6617,11 +6622,10 @@ async function loadAdminQuestions(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   list.innerHTML='<div class="admin-empty">Loading…</div>';
-  let query=sb.from('questions').select('*').order('created_at',{ascending:false}).limit(50);
+  let query;
   if(adminTab==='submitted'){
-    query=query.eq('status','pending');
+    query=sb.from('questions').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(50);
   } else {
-    // Reported: approved questions with at least 1 report, sorted highest first
     query=sb.from('questions').select('*').gt('report_count',0).order('report_count',{ascending:false}).limit(50);
   }
   const {data,error}=await query;
@@ -6637,26 +6641,22 @@ async function loadAdminQuestions(){
 
 function buildAdminCard(q){
   const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
-  const card=document.createElement('div');
   const isReported=adminTab==='reported';
+  const card=document.createElement('div');
   card.className='admin-q-card'+(isReported?' reported':'');
   card.id=`adminCard_${q.id}`;
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${q.answer}</div>`:'';
   const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
-
-  // Report counter — prominent warning, only meaningful in reported tab
+  const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
   const reportBadge=q.report_count>0
     ?`<span class="admin-report-counter"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${q.report_count} report${q.report_count===1?'':'s'}</span>`
     :'';
 
-  // Date
-  const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
-
-  // Actions differ by tab
   const actionsHtml=isReported
-    ?`<button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
+    ?`<button class="admin-btn view-reports" onclick="toggleAdminReports('${q.id}')"><i class="ti ti-chevron-down" style="font-size:12px" id="adminReportChevron_${q.id}"></i> View Reports</button>
+       <button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
     :`<button class="admin-btn approve" onclick="adminApprove('${q.id}')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`;
@@ -6674,8 +6674,49 @@ function buildAdminCard(q){
       ${dateStr?`<span class="admin-badge"><i class="ti ti-calendar" style="font-size:10px"></i> ${dateStr}</span>`:''}
       ${reportBadge}
     </div>
-    <div class="admin-actions">${actionsHtml}</div>`;
+    <div class="admin-actions">${actionsHtml}</div>
+    ${isReported?`<div class="admin-report-details" id="adminReportDetails_${q.id}"><div style="font-size:11px;color:var(--muted)">Loading reports…</div></div>`:''}`;
   return card;
+}
+
+async function toggleAdminReports(qid){
+  const panel=document.getElementById(`adminReportDetails_${qid}`);
+  const chevron=document.getElementById(`adminReportChevron_${qid}`);
+  const isOpen=panel.classList.contains('open');
+  if(isOpen){
+    panel.classList.remove('open');
+    if(chevron)chevron.className='ti ti-chevron-down';
+    return;
+  }
+  panel.classList.add('open');
+  if(chevron)chevron.className='ti ti-chevron-up';
+  // Fetch reports for this question
+  panel.innerHTML='<div style="font-size:11px;color:var(--muted)">Loading reports…</div>';
+  try{
+    const{data,error}=await sb.from('question_reports')
+      .select('reason,detail,reported_by,reported_at')
+      .eq('question_id',qid)
+      .order('reported_at',{ascending:false});
+    if(error||!data?.length){
+      panel.innerHTML='<div style="font-size:11px;color:var(--muted)">No detailed reports on file.</div>';
+      return;
+    }
+    const reasonLabels={wrong:'Wrong answer marked correct',unclear:'Unclear or ambiguous',outdated:'Information is outdated',duplicate:'Duplicate question',other:'Other'};
+    panel.innerHTML=data.map(r=>{
+      const date=r.reported_at?new Date(r.reported_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
+      return `<div class="admin-report-row">
+        <div class="admin-report-reason"><i class="ti ti-flag" style="font-size:11px;color:#f87171"></i> ${reasonLabels[r.reason]||r.reason}</div>
+        ${r.detail?`<div class="admin-report-detail">"${r.detail}"</div>`:''}
+        <div class="admin-report-meta">
+          ${r.reported_by?`<span><i class="ti ti-user" style="font-size:10px"></i> ${r.reported_by}</span>`:'<span>Anonymous</span>'}
+          ${date?`<span><i class="ti ti-calendar" style="font-size:10px"></i> ${date}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    applyTheme();
+  }catch(e){
+    panel.innerHTML='<div style="font-size:11px;color:#f87171">Could not load reports.</div>';
+  }
 }
 
 async function adminApprove(id){
@@ -6685,13 +6726,15 @@ async function adminApprove(id){
 }
 
 async function adminDismiss(id){
-  // Clear report count — question stays approved in the bank
+  // Clear report count and delete all report rows — question stays in the bank
   await sb.from('questions').update({report_count:0}).eq('id',id);
+  await sb.from('question_reports').delete().eq('question_id',id);
   document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
 }
 
 async function adminDelete(id){
+  // question_reports rows are deleted automatically via ON DELETE CASCADE
   await sb.from('questions').delete().eq('id',id);
   document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
