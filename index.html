@@ -2481,35 +2481,35 @@ async function saveEditProfile(){
 // ── PROFILE PICTURE ───────────────────────────────────────────
 const PFP_PRESETS = [
   // Shonen staples
-  {id:'naruto',    name:'Naruto',    series:'Naruto',          src:'img/pfp/naruto.jpg'},
-  {id:'goku',      name:'Goku',      series:'Dragon Ball Z',   src:'img/pfp/goku.jpg'},
-  {id:'luffy',     name:'Luffy',     series:'One Piece',       src:'img/pfp/luffy.jpg'},
-  {id:'ichigo',    name:'Ichigo',    series:'Bleach',          src:'img/pfp/ichigo.jpg'},
-  {id:'deku',      name:'Deku',      series:'My Hero Academia',src:'img/pfp/deku.jpg'},
-  {id:'levi',      name:'Levi',      series:'Attack on Titan', src:'img/pfp/levi.jpg'},
+  {id:'naruto',    name:'Naruto',    series:'Naruto',          src:'img/pfp/naruto.png',    bg:'#e8630a'},
+  {id:'goku',      name:'Goku',      series:'Dragon Ball Z',   src:'img/pfp/goku.png',      bg:'#1a6fb5'},
+  {id:'luffy',     name:'Luffy',     series:'One Piece',       src:'img/pfp/luffy.png',     bg:'#d42b2b'},
+  {id:'ichigo',    name:'Ichigo',    series:'Bleach',          src:'img/pfp/ichigo.png',    bg:'#1c1c2e'},
+  {id:'deku',      name:'Deku',      series:'My Hero Academia',src:'img/pfp/deku.png',      bg:'#1a5c2a'},
+  {id:'levi',      name:'Levi',      series:'Attack on Titan', src:'img/pfp/levi.png',      bg:'#2e3a4e'},
   // Modern hits
-  {id:'tanjiro',   name:'Tanjiro',   series:'Demon Slayer',    src:'img/pfp/tanjiro.jpg'},
-  {id:'gojo',      name:'Gojo',      series:'Jujutsu Kaisen',  src:'img/pfp/gojo.jpg'},
-  {id:'power',     name:'Power',     series:'Chainsaw Man',    src:'img/pfp/power.jpg'},
-  {id:'eren',      name:'Eren',      series:'Attack on Titan', src:'img/pfp/eren.jpg'},
-  {id:'anya',      name:'Anya',      series:'Spy x Family',    src:'img/pfp/anya.jpg'},
+  {id:'tanjiro',   name:'Tanjiro',   series:'Demon Slayer',    src:'img/pfp/tanjiro.png',   bg:'#1a3a5c'},
+  {id:'gojo',      name:'Gojo',      series:'Jujutsu Kaisen',  src:'img/pfp/gojo.png',      bg:'#5b2d8e'},
+  {id:'power',     name:'Power',     series:'Chainsaw Man',    src:'img/pfp/power.png',     bg:'#8e1a1a'},
+  {id:'eren',      name:'Eren',      series:'Attack on Titan', src:'img/pfp/eren.png',      bg:'#3a2a1a'},
+  {id:'anya',      name:'Anya',      series:'Spy x Family',    src:'img/pfp/anya.png',      bg:'#c45c8a'},
   // Female leads
-  {id:'mikasa',    name:'Mikasa',    series:'Attack on Titan', src:'img/pfp/mikasa.jpg'},
-  {id:'nezuko',    name:'Nezuko',    series:'Demon Slayer',    src:'img/pfp/nezuko.jpg'},
-  {id:'robin',     name:'Robin',     series:'One Piece',       src:'img/pfp/robin.jpg'},
-  {id:'zerotwo',   name:'Zero Two',  series:'DitFranXX',       src:'img/pfp/zerotwo.jpg'},
+  {id:'mikasa',    name:'Mikasa',    series:'Attack on Titan', src:'img/pfp/mikasa.png',    bg:'#2a1a2e'},
+  {id:'nezuko',    name:'Nezuko',    series:'Demon Slayer',    src:'img/pfp/nezuko.png',    bg:'#8e1a5c'},
+  {id:'robin',     name:'Robin',     series:'One Piece',       src:'img/pfp/robin.png',     bg:'#1a3d2a'},
+  {id:'zerotwo',   name:'Zero Two',  series:'DitFranXX',       src:'img/pfp/zerotwo.png',   bg:'#c43a5c'},
   // Classics
-  {id:'spike',     name:'Spike',     series:'Cowboy Bebop',    src:'img/pfp/spike.jpg'},
-  {id:'edward',    name:'Edward',    series:'Fullmetal Alch.', src:'img/pfp/edward.jpg'},
-  {id:'sailormoon',name:'Sailor Moon',series:'Sailor Moon',   src:'img/pfp/sailormoon.jpg'},
-  {id:'asuka',     name:'Asuka',     series:'Evangelion',      src:'img/pfp/asuka.jpg'},
+  {id:'spike',     name:'Spike',     series:'Cowboy Bebop',    src:'img/pfp/spike.png',     bg:'#1a2e1a'},
+  {id:'edward',    name:'Edward',    series:'Fullmetal Alch.', src:'img/pfp/edward.png',    bg:'#8e5a1a'},
+  {id:'sailormoon',name:'Sailor Moon',series:'Sailor Moon',   src:'img/pfp/sailormoon.png', bg:'#1a3a8e'},
+  {id:'asuka',     name:'Asuka',     series:'Evangelion',      src:'img/pfp/asuka.png',     bg:'#8e1a1a'},
   // Isekai / other
-  {id:'rimuru',    name:'Rimuru',    series:'Tensura',         src:'img/pfp/rimuru.jpg'},
-  {id:'asuna',     name:'Asuna',     series:'Sword Art Online',src:'img/pfp/asuna.jpg'},
-  {id:'subaru',    name:'Subaru',    series:'Re:Zero',         src:'img/pfp/subaru.jpg'},
+  {id:'rimuru',    name:'Rimuru',    series:'Tensura',         src:'img/pfp/rimuru.png',    bg:'#1a5c5c'},
+  {id:'asuna',     name:'Asuna',     series:'Sword Art Online',src:'img/pfp/asuna.png',     bg:'#1a3a6e'},
+  {id:'subaru',    name:'Subaru',    series:'Re:Zero',         src:'img/pfp/subaru.png',    bg:'#1a1a3a'},
   // Cult picks
-  {id:'l',         name:'L',         series:'Death Note',      src:'img/pfp/l.jpg'},
-  {id:'killua',    name:'Killua',    series:'Hunter x Hunter', src:'img/pfp/killua.jpg'},
+  {id:'l',         name:'L',         series:'Death Note',      src:'img/pfp/l.png',         bg:'#1a1a1a'},
+  {id:'killua',    name:'Killua',    series:'Hunter x Hunter', src:'img/pfp/killua.png',    bg:'#1a4a6e'},
 ];
 
 let currentPfp = null;        // {type:'preset'|'upload', value: presetId | dataURL}
@@ -2655,10 +2655,10 @@ function buildPfpPresetGrid(){
     item.className = 'pfp-preset-item' + (isSelected?' selected':'');
     item.id = 'pfpItem_'+p.id;
     item.title = p.name + ' · ' + p.series;
+    item.style.background = p.bg||'var(--accent-soft)';
     item.onclick = () => selectPreset(p.id);
-    // Try image first, fall back to text initials
-    item.innerHTML = `<img src="${p.src}" alt="${p.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="pfp-preset-fallback" style="display:none">${p.name.split(' ').map(w=>w[0]).join('')}</div>
+    item.innerHTML = `<img src="${p.src}" alt="${p.name}" style="object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="pfp-preset-fallback" style="display:none;background:${p.bg||'var(--accent-soft)'}">${p.name.split(' ').map(w=>w[0]).join('')}</div>
       <div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
     const label = document.createElement('div');
     label.className = 'pfp-preset-label';
@@ -2932,10 +2932,10 @@ function getAvatarHTML(size, initial){
   if(!currentPfp){
     return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px">${initial}</div>`;
   }
-  const src = currentPfp.type==='preset'
-    ? PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src || ''
-    : currentPfp.value;
-  return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;padding:0;background:var(--bg3)"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
+  const preset=currentPfp.type==='preset'?PFP_PRESETS.find(p=>p.id===currentPfp.value):null;
+  const src=preset?preset.src:currentPfp.value;
+  const bg=preset?(preset.bg||'var(--bg3)'):'var(--bg3)';
+  return `<div class="profile-avatar" id="profileAvatar" style="width:${size}px;height:${size}px;padding:0;background:${bg}"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:${preset?'contain':'cover'};border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
 }
 function getLobbyAvatarHTML(avatarUrl, color, initial, size=36, loading=false){
   if(loading){
@@ -2945,19 +2945,20 @@ function getLobbyAvatarHTML(avatarUrl, color, initial, size=36, loading=false){
   if(!avatarUrl){
     return `<div class="lobby-player-avatar" style="background:${color};font-size:${Math.round(size*0.42)}px">${initial}</div>`;
   }
-  const src=avatarUrl.startsWith('preset:')
-    ? (PFP_PRESETS.find(p=>p.id===avatarUrl.slice(7))?.src||'')
-    : avatarUrl;
-  return `<div class="lobby-player-avatar" style="background:${color};padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.innerHTML='${initial}'"></div>`;
+  const preset=avatarUrl.startsWith('preset:')?PFP_PRESETS.find(p=>p.id===avatarUrl.slice(7)):null;
+  const src=preset?preset.src:avatarUrl;
+  const bg=preset?(preset.bg||color):color;
+  return `<div class="lobby-player-avatar" style="background:${bg};padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:${preset?'contain':'cover'};border-radius:50%" onerror="this.parentElement.innerHTML='${initial}'"></div>`;
 }
 function getNavAvatarHTML(initial){
   if(!currentPfp){
     return `<div class="user-avatar">${initial}</div>`;
   }
-  const src = currentPfp.type==='preset'
-    ? PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src || ''
-    : currentPfp.value;
-  return `<div class="user-avatar" style="padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
+  const preset=currentPfp.type==='preset'?PFP_PRESETS.find(p=>p.id===currentPfp.value):null;
+  const src=preset?preset.src:currentPfp.value;
+  const bg=preset?(preset.bg||'var(--accent-soft)'):'';
+  const bgStyle=bg?`background:${bg};`:'';
+  return `<div class="user-avatar" style="${bgStyle}padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:${preset?'contain':'cover'};border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
 }
 
 function goStep(name){
@@ -4100,11 +4101,11 @@ function renderProfile(){
     const oldAvatar = document.getElementById('profileAvatar');
     if(oldAvatar){
       if(currentPfp){
-        const src = currentPfp.type==='preset'
-          ? (PFP_PRESETS.find(p=>p.id===currentPfp.value)?.src||'')
-          : currentPfp.value;
-        oldAvatar.innerHTML=`<img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
-        oldAvatar.style.padding='0';oldAvatar.style.background='var(--bg3)';
+        const preset=currentPfp.type==='preset'?PFP_PRESETS.find(p=>p.id===currentPfp.value):null;
+        const src=preset?preset.src:currentPfp.value;
+        const bg=preset?(preset.bg||'var(--bg3)'):'var(--bg3)';
+        oldAvatar.innerHTML=`<img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:${preset?'contain':'cover'};border-radius:50%" onerror="this.style.display='none'">`;
+        oldAvatar.style.padding='0';oldAvatar.style.background=bg;
         oldAvatar.style.fontSize='';
       } else {
         oldAvatar.innerHTML='';
