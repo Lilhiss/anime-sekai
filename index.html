@@ -5900,7 +5900,8 @@ function setLobbyFormat(fmt,el){
   lobbyFormat=fmt;selectedFormat=fmt;
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
-  // No DB write here — only write on final confirm so lobby list stays clean
+  // Write format to DB immediately so joining players see correct info
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>goStep('lobby-mode'),300);
 }
@@ -6046,7 +6047,9 @@ function setLobbyMode(mode,el){
   document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+` · ${selectedQuestionLimit}Q`;
-  // No DB write here — only write on final confirm so lobby list stays clean
+  // Write mode+format to DB immediately so joining players see correct info
+  // even if host is still mid-flow on topic/settings pages
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   // Always go to topic picker next — final settings modal fires after topic is confirmed
   setTimeout(()=>openLobbyTopicPage(),300);
@@ -6185,7 +6188,7 @@ function patchLobbyListCard(lobby) {
   const mode = lobby.mode || 'race';
   const qCount = lobby.question_count || 10;
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
-  const modeName = {race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode] || mode;
+  const modeName = {race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔',slowreveal:'Slow Reveal 👁️'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
   const metaEl = card.querySelector('.lobby-list-meta');
   if (metaEl) {
