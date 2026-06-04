@@ -457,6 +457,16 @@ h1 .hi{color:var(--accent)}
 .mp-score-pts{font-family:'Lilita One',cursive;font-size:14px;color:var(--accent)}
 /* FINAL STANDINGS */
 .standing-row{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:13px}
+/* ── SLOW REVEAL ── */
+.sr-word{opacity:0;transition:opacity .4s ease;display:inline}
+.sr-word.visible{opacity:1}
+.sr-buzz-btn{font-family:'Lilita One',cursive;font-size:18px;background:var(--accent);border:none;padding:14px 32px;border-radius:14px;cursor:pointer;color:#fff;display:flex;align-items:center;gap:10px;margin:18px auto 0;transition:opacity .2s,transform .15s;letter-spacing:.3px}
+.sr-buzz-btn:hover:not(:disabled){opacity:.88;transform:translateY(-2px)}
+.sr-buzz-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.sr-buzzing-banner{text-align:center;padding:10px 16px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;font-size:13px;font-weight:800;color:var(--accent);margin-top:14px}
+.sr-countdown{font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);text-align:center;margin-top:8px;line-height:1}
+.sr-locked-badge{font-size:11px;font-weight:800;color:#f87171;background:#f8717115;border:1px solid #f8717155;border-radius:99px;padding:2px 10px;display:inline-flex;align-items:center;gap:4px}
+
 .standing-pos{font-family:'Lilita One',cursive;font-size:22px;width:32px;text-align:center;flex-shrink:0}
 
 footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;z-index:10;backdrop-filter:blur(12px)}
@@ -1233,6 +1243,31 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
       <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
       <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
+      <div class="mode-card" onclick="setLobbyMode('slowreveal',this)"><div class="mode-icon"><i class="ti ti-eye" style="font-size:26px;color:var(--accent)"></i></div><div class="mode-title">Slow Reveal</div><div class="mode-desc">The question fades in word by word. Buzz in when you think you know — but if you're wrong, you're locked out for the round.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> First to answer · buzz to lock in</div></div>
+    </div>
+  </div>
+
+  <!-- SLOW REVEAL TARGET SCORE MODAL -->
+  <div id="srTargetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:20px">
+      <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);text-align:center">👁️ Slow Reveal</div>
+      <div style="font-size:13px;color:var(--muted);text-align:center;margin-top:-8px">First player to reach the target score wins.</div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Target Score</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="srTargetGrid">
+          <div class="q-count-opt" data-sr="5" onclick="selectSrTarget(5,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">5</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+          <div class="q-count-opt selected" data-sr="10" onclick="selectSrTarget(10,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+          <div class="q-count-opt" data-sr="15" onclick="selectSrTarget(15,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+          <div class="q-count-opt" data-sr="20" onclick="selectSrTarget(20,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <input class="q-count-custom-input" id="srTargetCustom" type="number" min="1" max="50" placeholder="Custom…" oninput="onCustomSrTarget(this)" onfocus="onCustomSrTargetFocus(this)" style="flex:1">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeSrTargetModal()">Cancel</button>
+        <button class="action-btn primary" onclick="confirmSrTarget()"><i class="ti ti-check" style="font-size:15px"></i> Confirm</button>
+      </div>
     </div>
   </div>
 
@@ -4681,6 +4716,7 @@ function rtSubscribe(lobbyId){
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
+    if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
@@ -4755,6 +4791,39 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
+  });
+  // ── Slow Reveal broadcasts ──────────────────────────────────────
+  rtChannel.on('broadcast',{event:'sr_question'},({payload})=>{
+    if(isHost)return; // host already started its own reveal
+    currentQData=payload.qData;qIndex=payload.qIndex;
+    document.getElementById('mpQLoading').style.display='none';
+    document.getElementById('mpQCardFeedback').style.display='none';
+    renderMPHUD();
+    srStartReveal(payload.qData,payload.startTime);
+  });
+  rtChannel.on('broadcast',{event:'sr_buzz'},({payload})=>{
+    if(!isHost)return;
+    srHandleBuzz(payload.name,payload.wordIndex);
+  });
+  rtChannel.on('broadcast',{event:'sr_buzz_granted'},({payload})=>{
+    if(isHost)return; // host already applied
+    srApplyBuzzGranted(payload.name,payload.wordIndex);
+  });
+  rtChannel.on('broadcast',{event:'sr_buzz_result'},({payload})=>{
+    if(isHost)return; // host already applied
+    srApplyBuzzResult(payload.name,payload.correct,payload.timedOut,payload.answer);
+  });
+  rtChannel.on('broadcast',{event:'sr_next_round'},({payload})=>{
+    if(isHost)return;
+    qIndex=payload.qIndex;
+    srClearReveal();
+    document.getElementById('mpQCardFeedback').style.display='none';
+    document.getElementById('mpAnswersGrid').innerHTML='';
+    document.getElementById('mpQuestionText').style.display='none';
+    document.getElementById('mpQLoading').style.display='flex';
+    const qCard=document.querySelector('#page-mp-quiz .q-card');
+    if(qCard)qCard.classList.remove('answered');
+    renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'game_cancelled'},()=>{
     if(isHost)return; // host handles this in mpCancelCountdown directly
@@ -4858,7 +4927,8 @@ function rtSubscribe(lobbyId){
     } else {
       // ── Final commit: host confirmed settings ─────────────────────────
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
-      if(payload.questionCount)selectedQuestionLimit=payload.questionCount;
+      if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
+      if(payload.questionCount&&payload.mode!=='slowreveal')selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
@@ -5215,6 +5285,7 @@ function mpCancelCountdown(){
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+  srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
 }
@@ -5451,6 +5522,7 @@ goStep=function(name){
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
 let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
+let srTargetScore=10; // Slow Reveal: first to this many points wins
 
 let heartbeatInterval=null;
 function startHeartbeat(){
@@ -5642,7 +5714,7 @@ function showLobbyToast(msg,type='warning'){
   setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},(type==='danger'?4000:6000));
 }
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
-const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔'};
+const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔',slowreveal:'👁️'};
 
 function refreshLobbyList(){
   const refreshIcon=document.getElementById('lobbyRefreshIcon');
@@ -5770,7 +5842,7 @@ function renderLobbyRoom(){
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
   if(lobbyMaxEl)lobbyMaxEl.textContent=maxPlayers;
   const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
-  const qCountLabel=` · ${selectedQuestionLimit}Q`;
+  const qCountLabel=lobbyMode==='slowreveal'?` · First to ${srTargetScore}`:` · ${selectedQuestionLimit}Q`;
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qCountLabel+timeLimitLabel;
   updateLobbyTopicsLabel();
   const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
@@ -5923,7 +5995,7 @@ function updateLobbyTopicsLabel(){
   }
   el.style.display='block';
 }
-function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':'Hot Potato 🥔'}
+function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':m==='slowreveal'?'Slow Reveal 👁️':'Hot Potato 🥔'}
 function openHowToPlay(){
   const fmtDescs={
     mc:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',
@@ -5935,10 +6007,11 @@ function openHowToPlay(){
   const modeDescs={
     race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts — the longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
     survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going — lose all 3 and you\'re out. Last one standing wins.',
-    hp:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.'
+    hp:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',
+    slowreveal:'The question fades in word by word. Hit Buzz In when you think you know the answer — the reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.'
   };
-  const modeIcons={race:'ti-trophy',survival:'ti-heart',hp:'ti-flame'};
-  const modeEmojis={race:'⚡',survival:'❤️',hp:'🥔'};
+  const modeIcons={race:'ti-trophy',survival:'ti-heart',hp:'ti-flame',slowreveal:'ti-eye'};
+  const modeEmojis={race:'⚡',survival:'❤️',hp:'🥔',slowreveal:'👁️'};
   const fmt=lobbyFormat||'mc';
   const mode=lobbyMode||'race';
   document.getElementById('htpFormatIcon').innerHTML='<i class="ti '+fmtIcons[fmt]+'" style="font-size:20px"></i>';
@@ -5967,6 +6040,9 @@ function setLobbyMode(mode,el){
       pendingLobbyAfterTimeLimit=true;
       showTimeLimitPicker(mode,true);
     },300);
+  } else if(mode==='slowreveal'){
+    // Slow Reveal: show target score picker instead of time limit picker
+    setTimeout(()=>openSrTargetModal(),300);
   } else {
     // Hot Potato skips the time limit picker — flush final state to DB now
     patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
@@ -5993,12 +6069,16 @@ function startLobbyGame(){
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore}});
     // Supabase does not echo broadcasts to the sender, so the host must
     // run its own countdown and transition — non-hosts handle this via the
     // game_started broadcast receiver.
     _origGoStep('mp-quiz');renderMPHUD();
-    mpShowCountdown(()=>{mpHostFetchAndBroadcast();});
+    if(lobbyMode==='slowreveal'){
+      mpShowCountdown(()=>{srHostFetchAndBroadcast();});
+    } else {
+      mpShowCountdown(()=>{mpHostFetchAndBroadcast();});
+    }
   } else {
     _origGoStep('mp-quiz');renderMPHUD();
     mpShowCountdown(()=>{mpLoadQuestion();});
@@ -6270,14 +6350,17 @@ function hpIsMyTurn(){return lobbyMode==='potato'&&hpActivePlayer().name===curre
 function renderMPHUD(){
   const isHP=lobbyMode==='potato';
   const isSurvival=selectedMode==='survival';
+  const isSR=lobbyMode==='slowreveal';
   const active=isHP?hpActivePlayer():null;
   const displayScore=isHP
     ?'🥔 '+active.name+"'s turn"
     :isSurvival
       ? quizHistory.filter(h=>h.correct).length+' correct'
-      : score+' pts';
+      :isSR
+        ? score+' / '+srTargetScore+' pts'
+        : score+' pts';
   document.getElementById('mpScoreDisplay').textContent=displayScore;
-  document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
+  document.getElementById('mpQCount').textContent=isSR?('Q'+(qIndex+1)):('Q'+(qIndex+1));
   const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
   if(selectedMode==='survival'||selectedMode==='potato'){
     const displayLives=isHP?active.lives:lives;
@@ -6550,12 +6633,14 @@ async function mpLoadQuestion(){
 }
 
 function mpEndGame(){
+  srClearReveal();
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
   intentionalLeave=true;
   stopHeartbeat();
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   const isHP=lobbyMode==='potato';
   const isSurvival=selectedMode==='survival';
+  const isSR=lobbyMode==='slowreveal';
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
   const sorted=isHP
     ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
@@ -6566,7 +6651,7 @@ function mpEndGame(){
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
   document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span> — So close!';
   document.getElementById('mpWinnerSub').textContent=iWon
-    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':'You outscored everyone — legendary run!')
+    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':isSR?'First to '+srTargetScore+' — you buzzed in like a pro!':'You outscored everyone — legendary run!')
     :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
   sorted.forEach((p,i)=>{
@@ -6576,7 +6661,7 @@ function mpEndGame(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
       :`<div class="lb-score">${p.score} pts</div>`;
-    const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):(getRank(p.score).emoji+' '+getRank(p.score).title);
+    const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):(getRank(p.score).emoji+' '+getRank(p.score).title);
     row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
@@ -6584,6 +6669,345 @@ function mpEndGame(){
   renderMpRecap();
   _origGoStep('mp-results');applyTheme();
 }
+
+// ── SLOW REVEAL MODE ──────────────────────────────────────────
+// State
+let srRevealInterval=null;   // drives word-by-word reveal on each client independently
+let srWordIndex=0;           // how many words have been revealed so far
+let srWords=[];              // question split into words
+let srStartTime=0;           // epoch ms when reveal started (from host broadcast)
+let srBuzzedPlayer=null;     // name of the player currently answering, or null
+let srLockedPlayers=[];      // players locked out this round
+let srBuzzCountdown=null;    // interval for the 5s answer countdown
+let srBuzzTimeLeft=0;        // seconds remaining for the buzzing player
+const SR_WORD_INTERVAL=700;  // ms between each word appearing (tune here)
+
+// ── SR target score picker ─────────────────────────────────────
+function openSrTargetModal(){
+  // Sync current selection
+  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(el=>{
+    el.classList.toggle('selected',parseInt(el.dataset.sr)===srTargetScore);
+  });
+  const custom=document.getElementById('srTargetCustom');
+  const presets=[5,10,15,20];
+  if(presets.includes(srTargetScore)){custom.value='';}
+  else{custom.value=srTargetScore;}
+  document.getElementById('srTargetModal').style.display='flex';
+  applyTheme();
+}
+function closeSrTargetModal(){
+  document.getElementById('srTargetModal').style.display='none';
+}
+function selectSrTarget(val,el){
+  srTargetScore=val;
+  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  if(el)el.classList.add('selected');
+  document.getElementById('srTargetCustom').value='';
+  document.getElementById('srTargetCustom').classList.remove('selected');
+}
+function onCustomSrTarget(input){
+  const raw=parseInt(input.value);
+  if(isNaN(raw)||input.value==='')return;
+  const val=Math.max(1,Math.min(50,raw));
+  srTargetScore=val;
+  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+  if(raw>50)input.value=50;
+}
+function onCustomSrTargetFocus(input){
+  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+}
+function confirmSrTarget(){
+  closeSrTargetModal();
+  // Flush final confirmed settings to DB and broadcast to clients
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:srTargetScore,time_limit:raceTimeLimit});
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:srTargetScore,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false,srTargetScore:srTargetScore}});}
+  goStep('lobby-room');
+}
+
+// ── SR host: fetch question and broadcast to all clients ───────
+async function srHostFetchAndBroadcast(){
+  document.getElementById('mpQLoading').style.display='flex';
+  const qData=await fetchQuestion();
+  currentQData=qData;
+  const startTime=Date.now()+500; // 500ms buffer so clients start in sync
+  rtChannel.send({type:'broadcast',event:'sr_question',payload:{qData,qIndex,startTime}});
+  // Host runs its own reveal (Supabase doesn't echo to sender)
+  srStartReveal(qData,startTime);
+}
+
+// ── SR: start the reveal on a client (host and non-host alike) ─
+function srStartReveal(qData,startTime){
+  srClearReveal();
+  srBuzzedPlayer=null;
+  srLockedPlayers=[];
+  srBuzzTimeLeft=0;
+  srWords=qData.question.split(' ');
+  srWordIndex=0;
+  answered=false;
+  currentQData=qData;
+
+  // Build word spans in the question area
+  const textEl=document.getElementById('mpQuestionText');
+  textEl.style.display='block';
+  document.getElementById('mpQLoading').style.display='none';
+  document.getElementById('mpQCardFeedback').style.display='none';
+  const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
+  const qCard=document.querySelector('#page-mp-quiz .q-card');
+  if(qCard)qCard.classList.remove('answered');
+
+  textEl.innerHTML=srWords.map((w,i)=>
+    `<span class="sr-word" id="srw${i}">${w} </span>`
+  ).join('');
+
+  // Render buzz button (disabled if locked out this round)
+  srRenderBuzzArea();
+
+  // Schedule each word reveal relative to startTime
+  const now=Date.now();
+  const delay=Math.max(0,startTime-now);
+  srRevealInterval=setInterval(()=>{
+    if(srBuzzedPlayer)return; // frozen while someone is answering
+    const elapsed=Date.now()-startTime;
+    const targetIdx=Math.floor(elapsed/SR_WORD_INTERVAL);
+    while(srWordIndex<=targetIdx&&srWordIndex<srWords.length){
+      const el=document.getElementById('srw'+srWordIndex);
+      if(el)el.classList.add('visible');
+      srWordIndex++;
+    }
+    if(srWordIndex>=srWords.length){
+      // All words revealed — end round with no point
+      clearInterval(srRevealInterval);srRevealInterval=null;
+      srRoundEnd(null,null);
+    }
+  },80);
+}
+
+// ── SR: render the buzz button / answer input area ─────────────
+function srRenderBuzzArea(){
+  const grid=document.getElementById('mpAnswersGrid');
+  grid.innerHTML='';
+  const isLocked=srLockedPlayers.includes(currentUser);
+  const isBuzzing=srBuzzedPlayer===currentUser;
+  const someoneElseBuzzing=srBuzzedPlayer&&srBuzzedPlayer!==currentUser;
+
+  if(isBuzzing){
+    // Show answer input + countdown
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`
+      <div class="sr-buzzing-banner"><i class="ti ti-bolt" style="font-size:13px"></i> You buzzed in! Type fast!</div>
+      <div class="sr-countdown" id="srCountdownDisplay">${srBuzzTimeLeft}</div>
+      <div class="type-wrap" style="margin-top:12px">
+        <div class="type-input-row">
+          <input id="mpTypeInput" class="type-input" type="text" placeholder="Type your answer…" autocomplete="off">
+          <button class="type-submit" id="mpTypeSubmitBtn" onclick="srSubmitAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button>
+        </div>
+      </div>`;
+    grid.appendChild(wrap);applyTheme();
+    document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')srSubmitAnswer();});
+    document.getElementById('mpTypeInput').focus();
+  } else if(someoneElseBuzzing){
+    // Show frozen state for other players
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`<div class="sr-buzzing-banner">⏳ <strong>${srBuzzedPlayer}</strong> is answering…</div>`;
+    grid.appendChild(wrap);
+  } else {
+    // Show buzz button
+    const btn=document.createElement('button');
+    btn.className='sr-buzz-btn';
+    btn.id='srBuzzBtn';
+    btn.disabled=isLocked;
+    btn.innerHTML=isLocked
+      ?'<span class="sr-locked-badge"><i class="ti ti-lock" style="font-size:11px"></i> Locked out</span>'
+      :'<i class="ti ti-bolt" style="font-size:18px"></i> Buzz In';
+    btn.onclick=()=>srBuzzIn();
+    grid.appendChild(btn);
+  }
+}
+
+// ── SR: player presses buzz ────────────────────────────────────
+function srBuzzIn(){
+  if(srBuzzedPlayer||srLockedPlayers.includes(currentUser))return;
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'sr_buzz',payload:{name:currentUser,wordIndex:srWordIndex}});
+  }
+  // Host also handles its own buzz (no echo)
+  if(isHost)srHandleBuzz(currentUser,srWordIndex);
+}
+
+// ── SR: host validates buzz and broadcasts grant ───────────────
+function srHandleBuzz(name,wordIndex){
+  if(!isHost)return;
+  if(srBuzzedPlayer)return; // already someone answering
+  if(srLockedPlayers.includes(name))return; // locked out player
+  // Grant the buzz
+  rtChannel.send({type:'broadcast',event:'sr_buzz_granted',payload:{name,wordIndex}});
+  // Host processes its own grant (no echo)
+  srApplyBuzzGranted(name,wordIndex);
+}
+
+// ── SR: apply buzz granted on all clients ─────────────────────
+function srApplyBuzzGranted(name,wordIndex){
+  srBuzzedPlayer=name;
+  // Freeze reveal at wordIndex
+  clearInterval(srRevealInterval);srRevealInterval=null;
+  // Reveal exactly up to wordIndex
+  for(let i=0;i<Math.min(wordIndex,srWords.length);i++){
+    const el=document.getElementById('srw'+i);
+    if(el)el.classList.add('visible');
+  }
+  srRenderBuzzArea();
+  // Start 5s countdown on all clients (display only on the buzzer's client)
+  srBuzzTimeLeft=5;
+  const countEl=()=>document.getElementById('srCountdownDisplay');
+  if(countEl())countEl().textContent=srBuzzTimeLeft;
+  srBuzzCountdown=setInterval(()=>{
+    srBuzzTimeLeft--;
+    if(countEl())countEl().textContent=srBuzzTimeLeft;
+    if(srBuzzTimeLeft<=0){
+      clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+      // Timeout — host triggers result
+      if(isHost){
+        rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:srBuzzedPlayer,correct:false,timedOut:true,answer:'(timed out)'}});
+        srApplyBuzzResult(srBuzzedPlayer,false,true,'(timed out)');
+      }
+    }
+  },1000);
+}
+
+// ── SR: buzzing player submits answer ─────────────────────────
+function srSubmitAnswer(){
+  if(srBuzzedPlayer!==currentUser)return;
+  clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+  const input=document.getElementById('mpTypeInput');
+  const userAns=input?input.value.trim():'';
+  if(!userAns)return;
+  const correct=checkAnswer(userAns,currentQData);
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:currentUser,correct,timedOut:false,answer:userAns}});
+  }
+  if(isHost)srApplyBuzzResult(currentUser,correct,false,userAns);
+}
+
+// ── SR: apply buzz result on all clients ──────────────────────
+function srApplyBuzzResult(name,correct,timedOut,userAns){
+  clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+  const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
+  if(correct){
+    // Award point
+    const p=lobbyPlayers.find(lp=>lp.name===name);
+    if(p)p.score++;
+    if(name===currentUser)score++;
+    renderMPHUD();
+    srShowFeedback(true,name,correctAns,userAns,false);
+    // Check win condition
+    const winner=lobbyPlayers.find(lp=>lp.score>=srTargetScore);
+    if(winner){
+      if(isHost){
+        rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        mpEndGame();
+      }
+      return;
+    }
+    // Next question after short delay
+    mpStartAutoNext(()=>{
+      if(!isHost)return;
+      qIndex++;
+      rtChannel.send({type:'broadcast',event:'sr_next_round',payload:{qIndex}});
+      srHostFetchAndBroadcast();
+    });
+  } else {
+    // Wrong or timed out — lock out player, resume reveal
+    srBuzzedPlayer=null;
+    if(!srLockedPlayers.includes(name))srLockedPlayers.push(name);
+    srShowFeedback(false,name,correctAns,userAns,timedOut);
+    // Resume reveal from where it stopped
+    const startTime=Date.now()-(srWordIndex*SR_WORD_INTERVAL);
+    srRevealInterval=setInterval(()=>{
+      const elapsed=Date.now()-startTime;
+      const targetIdx=Math.floor(elapsed/SR_WORD_INTERVAL);
+      while(srWordIndex<=targetIdx&&srWordIndex<srWords.length){
+        const el=document.getElementById('srw'+srWordIndex);
+        if(el)el.classList.add('visible');
+        srWordIndex++;
+      }
+      if(srWordIndex>=srWords.length){
+        clearInterval(srRevealInterval);srRevealInterval=null;
+        srRoundEnd(null,correctAns);
+      }
+    },80);
+    srRenderBuzzArea();
+  }
+}
+
+// ── SR: show inline feedback ───────────────────────────────────
+function srShowFeedback(correct,name,correctAns,userAns,timedOut){
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
+  const qCard=document.querySelector('#page-mp-quiz .q-card');
+  if(correct&&qCard)qCard.classList.add('answered');
+  document.getElementById('mpFbIcon').innerHTML=correct
+    ?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>'
+    :'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
+  const isMe=name===currentUser;
+  document.getElementById('mpFbTitle').textContent=correct
+    ?(isMe?'Correct! +1 point':name+' got it!')
+    :timedOut?(isMe?'Time\'s up — locked out!':name+' ran out of time!')
+    :(isMe?'Wrong — locked out!':name+' missed it!');
+  const ya=document.getElementById('mpFbYourAns');
+  if(!correct&&userAns&&userAns!=='(timed out)'){ya.textContent='Answer given: '+userAns;ya.style.display='block';}
+  else{ya.style.display='none';}
+  document.getElementById('mpFbPts').textContent=correct?(isMe?'':'Reveal continues for others…'):'';
+  const mpSubEl=document.getElementById('mpFbSubmittedBy');
+  if(mpSubEl)mpSubEl.style.display='none';
+  // Show correct answer in question card when wrong
+  const mpQText=document.getElementById('mpQuestionText');
+  if(!correct){
+    const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+    mpQText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+  }
+  applyTheme();
+}
+
+// ── SR: round ends with no correct answer ─────────────────────
+function srRoundEnd(winner,correctAns){
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
+  document.getElementById('mpFbIcon').innerHTML='<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
+  document.getElementById('mpFbTitle').textContent='No one got it!';
+  document.getElementById('mpFbPts').textContent='';
+  const ya=document.getElementById('mpFbYourAns');ya.style.display='none';
+  const mpSubEl=document.getElementById('mpFbSubmittedBy');if(mpSubEl)mpSubEl.style.display='none';
+  // Reveal full question and answer
+  srWords.forEach((_,i)=>{const el=document.getElementById('srw'+i);if(el)el.classList.add('visible');});
+  const mpQText=document.getElementById('mpQuestionText');
+  const ans=correctAns||(currentQData?.options?currentQData.options[currentQData.answer]:currentQData?.answer)||'?';
+  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  mpQText.innerHTML=`<div class="q-answer-reveal">${ans}</div>${subBy}`;
+  // Clear buzz area
+  document.getElementById('mpAnswersGrid').innerHTML='';
+  mpStartAutoNext(()=>{
+    if(!isHost)return;
+    qIndex++;
+    rtChannel.send({type:'broadcast',event:'sr_next_round',payload:{qIndex}});
+    srHostFetchAndBroadcast();
+  });
+  applyTheme();
+}
+
+// ── SR: clear all reveal state ─────────────────────────────────
+function srClearReveal(){
+  clearInterval(srRevealInterval);srRevealInterval=null;
+  clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+  clearInterval(mpAutoNextInterval);mpAutoNextInterval=null;
+  srBuzzedPlayer=null;
+  srLockedPlayers=[];
+  srBuzzTimeLeft=0;
+  srWordIndex=0;
+  srWords=[];
+}
+
+// ── SR: settings_changed handler patch (receives srTargetScore) ─
+// (handled inline in the existing settings_changed broadcast receiver below)
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
 let isAdmin=false;
