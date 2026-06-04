@@ -4690,7 +4690,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
-    if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
+    if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||(selectedMode==='survival'&&payload.lives<=0)||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
     renderMPScoreboard();
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
@@ -4711,7 +4711,7 @@ function rtSubscribe(lobbyId){
               else mpEndGame();return;
             }
           } else {
-            if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+            if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
             if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           }
           qIndex++;
@@ -6454,7 +6454,7 @@ function mpTimeOut(){
         else mpEndGame();return;
       }
     } else {
-      if(selectedMode==='survival'&&lives<=0){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
     }
     qIndex++;
