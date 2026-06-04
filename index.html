@@ -5901,7 +5901,7 @@ function setLobbyFormat(fmt,el){
   document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
   el.style.borderColor='var(--accent)';
   // Write format to DB immediately so joining players see correct info
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   setTimeout(()=>goStep('lobby-mode'),300);
 }
@@ -6049,7 +6049,7 @@ function setLobbyMode(mode,el){
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+` · ${selectedQuestionLimit}Q`;
   // Write mode+format to DB immediately so joining players see correct info
   // even if host is still mid-flow on topic/settings pages
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
   // Always go to topic picker next — final settings modal fires after topic is confirmed
   setTimeout(()=>openLobbyTopicPage(),300);
@@ -6721,7 +6721,7 @@ function onCustomSrTargetFocus(input){
 }
 function confirmSrTarget(){
   closeSrTargetModal();
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:srTargetScore,time_limit:raceTimeLimit});
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:srTargetScore});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:srTargetScore,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false,srTargetScore:srTargetScore}});}
   goStep('lobby-room');
 }
