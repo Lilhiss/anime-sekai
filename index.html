@@ -3455,7 +3455,7 @@ function renderHUD(){
 async function fetchQuestion(){
   const bankTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
   const banked=await sbGetQuestion(selectedFormat,bankTopic);
-  if(banked){if(currentUserId)sbMarkSeen(currentUserId,banked.id);return banked;}
+  if(banked){/*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/return banked;}
   return getFallback();
 }
 
@@ -3589,6 +3589,7 @@ async function sbGetQuestion(format,topic){
     // else: general — no filter, full pool
     // Collect seen question ids (DB for logged-in users + sessionStorage for guests)
     const seenQs=quizHistory.map(h=>h.q);
+    /* SEEN-QUESTIONS DISABLED — re-enable by uncommenting this block and the sbMarkSeen call in fetchQuestion
     let seenIds=guestSeenIds(); // always start with guest-session seen list
     if(currentUserId){
       const seenRes=await fetch(
@@ -3604,6 +3605,8 @@ async function sbGetQuestion(format,topic){
     }
     // Build exclusion filter
     const excludeFilter=seenIds.length?`&id=not.in.(${seenIds.join(',')})`:'';
+    */
+    const excludeFilter='';
     // Fetch a pool of unseen questions and pick one client-side at random.
     // PostgREST does not support order=random() so shuffling is done here instead.
     const poolLimit=100;
@@ -3636,10 +3639,11 @@ async function sbMarkSeen(userId,questionId){
   guestAddSeen(questionId);
   if(!userId)return;
   try{
+    const token=await rtGetAuthToken();
     await fetch(`${SUPABASE_URL}/rest/v1/seen_questions`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
       },
       body:JSON.stringify({user_id:userId,question_id:questionId})
