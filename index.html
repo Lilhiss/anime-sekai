@@ -4325,7 +4325,7 @@ function confirmTimeLimit(){
   if(pendingLobbyAfterTimeLimit){
     pendingLobbyAfterTimeLimit=false;
     // Flush final confirmed format+mode to DB so the lobby list reflects the real state
-    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   } else {
@@ -5994,7 +5994,7 @@ function proceedFromLobbyTopic(){
     pendingLobbyAfterTimeLimit=true;
     showTimeLimitPicker(lobbyMode,true);
   } else {
-    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit,time_limit:raceTimeLimit});
+    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
     if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
     goStep('lobby-room');
   }
