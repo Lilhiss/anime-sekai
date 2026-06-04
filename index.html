@@ -1610,12 +1610,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="stat-card"><div class="stat-val" id="adminStatReported">—</div><div class="stat-label">Reported</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatTotal">—</div><div class="stat-label">Total Questions</div></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px" class="slide-in">
-        <div class="admin-tabs">
-          <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
-          <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
-        </div>
-        <button class="admin-btn view-reports" id="adminRefreshBtn" onclick="adminRefresh()" style="margin-left:auto"><i class="ti ti-refresh" style="font-size:13px"></i> Refresh</button>
+      <div class="admin-tabs slide-in">
+        <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
+        <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
@@ -2167,6 +2164,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }
       }
       updateNav();
+      await checkAdminRole();
     }
   }
 });
@@ -6601,14 +6599,6 @@ function goAdmin(){
   _origGoStep('admin');
   loadAdminStats();
   loadAdminQuestions();
-}
-
-async function adminRefresh(){
-  const btn=document.getElementById('adminRefreshBtn');
-  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-refresh" style="font-size:13px;animation:spin 1s linear infinite"></i> Refreshing…';}
-  await loadAdminStats();
-  await loadAdminQuestions();
-  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-refresh" style="font-size:13px"></i> Refresh';}
 }
 
 async function loadAdminStats(){
