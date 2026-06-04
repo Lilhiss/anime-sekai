@@ -2164,7 +2164,6 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }
       }
       updateNav();
-      await checkAdminRole();
     }
   }
 });
@@ -2268,7 +2267,6 @@ function updateNav(){
       </div>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
     document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
-    if(isAdmin){const al=document.getElementById('adminNavLink');if(al)al.style.display='inline-flex';}
   } else {
     nr.innerHTML=originalNavHTML;
   }
