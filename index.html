@@ -1610,9 +1610,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="stat-card"><div class="stat-val" id="adminStatReported">—</div><div class="stat-label">Reported</div></div>
         <div class="stat-card"><div class="stat-val" id="adminStatTotal">—</div><div class="stat-label">Total Questions</div></div>
       </div>
-      <div class="admin-tabs slide-in">
-        <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
-        <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
+      <div style="display:flex;align-items:center;gap:10px" class="slide-in">
+        <div class="admin-tabs">
+          <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
+          <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
+        </div>
+        <button class="admin-btn view-reports" id="adminRefreshBtn" onclick="adminRefresh()" style="margin-left:auto"><i class="ti ti-refresh" style="font-size:13px"></i> Refresh</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
@@ -2164,6 +2167,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }
       }
       updateNav();
+      await checkAdminRole();
     }
   }
 });
@@ -2267,6 +2271,8 @@ function updateNav(){
       </div>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
     document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
+    // Re-apply admin visibility after every nav rebuild — innerHTML wipes inline styles
+    if(isAdmin){const al=document.getElementById('adminNavLink');if(al)al.style.display='inline-flex';}
   } else {
     nr.innerHTML=originalNavHTML;
   }
@@ -4332,16 +4338,10 @@ async function submitReport(){
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
-    await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
-    }).catch(()=>{});
+    await sb.from('question_reports').insert({question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null}).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('reportDrop').classList.remove('open');
-    soloAutoNextPaused=false;
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
+  setTimeout(()=>{document.getElementById('reportDrop').classList.remove('open');soloAutoNextPaused=false;btn.textContent='Submit report';btn.disabled=false;},2000);
 }
 
 // ── SUPABASE REALTIME ─────────────────────────────────────────
@@ -5247,15 +5247,10 @@ async function submitMpReport(){
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
-    await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
-    }).catch(()=>{});
+    await sb.from('question_reports').insert({question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null}).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('mpReportDrop').classList.remove('open');
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
+  setTimeout(()=>{document.getElementById('mpReportDrop').classList.remove('open');btn.textContent='Submit report';btn.disabled=false;},2000);
 }
 
 let mpRecapOpen=true;
@@ -5299,15 +5294,10 @@ async function submitMpRecapReport(i,qid){
       const {data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
     });
-    await sb.from('question_reports').insert({
-      question_id:id,reason,detail:detail||null,reported_by:currentUser||null
-    }).catch(()=>{});
+    await sb.from('question_reports').insert({question_id:id,reason,detail:detail||null,reported_by:currentUser||null}).catch(()=>{});
   }
   btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('mpRecapDrop_'+i)?.classList.remove('open');
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
+  setTimeout(()=>{document.getElementById('mpRecapDrop_'+i)?.classList.remove('open');btn.textContent='Submit report';btn.disabled=false;},2000);
 }
 
 // ── LEADERBOARD ──────────────────────────────────────────────
@@ -6135,9 +6125,7 @@ async function leaveLobbyRoom(){
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
-    isHost=false;
-    goStep('landing');
-    return;
+    isHost=false;goStep('landing');return;
   }
   const token=await rtGetAuthToken();
   let lid=null;
@@ -6169,8 +6157,7 @@ async function leaveLobbyRoom(){
     }
   }
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
-  isHost=false;
-  lobbyIsPrivate=false;
+  isHost=false;lobbyIsPrivate=false;
   goStep('landing');
 }
 let _transferTarget=null;
@@ -6600,6 +6587,14 @@ function goAdmin(){
   loadAdminQuestions();
 }
 
+async function adminRefresh(){
+  const btn=document.getElementById('adminRefreshBtn');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-refresh" style="font-size:13px;animation:spin 1s linear infinite"></i> Refreshing…';}
+  await loadAdminStats();
+  await loadAdminQuestions();
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-refresh" style="font-size:13px"></i> Refresh';}
+}
+
 async function loadAdminStats(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   let all=[];
@@ -6645,22 +6640,17 @@ function buildAdminCard(q){
   const card=document.createElement('div');
   card.className='admin-q-card'+(isReported?' reported':'');
   card.id=`adminCard_${q.id}`;
-
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${q.answer}</div>`:'';
   const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
   const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
-  const reportBadge=q.report_count>0
-    ?`<span class="admin-report-counter"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${q.report_count} report${q.report_count===1?'':'s'}</span>`
-    :'';
-
+  const reportBadge=q.report_count>0?`<span class="admin-report-counter"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${q.report_count} report${q.report_count===1?'':'s'}</span>`:'';
   const actionsHtml=isReported
     ?`<button class="admin-btn view-reports" onclick="toggleAdminReports('${q.id}')"><i class="ti ti-chevron-down" style="font-size:12px" id="adminReportChevron_${q.id}"></i> View Reports</button>
        <button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
     :`<button class="admin-btn approve" onclick="adminApprove('${q.id}')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`;
-
   card.innerHTML=`
     <div>
       <div class="admin-q-text">${q.question}</div>
@@ -6675,7 +6665,7 @@ function buildAdminCard(q){
       ${reportBadge}
     </div>
     <div class="admin-actions">${actionsHtml}</div>
-    ${isReported?`<div class="admin-report-details" id="adminReportDetails_${q.id}"><div style="font-size:11px;color:var(--muted)">Loading reports…</div></div>`:''}`;
+    ${isReported?`<div class="admin-report-details" id="adminReportDetails_${q.id}"></div>`:''}`;
   return card;
 }
 
@@ -6683,24 +6673,13 @@ async function toggleAdminReports(qid){
   const panel=document.getElementById(`adminReportDetails_${qid}`);
   const chevron=document.getElementById(`adminReportChevron_${qid}`);
   const isOpen=panel.classList.contains('open');
-  if(isOpen){
-    panel.classList.remove('open');
-    if(chevron)chevron.className='ti ti-chevron-down';
-    return;
-  }
+  if(isOpen){panel.classList.remove('open');if(chevron)chevron.className='ti ti-chevron-down';return;}
   panel.classList.add('open');
   if(chevron)chevron.className='ti ti-chevron-up';
-  // Fetch reports for this question
-  panel.innerHTML='<div style="font-size:11px;color:var(--muted)">Loading reports…</div>';
+  panel.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px">Loading reports…</div>';
   try{
-    const{data,error}=await sb.from('question_reports')
-      .select('reason,detail,reported_by,reported_at')
-      .eq('question_id',qid)
-      .order('reported_at',{ascending:false});
-    if(error||!data?.length){
-      panel.innerHTML='<div style="font-size:11px;color:var(--muted)">No detailed reports on file.</div>';
-      return;
-    }
+    const{data,error}=await sb.from('question_reports').select('reason,detail,reported_by,reported_at').eq('question_id',qid).order('reported_at',{ascending:false});
+    if(error||!data?.length){panel.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px">No detailed reports on file.</div>';return;}
     const reasonLabels={wrong:'Wrong answer marked correct',unclear:'Unclear or ambiguous',outdated:'Information is outdated',duplicate:'Duplicate question',other:'Other'};
     panel.innerHTML=data.map(r=>{
       const date=r.reported_at?new Date(r.reported_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
@@ -6714,9 +6693,7 @@ async function toggleAdminReports(qid){
       </div>`;
     }).join('');
     applyTheme();
-  }catch(e){
-    panel.innerHTML='<div style="font-size:11px;color:#f87171">Could not load reports.</div>';
-  }
+  }catch(e){panel.innerHTML='<div style="font-size:11px;color:#f87171;padding:4px">Could not load reports.</div>';}
 }
 
 async function adminApprove(id){
@@ -6726,7 +6703,6 @@ async function adminApprove(id){
 }
 
 async function adminDismiss(id){
-  // Clear report count and delete all report rows — question stays in the bank
   await sb.from('questions').update({report_count:0}).eq('id',id);
   await sb.from('question_reports').delete().eq('question_id',id);
   document.getElementById(`adminCard_${id}`)?.remove();
@@ -6734,7 +6710,6 @@ async function adminDismiss(id){
 }
 
 async function adminDelete(id){
-  // question_reports rows are deleted automatically via ON DELETE CASCADE
   await sb.from('questions').delete().eq('id',id);
   document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
