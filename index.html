@@ -3604,10 +3604,11 @@ async function sbGetQuestion(format,topic){
     }
     // Build exclusion filter
     const excludeFilter=seenIds.length?`&id=not.in.(${seenIds.join(',')})`:'';
-    // Fetch exactly as many questions as the quiz needs, shuffled randomly
-    const fetchLimit=selectedQuestionLimit||10;
+    // Fetch a pool of unseen questions and pick one client-side at random.
+    // PostgREST does not support order=random() so shuffling is done here instead.
+    const poolLimit=100;
     const qRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&order=random()&limit=${fetchLimit}`,
+      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&limit=${poolLimit}`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const data=await qRes.json();
@@ -3615,7 +3616,7 @@ async function sbGetQuestion(format,topic){
       // All questions seen — reset guest list and retry without exclusions
       if(!currentUserId)sessionStorage.removeItem('guest_seen_ids');
       const retryRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}&order=random()&limit=${fetchLimit}`,
+        `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}&limit=${poolLimit}`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
       );
       const retryData=await retryRes.json();
