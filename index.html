@@ -13,8 +13,9 @@
 </head>
 <body>
 <script>
-// Restore theme color synchronously before paint to prevent flash
+// Hide body before paint, apply saved color, then reveal
 (function(){
+  document.body.style.visibility='hidden';
   try{
     var c=localStorage.getItem('animesekai_color');
     var validColors=['blossom','abyss','inferno','jade','arcane'];
@@ -23,6 +24,7 @@
       document.body.setAttribute('data-color',c);
     }
   }catch(e){}
+  document.body.style.visibility='';
 })();
 </script>
 <style>
