@@ -12,22 +12,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 </head>
 <body>
-<script>
-(function(){
-  document.body.style.visibility='hidden';
-  try{
-    var c=localStorage.getItem('animesekai_color')||'midnight';
-    var valid=['midnight','blossom','abyss','inferno','jade','arcane'];
-    if(valid.indexOf(c)===-1)c='midnight';
-    document.body.setAttribute('data-theme','dark');
-    document.body.setAttribute('data-color',c);
-  }catch(e){
-    document.body.setAttribute('data-theme','dark');
-    document.body.setAttribute('data-color','midnight');
-  }
-  document.body.style.visibility='';
-})();
-</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -35,7 +19,6 @@
   --text:#e8e4f0;--muted:#9990b8;--faint:#2a2745;--accent:#a78bfa;--accent-soft:#1e1c2e;
   --orb1:#a78bfa1a;--orb2:#60a5fa10;--orb3:#f472b60d;--card-bg:#1a182899;--card-border:#2e2b45cc;
 }
-body{--bg:#0f0e1a;--bg2:#1a1828;--bg3:#252336;--border:#2e2b45;--border2:#3d3960;--text:#e8e4f0;--muted:#9990b8;--faint:#2a2745;--accent:#a78bfa;--accent-soft:#1e1c2e;--orb1:#a78bfa1a;--orb2:#60a5fa10;--orb3:#f472b60d;--card-bg:#1a182899;--card-border:#2e2b45cc}
 [data-theme="dark"][data-color="blossom"]{--accent:#f472b6;--accent-soft:#2a1020;--bg:#1a0e14;--bg2:#261520;--bg3:#32202c;--border:#4a2a3a;--border2:#6b3a50;--text:#f5e4ec;--muted:#c08090;--faint:#3a1828;--orb1:#f472b620;--card-bg:#26152099;--card-border:#4a2a3acc}
 [data-theme="dark"][data-color="abyss"]{--accent:#38bdf8;--accent-soft:#0a1525;--bg:#0a0f1e;--bg2:#0f1a2e;--bg3:#162440;--border:#1e3050;--border2:#2a4570;--text:#dceeff;--muted:#6a9ac0;--faint:#0e2040;--orb1:#38bdf820;--card-bg:#0f1a2e99;--card-border:#1e3050cc}
 [data-theme="dark"][data-color="inferno"]{--accent:#fb923c;--accent-soft:#1f1008;--bg:#1a0e08;--bg2:#261508;--bg3:#332010;--border:#4a2e15;--border2:#6b4520;--text:#ffeedd;--muted:#c09060;--faint:#2e1808;--orb1:#fb923c20;--card-bg:#26150899;--card-border:#4a2e15cc}
@@ -2207,7 +2190,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       currentUser   = profile.username;
       currentUserId = session.user.id;
       currentEmail  = profile.email||null;
-      if(profile.theme_color&&accentHex[profile.theme_color]){currentColor=profile.theme_color;try{localStorage.setItem('animesekai_color',profile.theme_color);}catch(e){}}
+      if(profile.theme_color&&accentHex[profile.theme_color])currentColor=profile.theme_color;
       isGuest = false;
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
@@ -2287,7 +2270,7 @@ function applyTheme(){
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'var(--text)':'');
 }
 function toggleMode(){isDark=!isDark;applyTheme()}
-function setColor(c,h,n,el){currentColor=c;try{localStorage.setItem('animesekai_color',c);}catch(e){}document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
+function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
 function toggleDrop(){document.getElementById('drop').classList.toggle('open')}
 function closeDrop(){document.getElementById('drop').classList.remove('open')}
 document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
@@ -2344,7 +2327,6 @@ async function confirmSignOut(){
   closeSignOutModal();
   await sbSignOut().catch(()=>{});
   currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
-  currentColor='midnight';try{localStorage.removeItem('animesekai_color');}catch(e){}
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
@@ -2494,7 +2476,6 @@ async function saveEditProfile(){
     if(newEmail)currentEmail=newEmail;
   }
   currentColor=newColor;
-  try{localStorage.setItem('animesekai_color',newColor);}catch(e){}
   updateNav();renderProfile();applyTheme();
   closeEditProfile();
   const toast=document.createElement('div');
