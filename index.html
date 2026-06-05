@@ -12,32 +12,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 </head>
 <body>
-<script>
-// Hide body, apply saved color + matching bg before first paint, then reveal
-(function(){
-  document.body.style.visibility='hidden';
-  var bg='#0f0e1a',accent='#a78bfa'; // midnight defaults
-  try{
-    var c=localStorage.getItem('animesekai_color');
-    var themeMap={
-      blossom:{bg:'#1a0e14',accent:'#f472b6'},
-      abyss:  {bg:'#0a0f1e',accent:'#38bdf8'},
-      inferno:{bg:'#1a0e08',accent:'#fb923c'},
-      jade:   {bg:'#080f0a',accent:'#4ade80'},
-      arcane: {bg:'#180d15',accent:'#e879f9'}
-    };
-    if(c&&themeMap[c]){
-      document.body.setAttribute('data-theme','dark');
-      document.body.setAttribute('data-color',c);
-      bg=themeMap[c].bg;
-      accent=themeMap[c].accent;
-    }
-  }catch(e){}
-  document.body.style.background=bg;
-  document.body.style.setProperty('--accent',accent);
-  document.body.style.visibility='';
-})();
-</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2211,7 +2185,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       currentUser   = profile.username;
       currentUserId = session.user.id;
       currentEmail  = profile.email||null;
-      if(profile.theme_color&&accentHex[profile.theme_color]){currentColor=profile.theme_color;try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}}
+      if(profile.theme_color&&accentHex[profile.theme_color])currentColor=profile.theme_color;
       isGuest = false;
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
@@ -2291,7 +2265,7 @@ function applyTheme(){
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'var(--text)':'');
 }
 function toggleMode(){isDark=!isDark;applyTheme()}
-function setColor(c,h,n,el){currentColor=c;try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
+function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
 function toggleDrop(){document.getElementById('drop').classList.toggle('open')}
 function closeDrop(){document.getElementById('drop').classList.remove('open')}
 document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
@@ -2348,7 +2322,6 @@ async function confirmSignOut(){
   closeSignOutModal();
   await sbSignOut().catch(()=>{});
   currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
-  currentColor='midnight';try{localStorage.removeItem('animesekai_color');}catch(e){}
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
@@ -2498,7 +2471,6 @@ async function saveEditProfile(){
     if(newEmail)currentEmail=newEmail;
   }
   currentColor=newColor;
-  try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}
   updateNav();renderProfile();applyTheme();
   closeEditProfile();
   const toast=document.createElement('div');
