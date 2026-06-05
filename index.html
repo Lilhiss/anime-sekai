@@ -2413,7 +2413,7 @@ function openEditProfile(){
   if(!currentUser)return;
   // Build color picker
   const picker=document.getElementById('editColorPicker');picker.innerHTML='';
-  const colors={midnight:'#a78bfa',sakura:'#f472b6',ocean:'#38bdf8',ember:'#fb923c',forest:'#4ade80',rose:'#e879f9'};
+  const colors={midnight:'#a78bfa',blossom:'#f472b6',abyss:'#38bdf8',inferno:'#fb923c',jade:'#4ade80',arcane:'#e879f9'};
   Object.entries(colors).forEach(([key,hex])=>{
     const btn=document.createElement('button');
     btn.style.cssText=`width:32px;height:32px;border-radius:50%;background:${hex};border:3px solid ${currentColor===key?'var(--text)':'transparent'};cursor:pointer;transition:border-color .2s;flex-shrink:0`;
