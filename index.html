@@ -163,7 +163,7 @@ h1 .hi{color:var(--accent)}
 .q-card-meta-pill{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
 .q-card-timer-wrap{height:6px;background:var(--bg3);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
 .q-text{font-family:"Lilita One",cursive;font-size:clamp(20px,3vw,28px);color:var(--text);line-height:1.4;overflow-wrap:break-word;width:100%}
-.q-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0}
+.q-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 0;width:100%}
 .spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .q-loading-text{font-size:13px;color:var(--muted);font-weight:700}
@@ -6740,6 +6740,7 @@ function confirmSrTarget(){
 
 async function srHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
+  document.getElementById('mpQuestionText').style.display='none';
   const qData=await fetchQuestion();
   currentQData=qData;
   const startTime=Date.now()+500;
@@ -6778,6 +6779,9 @@ function srStartReveal(qData,startTime){
     if(charIdx<srChars.length&&srChars[charIdx]===' ')charIdx++;
     return `<span class="sr-word-wrap">${chars}</span>`;
   }).join(' ');
+  // Reset timer bar to full at question start; it will drain during the post-reveal window
+  const mpBarSR=document.getElementById('mpTimerBar');
+  if(mpBarSR){mpBarSR.style.width='100%';mpBarSR.className='timer-bar';}
   srRenderBuzzArea();
   srRevealInterval=setInterval(()=>{
     if(srBuzzedPlayer)return;
