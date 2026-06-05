@@ -5039,6 +5039,10 @@ function rtSubscribe(lobbyId){
 
       if(goneUserId===currentUserId){console.log('[presence:leave] skipped — own presence echo');continue;}
 
+      // If the user is still in presenceState they just re-tracked (e.g. avatar change) not a real disconnect
+      const stillPresent=Object.values(rtChannel.presenceState()||{}).flat().some(p=>p.userId===goneUserId);
+      if(stillPresent){console.log('[presence:leave] skipped — user still present (re-track)');continue;}
+
       const token=await rtGetAuthToken();
       const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
 
