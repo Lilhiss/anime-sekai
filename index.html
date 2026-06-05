@@ -943,9 +943,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div id="authGuest" style="display:none;width:100%;max-width:420px" class="slide-in">
       <button class="back-btn" style="margin-bottom:14px" onclick="showAuthMode(null)"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button>
       <div class="form-card">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px">
+          <div onclick="openGuestPfpPicker()" title="Choose a profile picture" style="position:relative;width:84px;height:84px;cursor:pointer;flex-shrink:0">
+            <div id="guestPfpPreview" class="user-avatar" style="width:84px;height:84px;font-size:32px;border-radius:50%;overflow:hidden"><i class="ti ti-camera" style="opacity:.85"></i></div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;border-radius:50%;background:var(--accent);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 6px #0005"><i class="ti ti-camera" style="font-size:14px"></i></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700">Add a photo <span style="opacity:.7;font-weight:600">· optional</span></div>
+        </div>
         <div>
           <label class="form-label">Username</label>
-          <input class="form-input" id="guestName" type="text" placeholder="e.g. ShinobiMaster99" maxlength="20" oninput="clearErr('guestErr')">
+          <input class="form-input" id="guestName" type="text" placeholder="e.g. ShinobiMaster99" maxlength="20" oninput="clearErr('guestErr');renderGuestPfpPreview()">
           <div class="form-hint" style="margin-top:6px">3–20 characters, no spaces.</div>
           <div class="form-err" id="guestErr" style="margin-top:6px"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="guestErrMsg"></span></div>
         </div>
@@ -1564,7 +1571,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Profile Picture</div>
         <button onclick="closePfpPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div class="pfp-tabs" style="display:none">
+      <div class="pfp-tabs">
         <button class="pfp-tab active" id="pfpTabUpload" onclick="switchPfpTab('upload')"><i class="ti ti-upload" style="font-size:13px"></i> Upload</button>
         <button class="pfp-tab" id="pfpTabPreset" onclick="switchPfpTab('preset')"><i class="ti ti-layout-grid" style="font-size:13px"></i> Presets</button>
       </div>
@@ -2616,6 +2623,8 @@ const PFP_PRESETS = [
 let currentPfp = null;        // {type:'preset'|'upload', value: presetId | dataURL}
 let pfpPendingSelection = null; // selection in the modal before saving
 let pfpUploadDataUrl = null;   // data URL for uploaded image
+let guestPendingPfp = null;   // pfp chosen on the guest screen before the account exists
+let pfpGuestEntryMode = false;// when true, the picker stores a pending choice instead of committing
 
 function togglePfpDropdown(e){
   e.stopPropagation();
@@ -2680,6 +2689,7 @@ function openPfpPicker(){
   applyTheme();
 }
 function closePfpPicker(){
+  pfpGuestEntryMode=false;
   document.getElementById('pfpModal').style.display='none';
 }
 function afterPfpSave(){
@@ -2747,6 +2757,7 @@ async function applyRemovePfp(){
   }
 }
 function closePfpPicker(){
+  pfpGuestEntryMode=false;
   document.getElementById('pfpModal').style.display='none';
 }
 function switchPfpTab(tab){
@@ -2947,6 +2958,7 @@ function confirmPfpCrop(){
 }
 
 async function savePfp(){
+  if(pfpGuestEntryMode){savePfpFromGuestEntry();return;}
   if(!pfpPendingSelection){closePfpPicker();return;}
 
   // ── REMOVE: user staged a removal via dropdown ─────────────────
@@ -3089,6 +3101,68 @@ function getNavAvatarHTML(initial){
   const bg=preset?(preset.bg||'var(--accent-soft)'):'';
   const bgStyle=bg?`background:${bg};`:'';
   return `<div class="user-avatar" style="${bgStyle}padding:0;overflow:hidden"><img src="${src}" alt="pfp" style="width:100%;height:100%;object-fit:${preset?'contain':'cover'};border-radius:50%" onerror="this.parentElement.textContent='${initial}'"></div>`;
+}
+
+// ── Guest-screen profile picture (chosen before the account exists) ──
+function openGuestPfpPicker(){
+  pfpGuestEntryMode=true;
+  openPfpPicker();
+  // openPfpPicker assumes a logged-in user; tailor it for the pre-account guest screen
+  const nameEl=document.getElementById('guestName');
+  const initial=((nameEl&&nameEl.value.trim()[0])||'?').toUpperCase();
+  const letterEl=document.getElementById('pfpLetterAvatar');
+  if(letterEl)letterEl.textContent=initial;
+  const guestNote=document.getElementById('pfpGuestSessionNote');
+  if(guestNote)guestNote.style.display='flex';
+  // Reflect a choice already made earlier this session
+  if(guestPendingPfp&&guestPendingPfp.type==='preset'){switchPfpTab('preset');selectPreset(guestPendingPfp.value);}
+  else if(guestPendingPfp&&guestPendingPfp.type==='upload'){
+    pfpUploadBlob=guestPendingPfp.blob;pfpUploadDataUrl=guestPendingPfp.dataUrl;pfpPendingSelection={type:'upload',value:'pending'};
+    document.getElementById('pfpUploadImg').src=guestPendingPfp.dataUrl;
+    document.getElementById('pfpUploadPreview').style.display='block';
+    document.getElementById('pfpUploadZone').style.display='none';
+    document.getElementById('pfpPreviewHint').style.display='block';
+  }
+}
+function savePfpFromGuestEntry(){
+  const sel=pfpPendingSelection;
+  if(sel&&sel.type==='remove')guestPendingPfp=null;
+  else if(sel&&sel.type==='preset')guestPendingPfp={type:'preset',value:sel.value};
+  else if(sel&&sel.type==='upload'&&pfpUploadBlob)guestPendingPfp={type:'upload',blob:pfpUploadBlob,dataUrl:pfpUploadDataUrl};
+  renderGuestPfpPreview();
+  closePfpPicker();
+}
+function renderGuestPfpPreview(){
+  const el=document.getElementById('guestPfpPreview');if(!el)return;
+  const nameEl=document.getElementById('guestName');
+  const initial=((nameEl&&nameEl.value.trim()[0])||'?').toUpperCase();
+  if(guestPendingPfp&&guestPendingPfp.type==='upload'){
+    el.style.background='var(--accent)';
+    el.innerHTML=`<img src="${guestPendingPfp.dataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else if(guestPendingPfp&&guestPendingPfp.type==='preset'){
+    const p=PFP_PRESETS.find(x=>x.id===guestPendingPfp.value);
+    if(p&&p.src){el.style.background=p.bg||'var(--accent)';el.innerHTML=`<img src="${p.src}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:50%" onerror="this.parentElement.textContent='${initial}'">`;}
+    else{el.style.background=(p&&p.bg)||'var(--accent)';el.textContent=p?p.name.split(' ').map(w=>w[0]).join(''):initial;}
+  } else {
+    el.style.background='var(--accent)';
+    if(initial==='?')el.innerHTML='<i class="ti ti-camera" style="opacity:.85"></i>';
+    else el.textContent=initial;
+  }
+}
+async function uploadGuestPfp(blob){
+  try{
+    if(SUPABASE_URL.includes('YOUR_PROJECT'))return; // dev: keep the in-memory data URL
+    const guestPath=`guest/${guestSessionId}/avatar.jpg`;
+    const upRes=await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${guestPath}`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'image/jpeg','x-upsert':'true'},
+      body:blob
+    });
+    if(!upRes.ok)return;
+    const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(guestPath);
+    currentPfp={type:'upload',value:publicUrl+'?t='+Date.now()};
+    updateNav();
+  }catch(e){}
 }
 
 function goStep(name){
@@ -3235,11 +3309,23 @@ async function submitGuest(){
   // Generate a stable session ID for this guest — used as a deterministic
   // storage path so re-uploads overwrite the same file rather than accumulating
   if(!guestSessionId){guestSessionId=Math.random().toString(36).slice(2)+Date.now().toString(36);}
-  // Restore any preset pfp the guest picked in a previous session
-  try{
-    const saved=sessionStorage.getItem('guest_pfp');
-    if(saved)currentPfp=JSON.parse(saved);
-  }catch(e){}
+  // Apply the profile picture chosen on the guest screen (if any)
+  if(guestPendingPfp){
+    if(guestPendingPfp.type==='preset'){
+      currentPfp={type:'preset',value:guestPendingPfp.value};
+      try{sessionStorage.setItem('guest_pfp',JSON.stringify(currentPfp));}catch(e){}
+    } else if(guestPendingPfp.type==='upload'&&guestPendingPfp.blob){
+      currentPfp={type:'upload',value:guestPendingPfp.dataUrl}; // show instantly; upload swaps in a sharable URL
+      uploadGuestPfp(guestPendingPfp.blob);
+    }
+    guestPendingPfp=null;
+  } else {
+    // Restore any pfp the guest picked in a previous session
+    try{
+      const saved=sessionStorage.getItem('guest_pfp');
+      if(saved)currentPfp=JSON.parse(saved);
+    }catch(e){}
+  }
   updateNav();afterAuth();
   btn.disabled=false;btn.innerHTML='<i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena';
 }
