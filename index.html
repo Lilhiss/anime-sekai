@@ -458,6 +458,7 @@ h1 .hi{color:var(--accent)}
 /* FINAL STANDINGS */
 .standing-row{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:13px}
 /* ── SLOW REVEAL ── */
+.sr-word-wrap{display:inline-block;white-space:nowrap}
 .sr-char{opacity:0;transition:opacity .25s ease;display:inline}
 .sr-char.visible{opacity:1}
 .sr-buzz-btn{font-family:'Lilita One',cursive;font-size:18px;background:var(--accent);border:none;padding:14px 32px;border-radius:14px;cursor:pointer;color:#fff;display:flex;align-items:center;gap:10px;margin:18px auto 0;transition:opacity .2s,transform .15s;letter-spacing:.3px}
@@ -6751,6 +6752,7 @@ function srStartReveal(qData,startTime){
   srBuzzedPlayer=null;
   srLockedPlayers=[];
   srBuzzTimeLeft=0;
+  // Build flat chars array from all characters in the question
   srChars=qData.question.split('');
   srCharIndex=0;
   answered=false;
@@ -6762,10 +6764,20 @@ function srStartReveal(qData,startTime){
   const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(qCard)qCard.classList.remove('answered');
-  textEl.innerHTML=srChars.map((ch,i)=>{
-    if(ch===' ')return ' ';
-    return `<span class="sr-char" id="src${i}">${ch}</span>`;
-  }).join('');
+  // Wrap each word in an inline-block span so the browser wraps at word boundaries,
+  // then split chars within each word into individual spans for the fade-in reveal
+  let charIdx=0;
+  const words=qData.question.split(' ');
+  textEl.innerHTML=words.map(word=>{
+    const chars=word.split('').map(ch=>{
+      const span=`<span class="sr-char" id="src${charIdx}">${ch}</span>`;
+      charIdx++;
+      return span;
+    }).join('');
+    // Account for the space between words in the flat chars array
+    if(charIdx<srChars.length&&srChars[charIdx]===' ')charIdx++;
+    return `<span class="sr-word-wrap">${chars}</span>`;
+  }).join(' ');
   srRenderBuzzArea();
   srRevealInterval=setInterval(()=>{
     if(srBuzzedPlayer)return;
