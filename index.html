@@ -2593,6 +2593,7 @@ function closePfpPicker(){
   document.getElementById('pfpModal').style.display='none';
 }
 function afterPfpSave(){
+  removedAvatarUserIds.delete(currentUserId);
   closePfpPicker();renderProfile();updateNav();
   // Re-track presence with new avatar so lobby players see it instantlytly
   if(rtChannel&&currentUserId){
@@ -2645,6 +2646,7 @@ async function applyRemovePfp(){
       }).catch(()=>{});
     }
     currentPfp=null;
+    removedAvatarUserIds.add(currentUserId);
     renderProfile();
     updateNav();
   }catch(e){
@@ -5237,9 +5239,8 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
         lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
         // If we locally know we're host, correct any stale DB read that may not reflect it yet
         if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
-        // Fill any missing avatars from presence — covers players whose presence fired
-        // before this DB fetch ran, so the presence:join patch had nothing to update.
         applyPresenceAvatars();
+        lobbyPlayers.forEach(p=>{if(removedAvatarUserIds.has(p.userId)){p.avatar=null;p.hasPfp=false;}});
       }
     }catch(e){}
     return;
@@ -5259,8 +5260,9 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
       // If we locally know we're host, correct any stale DB read that may not reflect it yet
       if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
-      // Fill any missing avatars from presence state snapshot
       applyPresenceAvatars();
+      // Keep removals sticky: DB may return stale avatar_url before PATCH commits
+      lobbyPlayers.forEach(p=>{if(removedAvatarUserIds.has(p.userId)){p.avatar=null;p.hasPfp=false;}});
       renderLobbyRoom();
     }catch(e){}
   },300); // 300 ms debounce gives the DB DELETE time to commit
@@ -6912,6 +6914,7 @@ function srApplyBuzzGranted(name,wordIndex){
 }
 
 let srBuzzRatio=0; // fraction of chars revealed when player buzzed in (0-1)
+const removedAvatarUserIds=new Set(); // tracks players who explicitly removed their avatar
 function srSubmitAnswer(){
   if(srBuzzedPlayer!==currentUser)return;
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
