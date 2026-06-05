@@ -4731,9 +4731,8 @@ function rtSubscribe(lobbyId){
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
-    _origGoStep('mp-quiz');renderMPHUD();
-    // Non-hosts: show countdown then wait for the host's 'question' broadcast
-    mpShowCountdown(()=>{});
+    // Non-hosts: show countdown while still on lobby page, transition when done
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();});
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     currentQData=payload.qData;qIndex=payload.qIndex;
@@ -6082,18 +6081,15 @@ function startLobbyGame(){
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore}});
-    // Supabase does not echo broadcasts to the sender, so the host must
-    // run its own countdown and transition — non-hosts handle this via the
-    // game_started broadcast receiver.
-    _origGoStep('mp-quiz');renderMPHUD();
+    // Show the countdown while still on the lobby page, then transition to mp-quiz
+    // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     if(lobbyMode==='slowreveal'){
-      mpShowCountdown(()=>{srHostFetchAndBroadcast();});
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();srHostFetchAndBroadcast();});
     } else {
-      mpShowCountdown(()=>{mpHostFetchAndBroadcast();});
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpHostFetchAndBroadcast();});
     }
   } else {
-    _origGoStep('mp-quiz');renderMPHUD();
-    mpShowCountdown(()=>{mpLoadQuestion();});
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();});
   }
 }
 
