@@ -2605,9 +2605,30 @@ function afterPfpSave(){
       .then(()=>{intentionalLeave=false;})
       .catch(()=>{intentionalLeave=false;});
     const me=lobbyPlayers.find(p=>p.userId===currentUserId);
-    if(me){me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;}
     const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
-    if(inLobby)renderLobbyRoom();
+    if(me&&inLobby){
+      if(presenceAvatar){
+        // Show spinner first, swap to real avatar once image is preloaded
+        me.avatar=null;me.hasPfp=true;
+        renderLobbyRoom();
+        const img=new Image();
+        const src=currentPfp&&currentPfp.type==='preset'
+          ?(PFP_PRESETS.find(p=>p.id===currentPfp.value)||{}).src||null
+          :presenceAvatar;
+        if(src){
+          img.onload=function(){me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();};
+          img.onerror=function(){me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();};
+          img.src=src;
+        } else {
+          me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();
+        }
+      } else {
+        // Avatar removed, clear immediately
+        me.avatar=null;me.hasPfp=false;renderLobbyRoom();
+      }
+    } else if(me){
+      me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;
+    }
   }
 }
 function removePfp(){
