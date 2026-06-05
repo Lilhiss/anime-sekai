@@ -25,12 +25,17 @@
 [data-theme="dark"][data-color="jade"]{--accent:#4ade80;--accent-soft:#081008;--bg:#080f0a;--bg2:#0f1a10;--bg3:#162418;--border:#1e3520;--border2:#2a5030;--text:#d4f0d8;--muted:#60a070;--faint:#0e2010;--orb1:#4ade8020;--card-bg:#0f1a1099;--card-border:#1e3520cc}
 [data-theme="dark"][data-color="arcane"]{--accent:#e879f9;--accent-soft:#1a0818;--bg:#180d15;--bg2:#221520;--bg3:#2e1e2a;--border:#452040;--border2:#6a3060;--text:#f8e0f5;--muted:#b878b0;--faint:#280d25;--orb1:#e879f920;--card-bg:#22152099;--card-border:#452040cc}
 [data-theme="light"]{--bg:#f0eeff;--bg2:#fff;--bg3:#e6e0ff;--border:#d4ccf5;--border2:#b8aee8;--text:#1a1535;--muted:#6b5fa8;--faint:#d4ccf5;--accent:#7c5cbf;--accent-soft:#ede9ff;--card-bg:#ffffffbb;--card-border:#d4ccf5cc}
-[data-theme="light"][data-color="blossom"]{--accent:#be185d;--accent-soft:#fce7f3;--bg:#fff0f6;--bg2:#fff;--bg3:#ffe0ef;--border:#f9b8d4;--border2:#f090bc;--text:#2d0f1e;--muted:#a0506e;--faint:#f9b8d4;--card-bg:#ffffffbb;--card-border:#f9b8d4cc}
+[data-theme="light"][data-color="blossom"]{--accent:#be185d;--accent-soft:#fce7f3;--bg:#fff0f6;--bg2:#fff;--bg3:#ffe0ef;--border:#f9b8d4;--border2:#f090bc;--text:#2d0f1e;--muted:#8f3f5d;--faint:#f9b8d4;--card-bg:#ffffffbb;--card-border:#f9b8d4cc}
 [data-theme="light"][data-color="abyss"]{--accent:#1d4ed8;--accent-soft:#eff6ff;--bg:#f0f7ff;--bg2:#fff;--bg3:#ddeeff;--border:#bdd9fe;--border2:#90bffd;--text:#0c1e40;--muted:#4a6a96;--faint:#bdd9fe;--card-bg:#ffffffbb;--card-border:#bdd9fecc}
-[data-theme="light"][data-color="inferno"]{--accent:#c2410c;--accent-soft:#fff7ed;--bg:#fff5ee;--bg2:#fff;--bg3:#ffe5d0;--border:#fdc8a0;--border2:#fba070;--text:#1c0700;--muted:#905030;--faint:#fdc8a0;--card-bg:#ffffffbb;--card-border:#fdc8a0cc}
+[data-theme="light"][data-color="inferno"]{--accent:#c2410c;--accent-soft:#fff7ed;--bg:#fff5ee;--bg2:#fff;--bg3:#ffe5d0;--border:#fdc8a0;--border2:#fba070;--text:#1c0700;--muted:#7d4527;--faint:#fdc8a0;--card-bg:#ffffffbb;--card-border:#fdc8a0cc}
 [data-theme="light"][data-color="jade"]{--accent:#166534;--accent-soft:#f0fdf4;--bg:#f0faf2;--bg2:#fff;--bg3:#dcf0e0;--border:#b8ddbf;--border2:#88c490;--text:#0a1e0e;--muted:#3a6840;--faint:#b8ddbf;--card-bg:#ffffffbb;--card-border:#b8ddbfcc}
 [data-theme="light"][data-color="arcane"]{--accent:#9d174d;--accent-soft:#fdf4ff;--bg:#fdf0ff;--bg2:#fff;--bg3:#f5d8ff;--border:#e4b8f8;--border2:#d090f0;--text:#1a0820;--muted:#8a4090;--faint:#e4b8f8;--card-bg:#ffffffbb;--card-border:#e4b8f8cc}
 
+/* ── Accessibility: visible keyboard focus + reduced-motion ── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s;overflow-x:hidden}
 .scene{min-height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0}
@@ -41,7 +46,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);tran
 
 nav{display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:var(--card-bg);border-bottom:1px solid var(--card-border);backdrop-filter:blur(14px);position:relative;z-index:100}
 .logo{display:flex;align-items:center;gap:10px;user-select:none;cursor:pointer}
-.logo-mark{width:38px;height:38px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:16px;flex-shrink:0;transition:opacity .2s;cursor:pointer}
+.logo-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent) 55%,color-mix(in srgb,var(--accent) 60%,#000));color:#fff;text-shadow:0 1px 4px #0005;box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 35%,transparent),inset 0 1px 3px #ffffff55;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:16px;flex-shrink:0;transition:opacity .2s;cursor:pointer}
 .logo:hover .logo-mark{opacity:.85}
 @keyframes logoBounce{0%{transform:scale(1)}20%{transform:scale(1.35) rotate(-6deg)}45%{transform:scale(.88) rotate(4deg)}65%{transform:scale(1.15) rotate(-3deg)}80%{transform:scale(.96)}100%{transform:scale(1)}}
 .logo-bounce{animation:logoBounce .55s cubic-bezier(.36,.07,.19,.97) both}
@@ -81,7 +86,7 @@ h1 .hi{color:var(--accent)}
 
 /* LANDING — bigger cards */
 .entry-wrap{display:flex;flex-direction:column;align-items:center;gap:32px;width:100%;max-width:900px}
-.entry-logo-mark{width:80px;height:80px;border-radius:22px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:36px;margin:0 auto 16px;box-shadow:0 0 48px var(--orb1)}
+.entry-logo-mark{width:86px;height:86px;border-radius:26px;background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 72%,#fff) 0%,var(--accent) 48%,color-mix(in srgb,var(--accent) 58%,#000) 100%);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:40px;color:#fff;text-shadow:0 2px 10px #0006;margin:0 auto 18px;box-shadow:0 14px 32px color-mix(in srgb,var(--accent) 42%,transparent),inset 0 2px 7px #ffffff66;overflow:hidden}
 .entry-title{font-family:'Lilita One',cursive;font-size:clamp(36px,6vw,58px);color:var(--text);text-align:center;line-height:1.05}
 .entry-title span{color:var(--accent)}
 .entry-sub{font-size:15px;color:var(--muted);margin-top:8px;text-align:center}
@@ -92,6 +97,21 @@ h1 .hi{color:var(--accent)}
 .entry-card:hover .entry-card-icon{background:var(--accent);color:#fff;border-color:var(--accent)}
 .entry-card-title{font-family:'Lilita One',cursive;font-size:22px;color:var(--text);letter-spacing:.3px}
 .entry-card-desc{font-size:13px;color:var(--muted);line-height:1.6}
+/* FUN LANDING */
+.entry-badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1.5px solid var(--border2);color:var(--accent);font-weight:800;font-size:13px;padding:6px 16px;border-radius:99px;margin-bottom:18px;letter-spacing:.02em}
+.entry-sub{font-size:16px;line-height:1.65}
+.fun-floats{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.fun-floats span{position:absolute;font-size:clamp(26px,3.4vw,46px);opacity:.5;animation:funFloat 6s ease-in-out infinite;filter:drop-shadow(0 4px 12px #0003);user-select:none}
+@keyframes funFloat{0%,100%{transform:translateY(0) rotate(-7deg)}50%{transform:translateY(-24px) rotate(7deg)}}
+.entry-logo-pop{animation:logoPop .6s cubic-bezier(.34,1.56,.64,1) both,logoGlow 3s .6s ease-in-out infinite}
+@keyframes logoPop{0%{transform:scale(0) rotate(-25deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes logoGlow{0%,100%{box-shadow:0 14px 32px color-mix(in srgb,var(--accent) 38%,transparent),inset 0 2px 7px #ffffff66}50%{box-shadow:0 18px 44px color-mix(in srgb,var(--accent) 62%,transparent),inset 0 2px 7px #ffffff66}}
+#page-landing .entry-card{position:relative;z-index:1;gap:12px}
+.entry-card:hover{border-color:var(--accent);transform:translateY(-6px) scale(1.02);box-shadow:0 16px 40px #0007,0 0 0 3px var(--accent)}
+.entry-card-emoji{font-size:56px;line-height:1;filter:drop-shadow(0 6px 14px #0003);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.entry-card:hover .entry-card-emoji,.entry-card:focus-visible .entry-card-emoji{transform:scale(1.18) rotate(-8deg)}
+.entry-card-go{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:15px;color:var(--accent);opacity:.85;transition:gap .2s,opacity .2s}
+.entry-card:hover .entry-card-go{gap:11px;opacity:1}
 
 /* FORMS */
 .form-wrap{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px}
@@ -781,22 +801,35 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- LANDING -->
   <div class="page active" id="page-landing">
+    <div class="fun-floats" aria-hidden="true">
+      <span style="left:7%;top:20%;animation-delay:0s">⚔️</span>
+      <span style="left:85%;top:23%;animation-delay:1.1s">✨</span>
+      <span style="left:13%;top:72%;animation-delay:.5s">🔥</span>
+      <span style="left:81%;top:70%;animation-delay:1.7s">🌸</span>
+      <span style="left:47%;top:8%;animation-delay:.9s">⭐</span>
+      <span style="left:91%;top:50%;animation-delay:2.2s">💫</span>
+      <span style="left:4%;top:46%;animation-delay:1.4s">🎌</span>
+    </div>
     <div class="entry-wrap slide-in">
       <div style="text-align:center">
-        <div class="entry-logo-mark" id="entryLogoMark">AS</div>
+        <div class="entry-badge">🎉 The Anime Trivia Arena</div>
+        <!-- Placeholder logo. To use your own later: replace this div with <img src="your-logo.png" class="entry-logo-mark entry-logo-pop" alt="Anime Sekai"> -->
+        <div class="entry-logo-mark entry-logo-pop" id="entryLogoMark">AS</div>
         <div class="entry-title">Anime <span>Sekai</span></div>
-        <div class="entry-sub">Test your anime knowledge — how far will you go?</div>
+        <div class="entry-sub">Name the character, guess the anime, climb the ranks — solo or against your friends.<br><b style="color:var(--text)">Jump in free, no sign-up needed!</b> 🎮</div>
       </div>
       <div class="entry-cards">
-        <div class="entry-card" style="aspect-ratio:1/1" onclick="choosePath('solo')">
-          <div class="entry-card-icon"><i class="ti ti-brain"></i></div>
-          <div class="entry-card-title">Test Your Knowledge</div>
-          <div class="entry-card-desc">Solo quiz — pick a format and mode, then see how far you can go.</div>
+        <div class="entry-card" tabindex="0" role="button" aria-label="Solo quiz" onclick="choosePath('solo')">
+          <div class="entry-card-emoji">🧠</div>
+          <div class="entry-card-title">Solo Quiz</div>
+          <div class="entry-card-desc">Just you vs. the questions — how far can you go?</div>
+          <div class="entry-card-go">Let's go <i class="ti ti-arrow-right"></i></div>
         </div>
-        <div class="entry-card" style="aspect-ratio:1/1" onclick="choosePath('multiplayer')">
-          <div class="entry-card-icon"><i class="ti ti-users"></i></div>
-          <div class="entry-card-title">Multiplayer</div>
-          <div class="entry-card-desc">Play with friends or jump into an open lobby and compete in real time.</div>
+        <div class="entry-card" tabindex="0" role="button" aria-label="Play with friends" onclick="choosePath('multiplayer')">
+          <div class="entry-card-emoji">⚔️</div>
+          <div class="entry-card-title">Play with Friends</div>
+          <div class="entry-card-desc">Make a lobby, share the code, battle live!</div>
+          <div class="entry-card-go">Let's go <i class="ti ti-arrow-right"></i></div>
         </div>
       </div>
     </div>
@@ -873,7 +906,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <!-- Mode picker -->
     <div id="authModePicker" class="slide-in" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:420px">
-      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('guest')">
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" tabindex="0" role="button" aria-label="Play as Guest" onclick="showAuthMode('guest')">
         <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-user"></i></div>
         <div>
           <div class="entry-card-title" style="font-size:16px">Play as Guest</div>
@@ -881,7 +914,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <i class="ti ti-chevron-right" style="font-size:18px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
       </div>
-      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('signin')">
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" tabindex="0" role="button" aria-label="Sign In" onclick="showAuthMode('signin')">
         <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-lock-open"></i></div>
         <div>
           <div class="entry-card-title" style="font-size:16px">Sign In</div>
@@ -889,7 +922,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <i class="ti ti-chevron-right" style="font-size:18px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
       </div>
-      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" onclick="showAuthMode('register')">
+      <div class="entry-card" style="padding:20px 24px;flex-direction:row;align-items:center;gap:18px;text-align:left" tabindex="0" role="button" aria-label="Create Account" onclick="showAuthMode('register')">
         <div class="entry-card-icon" style="width:48px;height:48px;flex-shrink:0;font-size:22px"><i class="ti ti-user-plus"></i></div>
         <div>
           <div class="entry-card-title" style="font-size:16px">Create Account</div>
@@ -910,6 +943,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <button class="form-submit" id="guestSubmitBtn" onclick="submitGuest()"><i class="ti ti-player-play" style="font-size:16px"></i> Enter the Arena</button>
       </div>
+      <div class="form-footer" style="margin-top:10px">Want to save your scores &amp; rank? <a onclick="showAuthMode('signin')">Sign in</a> · <a onclick="showAuthMode('register')">Create account</a></div>
     </div>
     <!-- Sign in form -->
     <div id="authSignin" style="display:none;width:100%;max-width:420px" class="slide-in">
@@ -1788,6 +1822,52 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- PRIVACY POLICY MODAL -->
+  <div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Privacy Policy</div>
+        <button onclick="document.getElementById('privacyModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="privacy-note" style="margin:0"><i class="ti ti-alert-triangle" style="font-size:15px"></i><span><b>Draft template.</b> Fill in the bracketed parts and have a lawyer review this before public launch.</span></div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7">
+        <b style="color:var(--text)">Last updated:</b> [DATE]<br><br>
+        <b style="color:var(--text)">What we collect.</b> A username and password (your password is hashed and stored by our authentication provider — we never see it), an <b>optional</b> email address (used only for password recovery), an optional profile picture you upload, your gameplay stats (scores, games played, accuracy), and the content of any questions or reports you submit.<br><br>
+        <b style="color:var(--text)">How we use it.</b> To run your account, save your progress, show leaderboards, and let you recover a lost password. We do <b>not</b> sell your personal data.<br><br>
+        <b style="color:var(--text)">Where it's stored.</b> Your data is held by our backend provider, Supabase, which processes it on our behalf. See [Supabase's privacy policy / link].<br><br>
+        <b style="color:var(--text)">Children.</b> Anime Sekai is not directed to and not intended for use by children under 13 (or the minimum age in your country). We do not knowingly collect data from children under 13. If you believe a child has provided us data, contact us and we'll delete it.<br><br>
+        <b style="color:var(--text)">Your rights.</b> You can permanently delete your account and all associated data at any time from your profile menu. To request a copy of your data or ask a privacy question, contact us below.<br><br>
+        <b style="color:var(--text)">Contact.</b> [your-contact-email]
+      </div>
+      <button class="action-btn primary" onclick="document.getElementById('privacyModal').style.display='none'">Close</button>
+    </div>
+  </div>
+
+  <!-- TERMS OF SERVICE MODAL -->
+  <div id="termsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Terms of Service</div>
+        <button onclick="document.getElementById('termsModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="privacy-note" style="margin:0"><i class="ti ti-alert-triangle" style="font-size:15px"></i><span><b>Draft template.</b> Fill in the bracketed parts and have a lawyer review this before public launch.</span></div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7">
+        <b style="color:var(--text)">Last updated:</b> [DATE]<br><br>
+        <b style="color:var(--text)">1. Acceptance.</b> By using Anime Sekai you agree to these terms. If you don't agree, please don't use the service.<br><br>
+        <b style="color:var(--text)">2. Eligibility.</b> You must be at least 13 years old (or the minimum age in your country) to create an account.<br><br>
+        <b style="color:var(--text)">3. Your account.</b> You're responsible for activity under your account and for keeping your password secure.<br><br>
+        <b style="color:var(--text)">4. User-submitted content.</b> Questions, reports, usernames and images you submit remain yours, but you grant us a licence to display them within the service. You must not submit content that is unlawful, infringing, hateful, harassing, or otherwise objectionable. We review submissions and may remove content or suspend accounts at our discretion.<br><br>
+        <b style="color:var(--text)">5. Anime imagery.</b> Anime Sekai is a fan-made project. Anime titles, characters and images referenced in questions are the property of their respective copyright owners; we claim no ownership. If you are a rights holder and want content removed, contact us and we will respond promptly. [Designate a DMCA agent here.]<br><br>
+        <b style="color:var(--text)">6. No warranty.</b> The service is provided "as is" without warranties of any kind.<br><br>
+        <b style="color:var(--text)">7. Limitation of liability.</b> To the extent permitted by law, we are not liable for indirect or incidental damages arising from your use of the service.<br><br>
+        <b style="color:var(--text)">8. Changes & termination.</b> We may update these terms or discontinue the service. We may terminate accounts that violate these terms.<br><br>
+        <b style="color:var(--text)">9. Governing law.</b> These terms are governed by the laws of [your jurisdiction].<br><br>
+        <b style="color:var(--text)">Contact.</b> [your-contact-email]
+      </div>
+      <button class="action-btn primary" onclick="document.getElementById('termsModal').style.display='none'">Close</button>
+    </div>
+  </div>
+
   <!-- SUBMIT QUESTION SIGN-IN PROMPT -->
   <div id="submitSignInModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;text-align:center">
@@ -1876,6 +1956,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="foot-links">
       <a class="foot-link" onclick="openSubmitQuestion()">Submit a question</a>
       <a class="foot-link" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()">About</a>
+      <a class="foot-link" onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()">Privacy</a>
+      <a class="foot-link" onclick="document.getElementById('termsModal').style.display='flex';applyTheme()">Terms</a>
       <a class="foot-link" onclick="document.getElementById('contactModal').style.display='flex';applyTheme()">Contact</a>
     </div>
   </footer>
@@ -3020,6 +3102,15 @@ function goStep(name){
 function clearErr(id){document.getElementById(id).classList.remove('show')}
 function showErr(id,msgId,msg){document.getElementById(msgId).textContent=msg;document.getElementById(id).classList.add('show')}
 
+// Make role="button" elements (clickable cards) keyboard-operable with Enter/Space
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const t=e.target;
+  if(t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.hasAttribute('tabindex')){
+    e.preventDefault();t.click();
+  }
+});
+
 // ── AUTH GATE ─────────────────────────────────────────────────
 let pendingDestination='solo';
 const authEyebrows={solo:'Solo quiz',create:'Create a lobby',join:'Join a lobby',landing:'Welcome back',multiplayer:'Multiplayer',submitQ:'Submit a Question'};
@@ -3032,7 +3123,10 @@ function choosePath(dest){
   }
   document.getElementById('authEyebrow').textContent=authEyebrows[dest];
   document.getElementById('authTitle').innerHTML=authTitles[dest];
-  showAuthMode(null);
+  // Default to the guest form for play paths (fewer clicks to first question);
+  // returning users who chose "Sign In" land on the sign-in form.
+  const defaultMode={solo:'guest',multiplayer:'guest',create:'guest',join:'guest',landing:'signin'}[dest]||null;
+  showAuthMode(defaultMode);
   goStep('auth');
 }
 function showAuthMode(mode){
