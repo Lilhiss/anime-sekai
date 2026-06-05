@@ -16,17 +16,25 @@
 // Hide body, apply saved color + matching bg before first paint, then reveal
 (function(){
   document.body.style.visibility='hidden';
-  var bg='#0f0e1a'; // midnight default
+  var bg='#0f0e1a',accent='#a78bfa'; // midnight defaults
   try{
     var c=localStorage.getItem('animesekai_color');
-    var bgMap={blossom:'#1a0e14',abyss:'#0a0f1e',inferno:'#1a0e08',jade:'#080f0a',arcane:'#180d15'};
-    if(c&&bgMap[c]){
+    var themeMap={
+      blossom:{bg:'#1a0e14',accent:'#f472b6'},
+      abyss:  {bg:'#0a0f1e',accent:'#38bdf8'},
+      inferno:{bg:'#1a0e08',accent:'#fb923c'},
+      jade:   {bg:'#080f0a',accent:'#4ade80'},
+      arcane: {bg:'#180d15',accent:'#e879f9'}
+    };
+    if(c&&themeMap[c]){
       document.body.setAttribute('data-theme','dark');
       document.body.setAttribute('data-color',c);
-      bg=bgMap[c];
+      bg=themeMap[c].bg;
+      accent=themeMap[c].accent;
     }
   }catch(e){}
   document.body.style.background=bg;
+  document.body.style.setProperty('--accent',accent);
   document.body.style.visibility='';
 })();
 </script>
