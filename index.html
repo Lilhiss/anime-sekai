@@ -450,8 +450,10 @@ h1 .hi{color:var(--accent)}
 .kicked-modal-title{font-family:'Lilita One',cursive;font-size:24px;color:var(--text)}
 .kicked-modal-sub{font-size:14px;color:var(--muted);line-height:1.6}
 /* MP SCOREBOARD */
+@keyframes scorePulse{0%{transform:scale(1)}25%{transform:scale(1.06);background:var(--accent-soft);box-shadow:0 0 0 3px var(--accent)}60%{transform:scale(.97)}100%{transform:scale(1);box-shadow:none}}
 .mp-score-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .2s}
 .mp-score-row.me{background:var(--accent-soft);border:1px solid var(--border2)}
+.mp-score-row.pulse{animation:scorePulse .6s ease-out forwards}
 .mp-score-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:12px;flex-shrink:0}
 .mp-score-name{font-size:12px;font-weight:800;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mp-score-pts{font-family:'Lilita One',cursive;font-size:14px;color:var(--accent)}
@@ -4826,7 +4828,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'sr_buzz_result'},({payload})=>{
     if(isHost)return;
-    srApplyBuzzResult(payload.name,payload.correct,payload.timedOut,payload.answer);
+    srApplyBuzzResult(payload.name,payload.correct,payload.timedOut,payload.answer,payload.buzzRatio||0);
   });
   rtChannel.on('broadcast',{event:'sr_post_reveal'},({payload})=>{
     if(isHost)return;
@@ -6884,6 +6886,7 @@ function srHandleBuzz(name,wordIndex){
 
 function srApplyBuzzGranted(name,wordIndex){
   srBuzzedPlayer=name;
+  srBuzzRatio=srChars.length>0?Math.min(1,wordIndex/srChars.length):0;
   clearInterval(srRevealInterval);srRevealInterval=null;
   for(let i=0;i<Math.min(wordIndex,srChars.length);i++){
     const el=document.getElementById('src'+i);
@@ -6900,13 +6903,14 @@ function srApplyBuzzGranted(name,wordIndex){
     if(srBuzzTimeLeft<=0){
       clearInterval(srBuzzCountdown);srBuzzCountdown=null;
       if(isHost){
-        rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:srBuzzedPlayer,correct:false,timedOut:true,answer:'(timed out)'}});
-        srApplyBuzzResult(srBuzzedPlayer,false,true,'(timed out)');
+        rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:srBuzzedPlayer,correct:false,timedOut:true,answer:'(timed out)',buzzRatio:srBuzzRatio}});
+        srApplyBuzzResult(srBuzzedPlayer,false,true,'(timed out)',srBuzzRatio);
       }
     }
   },1000);
 }
 
+let srBuzzRatio=0; // fraction of chars revealed when player buzzed in (0-1)
 function srSubmitAnswer(){
   if(srBuzzedPlayer!==currentUser)return;
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
@@ -6914,11 +6918,12 @@ function srSubmitAnswer(){
   const userAns=input?input.value.trim():'';
   if(!userAns)return;
   const correct=checkAnswer(userAns,currentQData);
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:currentUser,correct,timedOut:false,answer:userAns}});}
-  if(isHost)srApplyBuzzResult(currentUser,correct,false,userAns);
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:currentUser,correct,timedOut:false,answer:userAns,buzzRatio:srBuzzRatio}});}
+  if(isHost)srApplyBuzzResult(currentUser,correct,false,userAns,srBuzzRatio);
 }
 
-function srApplyBuzzResult(name,correct,timedOut,userAns){
+function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
+  buzzRatio=buzzRatio||srBuzzRatio||0;
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
   const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
   if(correct){
@@ -6926,7 +6931,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns){
     if(p)p.score++;
     if(name===currentUser)score++;
     renderMPHUD();
-    srShowFeedback(true,name,correctAns,userAns,false);
+    srShowFeedback(true,name,correctAns,userAns,false,buzzRatio);
     const winner=lobbyPlayers.find(lp=>lp.score>=srTargetScore);
     if(winner){
       if(isHost){rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});mpEndGame();}
@@ -6969,7 +6974,8 @@ function srApplyBuzzResult(name,correct,timedOut,userAns){
   }
 }
 
-function srShowFeedback(correct,name,correctAns,userAns,timedOut){
+function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
+  buzzRatio=buzzRatio||0;
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(correct&&qCard)qCard.classList.add('answered');
@@ -6977,15 +6983,27 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut){
     ?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>'
     :'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const isMe=name===currentUser;
+  const buzzLabel=correct?(buzzRatio<=0.3?'\u26a1 Lightning read!':buzzRatio<=0.6?'\U0001f525 Early buzz!':'\U0001f44d Good read!'):'';
   document.getElementById('mpFbTitle').textContent=correct
-    ?(isMe?'Correct! +1 point':name+' got it!')
+    ?(isMe?'Correct!':name+' got it!')
     :timedOut?(isMe?"Time's up — locked out!":name+' ran out of time!')
     :(isMe?'Wrong — locked out!':name+' missed it!');
+  document.getElementById('mpFbPts').textContent=correct?buzzLabel:'';
   const ya=document.getElementById('mpFbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'){ya.textContent='Answer given: '+userAns;ya.style.display='block';}
   else{ya.style.display='none';}
-  document.getElementById('mpFbPts').textContent='';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');if(mpSubEl)mpSubEl.style.display='none';
+  if(correct){
+    const rows=document.querySelectorAll('#mpScoreboard .mp-score-row');
+    rows.forEach(row=>{
+      const nameEl=row.querySelector('.mp-score-name');
+      if(nameEl&&nameEl.textContent.includes(name)){
+        row.classList.remove('pulse');void row.offsetWidth;
+        row.classList.add('pulse');
+        setTimeout(()=>row.classList.remove('pulse'),700);
+      }
+    });
+  }
   // Complete the reveal instantly then show full question + answer
   srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
   const mpQText=document.getElementById('mpQuestionText');
