@@ -2594,41 +2594,15 @@ function closePfpPicker(){
 }
 function afterPfpSave(){
   closePfpPicker();renderProfile();updateNav();
-  // Re-track presence with new avatar so lobby players see it instantly.
-  // Set intentionalLeave=true before track() so the leave event Supabase fires
-  // when re-tracking doesn't trigger the disconnect/delete logic on other clients.
+  // Re-track presence with new avatar so lobby players see it instantlytly
   if(rtChannel&&currentUserId){
     let presenceAvatar=null;
     if(currentPfp){presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;}
-    intentionalLeave=true;
-    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp})
-      .then(()=>{intentionalLeave=false;})
-      .catch(()=>{intentionalLeave=false;});
+    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp}).catch(()=>{});
     const me=lobbyPlayers.find(p=>p.userId===currentUserId);
+    if(me){me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;}
     const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
-    if(me&&inLobby){
-      if(presenceAvatar){
-        // Show spinner first, swap to real avatar once image is preloaded
-        me.avatar=null;me.hasPfp=true;
-        renderLobbyRoom();
-        const img=new Image();
-        const src=currentPfp&&currentPfp.type==='preset'
-          ?(PFP_PRESETS.find(p=>p.id===currentPfp.value)||{}).src||null
-          :presenceAvatar;
-        if(src){
-          img.onload=function(){me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();};
-          img.onerror=function(){me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();};
-          img.src=src;
-        } else {
-          me.avatar=presenceAvatar;me.hasPfp=true;renderLobbyRoom();
-        }
-      } else {
-        // Avatar removed, clear immediately
-        me.avatar=null;me.hasPfp=false;renderLobbyRoom();
-      }
-    } else if(me){
-      me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;
-    }
+    if(inLobby)renderLobbyRoom();
   }
 }
 function removePfp(){
@@ -2671,17 +2645,8 @@ async function applyRemovePfp(){
       }).catch(()=>{});
     }
     currentPfp=null;
-    closePfpPicker();renderProfile();updateNav();
-    if(rtChannel&&currentUserId){
-      intentionalLeave=true;
-      rtChannel.track({userId:currentUserId,username:currentUser,avatar:null,hasPfp:false})
-        .then(()=>{intentionalLeave=false;})
-        .catch(()=>{intentionalLeave=false;});
-      const me=lobbyPlayers.find(p=>p.userId===currentUserId);
-      if(me){me.avatar=null;me.hasPfp=false;}
-      const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
-      if(inLobby)renderLobbyRoom();
-    }
+    renderProfile();
+    updateNav();
   }catch(e){
     console.error('Remove pfp error:',e);
   }
@@ -2708,11 +2673,9 @@ function buildPfpPresetGrid(){
     item.title = p.name + ' · ' + p.series;
     item.style.background = p.bg||'var(--accent-soft)';
     item.onclick = () => selectPreset(p.id);
-    const imgHtml=p.src
-      ?`<img src="${p.src}" alt="${p.name}" style="object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-      :'';
-    const fallbackStyle=p.src?'display:none;':'display:flex;';
-    item.innerHTML = `${imgHtml}<div class="pfp-preset-fallback" style="${fallbackStyle}background:${p.bg||'var(--accent-soft)'}">${p.name.split(' ').map(w=>w[0]).join('')}</div><div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
+    item.innerHTML = `<img src="${p.src}" alt="${p.name}" style="object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="pfp-preset-fallback" style="display:none;background:${p.bg||'var(--accent-soft)'}">${p.name.split(' ').map(w=>w[0]).join('')}</div>
+      <div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
     const label = document.createElement('div');
     label.className = 'pfp-preset-label';
     label.textContent = p.name;
@@ -5054,8 +5017,8 @@ function rtSubscribe(lobbyId){
       if(!p.userId)continue;
       const existing=lobbyPlayers.find(lp=>lp.userId===p.userId);
       if(existing){
-        if(existing.avatar!==p.avatar){existing.avatar=p.avatar||null;changed=true;}
-        if(typeof p.hasPfp==='boolean'&&existing.hasPfp!==p.hasPfp){existing.hasPfp=p.hasPfp;changed=true;}
+        if(p.avatar&&!existing.avatar){existing.avatar=p.avatar;changed=true;}
+        if(typeof p.hasPfp==='boolean'&&existing.hasPfp===undefined){existing.hasPfp=p.hasPfp;changed=true;}
       }
     }
     if(changed)renderLobbyRoom();
@@ -5073,11 +5036,6 @@ function rtSubscribe(lobbyId){
       if(!goneUserId){console.log('[presence:leave] skipped — no userId in presence');continue;}
 
       if(goneUserId===currentUserId){console.log('[presence:leave] skipped — own presence echo');continue;}
-
-      // If the user is still present in the channel they just re-tracked (e.g. avatar change)
-      // The leave is spurious — skip to avoid wrongly deleting their lobby row.
-      const stillPresent=Object.values(rtChannel.presenceState()||{}).flat().some(p=>p.userId===goneUserId);
-      if(stillPresent){console.log('[presence:leave] skipped — user still present (re-track)');continue;}
 
       const token=await rtGetAuthToken();
       const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
@@ -5254,8 +5212,9 @@ function applyPresenceAvatars(){
       if(!p.userId)continue;
       const player=lobbyPlayers.find(lp=>lp.userId===p.userId);
       if(player){
-        if(p.avatar&&!player.avatar){player.avatar=p.avatar;changed=true;}
-        if(typeof p.hasPfp==='boolean'&&player.hasPfp===undefined){player.hasPfp=p.hasPfp;changed=true;}
+        // hasPfp:false means the player explicitly removed their avatar
+        if(p.hasPfp===false){if(player.avatar||player.hasPfp){player.avatar=null;player.hasPfp=false;changed=true;}}
+        else if(p.avatar&&!player.avatar){player.avatar=p.avatar;player.hasPfp=true;changed=true;}
       }
     }
   }
