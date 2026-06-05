@@ -134,8 +134,9 @@ h1 .hi{color:var(--accent)}
 /* FORMAT & MODE */
 .fmt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
 .fmt-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:24px 20px;cursor:pointer;transition:all .22s;position:relative;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:10px}
-.fmt-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
-.fmt-card-icon{width:46px;height:46px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--accent)}
+.fmt-card:hover{border-color:var(--accent);transform:translateY(-5px) scale(1.02);box-shadow:0 14px 32px #0006,0 0 0 2px var(--accent)}
+.fmt-card-icon{width:48px;height:48px;border-radius:13px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:27px;color:var(--accent);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.fmt-card:hover .fmt-card-icon{transform:scale(1.15) rotate(-7deg)}
 .fmt-card-title{font-family:'Lilita One',cursive;font-size:16px;color:var(--text)}
 .fmt-card-desc{font-size:12px;color:var(--muted);line-height:1.5}
 .fmt-card-arrow{position:absolute;top:18px;right:18px;font-size:16px;color:var(--border2);transition:color .2s,transform .2s}
@@ -151,8 +152,9 @@ h1 .hi{color:var(--accent)}
 .q-count-custom-input{width:100%;background:var(--bg3);border:2px solid var(--border2);border-radius:10px;padding:9px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;outline:none;transition:border-color .2s;text-align:center}
 .q-count-custom-input:focus{border-color:var(--accent)}
 .q-count-custom-input.selected{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
-.mode-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px #0004}
-.mode-icon{width:52px;height:52px;border-radius:14px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--accent)}
+.mode-card:hover{border-color:var(--accent);transform:translateY(-5px) scale(1.02);box-shadow:0 14px 32px #0006,0 0 0 2px var(--accent)}
+.mode-icon{width:54px;height:54px;border-radius:15px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--accent);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.mode-card:hover .mode-icon{transform:scale(1.15) rotate(-7deg)}
 .mode-title{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
 .mode-desc{font-size:12px;color:var(--muted);line-height:1.55}
 .mode-tag{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 11px;font-size:11px;font-weight:800;color:var(--accent);width:fit-content}
@@ -245,8 +247,10 @@ h1 .hi{color:var(--accent)}
 .rank-hero{background:var(--card-bg);border:1px solid var(--card-border);border-radius:22px;padding:36px 28px;backdrop-filter:blur(10px);text-align:center;position:relative;overflow:hidden}
 .rank-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,var(--accent)18,transparent 70%);pointer-events:none}
 .rank-badge-wrap{position:relative;display:inline-block;margin-bottom:16px}
-.rank-badge{width:90px;height:90px;border-radius:50%;background:var(--accent-soft);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto;position:relative;z-index:1}
-.rank-glow{position:absolute;inset:-8px;border-radius:50%;background:var(--accent);opacity:.15;filter:blur(12px)}
+.rank-badge{width:90px;height:90px;border-radius:50%;background:var(--accent-soft);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto;position:relative;z-index:1;animation:rankPop .7s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes rankPop{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.15) rotate(8deg)}100%{transform:scale(1) rotate(0)}}
+.rank-glow{position:absolute;inset:-8px;border-radius:50%;background:var(--accent);opacity:.15;filter:blur(12px);animation:rankGlowPulse 2.2s ease-in-out infinite}
+@keyframes rankGlowPulse{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:.4;transform:scale(1.18)}}
 .rank-title{font-family:'Lilita One',cursive;font-size:clamp(22px,4vw,34px);color:var(--text);margin-bottom:6px}
 .rank-title span{color:var(--accent)}
 .rank-sub{font-size:14px;color:var(--muted);line-height:1.6;max-width:360px;margin:0 auto 20px}
@@ -1044,10 +1048,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <h1>Test your <span class="hi">anime</span> knowledge</h1>
     </div>
     <div class="fmt-grid slide-in">
-      <div class="fmt-card" onclick="selectFormat('mc')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-list"></i></div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
-      <div class="fmt-card" onclick="selectFormat('type')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-keyboard"></i></div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
-      <div class="fmt-card" onclick="selectFormat('img')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-photo"></i></div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
-      <div class="fmt-card" onclick="selectFormat('char')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-user-circle"></i></div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
+      <div class="fmt-card" onclick="selectFormat('mc')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
+      <div class="fmt-card" onclick="selectFormat('type')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
+      <div class="fmt-card" onclick="selectFormat('img')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
+      <div class="fmt-card" onclick="selectFormat('char')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
     </div>
   </div>
 
@@ -1059,8 +1063,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('race')"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
-      <div class="mode-card" onclick="selectSoloMode('survival')"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
+      <div class="mode-card" onclick="selectSoloMode('race')"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
+      <div class="mode-card" onclick="selectSoloMode('survival')"><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
     </div>
   </div>
 
@@ -1225,10 +1229,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <h1>Pick a <span class="hi">Format</span></h1>
     </div>
     <div class="fmt-grid slide-in">
-      <div class="fmt-card" onclick="setLobbyFormat('mc',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-list"></i></div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('type',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-keyboard"></i></div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('img',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-photo"></i></div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a scene.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('char',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon"><i class="ti ti-user-circle"></i></div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Identify the character described.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('mc',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('type',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('img',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a scene.</div></div>
+      <div class="fmt-card" onclick="setLobbyFormat('char',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Identify the character described.</div></div>
     </div>
   </div>
 
@@ -1279,8 +1283,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <h1>Pick a <span class="hi">Mode</span></h1>
     </div>
     <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon"><i class="ti ti-trophy"></i></div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
-      <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon"><i class="ti ti-heart"></i></div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
+      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
+      <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
       <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
       <div class="mode-card" onclick="setLobbyMode('slowreveal',this)"><div class="mode-icon"><i class="ti ti-eye" style="font-size:26px;color:var(--accent)"></i></div><div class="mode-title">Slow Reveal</div><div class="mode-desc">The question fades in word by word. Buzz in when you think you know — but if you're wrong, you're locked out for the round.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> First to answer · buzz to lock in</div></div>
     </div>
