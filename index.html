@@ -2594,11 +2594,16 @@ function closePfpPicker(){
 }
 function afterPfpSave(){
   closePfpPicker();renderProfile();updateNav();
-  // Re-track presence with new avatar so lobby players see it instantlytly
+  // Re-track presence with new avatar so lobby players see it instantly.
+  // Set intentionalLeave=true before track() so the leave event Supabase fires
+  // when re-tracking doesn't trigger the disconnect/delete logic on other clients.
   if(rtChannel&&currentUserId){
     let presenceAvatar=null;
     if(currentPfp){presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;}
-    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp}).catch(()=>{});
+    intentionalLeave=true;
+    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp})
+      .then(()=>{intentionalLeave=false;})
+      .catch(()=>{intentionalLeave=false;});
     const me=lobbyPlayers.find(p=>p.userId===currentUserId);
     if(me){me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;}
     const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
@@ -2673,9 +2678,11 @@ function buildPfpPresetGrid(){
     item.title = p.name + ' · ' + p.series;
     item.style.background = p.bg||'var(--accent-soft)';
     item.onclick = () => selectPreset(p.id);
-    item.innerHTML = `<img src="${p.src}" alt="${p.name}" style="object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="pfp-preset-fallback" style="display:none;background:${p.bg||'var(--accent-soft)'}">${p.name.split(' ').map(w=>w[0]).join('')}</div>
-      <div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
+    const imgHtml=p.src
+      ?`<img src="${p.src}" alt="${p.name}" style="object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      :'';
+    const fallbackStyle=p.src?'display:none;':'display:flex;';
+    item.innerHTML = `${imgHtml}<div class="pfp-preset-fallback" style="${fallbackStyle}background:${p.bg||'var(--accent-soft)'}">${p.name.split(' ').map(w=>w[0]).join('')}</div><div class="pfp-preset-check"><i class="ti ti-check" style="font-size:9px"></i></div>`;
     const label = document.createElement('div');
     label.className = 'pfp-preset-label';
     label.textContent = p.name;
