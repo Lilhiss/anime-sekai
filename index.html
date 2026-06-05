@@ -6066,6 +6066,8 @@ function startLobbyGame(){
   if(!isHost)return;
   clearLobbyTimer();
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
+  // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
+  selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
   hpActiveIdx=0;
