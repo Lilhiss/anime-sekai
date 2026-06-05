@@ -13,17 +13,20 @@
 </head>
 <body>
 <script>
-// Hide body before paint, apply saved color, then reveal
+// Hide body, apply saved color + matching bg before first paint, then reveal
 (function(){
   document.body.style.visibility='hidden';
+  var bg='#0f0e1a'; // midnight default
   try{
     var c=localStorage.getItem('animesekai_color');
-    var validColors=['blossom','abyss','inferno','jade','arcane'];
-    if(c&&validColors.indexOf(c)!==-1){
+    var bgMap={blossom:'#1a0e14',abyss:'#0a0f1e',inferno:'#1a0e08',jade:'#080f0a',arcane:'#180d15'};
+    if(c&&bgMap[c]){
       document.body.setAttribute('data-theme','dark');
       document.body.setAttribute('data-color',c);
+      bg=bgMap[c];
     }
   }catch(e){}
+  document.body.style.background=bg;
   document.body.style.visibility='';
 })();
 </script>
