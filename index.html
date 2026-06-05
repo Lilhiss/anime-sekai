@@ -6430,7 +6430,7 @@ function mpShowQuestion(qData,hpFuse){
   const mpRdSQ=document.getElementById('mpReportDrop');if(mpRdSQ)mpRdSQ.classList.remove('open');
   document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
-  const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';
+  const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
   const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
   const isHP=lobbyMode==='potato';
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
@@ -6811,6 +6811,7 @@ function srRunPostRevealTimer(seconds){
 function srRenderBuzzArea(){
   const grid=document.getElementById('mpAnswersGrid');
   grid.innerHTML='';
+  grid.style.cssText='display:flex;flex-direction:column;align-items:center;gap:12px';
   const isLocked=srLockedPlayers.includes(currentUser);
   const isBuzzing=srBuzzedPlayer===currentUser;
   const someoneElseBuzzing=srBuzzedPlayer&&srBuzzedPlayer!==currentUser;
