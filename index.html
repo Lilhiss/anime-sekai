@@ -4717,6 +4717,9 @@ function rtSubscribe(lobbyId){
     setTimeout(()=>showLobbyExpiredModal(),300);
   });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
+    // Host already ran this setup in startLobbyGame() and self:true would echo it back
+    // with an empty onDone, clobbering the real mpHostFetchAndBroadcast callback
+    if(isHost)return;
     selectedFormat=payload.format;selectedMode=payload.mode;
     lobbyFormat=payload.format;lobbyMode=payload.mode;
     lobbyPlayers=payload.players;
@@ -5258,6 +5261,9 @@ async function mpHostFetchAndBroadcast(){
   currentQData=qData;
   const hpFuse=lobbyMode==='potato'?(5+Math.random()*5):null; // host generates fuse so all clients sync
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
+  // Supabase does not echo broadcasts to the sender — host must show the question itself
+  document.getElementById('mpQLoading').style.display='none';
+  mpShowQuestion(qData,hpFuse);renderMPHUD();
 }
 
 let _countdownTick=null;
