@@ -2647,6 +2647,9 @@ async function applyRemovePfp(){
     }
     currentPfp=null;
     removedAvatarUserIds.add(currentUserId);
+    if(rtChannel&&currentUserId){
+      rtChannel.send({type:'broadcast',event:'avatar_removed',payload:{userId:currentUserId}});
+    }
     renderProfile();
     updateNav();
   }catch(e){
@@ -4724,6 +4727,10 @@ function rtSubscribe(lobbyId){
     if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
     goStep('multiplayer');
     setTimeout(()=>showLobbyExpiredModal(),300);
+  });
+  rtChannel.on('broadcast',{event:'avatar_removed'},({payload})=>{
+    const p=lobbyPlayers.find(lp=>lp.userId===payload.userId);
+    if(p){p.avatar=null;p.hasPfp=false;renderLobbyRoom();}
   });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
     // Host already ran this setup in startLobbyGame() and self:true would echo it back
