@@ -4825,6 +4825,10 @@ function rtSubscribe(lobbyId){
     if(isHost)return;
     srApplyBuzzResult(payload.name,payload.correct,payload.timedOut,payload.answer);
   });
+  rtChannel.on('broadcast',{event:'sr_post_reveal'},({payload})=>{
+    if(isHost)return;
+    srRunPostRevealTimer(payload.seconds||10);
+  });
   rtChannel.on('broadcast',{event:'sr_next_round'},({payload})=>{
     if(isHost)return;
     qIndex=payload.qIndex;
@@ -6689,6 +6693,7 @@ let srBuzzedPlayer=null;
 let srLockedPlayers=[];
 let srBuzzCountdown=null;
 let srBuzzTimeLeft=0;
+let srPostRevealTimer=null;
 const SR_CHAR_INTERVAL=60;
 
 function openSrTargetModal(){
@@ -6773,9 +6778,34 @@ function srStartReveal(qData,startTime){
     }
     if(srCharIndex>=srChars.length){
       clearInterval(srRevealInterval);srRevealInterval=null;
-      srRoundEnd(null,null);
+      if(isHost)srStartPostRevealTimer();
     }
   },30);
+}
+
+const SR_POST_REVEAL_TIME=10; // seconds players have to answer after full reveal
+function srStartPostRevealTimer(){
+  if(!isHost)return;
+  // Broadcast so all clients show the timer bar
+  if(rtChannel)rtChannel.send({type:'broadcast',event:'sr_post_reveal',payload:{seconds:SR_POST_REVEAL_TIME}});
+  srRunPostRevealTimer(SR_POST_REVEAL_TIME);
+}
+function srRunPostRevealTimer(seconds){
+  clearInterval(srPostRevealTimer);
+  const mpBar=document.getElementById('mpTimerBar');
+  if(mpBar){mpBar.style.width='100%';mpBar.className='timer-bar';}
+  let elapsed=0;
+  const total=seconds*1000;
+  srPostRevealTimer=setInterval(()=>{
+    if(srBuzzedPlayer)return; // pause visually while someone is answering
+    elapsed+=100;
+    const pct=Math.max(0,100-(elapsed/total)*100);
+    if(mpBar){mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');}
+    if(elapsed>=total){
+      clearInterval(srPostRevealTimer);srPostRevealTimer=null;
+      if(isHost)srRoundEnd(null,null);
+    }
+  },100);
 }
 
 function srRenderBuzzArea(){
@@ -6889,6 +6919,14 @@ function srApplyBuzzResult(name,correct,timedOut,userAns){
     srBuzzedPlayer=null;
     if(!srLockedPlayers.includes(name))srLockedPlayers.push(name);
     srShowFeedback(false,name,correctAns,userAns,timedOut);
+    // If every active player is now locked out, end the round immediately
+    const activePlayers=lobbyPlayers.filter(lp=>!lp.quit&&!lp.eliminated);
+    if(isHost&&activePlayers.length>0&&activePlayers.every(lp=>srLockedPlayers.includes(lp.name))){
+      clearInterval(srPostRevealTimer);srPostRevealTimer=null;
+      clearInterval(srRevealInterval);srRevealInterval=null;
+      srRoundEnd(null,correctAns);
+      return;
+    }
     const startTime=Date.now()-(srCharIndex*SR_CHAR_INTERVAL);
     srRevealInterval=setInterval(()=>{
       const elapsed=Date.now()-startTime;
@@ -6900,7 +6938,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns){
       }
       if(srCharIndex>=srChars.length){
         clearInterval(srRevealInterval);srRevealInterval=null;
-        srRoundEnd(null,correctAns);
+        if(isHost)srStartPostRevealTimer();
       }
     },30);
     srRenderBuzzArea();
@@ -6957,6 +6995,7 @@ function srRoundEnd(winner,correctAns){
 function srClearReveal(){
   clearInterval(srRevealInterval);srRevealInterval=null;
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+  clearInterval(srPostRevealTimer);srPostRevealTimer=null;
   clearInterval(mpAutoNextInterval);mpAutoNextInterval=null;
   srBuzzedPlayer=null;
   srLockedPlayers=[];
