@@ -6983,7 +6983,7 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
     ?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>'
     :'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const isMe=name===currentUser;
-  const buzzLabel=correct?(buzzRatio<=0.3?'\u26a1 Lightning read!':buzzRatio<=0.6?'\U0001f525 Early buzz!':'\U0001f44d Good read!'):'';
+  const buzzLabel=correct?(buzzRatio<=0.3?'Lightning read!':buzzRatio<=0.6?'Early buzz!':'Good read!'):'';
   document.getElementById('mpFbTitle').textContent=correct
     ?(isMe?'Correct!':name+' got it!')
     :timedOut?(isMe?"Time's up — locked out!":name+' ran out of time!')
