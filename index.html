@@ -6763,7 +6763,7 @@ function srStartReveal(qData,startTime){
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(qCard)qCard.classList.remove('answered');
   textEl.innerHTML=srChars.map((ch,i)=>{
-    if(ch===' ')return `<span style="display:inline">&nbsp;</span>`;
+    if(ch===' ')return ' ';
     return `<span class="sr-char" id="src${i}">${ch}</span>`;
   }).join('');
   srRenderBuzzArea();
