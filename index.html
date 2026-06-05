@@ -12,6 +12,19 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 </head>
 <body>
+<script>
+// Restore theme color synchronously before paint to prevent flash
+(function(){
+  try{
+    var c=localStorage.getItem('animesekai_color');
+    var validColors=['blossom','abyss','inferno','jade','arcane'];
+    if(c&&validColors.indexOf(c)!==-1){
+      document.body.setAttribute('data-theme','dark');
+      document.body.setAttribute('data-color',c);
+    }
+  }catch(e){}
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2185,7 +2198,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       currentUser   = profile.username;
       currentUserId = session.user.id;
       currentEmail  = profile.email||null;
-      if(profile.theme_color&&accentHex[profile.theme_color])currentColor=profile.theme_color;
+      if(profile.theme_color&&accentHex[profile.theme_color]){currentColor=profile.theme_color;try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}}
       isGuest = false;
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
@@ -2265,7 +2278,7 @@ function applyTheme(){
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'var(--text)':'');
 }
 function toggleMode(){isDark=!isDark;applyTheme()}
-function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
+function setColor(c,h,n,el){currentColor=c;try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
 function toggleDrop(){document.getElementById('drop').classList.toggle('open')}
 function closeDrop(){document.getElementById('drop').classList.remove('open')}
 document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
@@ -2322,6 +2335,7 @@ async function confirmSignOut(){
   closeSignOutModal();
   await sbSignOut().catch(()=>{});
   currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
+  currentColor='midnight';try{localStorage.removeItem('animesekai_color');}catch(e){}
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
@@ -2471,6 +2485,7 @@ async function saveEditProfile(){
     if(newEmail)currentEmail=newEmail;
   }
   currentColor=newColor;
+  try{localStorage.setItem('animesekai_color',currentColor);}catch(e){}
   updateNav();renderProfile();applyTheme();
   closeEditProfile();
   const toast=document.createElement('div');
