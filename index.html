@@ -2065,7 +2065,7 @@ async function sbLoadProfile(userId){
     const [statsRes, profileRes]=await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,email&id=eq.${userId}&limit=1`,
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,email,theme_color&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
     ]);
     const [statsRows, profileRows]=await Promise.all([statsRes.json(), profileRes.json()]);
@@ -2073,7 +2073,8 @@ async function sbLoadProfile(userId){
     if(!stats)return null;
     const avatar_url=(Array.isArray(profileRows)&&profileRows[0]?.avatar_url)||null;
     const email=(Array.isArray(profileRows)&&profileRows[0]?.email)||null;
-    return {...stats, avatar_url, email};
+    const theme_color=(Array.isArray(profileRows)&&profileRows[0]?.theme_color)||null;
+    return {...stats, avatar_url, email, theme_color};
   }catch(e){return null;}
 }
 
@@ -2184,6 +2185,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       currentUser   = profile.username;
       currentUserId = session.user.id;
       currentEmail  = profile.email||null;
+      if(profile.theme_color&&accentHex[profile.theme_color])currentColor=profile.theme_color;
       isGuest = false;
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
