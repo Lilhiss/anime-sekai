@@ -497,6 +497,56 @@ h1 .hi{color:var(--accent)}
 @keyframes crownBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-3px) rotate(4deg)}}
 .lobby-code-shimmer{background:linear-gradient(100deg,var(--accent) 35%,#fff 50%,var(--accent) 65%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lobbyCodeShimmer 3.5s linear infinite}
 @keyframes lobbyCodeShimmer{to{background-position:-220% center}}
+/* ── Consolidated lobby Game Settings panel ── */
+.gs-label{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.gs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#gsQGrid,#gsTimeGrid,#gsTargetGrid{grid-template-columns:repeat(4,1fr)}
+.gs-opt{display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bg3);border:1.5px solid var(--border);border-radius:11px;padding:11px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:all .15s;text-align:center}
+.gs-opt:hover{border-color:var(--accent)}
+.gs-opt.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+.gs-emoji{font-size:17px;line-height:1}
+.gs-wide{width:100%;justify-content:flex-start}
+/* Two-column lobby layout + big option cards */
+.lobby-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:18px;align-items:start;width:100%}
+@media(max-width:760px){.lobby-grid{grid-template-columns:1fr}}
+.lobby-col-left,.lobby-col-right{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lobby-col-right{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:18px;backdrop-filter:blur(10px)}
+#lobbyOptionsPanel.readonly{pointer-events:none}
+.lobby-options-readonly-note{display:none;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border2);border-radius:9px;padding:7px 11px}
+.gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
+.gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
+.gs-bigcard.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+.gs-bc-emoji{font-size:30px;line-height:1;transition:transform .2s}
+.gs-bigcard:hover .gs-bc-emoji{transform:scale(1.15) rotate(-6deg)}
+.gs-bc-title{font-family:'Lilita One',cursive;font-size:13.5px;color:var(--text);line-height:1.1}
+.gs-bc-desc{font-size:10.5px;color:var(--muted);line-height:1.35}
+.gs-bc-check{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;align-items:center;justify-content:center;font-size:10px}
+.gs-bigcard.selected .gs-bc-check{display:flex}
+/* Lobby options accordion */
+.gs-acc{border:1.5px solid var(--border);border-radius:12px;background:var(--bg3);overflow:hidden;transition:border-color .2s}
+.gs-acc.open{border-color:var(--accent)}
+.gs-acc-head{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif}
+.gs-acc-name{font-family:'Lilita One',cursive;font-size:14px;color:var(--text)}
+.gs-acc-val{margin-left:auto;font-size:12px;font-weight:800;color:var(--accent);text-align:right}
+.gs-acc-chevron{font-size:15px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.gs-acc.open .gs-acc-chevron{transform:rotate(180deg)}
+.gs-acc-body{display:none;padding:4px 12px 14px;animation:gsAccIn .2s ease}
+.gs-acc.open .gs-acc-body{display:block}
+@keyframes gsAccIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+/* Player list polish */
+.lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
+.lobby-player-host{box-shadow:0 0 0 1px #fbbf2455,0 4px 16px #fbbf2422}
+.lobby-alone-nudge{display:flex;align-items:center;gap:14px;background:var(--accent-soft);border:1.5px dashed var(--border2);border-radius:13px;padding:16px 18px}
+.lobby-alone-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text)}
+.lobby-alone-sub{font-size:12px;color:var(--muted);line-height:1.4;margin-top:2px}
+/* Select pop on option cards */
+.gs-bigcard.selected{animation:gsCardPop .4s ease}
+@keyframes gsCardPop{0%{transform:scale(1)}40%{transform:scale(1.05)}100%{transform:scale(1)}}
+.gs-bigcard.selected .gs-bc-check{animation:gsCheckPop .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes gsCheckPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+/* Start button "ready" pulse */
+.action-btn.ready-pulse{animation:startPulse 1.6s ease-in-out infinite}
+@keyframes startPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 0%,transparent)}}
 /* Kicked modal */
 .kicked-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center}
 .kicked-modal-overlay.open{display:flex}
@@ -1242,24 +1292,97 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div class="lobby-expiry-timer" id="lobbyExpiryTimerDisplay">1:00</div>
       </div>
-      <div class="slide-in" id="lobbySettingsBox" style="background:var(--accent-soft);border:1px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;transition:all .3s">
-        <div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px" id="lobbySettingsContent">
-          <div id="lobbyChangingSpinner" style="display:none;flex-shrink:0"><div class="spinner" style="width:16px;height:16px;border-width:2px"></div></div>
-          <div>
-            <span style="color:var(--text);font-weight:800" id="lobbySettingsLabel">Multiple Choice · Score Race</span><br>
-            <span style="font-size:11px;color:var(--accent)" id="lobbyTopicsLabel"></span>
-            <span style="font-size:11px" id="lobbySettingsHint">Change format &amp; mode before starting</span>
+      <!-- Hidden legacy settings refs (existing live-sync + render code targets these ids) -->
+      <div id="lobbySettingsBox" style="display:none">
+        <span id="lobbyChangingSpinner"></span>
+        <span id="lobbySettingsLabel">Multiple Choice · Score Race</span>
+        <span id="lobbyTopicsLabel"></span>
+        <span id="lobbySettingsHint"></span>
+        <button id="lobbySettingsBtn"></button>
+      </div>
+      <!-- TWO-COLUMN: players (left) + live game options (right) -->
+      <div class="lobby-grid slide-in">
+        <div class="lobby-col-left">
+          <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
+          <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
+        </div>
+        <div class="lobby-col-right" id="lobbyOptionsPanel">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div class="profile-section-title" style="margin:0"><i class="ti ti-settings"></i> Game Setup</div>
+            <button class="ghost-btn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
+          </div>
+          <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these — updating live</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <!-- Format -->
+            <div class="gs-acc open" data-acc="format">
+              <button class="gs-acc-head" onclick="gsToggleAcc('format')"><span class="gs-acc-name">Format</span><span class="gs-acc-val" id="gsValFormat">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
+              <div class="gs-acc-body">
+                <div class="gs-grid" id="gsFormatGrid">
+                  <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
+                  <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
+                  <div class="gs-bigcard" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">Guess from a scene</div></div>
+                  <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
+                </div>
+              </div>
+            </div>
+            <!-- Mode -->
+            <div class="gs-acc" data-acc="mode">
+              <button class="gs-acc-head" onclick="gsToggleAcc('mode')"><span class="gs-acc-name">Mode</span><span class="gs-acc-val" id="gsValMode">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
+              <div class="gs-acc-body">
+                <div class="gs-grid" id="gsModeGrid">
+                  <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">Highest score wins</div></div>
+                  <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">3 lives, last standing</div></div>
+                  <div class="gs-bigcard" data-mode="potato" onclick="gsSetMode('potato')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🥔</div><div class="gs-bc-title">Hot Potato</div><div class="gs-bc-desc">Pass it or lose a life</div></div>
+                  <div class="gs-bigcard" data-mode="slowreveal" onclick="gsSetMode('slowreveal')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">👁️</div><div class="gs-bc-title">Slow Reveal</div><div class="gs-bc-desc">Buzz in to answer</div></div>
+                </div>
+              </div>
+            </div>
+            <!-- Topic -->
+            <div class="gs-acc" data-acc="topic">
+              <button class="gs-acc-head" onclick="gsToggleAcc('topic')"><span class="gs-acc-name">Topic</span><span class="gs-acc-val" id="gsValTopic">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
+              <div class="gs-acc-body">
+                <button class="gs-opt gs-wide" id="gsGeneralBtn" onclick="gsSetGeneral()"><span class="gs-emoji">🌐</span> General Anime <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:700">everything</span></button>
+                <button class="ghost-btn" style="width:100%;justify-content:center;margin-top:8px" onclick="gsPickTopics()"><i class="ti ti-list-search" style="font-size:14px"></i> Pick specific anime / genres</button>
+                <div id="gsTopicSummary" style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center"></div>
+              </div>
+            </div>
+            <!-- Game Settings -->
+            <div class="gs-acc" data-acc="settings">
+              <button class="gs-acc-head" onclick="gsToggleAcc('settings')"><span class="gs-acc-name">Game Settings</span><span class="gs-acc-val" id="gsValSettings">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
+              <div class="gs-acc-body">
+                <div id="gsQuestionsSection">
+                  <div class="gs-label">Questions</div>
+                  <div class="gs-grid" id="gsQGrid">
+                    <button class="gs-opt" data-q="10" onclick="gsSetQuestions(10)">10</button>
+                    <button class="gs-opt" data-q="15" onclick="gsSetQuestions(15)">15</button>
+                    <button class="gs-opt" data-q="20" onclick="gsSetQuestions(20)">20</button>
+                    <button class="gs-opt" data-q="30" onclick="gsSetQuestions(30)">30</button>
+                  </div>
+                </div>
+                <div id="gsTimeSection">
+                  <div class="gs-label" style="margin-top:8px">Time per question</div>
+                  <div class="gs-grid" id="gsTimeGrid">
+                    <button class="gs-opt" data-t="10" onclick="gsSetTime(10)">10s</button>
+                    <button class="gs-opt" data-t="15" onclick="gsSetTime(15)">15s</button>
+                    <button class="gs-opt" data-t="20" onclick="gsSetTime(20)">20s</button>
+                    <button class="gs-opt" data-t="30" onclick="gsSetTime(30)">30s</button>
+                  </div>
+                </div>
+                <div id="gsTargetSection" style="display:none">
+                  <div class="gs-label" style="margin-top:8px">Target score</div>
+                  <div class="gs-grid" id="gsTargetGrid">
+                    <button class="gs-opt" data-sr="5" onclick="gsSetTarget(5)">5</button>
+                    <button class="gs-opt" data-sr="10" onclick="gsSetTarget(10)">10</button>
+                    <button class="gs-opt" data-sr="15" onclick="gsSetTarget(15)">15</button>
+                    <button class="gs-opt" data-sr="20" onclick="gsSetTarget(20)">20</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="ghost-btn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
-          <button class="ghost-btn" id="lobbySettingsBtn" onclick="openLobbySettings()"><i class="ti ti-settings" style="font-size:14px"></i> Settings</button>
-        </div>
       </div>
-      <div class="slide-in">
-        <div class="profile-section-title"><i class="ti ti-users"></i> Players (<span id="lobbyPlayerCount">1</span>/<span id="lobbyPlayerMax">8</span>)</div>
-        <div style="display:flex;flex-direction:column;gap:10px" id="lobbyPlayerList"></div>
-      </div>
+      <div id="startHint" style="display:none;text-align:center;font-size:12px;font-weight:700;color:var(--accent)"></div>
       <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <button class="action-btn secondary" onclick="leaveLobbyRoom()"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
         <button class="action-btn primary" id="startLobbyBtn" onclick="startLobbyGame()"><i class="ti ti-player-play" style="font-size:16px"></i> Start Game</button>
@@ -5128,6 +5251,16 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'settings_changed'},({payload})=>{
     if(isHost)return;
+    // Keep local settings in sync so the read-only options panel reflects the host's live picks
+    if(payload.format)lobbyFormat=payload.format;
+    if(payload.mode)lobbyMode=payload.mode;
+    if(payload.mode!=='slowreveal'&&payload.questionCount!=null)selectedQuestionLimit=payload.questionCount;
+    if(payload.timeLimit!=null)raceTimeLimit=payload.timeLimit;
+    if(payload.srTargetScore!=null)srTargetScore=payload.srTargetScore;
+    if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
+    if(payload.topics)lobbyTopics=payload.topics;
+    if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
+    if(typeof gsSyncUI==='function')gsSyncUI();
     const label=document.getElementById('lobbySettingsLabel');
     const hint=document.getElementById('lobbySettingsHint');
     const spinner=document.getElementById('lobbyChangingSpinner');
@@ -6110,6 +6243,8 @@ function renderLobbyRoom(){
   lobbyPlayers.forEach(p=>{
     const row=document.createElement('div');row.className='lobby-player'+(_prevNames.has(p.name)?'':' is-new');
     const isMe=p.name===currentUser;
+    if(isMe)row.classList.add('lobby-player-me');
+    if(p.isHost)row.classList.add('lobby-player-host');
     const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
     const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
     const avatarWrap=isMe
@@ -6118,12 +6253,18 @@ function renderLobbyRoom(){
     row.innerHTML=`${avatarWrap}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
-  // Ghost "waiting" slots so the room visibly fills up as players join
-  const ghostTarget=Math.min(maxPlayers,6);
-  for(let i=lobbyPlayers.length;i<ghostTarget;i++){
-    const g=document.createElement('div');g.className='lobby-slot-ghost';
-    g.innerHTML='<div class="lobby-slot-ghost-av"><i class="ti ti-user-plus" style="font-size:15px"></i></div><span>Waiting for player…</span>';
-    list.appendChild(g);
+  // When alone, nudge to share the code; otherwise show ghost "waiting" slots filling up
+  if(lobbyPlayers.length<=1){
+    const n=document.createElement('div');n.className='lobby-alone-nudge';
+    n.innerHTML='<div style="font-size:26px">🎉</div><div><div class="lobby-alone-title">It\'s quiet in here…</div><div class="lobby-alone-sub">Share the code above to get your squad in!</div></div>';
+    list.appendChild(n);
+  } else {
+    const ghostTarget=Math.min(maxPlayers,6);
+    for(let i=lobbyPlayers.length;i<ghostTarget;i++){
+      const g=document.createElement('div');g.className='lobby-slot-ghost';
+      g.innerHTML='<div class="lobby-slot-ghost-av"><i class="ti ti-user-plus" style="font-size:15px"></i></div><span>Waiting for player…</span>';
+      list.appendChild(g);
+    }
   }
   window._prevLobbyNames=new Set(lobbyPlayers.map(p=>p.name));
   // Lock controls for non-host players
@@ -6136,6 +6277,19 @@ function renderLobbyRoom(){
     if(startBtn){startBtn.classList.remove('lobby-guest-lock');startBtn.disabled=false;}
     if(settingsBtn){settingsBtn.style.opacity='';settingsBtn.style.pointerEvents='';settingsBtn.title='';}
   }
+  // Smarter Start button: pulse when ready (2+ players), nudge to invite when alone
+  const startHint=document.getElementById('startHint');
+  if(startBtn)startBtn.classList.toggle('ready-pulse',isHost&&lobbyPlayers.length>=2);
+  if(startHint){
+    if(isHost&&lobbyPlayers.length<2){startHint.style.display='block';startHint.textContent='✨ It\'s more fun with friends — share the code to invite them!';}
+    else{startHint.style.display='none';}
+  }
+  // Reflect current settings in the inline options panel + lock it for non-hosts
+  if(typeof gsSyncUI==='function')gsSyncUI();
+  const optPanel=document.getElementById('lobbyOptionsPanel');
+  if(optPanel)optPanel.classList.toggle('readonly',!isHost);
+  const optLock=document.getElementById('lobbyOptionsLock');
+  if(optLock)optLock.style.display=isHost?'none':'flex';
   // Update hint text
   const hint=document.getElementById('lobbySettingsHint');
   if(hint)hint.textContent=isHost?'Change format \u0026 mode before starting':'Only the host can change settings';
@@ -6323,6 +6477,66 @@ function openLobbySettings(){
   const fmtIdx={mc:0,type:1,img:2,char:3}[lobbyFormat]??0;
   fmtCards.forEach((c,i)=>c.style.borderColor=i===fmtIdx?'var(--accent)':'');
 }
+
+// ── Inline lobby "Game Settings" panel (accordion sections) ──
+let gsActiveTab='format';
+function broadcastLobbySettings(changing){
+  const isSR=lobbyMode==='slowreveal';
+  const qc=isSR?srTargetScore:selectedQuestionLimit;
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
+  if(rtChannel){
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab};
+    if(isSR)payload.srTargetScore=srTargetScore;
+    rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
+  }
+}
+function gsUpdateHostLabel(){
+  const isSR=lobbyMode==='slowreveal';
+  const qLabel=isSR?` · First to ${srTargetScore}`:` · ${selectedQuestionLimit}Q`;
+  const tLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
+  const el=document.getElementById('lobbySettingsLabel');
+  if(el)el.textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qLabel+tLabel;
+  if(typeof updateLobbyTopicsLabel==='function')updateLobbyTopicsLabel();
+}
+function gsSyncUI(){
+  document.querySelectorAll('#gsFormatGrid [data-fmt]').forEach(b=>b.classList.toggle('selected',b.dataset.fmt===lobbyFormat));
+  document.querySelectorAll('#gsModeGrid [data-mode]').forEach(b=>b.classList.toggle('selected',b.dataset.mode===lobbyMode));
+  document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
+  document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
+  document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
+  const isSR=lobbyMode==='slowreveal';
+  document.getElementById('gsQuestionsSection').style.display=isSR?'none':'block';
+  document.getElementById('gsTimeSection').style.display=(lobbyMode==='race'||lobbyMode==='survival')?'block':'none';
+  document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
+  const genBtn=document.getElementById('gsGeneralBtn');if(genBtn)genBtn.classList.toggle('selected',!!lobbyIsGeneral);
+  const sum=document.getElementById('gsTopicSummary');
+  if(sum)sum.textContent=lobbyIsGeneral?'Topic: General Anime':((lobbyTopics&&lobbyTopics.length)?'Topic: '+lobbyTopics.map(t=>t.name).join(', '):'No topic selected');
+  // Row summaries shown on each collapsed accordion head
+  const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
+  setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
+  setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
+  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
+  gsRenderAcc();
+}
+function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
+function gsSetFormat(f){lobbyFormat=f;selectedFormat=f;gsAfterChange();}
+function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
+function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
+function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
+function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
+function gsPickTopics(){openLobbyTopicPage();}
+function gsRenderAcc(){
+  document.querySelectorAll('#lobbyOptionsPanel .gs-acc').forEach(a=>a.classList.toggle('open',a.dataset.acc===gsActiveTab));
+}
+function gsToggleAcc(name){
+  gsActiveTab=(gsActiveTab===name)?null:name;
+  gsRenderAcc();
+  broadcastLobbySettings(true);
+}
+// Settings are now inline in the lobby room (no modal).
 function startLobbyGame(){
   if(!isHost)return;
   clearLobbyTimer();
