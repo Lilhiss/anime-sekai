@@ -839,7 +839,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="drop-section" style="display:none">Mode</div>
           <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
           <div class="drop-sep" style="display:none"></div>
-          <div class="drop-section">Color</div>
+          <div class="drop-section">Sound</div><div class="toggle-row"><span class="toggle-label"><i class="ti ti-volume" style="font-size:15px"></i> Sound effects</span><button class="tog" id="soundToggle" onclick="toggleSound()"></button></div><div class="drop-sep"></div><div class="drop-section">Color</div>
           <button class="drop-row active" onclick="setColor('midnight','#a78bfa','Ethereal',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#a78bfa,#7c5cbf)"></span>Ethereal</div><i class="ti ti-check drop-check"></i></button>
           <button class="drop-row" onclick="setColor('blossom','#f472b6','Blossom',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#f472b6,#be185d)"></span>Blossom</div><i class="ti ti-check drop-check"></i></button>
           <button class="drop-row" onclick="setColor('abyss','#38bdf8','Abyss',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#38bdf8,#1d4ed8)"></span>Abyss</div><i class="ti ti-check drop-check"></i></button>
@@ -878,6 +878,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="toggle-row" style="padding:0 2px 10px;display:none">
       <span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span>
       <button class="tog" id="modeToggleDrawer" onclick="toggleMode()"></button>
+    </div>
+    <div class="toggle-row" style="padding:0 2px 10px">
+      <span class="toggle-label"><i class="ti ti-volume" style="font-size:15px"></i> Sound effects</span>
+      <button class="tog" id="soundToggleDrawer" onclick="toggleSound()"></button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 2px">
       <button onclick="setColor('midnight','#a78bfa','Midnight',null);closeNavDrawer()" style="background:#a78bfa;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Midnight"></button>
@@ -2538,6 +2542,7 @@ function applyTheme(){
     const el=document.getElementById(id);if(el)el.style.color=light?'#fff':'';
   });
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'#fff':'');
+  if(typeof updateSoundUI==='function')updateSoundUI();
 }
 function toggleMode(){isDark=!isDark;applyTheme()}
 function setColor(c,h,n,el){currentColor=c;document.querySelectorAll('.drop-row').forEach(r=>r.classList.remove('active'));if(el)el.classList.add('active');applyTheme();closeDrop()}
@@ -2550,7 +2555,7 @@ function buildThemeDropHTML(){
   return `<div class="drop-section" style="display:none">Mode</div>
     <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog${!isDark?' on':''}" id="modeToggle" onclick="toggleMode()"></button></div>
     <div class="drop-sep" style="display:none"></div>
-    <div class="drop-section">Color</div>
+    <div class="drop-section">Sound</div><div class="toggle-row"><span class="toggle-label"><i class="ti ti-volume" style="font-size:15px"></i> Sound effects</span><button class="tog" id="soundToggle" onclick="toggleSound()"></button></div><div class="drop-sep"></div><div class="drop-section">Color</div>
     ${[
       {k:'midnight',g:'#a78bfa,#7c5cbf'},
       {k:'blossom', g:'#f472b6,#be185d'},
@@ -4227,6 +4232,7 @@ function startSoloAutoNext(){
 }
 
 function showFeedback(correct,correctAns,userAns,override){
+  if(correct)sfxCorrect();else sfxWrong();
   // Show inline card feedback section
   const fb=document.getElementById('qCardFeedback');fb.style.display='block';
   document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
@@ -4784,7 +4790,28 @@ function updateTimerBar(){
   const bar=document.getElementById('timerBar');bar.style.width=pct+'%';
   bar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
 }
+// ── SOUND EFFECTS (synthesized — no audio files needed) ──────
+let _audioCtx=null;
+let soundOn=(()=>{try{return localStorage.getItem('sound_off')!=='1';}catch(e){return true;}})();
+function _sfxCtx(){try{if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(_audioCtx.state==='suspended')_audioCtx.resume();return _audioCtx;}catch(e){return null;}}
+function _tone(freq,start,dur,type,gain){
+  const ctx=_sfxCtx();if(!ctx)return;
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type||'sine';o.frequency.value=freq;o.connect(g);g.connect(ctx.destination);
+  const t=ctx.currentTime+start;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(gain||0.15,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.start(t);o.stop(t+dur+0.03);
+}
+function sfxCorrect(){if(!soundOn)return;_tone(660,0,.13,'sine',.18);_tone(990,.09,.18,'sine',.16);}
+function sfxWrong(){if(!soundOn)return;_tone(196,0,.22,'square',.12);_tone(146,.09,.28,'square',.11);}
+function sfxWin(){if(!soundOn)return;[523,659,784,1047].forEach((f,i)=>_tone(f,i*.11,.34,'triangle',.16));}
+function toggleSound(){soundOn=!soundOn;try{localStorage.setItem('sound_off',soundOn?'0':'1');}catch(e){}updateSoundUI();if(soundOn)sfxCorrect();}
+function updateSoundUI(){document.querySelectorAll('#soundToggle,#soundToggleDrawer').forEach(t=>t.classList.toggle('on',soundOn));}
+
 function launchConfetti(){
+  sfxWin();
   const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#fbbf24'];
   for(let i=0;i<60;i++){setTimeout(()=>{
     const el=document.createElement('div');el.className='confetti-piece';
@@ -7119,6 +7146,7 @@ function mpTimeOut(){
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName){
+  if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset any previously open dropdown
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
