@@ -559,15 +559,15 @@ h1 .hi{color:var(--accent)}
 .gs-bc-check{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;align-items:center;justify-content:center;font-size:10px}
 .gs-bigcard.selected .gs-bc-check{display:flex}
 /* Lobby options accordion */
-.gs-acc{border:1.5px solid var(--border);border-radius:12px;background:var(--bg3);overflow:hidden;transition:border-color .2s}
-.gs-acc.open{border-color:var(--accent)}
-.gs-acc-head{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif}
-.gs-acc-name{font-family:'Lilita One',cursive;font-size:14px;color:var(--text)}
-.gs-acc-val{margin-left:auto;font-size:12px;font-weight:800;color:var(--accent);text-align:right}
-.gs-acc-chevron{font-size:15px;color:var(--muted);transition:transform .2s;flex-shrink:0}
-.gs-acc.open .gs-acc-chevron{transform:rotate(180deg)}
-.gs-acc-body{display:none;padding:4px 12px 14px;animation:gsAccIn .2s ease}
-.gs-acc.open .gs-acc-body{display:block}
+.gs-tabs{display:flex;gap:4px;background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;padding:4px;margin-bottom:12px}
+.gs-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;background:none;border:none;border-radius:9px;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s;min-width:0}
+.gs-tab.active{background:var(--accent)}
+.gs-tab-name{font-family:'Lilita One',cursive;font-size:13px;color:var(--text)}
+.gs-tab.active .gs-tab-name{color:#fff}
+.gs-tab-val{font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gs-tab.active .gs-tab-val{color:#fff;opacity:.9}
+.gs-pane{display:none;animation:gsAccIn .2s ease}
+.gs-pane.active{display:block}
 @keyframes gsAccIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 /* Player list polish */
 .lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
@@ -1436,70 +1436,60 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <button class="ghost-btn" id="lobbyHowToBtn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
           </div>
           <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these — updating live</div>
-          <div style="display:flex;flex-direction:column;gap:9px">
-            <!-- Format -->
-            <div class="gs-acc" data-acc="format">
-              <button class="gs-acc-head" onclick="gsToggleAcc('format')"><span class="gs-acc-name">Format</span><span class="gs-acc-val" id="gsValFormat">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
-              <div class="gs-acc-body">
-                <div class="gs-grid" id="gsFormatGrid">
-                  <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
-                  <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
-                  <div class="gs-bigcard" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">Guess from a scene</div></div>
-                  <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
-                </div>
+          <div class="gs-tabs" id="gsTabs">
+            <button class="gs-tab" data-tab="format" onclick="gsTab('format')"><span class="gs-tab-name">Format</span><span class="gs-tab-val" id="gsValFormat">—</span></button>
+            <button class="gs-tab" data-tab="mode" onclick="gsTab('mode')"><span class="gs-tab-name">Mode</span><span class="gs-tab-val" id="gsValMode">—</span></button>
+            <button class="gs-tab" data-tab="topic" onclick="gsTab('topic')"><span class="gs-tab-name">Topic</span><span class="gs-tab-val" id="gsValTopic">—</span></button>
+            <button class="gs-tab" data-tab="settings" onclick="gsTab('settings')"><span class="gs-tab-name">Settings</span><span class="gs-tab-val" id="gsValSettings">—</span></button>
+          </div>
+          <div class="gs-panel" id="gsPanel">
+            <div class="gs-pane" data-pane="format">
+              <div class="gs-grid" id="gsFormatGrid">
+                <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
+                <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
+                <div class="gs-bigcard" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">Guess from a scene</div></div>
+                <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
               </div>
             </div>
-            <!-- Mode -->
-            <div class="gs-acc" data-acc="mode">
-              <button class="gs-acc-head" onclick="gsToggleAcc('mode')"><span class="gs-acc-name">Mode</span><span class="gs-acc-val" id="gsValMode">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
-              <div class="gs-acc-body">
-                <div class="gs-grid" id="gsModeGrid">
-                  <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">Highest score wins</div></div>
-                  <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">3 lives, last standing</div></div>
-                  <div class="gs-bigcard" data-mode="potato" onclick="gsSetMode('potato')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🥔</div><div class="gs-bc-title">Hot Potato</div><div class="gs-bc-desc">Pass it or lose a life</div></div>
-                  <div class="gs-bigcard" data-mode="slowreveal" onclick="gsSetMode('slowreveal')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">👁️</div><div class="gs-bc-title">Slow Reveal</div><div class="gs-bc-desc">Buzz in to answer</div></div>
-                </div>
+            <div class="gs-pane" data-pane="mode">
+              <div class="gs-grid" id="gsModeGrid">
+                <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">Highest score wins</div></div>
+                <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">3 lives, last standing</div></div>
+                <div class="gs-bigcard" data-mode="potato" onclick="gsSetMode('potato')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🥔</div><div class="gs-bc-title">Hot Potato</div><div class="gs-bc-desc">Pass it or lose a life</div></div>
+                <div class="gs-bigcard" data-mode="slowreveal" onclick="gsSetMode('slowreveal')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">👁️</div><div class="gs-bc-title">Slow Reveal</div><div class="gs-bc-desc">Buzz in to answer</div></div>
               </div>
             </div>
-            <!-- Topic -->
-            <div class="gs-acc" data-acc="topic">
-              <button class="gs-acc-head" onclick="gsToggleAcc('topic')"><span class="gs-acc-name">Topic</span><span class="gs-acc-val" id="gsValTopic">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
-              <div class="gs-acc-body">
-                <button class="gs-opt gs-wide" id="gsGeneralBtn" onclick="gsSetGeneral()"><span class="gs-emoji">🌐</span> General Anime <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:700">everything</span></button>
-                <button class="ghost-btn" style="width:100%;justify-content:center;margin-top:8px" onclick="gsPickTopics()"><i class="ti ti-list-search" style="font-size:14px"></i> Pick specific anime / genres</button>
-                <div id="gsTopicSummary" style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center"></div>
-              </div>
+            <div class="gs-pane" data-pane="topic">
+              <button class="gs-opt gs-wide" id="gsGeneralBtn" onclick="gsSetGeneral()"><span class="gs-emoji">🌐</span> General Anime <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:700">everything</span></button>
+              <button class="ghost-btn" style="width:100%;justify-content:center;margin-top:8px" onclick="gsPickTopics()"><i class="ti ti-list-search" style="font-size:14px"></i> Pick specific anime / genres</button>
+              <div id="gsTopicSummary" style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center"></div>
             </div>
-            <!-- Game Settings -->
-            <div class="gs-acc" data-acc="settings">
-              <button class="gs-acc-head" onclick="gsToggleAcc('settings')"><span class="gs-acc-name">Game Settings</span><span class="gs-acc-val" id="gsValSettings">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
-              <div class="gs-acc-body">
-                <div id="gsQuestionsSection">
-                  <div class="gs-label">Questions</div>
-                  <div class="gs-grid" id="gsQGrid">
-                    <button class="gs-opt" data-q="10" onclick="gsSetQuestions(10)">10</button>
-                    <button class="gs-opt" data-q="15" onclick="gsSetQuestions(15)">15</button>
-                    <button class="gs-opt" data-q="20" onclick="gsSetQuestions(20)">20</button>
-                    <button class="gs-opt" data-q="30" onclick="gsSetQuestions(30)">30</button>
-                  </div>
+            <div class="gs-pane" data-pane="settings">
+              <div id="gsQuestionsSection">
+                <div class="gs-label">Questions</div>
+                <div class="gs-grid" id="gsQGrid">
+                  <button class="gs-opt" data-q="10" onclick="gsSetQuestions(10)">10</button>
+                  <button class="gs-opt" data-q="15" onclick="gsSetQuestions(15)">15</button>
+                  <button class="gs-opt" data-q="20" onclick="gsSetQuestions(20)">20</button>
+                  <button class="gs-opt" data-q="30" onclick="gsSetQuestions(30)">30</button>
                 </div>
-                <div id="gsTimeSection">
-                  <div class="gs-label" style="margin-top:8px">Time per question</div>
-                  <div class="gs-grid" id="gsTimeGrid">
-                    <button class="gs-opt" data-t="10" onclick="gsSetTime(10)">10s</button>
-                    <button class="gs-opt" data-t="15" onclick="gsSetTime(15)">15s</button>
-                    <button class="gs-opt" data-t="20" onclick="gsSetTime(20)">20s</button>
-                    <button class="gs-opt" data-t="30" onclick="gsSetTime(30)">30s</button>
-                  </div>
+              </div>
+              <div id="gsTimeSection">
+                <div class="gs-label" style="margin-top:8px">Time per question</div>
+                <div class="gs-grid" id="gsTimeGrid">
+                  <button class="gs-opt" data-t="10" onclick="gsSetTime(10)">10s</button>
+                  <button class="gs-opt" data-t="15" onclick="gsSetTime(15)">15s</button>
+                  <button class="gs-opt" data-t="20" onclick="gsSetTime(20)">20s</button>
+                  <button class="gs-opt" data-t="30" onclick="gsSetTime(30)">30s</button>
                 </div>
-                <div id="gsTargetSection" style="display:none">
-                  <div class="gs-label" style="margin-top:8px">Target score</div>
-                  <div class="gs-grid" id="gsTargetGrid">
-                    <button class="gs-opt" data-sr="5" onclick="gsSetTarget(5)">5</button>
-                    <button class="gs-opt" data-sr="10" onclick="gsSetTarget(10)">10</button>
-                    <button class="gs-opt" data-sr="15" onclick="gsSetTarget(15)">15</button>
-                    <button class="gs-opt" data-sr="20" onclick="gsSetTarget(20)">20</button>
-                  </div>
+              </div>
+              <div id="gsTargetSection" style="display:none">
+                <div class="gs-label" style="margin-top:8px">Target score</div>
+                <div class="gs-grid" id="gsTargetGrid">
+                  <button class="gs-opt" data-sr="5" onclick="gsSetTarget(5)">5</button>
+                  <button class="gs-opt" data-sr="10" onclick="gsSetTarget(10)">10</button>
+                  <button class="gs-opt" data-sr="15" onclick="gsSetTarget(15)">15</button>
+                  <button class="gs-opt" data-sr="20" onclick="gsSetTarget(20)">20</button>
                 </div>
               </div>
             </div>
@@ -6928,7 +6918,7 @@ function openLobbySettings(){
 }
 
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
-let gsActiveTab=null;
+let gsActiveTab='format';
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const qc=isSR?srTargetScore:selectedQuestionLimit;
@@ -6962,11 +6952,11 @@ function gsSyncUI(){
   if(sum)sum.textContent=lobbyIsGeneral?'Topic: General Anime':((lobbyTopics&&lobbyTopics.length)?'Topic: '+lobbyTopics.map(t=>t.name).join(', '):'No topic selected');
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
-  setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
-  setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
-  setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
-  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
+  const fmtShort={mc:'MC',type:'Type',img:'Image',char:'Char'},modeShort={race:'Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  setTxt('gsValFormat',fmtShort[lobbyFormat]||'—');
+  setTxt('gsValMode',modeShort[lobbyMode]||'—');
+  setTxt('gsValTopic',lobbyIsGeneral?'General':((lobbyTopics&&lobbyTopics.length)?lobbyTopics.length+' picked':'—'));
+  setTxt('gsValSettings',isSR?('→ '+srTargetScore):(selectedQuestionLimit+' · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
@@ -6978,10 +6968,12 @@ function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
 function gsPickTopics(){openLobbyTopicPage();}
 function gsRenderAcc(){
-  document.querySelectorAll('#lobbyOptionsPanel .gs-acc').forEach(a=>a.classList.toggle('open',a.dataset.acc===gsActiveTab));
+  const t=gsActiveTab||'format';
+  document.querySelectorAll('#lobbyOptionsPanel .gs-tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  document.querySelectorAll('#lobbyOptionsPanel .gs-pane').forEach(el=>el.classList.toggle('active',el.dataset.pane===t));
 }
-function gsToggleAcc(name){
-  gsActiveTab=(gsActiveTab===name)?null:name;
+function gsTab(name){
+  gsActiveTab=name;
   gsRenderAcc();
   broadcastLobbySettings(true);
 }
