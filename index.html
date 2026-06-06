@@ -535,13 +535,20 @@ h1 .hi{color:var(--accent)}
 .gs-emoji{font-size:17px;line-height:1}
 .gs-wide{width:100%;justify-content:flex-start}
 /* Two-column lobby layout + big option cards */
-.lobby-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:18px;align-items:start;width:100%}
+.lobby-grid{display:grid;grid-template-columns:1fr 1.7fr;gap:18px;align-items:start;width:100%}
 @media(max-width:760px){.lobby-grid{grid-template-columns:1fr}}
 .lobby-col-left,.lobby-col-right{display:flex;flex-direction:column;gap:12px;min-width:0}
 .lobby-col-right{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:18px;backdrop-filter:blur(10px)}
 #lobbyOptionsPanel.readonly{pointer-events:none}
 #lobbyOptionsPanel.readonly #lobbyHowToBtn{pointer-events:auto}
 .lobby-options-readonly-note{display:none;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border2);border-radius:9px;padding:7px 11px}
+.lobby-cs-row{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;align-items:stretch;margin-top:14px;padding-top:16px;border-top:1px solid var(--card-border)}
+.lobby-cs-code{display:flex;flex-direction:column;justify-content:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
+.lobby-cs-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.lobby-cs-bigcode{font-family:'Lilita One',cursive;font-size:30px;color:var(--accent);letter-spacing:.12em;line-height:1}
+.lobby-cs-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.lobby-cs-start{height:100%;flex-direction:column;font-size:18px;gap:6px}
+@media(max-width:760px){.lobby-cs-row{grid-template-columns:1fr}}
 .gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 .gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
 .gs-bigcard.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
@@ -1396,19 +1403,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <span style="left:84%;top:70%;animation-delay:1.8s">👾</span>
       <span style="left:92%;top:46%;animation-delay:2.1s">✨</span>
     </div>
-    <div style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:18px;position:relative;z-index:1">
+    <div style="width:100%;max-width:880px;display:flex;flex-direction:column;gap:18px;position:relative;z-index:1">
       <div style="text-align:center" class="slide-in">
         <div class="step-eyebrow">Waiting for players</div>
         <h1>Lobby <span class="hi" id="lobbyCodeDisplay">—</span></h1>
-      </div>
-      <div class="slide-in" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:24px;backdrop-filter:blur(10px);text-align:center">
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Share this code</div>
-        <div class="lobby-code-shimmer" style="font-family:'Lilita One',cursive;font-size:42px;color:var(--accent);letter-spacing:.15em;margin-bottom:14px" id="lobbyCodeBig">—</div>
-        <div style="position:relative;display:flex;align-items:center;justify-content:center">
-          <button class="ghost-btn" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
-          <span class="lobby-visibility-badge" id="lobbyVisibilityBadge" style="position:absolute;right:0"><i class="ti ti-world" style="font-size:11px"></i> Public</span>
-        </div>
-        <button class="action-btn primary" onclick="copyLobbyLink()" style="margin-top:12px;width:100%;justify-content:center"><i class="ti ti-link" style="font-size:15px"></i> <span id="copyLinkLabel">Copy invite link</span></button>
       </div>
       <div class="lobby-expiry-banner slide-in" id="lobbyExpiryBanner">
         <div class="lobby-expiry-icon">⏳</div>
@@ -1506,12 +1504,22 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               </div>
             </div>
           </div>
+          <div class="lobby-cs-row">
+            <div class="lobby-cs-code">
+              <div class="lobby-cs-label">Share code <span class="lobby-visibility-badge" id="lobbyVisibilityBadge"><i class="ti ti-world" style="font-size:11px"></i> Public</span></div>
+              <div class="lobby-code-shimmer lobby-cs-bigcode" id="lobbyCodeBig">—</div>
+              <div class="lobby-cs-actions">
+                <button class="ghost-btn" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:13px"></i> <span id="copyCodeLabel">Copy code</span></button>
+                <button class="ghost-btn" onclick="copyLobbyLink()"><i class="ti ti-link" style="font-size:13px"></i> <span id="copyLinkLabel">Invite link</span></button>
+              </div>
+            </div>
+            <button class="action-btn primary lobby-cs-start" id="startLobbyBtn" onclick="startLobbyGame()"><i class="ti ti-player-play" style="font-size:20px"></i> Start Game</button>
+          </div>
+          <div id="startHint" style="display:none;text-align:center;font-size:12px;font-weight:700;color:var(--accent);margin-top:8px"></div>
         </div>
       </div>
-      <div id="startHint" style="display:none;text-align:center;font-size:12px;font-weight:700;color:var(--accent)"></div>
-      <div class="slide-in" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <button class="action-btn secondary" onclick="leaveLobbyRoom()"><i class="ti ti-x" style="font-size:16px"></i> Leave</button>
-        <button class="action-btn primary" id="startLobbyBtn" onclick="startLobbyGame()"><i class="ti ti-player-play" style="font-size:16px"></i> Start Game</button>
+      <div class="slide-in">
+        <button class="action-btn secondary" onclick="leaveLobbyRoom()" style="width:100%;justify-content:center"><i class="ti ti-x" style="font-size:16px"></i> Leave lobby</button>
       </div>
     </div>
   </div>
