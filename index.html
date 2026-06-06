@@ -539,15 +539,14 @@ h1 .hi{color:var(--accent)}
 @media(max-width:760px){.lobby-grid{grid-template-columns:1fr}}
 .lobby-col-left,.lobby-col-right{display:flex;flex-direction:column;gap:12px;min-width:0}
 .lobby-col-right{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:18px;backdrop-filter:blur(10px)}
-#lobbyOptionsPanel.readonly{pointer-events:none}
-#lobbyOptionsPanel.readonly #lobbyHowToBtn{pointer-events:auto}
+#lobbyOptionsPanel.readonly .gs-tabs,#lobbyOptionsPanel.readonly .gs-panel{pointer-events:none;opacity:.8;transition:opacity .2s}
 .lobby-options-readonly-note{display:none;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border2);border-radius:9px;padding:7px 11px}
 .lobby-cs-row{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;align-items:stretch;margin-top:14px;padding-top:16px;border-top:1px solid var(--card-border)}
 .lobby-cs-code{display:flex;flex-direction:column;justify-content:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
 .lobby-cs-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .lobby-cs-bigcode{font-family:'Lilita One',cursive;font-size:30px;color:var(--accent);letter-spacing:.12em;line-height:1}
 .lobby-cs-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.lobby-cs-start{height:100%;flex-direction:column;font-size:18px;gap:6px}
+.lobby-cs-start{height:100%;flex-direction:column;font-size:18px;gap:6px;text-shadow:0 2px 10px #0006;box-shadow:0 14px 32px color-mix(in srgb,var(--accent) 38%,transparent),inset 0 2px 7px #ffffff66;animation:logoGlow 3s ease-in-out infinite}
 @media(max-width:760px){.lobby-cs-row{grid-template-columns:1fr}}
 .gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 .gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
@@ -560,15 +559,17 @@ h1 .hi{color:var(--accent)}
 .gs-bigcard.selected .gs-bc-check{display:flex}
 /* Lobby options accordion */
 .gs-tabs{display:flex;gap:4px;background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;padding:4px;margin-bottom:12px}
-.gs-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;background:none;border:none;border-radius:9px;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s;min-width:0}
+.gs-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 8px;background:none;border:none;border-radius:9px;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s;min-width:0}
 .gs-tab.active{background:var(--accent)}
-.gs-tab-name{font-family:'Lilita One',cursive;font-size:13px;color:var(--text)}
+.gs-tab-name{font-family:'Lilita One',cursive;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .gs-tab.active .gs-tab-name{color:#fff}
 .gs-tab-val{font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .gs-tab.active .gs-tab-val{color:#fff;opacity:.9}
-.gs-pane{display:none;animation:gsAccIn .2s ease}
+@media(max-width:560px){.gs-tabs{overflow-x:auto}.gs-tab{flex:0 0 auto;min-width:84px}.gs-tab-val{display:none}}
+.gs-panel{min-height:250px}
+.gs-pane{display:none;animation:gsAccIn .24s ease}
 .gs-pane.active{display:block}
-@keyframes gsAccIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes gsAccIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* Player list polish */
 .lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
 /* Select pop on option cards */
@@ -577,7 +578,7 @@ h1 .hi{color:var(--accent)}
 .gs-bigcard.selected .gs-bc-check{animation:gsCheckPop .4s cubic-bezier(.34,1.56,.64,1)}
 @keyframes gsCheckPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
 /* Start button "ready" pulse */
-.action-btn.ready-pulse{animation:startPulse 1.6s ease-in-out infinite}
+.action-btn.ready-pulse{animation:logoGlow 1.6s ease-in-out infinite}
 @keyframes startPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 0%,transparent)}}
 /* Kicked modal */
 .kicked-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center}
@@ -1403,7 +1404,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <span style="left:84%;top:70%;animation-delay:1.8s">👾</span>
       <span style="left:92%;top:46%;animation-delay:2.1s">✨</span>
     </div>
-    <div style="width:100%;max-width:880px;display:flex;flex-direction:column;gap:18px;position:relative;z-index:1">
+    <div style="width:100%;max-width:1180px;display:flex;flex-direction:column;gap:18px;position:relative;z-index:1">
       <div style="text-align:center" class="slide-in">
         <div class="step-eyebrow">Waiting for players</div>
         <h1>Lobby <span class="hi" id="lobbyCodeDisplay">—</span></h1>
@@ -1440,7 +1441,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <button class="gs-tab" data-tab="format" onclick="gsTab('format')"><span class="gs-tab-name">Format</span><span class="gs-tab-val" id="gsValFormat">—</span></button>
             <button class="gs-tab" data-tab="mode" onclick="gsTab('mode')"><span class="gs-tab-name">Mode</span><span class="gs-tab-val" id="gsValMode">—</span></button>
             <button class="gs-tab" data-tab="topic" onclick="gsTab('topic')"><span class="gs-tab-name">Topic</span><span class="gs-tab-val" id="gsValTopic">—</span></button>
-            <button class="gs-tab" data-tab="settings" onclick="gsTab('settings')"><span class="gs-tab-name">Settings</span><span class="gs-tab-val" id="gsValSettings">—</span></button>
+            <button class="gs-tab" data-tab="settings" onclick="gsTab('settings')"><span class="gs-tab-name">Game Settings</span><span class="gs-tab-val" id="gsValSettings">—</span></button>
           </div>
           <div class="gs-panel" id="gsPanel">
             <div class="gs-pane" data-pane="format">
@@ -6952,11 +6953,11 @@ function gsSyncUI(){
   if(sum)sum.textContent=lobbyIsGeneral?'Topic: General Anime':((lobbyTopics&&lobbyTopics.length)?'Topic: '+lobbyTopics.map(t=>t.name).join(', '):'No topic selected');
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const fmtShort={mc:'MC',type:'Type',img:'Image',char:'Char'},modeShort={race:'Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
-  setTxt('gsValFormat',fmtShort[lobbyFormat]||'—');
-  setTxt('gsValMode',modeShort[lobbyMode]||'—');
-  setTxt('gsValTopic',lobbyIsGeneral?'General':((lobbyTopics&&lobbyTopics.length)?lobbyTopics.length+' picked':'—'));
-  setTxt('gsValSettings',isSR?('→ '+srTargetScore):(selectedQuestionLimit+' · '+raceTimeLimit+'s'));
+  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
+  setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
+  setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
+  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
