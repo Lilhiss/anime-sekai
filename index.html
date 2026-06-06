@@ -4890,6 +4890,7 @@ async function rtJoinLobby(code){
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
+  lobbyExpiresAt=lobby.expires_at||null;
   // Block rejoining — check sessionStorage first (race-safe), then DB kicked_players array
   try{
     const kickedLobbies=JSON.parse(sessionStorage.getItem('kicked_from_lobbies')||'[]');
@@ -5043,15 +5044,11 @@ function rtSubscribe(lobbyId){
     // before the 60-second countdown finishes. Only one non-host wins the
     // self-election (same pattern used in postgres_changes above).
     const remaining=typeof payload?.remainingSeconds==='number'?payload.remainingSeconds:60;
-    // Non-hosts: show & drive the expiry banner with a local countdown
+    // Non-hosts: drive the banner from the lobby's absolute expiry time so it stays
+    // in sync with the host even if this tab was backgrounded/throttled.
     if(!isHost){
-      showLobbyExpiryBanner(remaining);
-      let nonHostSecs=remaining;
-      const nonHostInterval=setInterval(()=>{
-        nonHostSecs--;
-        if(nonHostSecs>0){showLobbyExpiryBanner(nonHostSecs);}
-        else{hideLobbyExpiryBanner();clearInterval(nonHostInterval);}
-      },1000);
+      if(!lobbyExpiresAt)lobbyExpiresAt=new Date(Date.now()+remaining*1000).toISOString();
+      startNonHostExpiryWatch();
     }
     setTimeout(async()=>{
       // If we became host in the meantime, the timer is already running — skip.
@@ -6009,6 +6006,8 @@ const LOBBY_TTL=10*60;
 let lobbyTimerInterval=null;
 let lobbyTimerSecondsLeft=LOBBY_TTL;
 let lobbyWarningShown=false;
+let lobbyExpiresAt=null;          // absolute expiry timestamp (ISO) shared by host + joiners
+let nonHostTimerInterval=null;    // non-host countdown driven from lobbyExpiresAt
 
 // Pass remainingSeconds to resume an inherited timer; omit (or pass null) to read
 // expires_at from the DB (fresh host start). Falls back to LOBBY_TTL if unavailable.
@@ -6077,8 +6076,23 @@ async function startLobbyTimer(remainingSeconds){
 
 function clearLobbyTimer(){
   if(lobbyTimerInterval){clearInterval(lobbyTimerInterval);lobbyTimerInterval=null;}
+  if(nonHostTimerInterval){clearInterval(nonHostTimerInterval);nonHostTimerInterval=null;}
   lobbyWarningShown=false;
   hideLobbyExpiryBanner();
+}
+// Non-hosts: count down to the lobby's absolute expires_at so the banner stays in
+// sync with the host regardless of tab throttling or when the player joined.
+function startNonHostExpiryWatch(){
+  if(isHost||!lobbyExpiresAt)return;
+  if(nonHostTimerInterval){clearInterval(nonHostTimerInterval);nonHostTimerInterval=null;}
+  const tick=()=>{
+    if(isHost){if(nonHostTimerInterval){clearInterval(nonHostTimerInterval);nonHostTimerInterval=null;}return;}
+    const secsLeft=Math.round((new Date(lobbyExpiresAt)-Date.now())/1000);
+    if(secsLeft<=0){hideLobbyExpiryBanner();if(nonHostTimerInterval){clearInterval(nonHostTimerInterval);nonHostTimerInterval=null;}return;}
+    if(secsLeft<=60)showLobbyExpiryBanner(secsLeft);else hideLobbyExpiryBanner();
+  };
+  tick();
+  nonHostTimerInterval=setInterval(tick,1000);
 }
 
 function showLobbyExpiryBanner(secsLeft){
@@ -6248,6 +6262,7 @@ function renderLobbyRoom(){
   // If startLobbyTimer() was already called (e.g. inherited via host_transferred),
   // lobbyTimerInterval will be non-null and we skip — don't reset the clock.
   if(isHost&&!lobbyTimerInterval)startLobbyTimer();
+  else if(!isHost&&!nonHostTimerInterval)startNonHostExpiryWatch();
   const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
