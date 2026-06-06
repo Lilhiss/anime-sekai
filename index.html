@@ -770,9 +770,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <i class="ti ti-chevron-down" style="font-size:13px"></i>
         </button>
         <div class="drop" id="drop">
-          <div class="drop-section">Mode</div>
-          <div class="toggle-row"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
-          <div class="drop-sep"></div>
+          <div class="drop-section" style="display:none">Mode</div>
+          <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
+          <div class="drop-sep" style="display:none"></div>
           <div class="drop-section">Color</div>
           <button class="drop-row active" onclick="setColor('midnight','#a78bfa','Ethereal',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#a78bfa,#7c5cbf)"></span>Ethereal</div><i class="ti ti-check drop-check"></i></button>
           <button class="drop-row" onclick="setColor('blossom','#f472b6','Blossom',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#f472b6,#be185d)"></span>Blossom</div><i class="ti ti-check drop-check"></i></button>
@@ -809,7 +809,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
     <div class="nav-drawer-sep"></div>
     <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 2px 8px">Theme</div>
-    <div class="toggle-row" style="padding:0 2px 10px">
+    <div class="toggle-row" style="padding:0 2px 10px;display:none">
       <span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span>
       <button class="tog" id="modeToggleDrawer" onclick="toggleMode()"></button>
     </div>
@@ -2373,7 +2373,7 @@ function applyTheme(){
   const modeTogDrawer=document.getElementById('modeToggleDrawer');
   if(modeTogDrawer)modeTogDrawer.classList.toggle('on',!isDark);
   document.getElementById('cdot').style.background=accentHex[currentColor];
-  document.getElementById('tlabel').textContent=(isDark?'Dark':'Light')+' · '+colorNames[currentColor];
+  document.getElementById('tlabel').textContent=colorNames[currentColor];
   const light=!isDark;
   document.getElementById('logoMark').style.color='';
   const em=document.getElementById('entryLogoMark');if(em)em.style.color='';
@@ -2390,9 +2390,9 @@ document.addEventListener('click',e=>{const tw=document.getElementById('themeWra
 
 const originalNavHTML=document.getElementById('navRight').innerHTML;
 function buildThemeDropHTML(){
-  return `<div class="drop-section">Mode</div>
-    <div class="toggle-row"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog${!isDark?' on':''}" id="modeToggle" onclick="toggleMode()"></button></div>
-    <div class="drop-sep"></div>
+  return `<div class="drop-section" style="display:none">Mode</div>
+    <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog${!isDark?' on':''}" id="modeToggle" onclick="toggleMode()"></button></div>
+    <div class="drop-sep" style="display:none"></div>
     <div class="drop-section">Color</div>
     ${[
       {k:'midnight',g:'#a78bfa,#7c5cbf'},
