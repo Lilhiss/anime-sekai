@@ -477,12 +477,12 @@ h1 .hi{color:var(--accent)}
 .lb-score{font-family:'Lilita One',cursive;font-size:20px;color:var(--accent);flex-shrink:0}
 .lb-empty{text-align:center;padding:48px 24px;color:var(--muted)}
 /* LOBBY */
-.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px}
+.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .lobby-player-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;flex-shrink:0}
 .lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1}
 .lobby-player-badge{font-size:11px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 10px;color:var(--accent)}
 .lobby-host-crown{font-size:14px;color:#fbbf24}
-.lobby-player-actions{display:flex;gap:6px;margin-left:auto;align-items:center}
+.lobby-player-actions{display:flex;gap:6px;width:100%;margin-top:8px;justify-content:flex-end;align-items:center}
 .lobby-action-btn{font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s;white-space:nowrap}
 .lobby-action-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .lobby-action-btn.kick:hover{background:#f87171;border-color:#f87171;color:#fff}
@@ -535,10 +535,6 @@ h1 .hi{color:var(--accent)}
 @keyframes gsAccIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 /* Player list polish */
 .lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
-.lobby-player-host{box-shadow:0 0 0 1px #fbbf2455,0 4px 16px #fbbf2422}
-.lobby-alone-nudge{display:flex;align-items:center;gap:14px;background:var(--accent-soft);border:1.5px dashed var(--border2);border-radius:13px;padding:16px 18px}
-.lobby-alone-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text)}
-.lobby-alone-sub{font-size:12px;color:var(--muted);line-height:1.4;margin-top:2px}
 /* Select pop on option cards */
 .gs-bigcard.selected{animation:gsCardPop .4s ease}
 @keyframes gsCardPop{0%{transform:scale(1)}40%{transform:scale(1.05)}100%{transform:scale(1)}}
@@ -1283,6 +1279,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button class="ghost-btn" onclick="copyLobbyCode()"><i class="ti ti-copy" style="font-size:14px"></i> <span id="copyCodeLabel">Copy Code</span></button>
           <span class="lobby-visibility-badge" id="lobbyVisibilityBadge" style="position:absolute;right:0"><i class="ti ti-world" style="font-size:11px"></i> Public</span>
         </div>
+        <button class="action-btn primary" onclick="copyLobbyLink()" style="margin-top:12px;width:100%;justify-content:center"><i class="ti ti-link" style="font-size:15px"></i> <span id="copyLinkLabel">Copy invite link</span></button>
       </div>
       <div class="lobby-expiry-banner slide-in" id="lobbyExpiryBanner">
         <div class="lobby-expiry-icon">⏳</div>
@@ -3357,6 +3354,7 @@ const authTitles={solo:'Enter the <span class="hi">Arena</span>',create:'Host wi
 
 function choosePath(dest){
   pendingDestination=dest;
+  if(dest!=='join')pendingInviteCode=null;
   if(currentUser){
     afterAuth();return;
   }
@@ -3409,6 +3407,12 @@ function showAuthMode(mode){
   }
 }
 function afterAuth(){
+  if(pendingInviteCode){
+    const code=pendingInviteCode;pendingInviteCode=null;
+    goStep('multiplayer');
+    rtJoinLobby(code);
+    return;
+  }
   if(pendingDestination==='create'){createLobby();return}
   if(pendingDestination==='join'){goStep('multiplayer');return}
   if(pendingDestination==='multiplayer'){goStep('multiplayer');return}
@@ -3657,6 +3661,20 @@ async function submitResetPassword(){
     // Also try immediately in case DOM is already ready
     if(document.readyState!=='loading'){goStep('auth');showAuthMode('reset');}
   }
+})();
+
+// ── DETECT LOBBY INVITE LINK IN URL ──────────────────────────
+let pendingInviteCode=null;
+(function(){
+  const code=new URLSearchParams(window.location.search).get('lobby');
+  if(!code)return;
+  pendingInviteCode=code.toUpperCase();
+  // Clean the URL so a refresh doesn't re-trigger the invite
+  try{history.replaceState({},'',window.location.pathname);}catch(e){}
+  // Land the visitor on the username page; afterAuth() auto-joins once they submit
+  const go=()=>choosePath('join');
+  if(document.readyState!=='loading')go();
+  else document.addEventListener('DOMContentLoaded',go);
 })();
 
 function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
@@ -6244,7 +6262,6 @@ function renderLobbyRoom(){
     const row=document.createElement('div');row.className='lobby-player'+(_prevNames.has(p.name)?'':' is-new');
     const isMe=p.name===currentUser;
     if(isMe)row.classList.add('lobby-player-me');
-    if(p.isHost)row.classList.add('lobby-player-host');
     const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
     const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
     const avatarWrap=isMe
@@ -6253,18 +6270,12 @@ function renderLobbyRoom(){
     row.innerHTML=`${avatarWrap}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
     list.appendChild(row);
   });
-  // When alone, nudge to share the code; otherwise show ghost "waiting" slots filling up
-  if(lobbyPlayers.length<=1){
-    const n=document.createElement('div');n.className='lobby-alone-nudge';
-    n.innerHTML='<div style="font-size:26px">🎉</div><div><div class="lobby-alone-title">It\'s quiet in here…</div><div class="lobby-alone-sub">Share the code above to get your squad in!</div></div>';
-    list.appendChild(n);
-  } else {
-    const ghostTarget=Math.min(maxPlayers,6);
-    for(let i=lobbyPlayers.length;i<ghostTarget;i++){
-      const g=document.createElement('div');g.className='lobby-slot-ghost';
-      g.innerHTML='<div class="lobby-slot-ghost-av"><i class="ti ti-user-plus" style="font-size:15px"></i></div><span>Waiting for player…</span>';
-      list.appendChild(g);
-    }
+  // Ghost "waiting" slots so the room visibly fills up as players join
+  const ghostTarget=Math.min(maxPlayers,6);
+  for(let i=lobbyPlayers.length;i<ghostTarget;i++){
+    const g=document.createElement('div');g.className='lobby-slot-ghost';
+    g.innerHTML='<div class="lobby-slot-ghost-av"><i class="ti ti-user-plus" style="font-size:15px"></i></div><span>Waiting for player…</span>';
+    list.appendChild(g);
   }
   window._prevLobbyNames=new Set(lobbyPlayers.map(p=>p.name));
   // Lock controls for non-host players
@@ -6299,6 +6310,12 @@ function copyLobbyCode(){
   navigator.clipboard.writeText(lobbyCode).catch(()=>{});
   const lbl=document.getElementById('copyCodeLabel');lbl.textContent='Copied!';
   setTimeout(()=>{lbl.textContent='Copy Code'},2000);
+}
+function copyLobbyLink(){
+  const link=window.location.origin+window.location.pathname+'?lobby='+encodeURIComponent(lobbyCode);
+  navigator.clipboard.writeText(link).catch(()=>{});
+  const lbl=document.getElementById('copyLinkLabel');
+  if(lbl){lbl.textContent='Link copied!';setTimeout(()=>{lbl.textContent='Copy invite link'},2000);}
 }
 async function patchLobby(fields){
   if(!lobbyCode||!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
