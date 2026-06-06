@@ -2268,10 +2268,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </select>
         </div>
         <div id="sqOptionsWrap">
-          <label class="form-label">Options (one per line, mark correct with ✓)</label>
-          <textarea class="form-input" id="sqOptions" rows="4" placeholder="✓ Correct answer&#10;Wrong option 1&#10;Wrong option 2&#10;Wrong option 3" style="resize:vertical;font-family:'Nunito',sans-serif;font-size:13px"></textarea>
+          <label class="form-label">Options <span style="color:var(--muted);font-weight:600">— tap the circle to mark the correct one</span></label>
+          <div id="sqOptionRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" class="ghost-btn" onclick="sqAddOption('',false)" style="margin-top:8px;font-size:12px;padding:7px 12px"><i class="ti ti-plus" style="font-size:13px"></i> Add option</button>
         </div>
-        <div>
+        <div id="sqAnswerWrap">
           <label class="form-label">Correct Answer</label>
           <input class="form-input" id="sqAnswer" type="text" placeholder="The correct answer">
         </div>
@@ -3603,7 +3604,7 @@ function afterAuth(){
   if(pendingDestination==='landing'){goStep('landing');return}
   if(pendingDestination==='submitQ'){
     goStep('landing');
-    setTimeout(()=>{document.getElementById('submitQModal').style.display='flex';applyTheme();},300);
+    setTimeout(()=>{document.getElementById('submitQModal').style.display='flex';sqInitForm();applyTheme();},300);
     return;
   }
   goStep('format');
@@ -4658,8 +4659,25 @@ document.addEventListener('change',e=>{
   if(e.target.id==='sqFormat'){
     const isMC=e.target.value==='mc';
     document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
+    document.getElementById('sqAnswerWrap').style.display=isMC?'none':'block';
+    if(isMC&&!document.querySelector('#sqOptionRows .ae-opt-row')){sqAddOption('',true);sqAddOption('',false);}
   }
 });
+function sqAddOption(value,checked){
+  const div=document.createElement('div');
+  div.className='ae-opt-row';
+  div.innerHTML='<input type="radio" name="sqCorrect"'+(checked?' checked':'')+' title="Mark as correct"><input class="form-input ae-opt-input" type="text" placeholder="Option text"><button type="button" class="ae-opt-del" title="Remove option" onclick="this.closest(\'.ae-opt-row\').remove()"><i class="ti ti-x"></i></button>';
+  div.querySelector('.ae-opt-input').value=value||'';
+  document.getElementById('sqOptionRows').appendChild(div);
+}
+function sqInitForm(){
+  const rowsEl=document.getElementById('sqOptionRows');if(!rowsEl)return;
+  rowsEl.innerHTML='';
+  const isMC=document.getElementById('sqFormat').value==='mc';
+  document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
+  document.getElementById('sqAnswerWrap').style.display=isMC?'none':'block';
+  if(isMC){sqAddOption('',true);sqAddOption('',false);}
+}
 // ── TOPIC AUTOCOMPLETE ────────────────────────────────────────
 let sqTopicCache = null;   // [{topic_value, count}] loaded once per modal open
 let sqTopicActiveIdx = -1; // keyboard navigation index
@@ -4781,6 +4799,7 @@ function openSubmitQuestion(){
     document.getElementById('submitSignInModal').style.display='flex';
   } else {
     document.getElementById('submitQModal').style.display='flex';
+    sqInitForm();
     sqTopicCache=null; // refresh topics each time the modal opens
     sqLoadTopics();    // pre-fetch in background so first keystroke is instant
   }
@@ -4804,15 +4823,18 @@ async function submitQuestion(){
   const ans=document.getElementById('sqAnswer').value.trim();
   const topic=document.getElementById('sqTopic').value.trim();
   if(!q){showErr('sqErr','sqErrMsg','Please enter a question.');return}
-  if(!ans){showErr('sqErr','sqErrMsg','Please enter the correct answer.');return}
   if(!topic){showErr('sqErr','sqErrMsg','Please enter an anime or topic.');return}
   let options=null,answerVal=ans;
   if(fmt==='mc'){
-    const lines=document.getElementById('sqOptions').value.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(lines.length<2){showErr('sqErr','sqErrMsg','Please enter at least 2 options for multiple choice.');return}
-    const correctIdx=lines.findIndex(l=>l.startsWith('✓'));
-    options=lines.map(l=>l.replace(/^✓\s*/,''));
-    answerVal=correctIdx>=0?String(correctIdx):'0';
+    const rows=[...document.querySelectorAll('#sqOptionRows .ae-opt-row')].map(r=>({val:r.querySelector('.ae-opt-input').value.trim(),checked:r.querySelector('input[type=radio]').checked}));
+    const filled=rows.filter(r=>r.val);
+    if(filled.length<2){showErr('sqErr','sqErrMsg','Please enter at least 2 options.');return}
+    const correctIdx=filled.findIndex(r=>r.checked);
+    if(correctIdx<0){showErr('sqErr','sqErrMsg','Tap the circle next to the correct option.');return}
+    options=filled.map(r=>r.val);
+    answerVal=String(correctIdx);
+  } else {
+    if(!ans){showErr('sqErr','sqErrMsg','Please enter the correct answer.');return}
   }
   const aliases=document.getElementById('sqAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
