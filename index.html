@@ -408,7 +408,7 @@ h1 .hi{color:var(--accent)}
 .profile-cta-btn{font-family:'Lilita One',cursive;font-size:14px;background:var(--accent);border:none;padding:12px 24px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:opacity .2s,transform .15s;white-space:nowrap}
 .profile-cta-btn:hover{opacity:.88;transform:translateY(-1px)}
 
-.confetti-piece{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
+.confetti-piece{position:fixed;top:0;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
 .slide-in{animation:slideIn .35s ease both}
 @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -966,6 +966,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button class="ghost-btn" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
         </div>
       </div>
+      <div class="timer-wrap"><div class="timer-bar" id="dailyTimerBar"></div></div>
       <div class="q-card">
         <div class="q-card-top-meta">
           <span class="q-card-meta-pill">🗓️ Daily</span>
@@ -3407,7 +3408,7 @@ async function uploadGuestPfp(blob){
 }
 
 function goStep(name){
-  clearInterval(timerInterval);
+  clearInterval(timerInterval);clearInterval(dailyTimerInterval);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   pg.classList.add('active');
@@ -3972,8 +3973,8 @@ function renderHUD(){
 }
 
 // ── DAILY QUIZ ───────────────────────────────────────────────
-let dailyQs=[],dailyIdx=0,dailyCorrect=0,dailyAnswered=false,dailyPicks=[];
-const DAILY_COUNT=8;
+let dailyQs=[],dailyIdx=0,dailyCorrect=0,dailyAnswered=false,dailyPicks=[],dailyTimerInterval=null,dailyTimeLeft=20,dailyStartTime=0;
+const DAILY_COUNT=8,DAILY_TIME=20;
 function dailyDateKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function _dailyHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function _dailyRng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
@@ -4027,9 +4028,10 @@ function dailyShowQuestion(){
     grid.appendChild(b);
   });
   applyTheme();
+  dailyStartTimer();
 }
 function dailyAnswer(idx,el){
-  if(dailyAnswered)return;dailyAnswered=true;
+  if(dailyAnswered)return;dailyAnswered=true;clearInterval(dailyTimerInterval);
   const q=dailyQs[dailyIdx];const correct=idx===q.answer;
   document.querySelectorAll('#page-daily .ans').forEach((a,i)=>{a.classList.add('locked');if(i===q.answer)a.classList.add('correct');else if(i===idx)a.classList.add('wrong');});
   if(correct){dailyCorrect++;sfxCorrect();}else sfxWrong();
@@ -4037,7 +4039,31 @@ function dailyAnswer(idx,el){
   document.getElementById('dailyScore').textContent=dailyCorrect+' / '+dailyQs.length;
   setTimeout(()=>{dailyIdx++;if(dailyIdx>=dailyQs.length)dailyFinish();else dailyShowQuestion();},1100);
 }
+function dailyStartTimer(){
+  clearInterval(dailyTimerInterval);
+  dailyStartTime=Date.now();dailyTimeLeft=DAILY_TIME;dailyUpdateTimerBar();
+  dailyTimerInterval=setInterval(()=>{
+    dailyTimeLeft=Math.max(0,DAILY_TIME-(Date.now()-dailyStartTime)/1000);
+    dailyUpdateTimerBar();
+    if(dailyTimeLeft<=0){clearInterval(dailyTimerInterval);dailyTimeOut();}
+  },100);
+}
+function dailyUpdateTimerBar(){
+  const bar=document.getElementById('dailyTimerBar');if(!bar)return;
+  const pct=Math.max(0,(dailyTimeLeft/DAILY_TIME)*100);
+  bar.style.width=pct+'%';
+  bar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+}
+function dailyTimeOut(){
+  if(dailyAnswered)return;dailyAnswered=true;
+  const q=dailyQs[dailyIdx];
+  document.querySelectorAll('#page-daily .ans').forEach((a,i)=>{a.classList.add('locked');if(i===q.answer)a.classList.add('correct');});
+  sfxWrong();
+  dailyPicks.push(false);
+  setTimeout(()=>{dailyIdx++;if(dailyIdx>=dailyQs.length)dailyFinish();else dailyShowQuestion();},1100);
+}
 function dailyFinish(){
+  clearInterval(dailyTimerInterval);
   try{localStorage.setItem('daily_'+dailyDateKey(),JSON.stringify({correct:dailyCorrect,total:dailyQs.length,picks:dailyPicks}));}catch(e){}
   showDailyResult(dailyCorrect,dailyQs.length,dailyPicks,false);
 }
