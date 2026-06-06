@@ -128,6 +128,15 @@ h1 .hi{color:var(--accent)}
 .entry-card:hover .entry-card-emoji,.entry-card:focus-visible .entry-card-emoji{transform:scale(1.18) rotate(-8deg)}
 .entry-card-go{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:15px;color:var(--accent);opacity:.85;transition:gap .2s,opacity .2s}
 .entry-card:hover .entry-card-go{gap:11px;opacity:1}
+/* Daily Quiz banner */
+.daily-banner{display:flex;align-items:center;gap:16px;width:100%;background:linear-gradient(120deg,var(--accent-soft),var(--bg3));border:1.5px solid var(--accent);border-radius:18px;padding:17px 22px;cursor:pointer;text-align:left;font-family:inherit;transition:transform .18s,box-shadow .18s}
+.daily-banner:hover{transform:translateY(-3px);box-shadow:0 12px 30px #0006}
+.daily-banner-icon{font-size:38px;line-height:1;flex-shrink:0}
+.daily-banner-text{flex:1;min-width:0}
+.daily-banner-title{font-family:'Lilita One',cursive;font-size:20px;color:var(--text)}
+.daily-banner-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.daily-banner-cta{display:inline-flex;align-items:center;gap:6px;font-family:'Lilita One',cursive;font-size:15px;background:var(--accent);color:#fff;padding:9px 16px;border-radius:11px;flex-shrink:0}
+@media(max-width:560px){.daily-banner{flex-wrap:wrap}.daily-banner-cta{width:100%;justify-content:center;margin-top:4px}}
 
 /* FORMS */
 .form-wrap{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px}
@@ -920,6 +929,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="entry-title">Anime <span>Sekai</span></div>
         <div class="entry-sub">Name the character, guess the anime, climb the ranks — solo or against your friends.<br><b style="color:var(--text)">Jump in free, no sign-up needed!</b> 🎮</div>
       </div>
+      <button class="daily-banner" onclick="openDailyQuiz()">
+        <div class="daily-banner-icon">🗓️</div>
+        <div class="daily-banner-text">
+          <div class="daily-banner-title">Today's Quiz</div>
+          <div class="daily-banner-sub">8 questions, same for everyone today — one tap to play!</div>
+        </div>
+        <span class="daily-banner-cta"><i class="ti ti-player-play" style="font-size:15px"></i> Play</span>
+      </button>
       <div class="entry-cards">
         <div class="entry-card" tabindex="0" role="button" aria-label="Solo quiz" onclick="choosePath('solo')">
           <div class="entry-card-emoji">🧠</div>
@@ -934,6 +951,50 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="entry-card-go">Let's go <i class="ti ti-arrow-right"></i></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- DAILY QUIZ -->
+  <div class="page" id="page-daily">
+    <div class="quiz-wrap">
+      <div class="quiz-hud">
+        <div class="hud-left">
+          <div><div class="hud-score" id="dailyScore">0 / 8</div><div class="hud-score-label">🗓️ Today's Quiz</div></div>
+        </div>
+        <div class="hud-right">
+          <span class="q-count" id="dailyCount">Q1 / 8</span>
+          <button class="ghost-btn" onclick="goStep('landing')"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
+        </div>
+      </div>
+      <div class="q-card">
+        <div class="q-card-top-meta">
+          <span class="q-card-meta-pill">🗓️ Daily</span>
+          <span class="q-card-meta-pill" id="dailyBadge">Q1 / 8</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">
+          <div class="q-loading" id="dailyLoading"><div class="spinner"></div><div class="q-loading-text">Loading today's quiz…</div></div>
+          <div class="q-text" id="dailyQuestionText" style="display:none"></div>
+        </div>
+      </div>
+      <div class="answers" id="dailyAnswers"></div>
+    </div>
+  </div>
+
+  <!-- DAILY RESULT -->
+  <div class="page" id="page-daily-result">
+    <div class="results-wrap">
+      <div class="rank-hero slide-in d1">
+        <div class="rank-badge-wrap"><div class="rank-glow"></div><div class="rank-badge" id="dailyRankBadge">🏆</div></div>
+        <div class="rank-title" id="dailyRankTitle">Daily <span>Done!</span></div>
+        <div class="rank-sub" id="dailyResultSub"></div>
+        <div class="score-display"><div class="score-big" id="dailyResultScore">0</div><div class="score-unit">/ 8</div></div>
+      </div>
+      <div class="action-row slide-in d3">
+        <button class="action-btn primary" onclick="shareDaily(event)"><i class="ti ti-share" style="font-size:17px"></i> <span>Share result</span></button>
+        <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
+      </div>
+      <div class="slide-in d4" style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">🗓️ One quiz a day — come back tomorrow for a fresh set!</div>
+      <div class="slide-in d4" style="text-align:center;margin-top:8px"><button class="ghost-btn" style="margin:0 auto;display:inline-flex" onclick="choosePath('solo')"><i class="ti ti-player-play" style="font-size:15px"></i> Play the full quiz</button></div>
     </div>
   </div>
 
@@ -3910,6 +3971,99 @@ function renderHUD(){
   if(isSurvival){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
 }
 
+// ── DAILY QUIZ ───────────────────────────────────────────────
+let dailyQs=[],dailyIdx=0,dailyCorrect=0,dailyAnswered=false,dailyPicks=[];
+const DAILY_COUNT=8;
+function dailyDateKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _dailyHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function _dailyRng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function _dailyShuffle(arr,rng){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+async function loadDailyQuestions(){
+  const rng=_dailyRng(_dailyHash(dailyDateKey()));
+  if(!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=id&format=eq.mc&status=eq.approved&report_count=lt.3&order=id.asc`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+      const pool=await r.json();
+      if(Array.isArray(pool)&&pool.length>=DAILY_COUNT){
+        const ids=_dailyShuffle(pool.map(p=>p.id),rng).slice(0,DAILY_COUNT);
+        const r2=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=*&id=in.(${ids.join(',')})`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+        const rows=await r2.json();const byId={};(rows||[]).forEach(row=>byId[row.id]=row);
+        const out=ids.map(id=>byId[id]).filter(Boolean).map(row=>({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]}));
+        if(out.length>=DAILY_COUNT)return out;
+      }
+    }catch(e){}
+  }
+  // Fallback: deterministic pick from the local multiple-choice fallback set
+  const fb=getFallback().filter(q=>Array.isArray(q.options));
+  return _dailyShuffle(fb.slice(),rng).slice(0,DAILY_COUNT);
+}
+async function openDailyQuiz(){
+  const key=dailyDateKey();
+  let done=null;try{done=JSON.parse(localStorage.getItem('daily_'+key)||'null');}catch(e){}
+  if(done){showDailyResult(done.correct,done.total,done.picks||[],true);return;}
+  goStep('daily');
+  document.getElementById('dailyLoading').style.display='flex';
+  document.getElementById('dailyQuestionText').style.display='none';
+  document.getElementById('dailyAnswers').innerHTML='';
+  const qs=await loadDailyQuestions();
+  if(!qs||qs.length<1){document.getElementById('dailyLoading').innerHTML='<div style="color:var(--muted);font-size:14px;text-align:center">Couldn\'t load today\'s quiz.<br>Please try again in a moment.</div>';return;}
+  dailyQs=qs.slice(0,DAILY_COUNT);dailyIdx=0;dailyCorrect=0;dailyPicks=[];
+  dailyShowQuestion();
+}
+function dailyShowQuestion(){
+  dailyAnswered=false;
+  const q=dailyQs[dailyIdx];
+  document.getElementById('dailyLoading').style.display='none';
+  const qt=document.getElementById('dailyQuestionText');qt.style.display='block';qt.textContent=q.question||'Question unavailable';
+  const label='Q'+(dailyIdx+1)+' / '+dailyQs.length;
+  document.getElementById('dailyBadge').textContent=label;
+  document.getElementById('dailyCount').textContent=label;
+  document.getElementById('dailyScore').textContent=dailyCorrect+' / '+dailyQs.length;
+  const grid=document.getElementById('dailyAnswers');grid.innerHTML='';
+  (q.options||[]).forEach((opt,i)=>{
+    const b=document.createElement('div');b.className='ans';
+    b.innerHTML='<div class="ans-key">'+String.fromCharCode(65+i)+'</div><div class="ans-text">'+opt+'</div>';
+    b.onclick=()=>dailyAnswer(i,b);
+    grid.appendChild(b);
+  });
+  applyTheme();
+}
+function dailyAnswer(idx,el){
+  if(dailyAnswered)return;dailyAnswered=true;
+  const q=dailyQs[dailyIdx];const correct=idx===q.answer;
+  document.querySelectorAll('#page-daily .ans').forEach((a,i)=>{a.classList.add('locked');if(i===q.answer)a.classList.add('correct');else if(i===idx)a.classList.add('wrong');});
+  if(correct){dailyCorrect++;sfxCorrect();}else sfxWrong();
+  dailyPicks.push(!!correct);
+  document.getElementById('dailyScore').textContent=dailyCorrect+' / '+dailyQs.length;
+  setTimeout(()=>{dailyIdx++;if(dailyIdx>=dailyQs.length)dailyFinish();else dailyShowQuestion();},1100);
+}
+function dailyFinish(){
+  try{localStorage.setItem('daily_'+dailyDateKey(),JSON.stringify({correct:dailyCorrect,total:dailyQs.length,picks:dailyPicks}));}catch(e){}
+  showDailyResult(dailyCorrect,dailyQs.length,dailyPicks,false);
+}
+function showDailyResult(correct,total,picks,already){
+  goStep('daily-result');
+  const pct=total?correct/total:0;
+  const emoji=pct>=1?'🏆':pct>=.75?'🌟':pct>=.5?'✨':pct>=.25?'🌱':'😅';
+  const title=pct>=1?'Perfect':pct>=.75?'Great run':pct>=.5?'Nice':'Good try';
+  document.getElementById('dailyRankBadge').textContent=emoji;
+  document.getElementById('dailyResultScore').textContent=correct;
+  const unit=document.querySelector('#page-daily-result .score-unit');if(unit)unit.textContent='/ '+total;
+  document.getElementById('dailyRankTitle').innerHTML='<span>'+title+'!</span>';
+  document.getElementById('dailyResultSub').textContent=already?'You already played today — here\'s your result. Come back tomorrow!':'You got '+correct+' out of '+total+' right!';
+  window._dailyShare={correct,total,picks};
+  if(pct>=.75)launchConfetti();
+  applyTheme();
+}
+function shareDaily(ev){
+  const s=window._dailyShare;if(!s)return;
+  const squares=(s.picks||[]).map(c=>c?'🟩':'🟥').join('');
+  const text='Anime Sekai — Daily Quiz 🎌\n'+s.correct+'/'+s.total+'  '+squares+'\n'+location.origin+location.pathname;
+  if(navigator.share){navigator.share({title:'Anime Sekai Daily',text:text}).catch(()=>{});return;}
+  navigator.clipboard.writeText(text).catch(()=>{});
+  const btn=ev&&ev.currentTarget,sp=btn&&btn.querySelector('span');
+  if(sp){const o=sp.textContent;sp.textContent='Copied!';setTimeout(()=>{sp.textContent=o;},2000);}
+}
 async function fetchQuestion(){
   const bankTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
   const banked=await sbGetQuestion(selectedFormat,bankTopic);
