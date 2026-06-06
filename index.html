@@ -829,6 +829,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <span class="logo-name">Anime <span>Sekai</span></span>
     </div>
     <div class="nav-right" id="navRight">
+      <button class="ghost-btn" id="soundBtn" onclick="toggleSound()" title="Toggle sound" style="padding:7px 11px"><i class="ti ti-volume" id="soundBtnIcon" style="font-size:16px"></i></button>
       <div class="ctrl-wrap" id="themeWrap">
         <button class="ghost-btn" onclick="toggleDrop()">
           <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
@@ -2569,6 +2570,7 @@ function updateNav(){
   const nr=document.getElementById('navRight');
   if(currentUser){
     nr.innerHTML=`
+      <button class="ghost-btn" id="soundBtn" onclick="toggleSound()" title="Toggle sound" style="padding:7px 11px"><i class="ti ti-volume" id="soundBtnIcon" style="font-size:16px"></i></button>
       <div class="ctrl-wrap" id="themeWrap">
         <button class="ghost-btn" onclick="toggleDrop()">
           <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:${accentHex[currentColor]};flex-shrink:0"></span>
@@ -4810,7 +4812,11 @@ function sfxWrong(){if(!soundOn)return;_tone(660,0,.18,'sine',.13);_tone(440,.16
 function sfxWrongAttempt(){if(!soundOn)return;_tone(1568,0,.06,'sine',.1);} // ✨ sparkle tick — keep trying
 function sfxWin(){if(!soundOn)return;_tone(1568,0,.1,'sine',.12);_tone(2093,.1,.1,'sine',.1);_tone(1760,.2,.1,'sine',.1);_tone(2349,.3,.45,'sine',.12);} // ✨ starlight
 function toggleSound(){soundOn=!soundOn;try{localStorage.setItem('sound_off',soundOn?'0':'1');}catch(e){}updateSoundUI();if(soundOn)sfxCorrect();}
-function updateSoundUI(){document.querySelectorAll('#soundToggle,#soundToggleDrawer').forEach(t=>t.classList.toggle('on',soundOn));}
+function updateSoundUI(){
+  document.querySelectorAll('#soundToggle,#soundToggleDrawer').forEach(t=>t.classList.toggle('on',soundOn));
+  const ic=document.getElementById('soundBtnIcon');if(ic)ic.className='ti '+(soundOn?'ti-volume':'ti-volume-off');
+  const sb=document.getElementById('soundBtn');if(sb){sb.title=soundOn?'Sound on — click to mute':'Muted — click to unmute';sb.style.color=soundOn?'':'var(--muted)';}
+}
 
 function launchConfetti(){
   sfxWin();
