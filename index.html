@@ -566,9 +566,11 @@ h1 .hi{color:var(--accent)}
 .gs-tab-val{font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .gs-tab.active .gs-tab-val{color:#fff;opacity:.9}
 @media(max-width:560px){.gs-tabs{overflow-x:auto}.gs-tab{flex:0 0 auto;min-width:84px}.gs-tab-val{display:none}}
-.gs-panel{min-height:250px}
+.gs-panel{min-height:250px;display:flex;flex-direction:column}
 .gs-pane{display:none;animation:gsAccIn .24s ease}
 .gs-pane.active{display:block}
+.gs-pane[data-pane="format"].active,.gs-pane[data-pane="mode"].active{display:flex;flex-direction:column;flex:1}
+.gs-pane[data-pane="format"] .gs-grid,.gs-pane[data-pane="mode"] .gs-grid{flex:1;grid-auto-rows:1fr}
 @keyframes gsAccIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* Player list polish */
 .lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
