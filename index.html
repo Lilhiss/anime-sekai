@@ -1939,6 +1939,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="admin-tabs slide-in">
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted</button>
         <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported</button>
+        <button class="admin-tab" id="adminTabSuspect" onclick="switchAdminTab('suspect')">🚩 Suspect</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
@@ -4033,6 +4034,7 @@ function dailyShowQuestion(){
 function dailyAnswer(idx,el){
   if(dailyAnswered)return;dailyAnswered=true;clearInterval(dailyTimerInterval);
   const q=dailyQs[dailyIdx];const correct=idx===q.answer;
+  recordAnswerStat(q.id,correct);
   document.querySelectorAll('#page-daily .ans').forEach((a,i)=>{a.classList.add('locked');if(i===q.answer)a.classList.add('correct');else if(i===idx)a.classList.add('wrong');});
   if(correct){dailyCorrect++;sfxCorrect();}else sfxWrong();
   dailyPicks.push(!!correct);
@@ -4057,6 +4059,7 @@ function dailyUpdateTimerBar(){
 function dailyTimeOut(){
   if(dailyAnswered)return;dailyAnswered=true;
   const q=dailyQs[dailyIdx];
+  recordAnswerStat(q.id,false);
   document.querySelectorAll('#page-daily .ans').forEach((a,i)=>{a.classList.add('locked');if(i===q.answer)a.classList.add('correct');});
   sfxWrong();
   dailyPicks.push(false);
@@ -4338,6 +4341,7 @@ function answerMC(idx,el,qData){
   if(answered)return;answered=true;clearInterval(timerInterval);
   const allAns=document.querySelectorAll('.ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
+  recordAnswerStat(qData.id,correct);
   const mcElapsed=(Date.now()-questionStartTime)/1000;
   const mcPts=selectedMode==='race'?calcSpeedPoints(mcElapsed,raceTimeLimit):10;
   if(correct){el.classList.add('correct');score+=mcPts;lastPtsEarned=mcPts;}
@@ -4372,6 +4376,7 @@ function checkTypeAnswer(){
   }
   // Correct — lock and show feedback
   answered=true;clearInterval(timerInterval);
+  recordAnswerStat(currentQData&&currentQData.id,true);
   input.disabled=true;input.classList.add('correct-input');
   document.getElementById('typeSubmitBtn').disabled=true;
   const hint=document.getElementById('typeWrongHint');if(hint)hint.style.display='none';
@@ -4385,6 +4390,7 @@ function checkTypeAnswer(){
 }
 function timeOut(){
   if(answered)return;answered=true;
+  recordAnswerStat(currentQData&&currentQData.id,false);
   document.querySelectorAll('.ans').forEach(a=>a.classList.add('locked'));
   const inp=document.getElementById('typeInput');if(inp){inp.disabled=true;inp.classList.remove('wrong-attempt');}
   const submitBtn=document.getElementById('typeSubmitBtn');if(submitBtn)submitBtn.disabled=true;
@@ -4998,6 +5004,10 @@ function updateSoundUI(){
   const sb=document.getElementById('soundBtn');if(sb){sb.title=soundOn?'Sound on — click to mute':'Muted — click to unmute';sb.style.color=soundOn?'':'var(--muted)';}
 }
 
+function recordAnswerStat(id,wasCorrect){
+  if(!id||typeof sb==='undefined'||!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{const p=sb.rpc('record_answer',{q_id:id,was_correct:!!wasCorrect});if(p&&p.catch)p.catch(()=>{});}catch(e){}
+}
 function launchConfetti(){
   sfxWin();
   const colors=['#a78bfa','#f472b6','#38bdf8','#fb923c','#4ade80','#fbbf24'];
@@ -7858,6 +7868,7 @@ function switchAdminTab(tab){
   adminTab=tab;
   document.getElementById('adminTabSubmitted').classList.toggle('active',tab==='submitted');
   document.getElementById('adminTabReported').classList.toggle('active',tab==='reported');
+  document.getElementById('adminTabSuspect').classList.toggle('active',tab==='suspect');
   loadAdminQuestions();
 }
 
@@ -7865,6 +7876,16 @@ async function loadAdminQuestions(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   list.innerHTML='<div class="admin-empty">Loading…</div>';
+  if(adminTab==='suspect'){
+    const {data,error}=await sb.from('questions').select('*').gte('answer_count',8).eq('status','approved').limit(300);
+    if(error){list.innerHTML='<div class="admin-empty">Answer tracking isn\'t set up yet — run the setup SQL, then check back once questions have been played.</div>';return;}
+    const suspect=(data||[]).filter(q=>q.answer_count>0&&(q.correct_count/q.answer_count)<0.33).sort((a,b)=>(a.correct_count/a.answer_count)-(b.correct_count/b.answer_count));
+    if(!suspect.length){list.innerHTML='<div class="admin-empty">No suspect questions — nothing players keep getting wrong. 🎉</div>';return;}
+    list.innerHTML='';
+    suspect.forEach(q=>list.appendChild(buildAdminCard(q)));
+    applyTheme();
+    return;
+  }
   let query;
   if(adminTab==='submitted'){
     query=sb.from('questions').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(50);
@@ -7885,8 +7906,9 @@ async function loadAdminQuestions(){
 function buildAdminCard(q){
   const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
   const isReported=adminTab==='reported';
+  const isSuspect=adminTab==='suspect';
   const card=document.createElement('div');
-  card.className='admin-q-card'+(isReported?' reported':'');
+  card.className='admin-q-card'+((isReported||isSuspect)?' reported':'');
   card.id=`adminCard_${q.id}`;
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
@@ -7896,8 +7918,14 @@ function buildAdminCard(q){
   const reportBadge=q.report_count>0
     ?`<span class="admin-report-counter"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${q.report_count} report${q.report_count===1?'':'s'}</span>`
     :'';
+  const suspectBadge=isSuspect&&q.answer_count
+    ?`<span class="admin-report-counter"><i class="ti ti-chart-bar" style="font-size:12px"></i> ${Math.round(100*q.correct_count/q.answer_count)}% correct (${q.correct_count}/${q.answer_count})</span>`
+    :'';
 
-  const actionsHtml=isReported
+  const actionsHtml=isSuspect
+    ?`<button class="admin-btn dismiss" onclick="adminClearStats('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Looks fine</button>
+       <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
+    :isReported
     ?`<button class="admin-btn view-reports" onclick="toggleAdminReports('${q.id}')"><i class="ti ti-chevron-down" style="font-size:12px" id="adminReportChevron_${q.id}"></i> View Reports</button>
        <button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
@@ -7915,7 +7943,7 @@ function buildAdminCard(q){
       <span class="admin-badge">${q.difficulty||'normal'}</span>
       ${q.submitted_by?`<span class="admin-badge submitted"><i class="ti ti-user" style="font-size:10px"></i> ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
       ${dateStr?`<span class="admin-badge"><i class="ti ti-calendar" style="font-size:10px"></i> ${dateStr}</span>`:''}
-      ${reportBadge}
+      ${reportBadge}${suspectBadge}
     </div>
     <div class="admin-actions">${actionsHtml}</div>
     ${isReported?`<div class="admin-report-details" id="adminReportDetails_${q.id}"><div style="font-size:11px;color:var(--muted)">Loading reports…</div></div>`:''}`;
@@ -7981,6 +8009,11 @@ async function adminDelete(id){
   await sb.from('questions').delete().eq('id',id);
   document.getElementById(`adminCard_${id}`)?.remove();
   loadAdminStats();
+}
+async function adminClearStats(id){
+  // "Looks fine" — reset answer tracking so the question drops off the Suspect list
+  await sb.from('questions').update({answer_count:0,correct_count:0}).eq('id',id);
+  document.getElementById(`adminCard_${id}`)?.remove();
 }
 
 applyTheme();
