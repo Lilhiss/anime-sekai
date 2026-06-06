@@ -2457,6 +2457,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }
       }
       updateNav();
+      // Arrived via an invite link while already signed in — join now that the
+      // session has restored (the boot router ran before currentUser was set).
+      if(typeof pendingInviteCode!=='undefined'&&pendingInviteCode)afterAuth();
     }
   }
 });
