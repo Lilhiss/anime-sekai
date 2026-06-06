@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anime Sekai Quiz</title>
+  <!-- Apply the saved theme before first paint to avoid a flash of the default theme -->
+  <script>
+    try{
+      var _t=JSON.parse(localStorage.getItem('as_theme')||'null');
+      if(_t){
+        var _r=document.documentElement,_c=_t.color||'midnight',_d=_t.dark!==false;
+        if(_d){if(_c!=='midnight'){_r.setAttribute('data-theme','dark');_r.setAttribute('data-color',_c);}}
+        else{_r.setAttribute('data-theme','light');if(_c!=='midnight')_r.setAttribute('data-color',_c);}
+      }
+    }catch(e){}
+  </script>
   <!-- Preconnect to Google Fonts servers so the TCP handshake is done early -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2641,6 +2652,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 <script>
 let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false,currentEmail=null,guestSessionId=null;
+try{const _ct=JSON.parse(localStorage.getItem('as_theme')||'null');if(_ct){if(_ct.color)currentColor=_ct.color;if(typeof _ct.dark==='boolean')isDark=_ct.dark;}}catch(e){}
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
@@ -2680,10 +2692,11 @@ function computeBadges(){
 
 function applyTheme(){
   document.getElementById('footerYear').textContent=new Date().getFullYear();
-  const b=document.body;
+  const b=document.documentElement;
   b.removeAttribute('data-theme');b.removeAttribute('data-color');
   if(isDark){if(currentColor!=='midnight'){b.setAttribute('data-theme','dark');b.setAttribute('data-color',currentColor)}}
   else{b.setAttribute('data-theme','light');if(currentColor!=='midnight')b.setAttribute('data-color',currentColor)}
+  try{localStorage.setItem('as_theme',JSON.stringify({color:currentColor,dark:isDark}));}catch(e){}
   document.getElementById('modeToggle').classList.toggle('on',!isDark);
   const modeTogDrawer=document.getElementById('modeToggleDrawer');
   if(modeTogDrawer)modeTogDrawer.classList.toggle('on',!isDark);
@@ -7950,7 +7963,7 @@ function srClearReveal(){
 }
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
-let isAdmin=false;
+let isAdmin=false;try{isAdmin=localStorage.getItem('as_admin')==='1';}catch(e){}
 let adminTab='submitted';
 let adminSection='review';
 let adminAll=[];
@@ -7964,6 +7977,7 @@ async function checkAdminRole(){
   let data=null;
   try{const r=await sb.from('profiles').select('role').eq('id',currentUserId).single();data=r.data;}catch(e){}
   isAdmin=data?.role==='admin';
+  try{localStorage.setItem('as_admin',isAdmin?'1':'0');}catch(e){}
   const adminLink=document.getElementById('adminNavLink');
   if(adminLink)adminLink.style.display=isAdmin?'inline-flex':'none';
 }
