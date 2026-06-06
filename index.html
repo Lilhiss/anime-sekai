@@ -1311,7 +1311,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these — updating live</div>
           <div style="display:flex;flex-direction:column;gap:9px">
             <!-- Format -->
-            <div class="gs-acc open" data-acc="format">
+            <div class="gs-acc" data-acc="format">
               <button class="gs-acc-head" onclick="gsToggleAcc('format')"><span class="gs-acc-name">Format</span><span class="gs-acc-val" id="gsValFormat">—</span><i class="ti ti-chevron-down gs-acc-chevron"></i></button>
               <div class="gs-acc-body">
                 <div class="gs-grid" id="gsFormatGrid">
@@ -6496,7 +6496,7 @@ function openLobbySettings(){
 }
 
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
-let gsActiveTab='format';
+let gsActiveTab=null;
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const qc=isSR?srTargetScore:selectedQuestionLimit;
