@@ -477,12 +477,12 @@ h1 .hi{color:var(--accent)}
 .lb-score{font-family:'Lilita One',cursive;font-size:20px;color:var(--accent);flex-shrink:0}
 .lb-empty{text-align:center;padding:48px 24px;color:var(--muted)}
 /* LOBBY */
-.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px}
 .lobby-player-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;flex-shrink:0}
-.lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1}
+.lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lobby-player-badge{font-size:11px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 10px;color:var(--accent)}
 .lobby-host-crown{font-size:14px;color:#fbbf24}
-.lobby-player-actions{display:flex;gap:6px;width:100%;margin-top:8px;justify-content:flex-end;align-items:center}
+.lobby-player-actions{display:flex;gap:6px;margin-left:auto;align-items:center;flex-shrink:0}
 .lobby-action-btn{font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s;white-space:nowrap}
 .lobby-action-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .lobby-action-btn.kick:hover{background:#f87171;border-color:#f87171;color:#fff}
@@ -6285,7 +6285,7 @@ function renderLobbyRoom(){
     const avatarWrap=isMe
       ?`<div style="position:relative;cursor:pointer;flex-shrink:0" onclick="openPfpPicker()" title="Change profile picture">${avatarHtml}<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"><i class="ti ti-pencil" style="font-size:13px;color:#fff"></i></div></div>`
       :avatarHtml;
-    row.innerHTML=`${avatarWrap}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':'<span class="lobby-player-badge">Ready</span>'}${hostActions}`;
+    row.innerHTML=`${avatarWrap}<div class="lobby-player-name">${p.name}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800;margin-left:4px">(you)</span>':''}</div>${p.isHost?'<span class="lobby-host-crown">👑</span><span class="lobby-player-badge">Host</span>':''}${hostActions}`;
     list.appendChild(row);
   });
   // Ghost "waiting" slots so the room visibly fills up as players join
