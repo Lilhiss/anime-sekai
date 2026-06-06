@@ -4173,6 +4173,7 @@ function checkTypeAnswer(){
   const correct=checkAnswer(userAns,currentQData);
   const canonicalAns=currentQData.answer||'';
   if(!correct){
+    sfxWrongAttempt();
     // Wrong — shake card, flash red, clear input, allow retry
     const card=document.querySelector('.q-card');
     input.classList.add('wrong-attempt');
@@ -4804,9 +4805,10 @@ function _tone(freq,start,dur,type,gain){
   g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.start(t);o.stop(t+dur+0.03);
 }
-function sfxCorrect(){if(!soundOn)return;_tone(660,0,.13,'sine',.18);_tone(990,.09,.18,'sine',.16);}
-function sfxWrong(){if(!soundOn)return;_tone(196,0,.22,'square',.12);_tone(146,.09,.28,'square',.11);}
-function sfxWin(){if(!soundOn)return;[523,659,784,1047].forEach((f,i)=>_tone(f,i*.11,.34,'triangle',.16));}
+function sfxCorrect(){if(!soundOn)return;_tone(1319,0,.08,'sine',.13);_tone(1568,.07,.08,'sine',.13);_tone(2093,.14,.24,'sine',.11);} // ✨ fairy twinkle
+function sfxWrong(){if(!soundOn)return;_tone(660,0,.18,'sine',.13);_tone(440,.16,.3,'sine',.12);} // ✨ gentle fizzle
+function sfxWrongAttempt(){if(!soundOn)return;_tone(1568,0,.06,'sine',.1);} // ✨ sparkle tick — keep trying
+function sfxWin(){if(!soundOn)return;_tone(1568,0,.1,'sine',.12);_tone(2093,.1,.1,'sine',.1);_tone(1760,.2,.1,'sine',.1);_tone(2349,.3,.45,'sine',.12);} // ✨ starlight
 function toggleSound(){soundOn=!soundOn;try{localStorage.setItem('sound_off',soundOn?'0':'1');}catch(e){}updateSoundUI();if(soundOn)sfxCorrect();}
 function updateSoundUI(){document.querySelectorAll('#soundToggle,#soundToggleDrawer').forEach(t=>t.classList.toggle('on',soundOn));}
 
@@ -7064,6 +7066,7 @@ function mpCheckTypeAnswer(){
   const correct=checkAnswer(userAns,currentQData);
   const isHP=lobbyMode==='potato';
   if(!correct&&!isHP){
+    sfxWrongAttempt();
     // Wrong — shake, flash red, clear and allow retry (same as solo)
     const card=document.querySelector('#page-mp-quiz .q-card');
     input.classList.add('wrong-attempt');
