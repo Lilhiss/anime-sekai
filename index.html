@@ -512,6 +512,7 @@ h1 .hi{color:var(--accent)}
 .lobby-col-left,.lobby-col-right{display:flex;flex-direction:column;gap:12px;min-width:0}
 .lobby-col-right{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:18px;backdrop-filter:blur(10px)}
 #lobbyOptionsPanel.readonly{pointer-events:none}
+#lobbyOptionsPanel.readonly #lobbyHowToBtn{pointer-events:auto}
 .lobby-options-readonly-note{display:none;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border2);border-radius:9px;padding:7px 11px}
 .gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 .gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
@@ -1313,7 +1314,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="lobby-col-right" id="lobbyOptionsPanel">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div class="profile-section-title" style="margin:0"><i class="ti ti-settings"></i> Game Setup</div>
-            <button class="ghost-btn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
+            <button class="ghost-btn" id="lobbyHowToBtn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
           </div>
           <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these — updating live</div>
           <div style="display:flex;flex-direction:column;gap:9px">
