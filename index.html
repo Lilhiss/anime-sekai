@@ -4916,6 +4916,7 @@ async function rtJoinLobby(code){
   }catch(e){}
   if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
   lobbyExpiresAt=lobby.expires_at||null;
+  lobbyInGame=false;
   // Block rejoining — check sessionStorage first (race-safe), then DB kicked_players array
   try{
     const kickedLobbies=JSON.parse(sessionStorage.getItem('kicked_from_lobbies')||'[]');
@@ -5121,6 +5122,7 @@ function rtSubscribe(lobbyId){
     // Host already ran this setup in startLobbyGame() and self:true would echo it back
     // with an empty onDone, clobbering the real mpHostFetchAndBroadcast callback
     if(isHost)return;
+    lobbyInGame=true;clearLobbyTimer();
     selectedFormat=payload.format;selectedMode=payload.mode;
     lobbyFormat=payload.format;lobbyMode=payload.mode;
     lobbyPlayers=payload.players;
@@ -5982,6 +5984,7 @@ function setPillPrivacy(isPrivate){
 }
 function createLobby(){
   if(!currentUser){choosePath('create');return}
+  lobbyInGame=false;
   const nameInput=document.getElementById('lobbyNameInput');
   lobbyName=(nameInput&&nameInput.value.trim())||`${currentUser}'s Lobby`;
   if(nameInput)nameInput.value='';
@@ -6033,6 +6036,7 @@ let lobbyTimerSecondsLeft=LOBBY_TTL;
 let lobbyWarningShown=false;
 let lobbyExpiresAt=null;          // absolute expiry timestamp (ISO) shared by host + joiners
 let nonHostTimerInterval=null;    // non-host countdown driven from lobbyExpiresAt
+let lobbyInGame=false;            // true while a match is in progress — pauses the lobby timer
 
 // Pass remainingSeconds to resume an inherited timer; omit (or pass null) to read
 // expires_at from the DB (fresh host start). Falls back to LOBBY_TTL if unavailable.
@@ -6287,8 +6291,10 @@ function renderLobbyRoom(){
   // Only auto-start the timer the first time this host opens the room.
   // If startLobbyTimer() was already called (e.g. inherited via host_transferred),
   // lobbyTimerInterval will be non-null and we skip — don't reset the clock.
-  if(isHost&&!lobbyTimerInterval)startLobbyTimer();
-  else if(!isHost&&!nonHostTimerInterval)startNonHostExpiryWatch();
+  if(!lobbyInGame){
+    if(isHost&&!lobbyTimerInterval)startLobbyTimer();
+    else if(!isHost&&!nonHostTimerInterval)startNonHostExpiryWatch();
+  }
   const maxPlayers=lobbyMode==='hp'?8:12;
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
@@ -6597,6 +6603,7 @@ function gsToggleAcc(name){
 // Settings are now inline in the lobby room (no modal).
 function startLobbyGame(){
   if(!isHost)return;
+  lobbyInGame=true;
   clearLobbyTimer();
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
@@ -7171,6 +7178,17 @@ async function mpLoadQuestion(){
 function mpEndGame(){
   srClearReveal();
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
+  // Game's over — give the lobby a fresh 10 minutes so the results page isn't rushed
+  lobbyInGame=false;
+  lobbyExpiresAt=new Date(Date.now()+LOBBY_TTL*1000).toISOString();
+  if(isHost&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+    fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({expires_at:lobbyExpiresAt})
+    }).catch(()=>{});
+  }
+  clearLobbyTimer();
   intentionalLeave=true;
   stopHeartbeat();
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
