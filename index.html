@@ -730,7 +730,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
 /* ADMIN PANEL */
 .admin-wrap{width:100%;max-width:900px;display:flex;flex-direction:column;gap:20px}
-.admin-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content}
+.admin-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto}
 .admin-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .admin-tab.active{background:var(--accent);color:#fff}
 .admin-q-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
@@ -826,15 +826,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .spinning{animation:spin-once .5s linear}
 .admin-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:600px){.admin-stat-row{grid-template-columns:1fr 1fr}}
-.admin-health{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-@media(max-width:700px){.admin-health{grid-template-columns:repeat(3,1fr)}}
-.admin-health-item{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;backdrop-filter:blur(8px)}
-.admin-health-item.alert{cursor:pointer;transition:border-color .2s,transform .15s}
-.admin-health-item.alert:hover{transform:translateY(-2px);border-color:var(--accent)}
-.admin-health-item.glow{border-color:#fbbf24;box-shadow:inset 0 0 0 1px #fbbf24}
-.admin-health-val{font-family:'Lilita One',cursive;font-size:26px;color:var(--text);line-height:1}
-.admin-health-label{font-size:11px;color:var(--muted);font-weight:700;margin-top:5px;text-transform:uppercase;letter-spacing:.04em}
-.admin-sections{display:flex;gap:8px;flex-wrap:wrap}
+.admin-health{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.admin-focus{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:18px 28px;text-align:center;backdrop-filter:blur(8px);cursor:pointer;font-family:inherit;transition:transform .15s,border-color .2s;min-width:120px}
+.admin-focus:hover{transform:translateY(-2px);border-color:var(--accent)}
+.admin-focus.glow{border-color:#fbbf24;box-shadow:inset 0 0 0 1px #fbbf24}
+.admin-focus-val{font-family:'Lilita One',cursive;font-size:34px;color:var(--text);line-height:1}
+.admin-focus.glow .admin-focus-val{color:#fbbf24}
+.admin-focus-label{font-size:12px;color:var(--muted);font-weight:800;margin-top:6px}
+.admin-summary{text-align:center;font-size:12px;color:var(--muted);font-weight:700}
+.admin-hl{background:var(--accent);color:#fff;border-radius:3px;padding:0 2px}
+.admin-sections{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 .admin-section-btn{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;padding:10px 18px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
 .admin-section-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .admin-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bg3);color:var(--muted);font-size:11px;font-weight:800;margin-left:3px}
@@ -1958,13 +1959,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <h1>🛡️ <span class="hi">Admin</span></h1>
       </div>
       <div class="admin-health slide-in" id="adminHealth">
-        <div class="admin-health-item"><div class="admin-health-val" id="ahTotal">—</div><div class="admin-health-label">Total</div></div>
-        <div class="admin-health-item"><div class="admin-health-val" id="ahApproved">—</div><div class="admin-health-label">Approved</div></div>
-        <div class="admin-health-item alert" id="ahPendingItem" onclick="adminJump('submitted')"><div class="admin-health-val" id="ahPending">—</div><div class="admin-health-label">Pending</div></div>
-        <div class="admin-health-item alert" id="ahReportedItem" onclick="adminJump('reported')"><div class="admin-health-val" id="ahReported">—</div><div class="admin-health-label">Reported</div></div>
-        <div class="admin-health-item alert" id="ahSuspectItem" onclick="adminJump('suspect')"><div class="admin-health-val" id="ahSuspect">—</div><div class="admin-health-label">Suspect</div></div>
-        <div class="admin-health-item"><div class="admin-health-val" id="ahPlays">—</div><div class="admin-health-label">Plays</div></div>
+        <button class="admin-focus" id="ahPendingItem" onclick="adminJump('submitted')"><div class="admin-focus-val" id="ahPending">—</div><div class="admin-focus-label">📬 Pending</div></button>
+        <button class="admin-focus" id="ahReportedItem" onclick="adminJump('reported')"><div class="admin-focus-val" id="ahReported">—</div><div class="admin-focus-label">⚠️ Reported</div></button>
+        <button class="admin-focus" id="ahSuspectItem" onclick="adminJump('suspect')"><div class="admin-focus-val" id="ahSuspect">—</div><div class="admin-focus-label">🚩 Suspect</div></button>
       </div>
+      <div class="admin-summary slide-in" id="adminSummary">—</div>
       <div class="admin-sections slide-in">
         <button class="admin-section-btn active" id="adminSecReview" onclick="switchAdminSection('review')"><i class="ti ti-inbox" style="font-size:15px"></i> Review</button>
         <button class="admin-section-btn" id="adminSecBrowse" onclick="switchAdminSection('browse')"><i class="ti ti-search" style="font-size:15px"></i> Browse</button>
@@ -7924,7 +7923,7 @@ let isAdmin=false;
 let adminTab='submitted';
 let adminSection='review';
 let adminAll=[];
-let aeEditId=null,aeOrig=null;
+let aeEditId=null,aeOrig=null,adminHL='';
 const ADMIN_ANIME_TOPICS=["One Piece","Naruto","Dragon Ball","Attack on Titan","Demon Slayer","My Hero Academia","Hunter x Hunter","Fullmetal Alchemist","Jujutsu Kaisen","Death Note","Bleach","Sword Art Online","Fairy Tail","Vinland Saga","Tokyo Revengers","Chainsaw Man","Spy x Family","Mob Psycho 100","Cowboy Bebop","Neon Genesis Evangelion","Code Geass","Re:Zero","Steins;Gate","Your Lie in April","Toradora","Haikyuu!!","Black Clover","Overlord","KonoSuba","Fruits Basket"];
 const ADMIN_GENRE_TOPICS=["Shōnen","Isekai","Shōjo","Seinen","Mecha","Slice of Life","Romance","Horror","Sports","Fantasy","Sci-Fi","Comedy","Psychological","Action","Adventure","Mystery"];
 const ADMIN_COV_THIN=10;
@@ -7957,12 +7956,11 @@ function renderAdminStats(){
   const pending=adminAll.filter(q=>q.status==='pending').length;
   const reported=adminAll.filter(q=>q.report_count>0).length;
   const suspect=adminAll.filter(_adminIsSuspect).length;
-  set('ahTotal',adminAll.length);
-  set('ahApproved',adminAll.filter(q=>q.status==='approved').length);
   set('ahPending',pending);set('ahReported',reported);set('ahSuspect',suspect);
-  set('ahPlays',adminAll.reduce((s,q)=>s+(q.answer_count||0),0));
   const glow=(id,n)=>{const el=document.getElementById(id);if(el)el.classList.toggle('glow',n>0);};
   glow('ahPendingItem',pending);glow('ahReportedItem',reported);glow('ahSuspectItem',suspect);
+  const total=adminAll.length,approved=adminAll.filter(q=>q.status==='approved').length,plays=adminAll.reduce((s,q)=>s+(q.answer_count||0),0);
+  set('adminSummary',total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved · '+plays.toLocaleString()+' plays');
 }
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
@@ -8007,6 +8005,7 @@ function renderAdminSection(){
 }
 function renderAdminBrowse(){
   const qstr=(document.getElementById('adminSearchInput')?.value||'').trim().toLowerCase();
+  adminHL=qstr;
   const fmt=document.getElementById('adminFilterFormat')?.value||'';
   const diff=document.getElementById('adminFilterDiff')?.value||'';
   let rows=adminAll.slice();
@@ -8049,6 +8048,12 @@ function renderAdminList(rows,emptyMsg){
   applyTheme();
 }
 
+function _adminHL(text){
+  if(text==null)return text;
+  if(!adminHL||adminSection!=='browse')return text;
+  const t=adminHL.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return String(text).replace(new RegExp('('+t+')','ig'),'<mark class="admin-hl">$1</mark>');
+}
 function buildAdminCard(q){
   const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
   const isReported=adminSection==='review'&&adminTab==='reported';
@@ -8058,8 +8063,8 @@ function buildAdminCard(q){
   card.className='admin-q-card'+((isReported||isSuspect)?' reported':'');
   card.id=`adminCard_${q.id}`;
 
-  const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join(' · ')}</div>`:'';
-  const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${q.answer}</div>`:'';
+  const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_adminHL(o)}</span>`).join(' · ')}</div>`:'';
+  const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${_adminHL(q.answer)}</div>`:'';
   const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
   const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
   const reportBadge=q.report_count>0
@@ -8081,12 +8086,12 @@ function buildAdminCard(q){
 
   card.innerHTML=`
     <div>
-      <div class="admin-q-text">${q.question}</div>
+      <div class="admin-q-text">${_adminHL(q.question)}</div>
       ${optionsHtml}${answerHtml}${aliasHtml}
     </div>
     <div class="admin-q-meta">
       <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
-      <span class="admin-badge">${q.topic_value||'General'}</span>
+      <span class="admin-badge">${q.topic_value?_adminHL(q.topic_value):'General'}</span>
       ${adminSection==='browse'?`<span class="admin-badge${q.status==='pending'?' reported':''}">${q.status}</span>`:''}
       <span class="admin-badge">${q.difficulty||'normal'}</span>
       ${q.submitted_by?`<span class="admin-badge submitted"><i class="ti ti-user" style="font-size:10px"></i> ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
