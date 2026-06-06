@@ -569,8 +569,26 @@ h1 .hi{color:var(--accent)}
 .gs-panel{min-height:250px;display:flex;flex-direction:column}
 .gs-pane{display:none;animation:gsAccIn .24s ease}
 .gs-pane.active{display:block}
-.gs-pane[data-pane="format"].active,.gs-pane[data-pane="mode"].active{display:flex;flex-direction:column;flex:1}
-.gs-pane[data-pane="format"] .gs-grid,.gs-pane[data-pane="mode"] .gs-grid{flex:1;grid-auto-rows:1fr}
+.gs-pane[data-pane="format"].active,.gs-pane[data-pane="mode"].active,.gs-pane[data-pane="topic"].active{display:flex;flex-direction:column;flex:1}
+.gs-pane[data-pane="format"] .gs-grid,.gs-pane[data-pane="mode"] .gs-grid,.gs-pane[data-pane="topic"] .gs-grid{flex:1;grid-auto-rows:1fr}
+.gs-topic{display:grid;grid-template-columns:150px 1fr;gap:12px;flex:1;min-height:0}
+@media(max-width:620px){.gs-topic{grid-template-columns:1fr}}
+.gs-topic-subs{display:flex;flex-direction:column;gap:6px}
+.gs-subrow{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:11px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;color:var(--text);transition:all .15s;text-align:left}
+.gs-subrow:hover{border-color:var(--border2)}
+.gs-subrow.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.gs-subrow-badge{font-size:11px;font-weight:800;color:var(--accent);min-width:14px;text-align:center}
+.gs-topic-content{min-width:0;display:flex;flex-direction:column}
+.gs-topic-search{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:8px}
+.gs-topic-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600}
+.gs-topic-search i{color:var(--muted);font-size:14px}
+.gs-topic-list{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:5px;padding-right:2px}
+.gs-topic-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .12s}
+.gs-topic-item:hover{border-color:var(--border2)}
+.gs-topic-item.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.gs-topic-item-check{opacity:0;color:var(--accent);font-size:14px;flex-shrink:0}
+.gs-topic-item.selected .gs-topic-item-check{opacity:1}
+.gs-topic-empty{text-align:center;color:var(--muted);font-size:12px;padding:16px}
 @keyframes gsAccIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* Player list polish */
 .lobby-player-me{border-color:var(--accent);background:var(--accent-soft)}
@@ -1463,9 +1481,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
               </div>
             </div>
             <div class="gs-pane" data-pane="topic">
-              <button class="gs-opt gs-wide" id="gsGeneralBtn" onclick="gsSetGeneral()"><span class="gs-emoji">🌐</span> General Anime <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:700">everything</span></button>
-              <button class="ghost-btn" style="width:100%;justify-content:center;margin-top:8px" onclick="gsPickTopics()"><i class="ti ti-list-search" style="font-size:14px"></i> Pick specific anime / genres</button>
-              <div id="gsTopicSummary" style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center"></div>
+              <div class="gs-topic">
+                <div class="gs-topic-subs">
+                  <button class="gs-subrow" data-sub="general" onclick="gsTopicSubSwitch('general')"><span>General Anime</span><span class="gs-subrow-badge" id="gsSubBadgeGeneral"></span></button>
+                  <button class="gs-subrow" data-sub="anime" onclick="gsTopicSubSwitch('anime')"><span>Specific Anime</span><span class="gs-subrow-badge" id="gsSubBadgeAnime"></span></button>
+                  <button class="gs-subrow" data-sub="genre" onclick="gsTopicSubSwitch('genre')"><span>Genre</span><span class="gs-subrow-badge" id="gsSubBadgeGenre"></span></button>
+                </div>
+                <div class="gs-topic-content" id="gsTopicContent"></div>
+              </div>
             </div>
             <div class="gs-pane" data-pane="settings">
               <div id="gsQuestionsSection">
@@ -6921,7 +6944,7 @@ function openLobbySettings(){
 }
 
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
-let gsActiveTab='format';
+let gsActiveTab='format',gsTopicSub='general';
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const qc=isSR?srTargetScore:selectedQuestionLimit;
@@ -6950,9 +6973,7 @@ function gsSyncUI(){
   document.getElementById('gsQuestionsSection').style.display=isSR?'none':'block';
   document.getElementById('gsTimeSection').style.display=(lobbyMode==='race'||lobbyMode==='survival')?'block':'none';
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
-  const genBtn=document.getElementById('gsGeneralBtn');if(genBtn)genBtn.classList.toggle('selected',!!lobbyIsGeneral);
-  const sum=document.getElementById('gsTopicSummary');
-  if(sum)sum.textContent=lobbyIsGeneral?'Topic: General Anime':((lobbyTopics&&lobbyTopics.length)?'Topic: '+lobbyTopics.map(t=>t.name).join(', '):'No topic selected');
+  gsRenderTopic();
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
@@ -6969,6 +6990,65 @@ function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
+function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();}
+function gsRenderTopic(){
+  const content=document.getElementById('gsTopicContent');
+  document.querySelectorAll('#lobbyOptionsPanel .gs-subrow').forEach(el=>el.classList.toggle('active',el.dataset.sub===gsTopicSub));
+  const aC=lobbyTopics.filter(t=>t.type==='anime').length,gC=lobbyTopics.filter(t=>t.type==='genre').length;
+  const setB=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setB('gsSubBadgeGeneral',lobbyIsGeneral?'✓':'');
+  setB('gsSubBadgeAnime',aC?String(aC):'');
+  setB('gsSubBadgeGenre',gC?String(gC):'');
+  if(!content)return;
+  if(content.dataset.sub!==gsTopicSub){gsBuildTopicContent();return;}
+  if(gsTopicSub==='general'){const card=content.querySelector('.gs-bigcard');if(card)card.classList.toggle('selected',lobbyIsGeneral);}
+  else gsRenderTopicList();
+}
+function gsBuildTopicContent(){
+  const content=document.getElementById('gsTopicContent');if(!content)return;
+  content.dataset.sub=gsTopicSub;
+  if(gsTopicSub==='general'){
+    content.innerHTML=`<div class="gs-bigcard${lobbyIsGeneral?' selected':''}" onclick="gsSetGeneral()" style="height:100%"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🌐</div><div class="gs-bc-title">General Anime</div><div class="gs-bc-desc">Questions from every anime and genre</div></div>`;
+  } else {
+    const ph=gsTopicSub==='anime'?'Search anime…':'Search genres…';
+    content.innerHTML=`<div class="gs-topic-search"><i class="ti ti-search"></i><input id="gsTopicSearch" type="text" placeholder="${ph}" oninput="gsRenderTopicList()"></div><div class="gs-topic-list" id="gsTopicList"><div class="gs-topic-empty">Loading…</div></div>`;
+    gsEnsureTopics().then(()=>gsRenderTopicList());
+  }
+}
+function gsRenderTopicList(){
+  const list=document.getElementById('gsTopicList');if(!list)return;
+  const filter=(document.getElementById('gsTopicSearch')?.value||'').toLowerCase();
+  const all=gsTopicSub==='genre'?genreTopics:animeTopics;
+  const items=all.filter(t=>t.name.toLowerCase().includes(filter));
+  if(!items.length){list.innerHTML='<div class="gs-topic-empty">No matches</div>';return;}
+  list.innerHTML=items.map(t=>{
+    const sel=lobbyTopics.some(s=>s.key===t.key);
+    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.emoji} ${t.name}</span><i class="ti ti-check gs-topic-item-check"></i></div>`;
+  }).join('');
+}
+function gsTopicToggle(key,emoji,name,type){
+  lobbyIsGeneral=false;
+  const idx=lobbyTopics.findIndex(t=>t.key===key);
+  if(idx>=0)lobbyTopics.splice(idx,1);else lobbyTopics.push({key,emoji,name,type});
+  if(!lobbyTopics.length)lobbyIsGeneral=true;
+  gsAfterChange();
+}
+async function gsEnsureTopics(){
+  if(animeTopics.length||genreTopics.length)return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+    const data=await res.json();
+    const animeSet=new Map(),genreSet=new Map();
+    (data||[]).forEach(row=>{
+      if(!row.topic_value)return;
+      const name=row.topic_value,key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+      if(row.topic_type==='anime'&&!animeSet.has(key))animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime'});
+      else if(row.topic_type==='genre'&&!genreSet.has(key))genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre'});
+    });
+    animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  }catch(e){}
+}
 function gsPickTopics(){openLobbyTopicPage();}
 function gsRenderAcc(){
   const t=gsActiveTab||'format';
