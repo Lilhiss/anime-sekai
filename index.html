@@ -2541,6 +2541,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }
       }
       updateNav();
+      checkAdminRole();
       // Arrived via an invite link while already signed in — join now that the
       // session has restored (the boot router ran before currentUser was set).
       if(typeof pendingInviteCode!=='undefined'&&pendingInviteCode)afterAuth();
@@ -2652,6 +2653,8 @@ function updateNav(){
   } else {
     nr.innerHTML=originalNavHTML;
   }
+  const _adminLink=document.getElementById('adminNavLink');
+  if(_adminLink)_adminLink.style.display=isAdmin?'inline-flex':'none';
   applyTheme();
   if(typeof syncDrawerState==='function')syncDrawerState();
 }
