@@ -8181,7 +8181,7 @@ function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
   const approved=adminAll.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span>'+dlBtn+'</div>';};
+  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+'\',' +'\''+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
@@ -8214,6 +8214,169 @@ function exportTopicQuestions(topicKey){
   a.click();
   URL.revokeObjectURL(url);
 }
+function openPromptGenerator(topicValue, topicType){
+  // Remove any existing modal
+  const existing=document.getElementById('promptGenModal');
+  if(existing)existing.remove();
+
+  const fmtOptions=[
+    {id:'pgFmtMc',val:'mc',label:'Multiple Choice'},
+    {id:'pgFmtType',val:'type',label:'Type Answer'},
+    {id:'pgFmtChar',val:'char',label:'Name Character'}
+  ];
+
+  const modal=document.createElement('div');
+  modal.id='promptGenModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0008;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">Generate Prompt</div>
+        <button onclick="document.getElementById('promptGenModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px">&times;</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Topic</label>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--text)">${topicValue}</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--muted)">${topicType}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Difficulty</label>
+        <div style="display:flex;gap:8px">
+          ${['Easy','Normal','Hard'].map(d=>`<button id="pgDiff${d}" onclick="pgSetDiff('${d}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${d}</button>`).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Format <span style="font-size:10px;font-weight:600;color:var(--muted)">(multi-select)</span></label>
+        <div style="display:flex;gap:8px">
+          ${fmtOptions.map(f=>`<button id="${f.id}" onclick="pgToggleFmt('${f.val}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${f.label}</button>`).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Quantity</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${[10,20,30].map(q=>`<button id="pgQty${q}" onclick="pgSetQty(${q})" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${q}</button>`).join('')}
+          <input id="pgQtyCustom" type="number" min="1" max="200" placeholder="Custom" oninput="pgSetQtyCustom()" style="flex:1;padding:7px 10px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;border:1px solid var(--border2);background:var(--bg3);color:var(--text);text-align:center;outline:none">
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Preview</label>
+        <pre id="pgPreview" style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-word;font-family:'Nunito',sans-serif;line-height:1.6;min-height:60px;margin:0"></pre>
+      </div>
+
+      <button onclick="pgCopy()" style="background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="ti ti-copy" style="font-size:14px"></i> <span id="pgCopyLabel">Copy Prompt</span>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  applyTheme();
+
+  // State
+  modal._topicValue=topicValue;
+  modal._topicType=topicType;
+  modal._diff=null;
+  modal._fmts=new Set();
+  modal._qty=null;
+
+  // Close on backdrop click
+  modal.addEventListener('click',e=>{ if(e.target===modal)modal.remove(); });
+
+  pgUpdatePreview();
+}
+
+function pgSetDiff(d){
+  const modal=document.getElementById('promptGenModal');
+  modal._diff=d;
+  ['Easy','Normal','Hard'].forEach(x=>{
+    const btn=document.getElementById('pgDiff'+x);
+    const active=x===d;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgToggleFmt(val){
+  const modal=document.getElementById('promptGenModal');
+  if(modal._fmts.has(val))modal._fmts.delete(val);
+  else modal._fmts.add(val);
+  const map={mc:'pgFmtMc',type:'pgFmtType',char:'pgFmtChar'};
+  ['mc','type','char'].forEach(v=>{
+    const btn=document.getElementById(map[v]);
+    const active=modal._fmts.has(v);
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgSetQty(q){
+  const modal=document.getElementById('promptGenModal');
+  modal._qty=q;
+  document.getElementById('pgQtyCustom').value='';
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    const active=x===q;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgSetQtyCustom(){
+  const modal=document.getElementById('promptGenModal');
+  const v=parseInt(document.getElementById('pgQtyCustom').value,10);
+  modal._qty=(!isNaN(v)&&v>0)?v:null;
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    btn.style.background='var(--bg3)';
+    btn.style.borderColor='var(--border2)';
+    btn.style.color='var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgBuildPrompt(){
+  const modal=document.getElementById('promptGenModal');
+  if(!modal)return'';
+  const {_topicValue:tv,_topicType:tt,_diff:diff,_fmts:fmts,_qty:qty}=modal;
+  if(!diff||!fmts.size||!qty)return'(configure difficulty, format, and quantity above)';
+  const fmtLabelMap={mc:'Multiple Choice',type:'Type Answer',char:'Name Character'};
+  const fmtValList=[...fmts];
+  const fmtLabels=fmtValList.map(f=>fmtLabelMap[f]).join(' + ');
+  const blocks=fmtValList.map(f=>{
+    const perFmt=fmtValList.length>1?Math.round(qty/fmtValList.length):qty;
+    return `Generate ${perFmt} ${diff} ${fmtLabelMap[f]} questions about ${tt} "${tv}".\n- format: '${f}'\n- topic_type: '${tt}'\n- topic_value: '${tv}'\n- difficulty: '${diff.toLowerCase()}'`;
+  });
+  return blocks.join('\n\n');
+}
+
+function pgUpdatePreview(){
+  const pre=document.getElementById('pgPreview');
+  if(pre)pre.textContent=pgBuildPrompt();
+}
+
+function pgCopy(){
+  const text=pgBuildPrompt();
+  if(text.startsWith('('))return;
+  navigator.clipboard.writeText(text).then(()=>{
+    const lbl=document.getElementById('pgCopyLabel');
+    if(!lbl)return;
+    lbl.textContent='Copied!';
+    setTimeout(()=>{ if(lbl)lbl.textContent='Copy Prompt'; },2000);
+  });
+}
+
 let _importParsed=[];
 function adminImportParse(){
   const raw=document.getElementById('adminImportInput').value;
