@@ -4966,7 +4966,7 @@ function sqImagePreview(){
   else{wrap.style.display='none';img.src='';}
 }
 
-
+function animateCount(id,target,suffix){
   const el=document.getElementById(id);if(!el)return;
   target=parseInt(target)||0;suffix=suffix||'';
   if(target<=0){el.textContent='0'+suffix;return;}
