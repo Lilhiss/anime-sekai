@@ -2094,20 +2094,36 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <!-- Scrollable body -->
       <div style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:14px">
-        <div style="display:flex;gap:10px">
-          <div style="flex:1">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
             <label class="form-label">Topic</label>
-            <input class="form-input" id="pgTopic" type="text" placeholder="e.g. One Piece">
+            <input class="form-input" id="pgTopic" type="text" placeholder="e.g. One Piece" oninput="pgBuild()">
           </div>
           <div style="width:130px">
             <label class="form-label">Type</label>
-            <select class="form-input" id="pgType" style="cursor:pointer">
+            <select class="form-input" id="pgType" style="cursor:pointer" onchange="pgBuild()">
               <option value="anime">Anime series</option>
               <option value="genre">Genre / theme</option>
             </select>
           </div>
-          <div style="width:90px;display:flex;align-items:flex-end">
-            <button onclick="pgBuild()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:9px 14px;border-radius:9px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-refresh" style="font-size:13px"></i> Build</button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label class="form-label">Format</label>
+            <select class="form-input" id="pgFormat" style="cursor:pointer" onchange="pgBuild()">
+              <option value="mc">Multiple Choice (mc)</option>
+              <option value="type">Type Answer (type)</option>
+              <option value="char">Name the Character (char)</option>
+            </select>
+          </div>
+          <div style="width:110px">
+            <label class="form-label">Count</label>
+            <select class="form-input" id="pgCount" style="cursor:pointer" onchange="pgBuild()">
+              <option value="5">5 questions</option>
+              <option value="10" selected>10 questions</option>
+              <option value="15">15 questions</option>
+              <option value="20">20 questions</option>
+            </select>
           </div>
         </div>
         <div>
@@ -8754,12 +8770,11 @@ function openPromptGenerator(topicValue,topicType){
 function pgBuild(){
   const topic=document.getElementById('pgTopic').value.trim()||'General Anime';
   const type=document.getElementById('pgType').value;
-  const typeLabel=type==='genre'?'genre/theme ('+topic+')':'anime series';
-  const existing=adminAll.filter(q=>q.status==='approved'&&(q.topic_value||'')===topic);
-  const exStr=existing.length>0
-    ?'\n\nFor reference, here are '+Math.min(existing.length,5)+' existing questions to help you avoid duplicates:\n'+existing.slice(0,5).map((q,i)=>(i+1)+'. '+q.question).join('\n')
-    :'';
-  const prompt='You are writing trivia questions for an anime quiz app called Anime Sekai.\n\nTopic: '+topic+' ('+typeLabel+')\n\nPlease generate 10 high-quality trivia questions for this topic. Follow these rules:\n\nFORMATS — generate a mix:\n• Multiple Choice (mc): question + 4 options (A–D) + correct answer index (0–3)\n• Type Answer (type): question + exact answer + optional aliases\n• Name the Character (char): describe a character + their name as the answer\n\nDIFFICULTY — mix of easy, normal, and hard\n\nOUTPUT FORMAT — JSON array only, no other text:\n[\n  {\n    "question": "...",\n    "format": "mc",\n    "options": ["A","B","C","D"],\n    "answer": 0,\n    "difficulty": "normal",\n    "topic_value": "'+topic+'",\n    "topic_type": "'+type+'"\n  },\n  {\n    "question": "...",\n    "format": "type",\n    "answer": "exact answer",\n    "aliases": ["alt"],\n    "difficulty": "easy",\n    "topic_value": "'+topic+'",\n    "topic_type": "'+type+'"\n  }\n]\n\nRules:\n- All facts must be accurate\n- MC distractors should be plausible but clearly wrong to those who know the material\n- Avoid duplicate questions'+exStr;
+  const fmt=document.getElementById('pgFormat').value;
+  const count=document.getElementById('pgCount').value;
+  const typeWord=type==='genre'?'genre':'anime';
+  const fmtLabel={mc:'multiple choice',type:'type answer',char:'name the character'};
+  const prompt='Generate '+count+' NORMAL '+fmtLabel[fmt]+' questions about the '+typeWord+' "'+topic+'".\n- format: \''+fmt+'\'\n- topic_type: \''+type+'\'\n- topic_value: \''+topic+'\'\n- difficulty: \'normal\'\nFollow all quality rules and output only the SQL INSERT.';
   document.getElementById('pgOutput').value=prompt;
 }
 function pgCopy(){
