@@ -8186,9 +8186,9 @@ const ADMIN_COV_THIN=10;
 
 async function checkAdminRole(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  let data=null;
-  try{const r=await sb.from('profiles').select('role').eq('id',currentUserId).single();data=r.data;}catch(e){}
-  isAdmin=data?.role==='admin';
+  let isAdminResult=false;
+  try{const{data}=await sb.rpc('is_admin');isAdminResult=data===true;}catch(e){}
+  isAdmin=isAdminResult;
   try{localStorage.setItem('as_admin',isAdmin?'1':'0');}catch(e){}
   const adminLink=document.getElementById('adminNavLink');
   if(adminLink)adminLink.style.display=isAdmin?'inline-flex':'none';
