@@ -772,6 +772,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;margin:0 auto}
 .admin-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .admin-tab.active{background:var(--accent);color:#fff}
+.sq-scroll-body::-webkit-scrollbar{width:6px}
+.sq-scroll-body::-webkit-scrollbar-track{background:transparent}
+.sq-scroll-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.sq-scroll-body::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.sq-scroll-body{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
 .admin-q-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
 .admin-q-card.reported{border-color:#f87171}
 .admin-q-text{font-size:14px;font-weight:700;color:var(--text);line-height:1.5}
@@ -2305,13 +2310,17 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- SUBMIT QUESTION MODAL -->
   <div id="submitQModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px;max-height:90vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Submit a Question</div>
-        <button onclick="document.getElementById('submitQModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:480px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden">
+      <!-- Fixed header -->
+      <div style="padding:28px 28px 0;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Submit a Question</div>
+          <button onclick="document.getElementById('submitQModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+        </div>
+        <div style="font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
       </div>
-      <div style="font-size:13px;color:var(--muted)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <!-- Scrollable body -->
+      <div class="sq-scroll-body" style="flex:1;overflow-y:auto;padding:16px 28px;display:flex;flex-direction:column;gap:12px">
         <div>
           <label class="form-label">Question</label>
           <input class="form-input" id="sqQuestion" type="text" placeholder="What is the name of…">
@@ -2342,23 +2351,24 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Shonen general…" autocomplete="off" oninput="sqTopicInput()" onkeydown="sqTopicKeydown(event)" onfocus="sqTopicInput()" onblur="setTimeout(sqTopicHide,150)">
           <div id="sqTopicDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1.5px solid var(--border2);border-radius:12px;z-index:999;overflow:hidden;box-shadow:0 8px 28px #0008;max-height:220px;overflow-y:auto"></div>
         </div>
-      </div>
-        <div>
+        <!-- Image toggle -->
+        <div style="border-top:1px solid var(--border);padding-top:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="sqToggleImage()">
             <label class="form-label" style="cursor:pointer;margin:0">Add an image <span class="optional-tag">Optional</span></label>
-            <button type="button" id="sqImgToggle" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0"><i class="ti ti-photo" style="font-size:14px"></i> <span id="sqImgToggleLabel">Add</span></button>
+            <button type="button" id="sqImgToggle" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-size:11px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px"><i class="ti ti-photo" style="font-size:12px"></i> <span id="sqImgToggleLabel">Add</span></button>
           </div>
-          <div id="sqImageWrap" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:8px">
+          <div id="sqImageWrap" style="display:none;flex-direction:column;gap:8px;margin-top:10px">
             <input class="form-input" id="sqImageUrl" type="url" placeholder="https://…  (direct image link)" oninput="sqImagePreview()">
             <div id="sqImagePreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid var(--border);max-height:180px">
-              <img id="sqImagePreviewImg" src="" alt="Preview" style="width:100%;max-height:180px;object-fit:cover;display:block" onerror="document.getElementById('sqImagePreviewWrap').style.display='none'">
+              <img id="sqImagePreviewImg" src="" alt="Preview" style="width:100%;max-height:180px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'">
             </div>
             <div class="form-hint">Paste a direct link to an image (jpg, png, gif, webp). The image will be reviewed before the question goes live.</div>
           </div>
         </div>
+        <div class="form-err" id="sqErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqErrMsg"></span></div>
       </div>
-      <div class="form-err" id="sqErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqErrMsg"></span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <!-- Fixed footer -->
+      <div style="padding:16px 28px 24px;flex-shrink:0;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="document.getElementById('submitQModal').style.display='none'">Cancel</button>
         <button class="action-btn primary" onclick="submitQuestion()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button>
       </div>
@@ -4934,13 +4944,12 @@ async function submitQuestion(){
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(),3000);
   ['sqQuestion','sqAnswer','sqAliases','sqTopic','sqOptions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  // Reset image section
   const imgUrl=document.getElementById('sqImageUrl');if(imgUrl)imgUrl.value='';
   const imgWrap=document.getElementById('sqImageWrap');if(imgWrap)imgWrap.style.display='none';
   const imgLabel=document.getElementById('sqImgToggleLabel');if(imgLabel)imgLabel.textContent='Add';
   const imgPrev=document.getElementById('sqImagePreviewWrap');if(imgPrev)imgPrev.style.display='none';
   sqTopicHide();
-  sqTopicCache=null; // force refresh next open so new topic appears
+  sqTopicCache=null;
   applyTheme();
 }
 
@@ -8224,7 +8233,7 @@ function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
   const approved=adminAll.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span>'+dlBtn+'</div>';};
+  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+'\',' +'\''+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
@@ -8256,6 +8265,140 @@ function exportTopicQuestions(topicKey){
   a.download='questions-'+(topicKey==='__general__'?'general-anime':topicKey.toLowerCase().replace(/[^a-z0-9]+/g,'-'))+'.txt';
   a.click();
   URL.revokeObjectURL(url);
+}
+function openPromptGenerator(topicValue, topicType){
+  const existing=document.getElementById('promptGenModal');
+  if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='promptGenModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0008;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">Generate Prompt</div>
+        <button onclick="document.getElementById('promptGenModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px">&times;</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Topic</label>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--text)">${topicValue}</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--muted)">${topicType}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Difficulty</label>
+        <div style="display:flex;gap:8px">
+          ${['Easy','Normal','Hard'].map(d=>`<button id="pgDiff${d}" onclick="pgSetDiff('${d}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${d}</button>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Format <span style="font-size:10px;font-weight:600;color:var(--muted)">(multi-select)</span></label>
+        <div style="display:flex;gap:8px">
+          ${[{id:'pgFmtMc',val:'mc',label:'Multiple Choice'},{id:'pgFmtType',val:'type',label:'Type Answer'},{id:'pgFmtChar',val:'char',label:'Name Character'}].map(f=>`<button id="${f.id}" onclick="pgToggleFmt('${f.val}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${f.label}</button>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Quantity</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${[10,20,30].map(q=>`<button id="pgQty${q}" onclick="pgSetQty(${q})" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${q}</button>`).join('')}
+          <input id="pgQtyCustom" type="number" min="1" max="200" placeholder="Custom" oninput="pgSetQtyCustom()" style="flex:1;padding:7px 10px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;border:1px solid var(--border2);background:var(--bg3);color:var(--text);text-align:center;outline:none">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Preview</label>
+        <pre id="pgPreview" style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-word;font-family:'Nunito',sans-serif;line-height:1.6;min-height:60px;margin:0"></pre>
+      </div>
+      <button onclick="pgCopy()" style="background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="ti ti-copy" style="font-size:14px"></i> <span id="pgCopyLabel">Copy Prompt</span>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  applyTheme();
+  modal._topicValue=topicValue;
+  modal._topicType=topicType;
+  modal._diff=null;
+  modal._fmts=new Set();
+  modal._qty=null;
+  modal.addEventListener('click',e=>{ if(e.target===modal)modal.remove(); });
+  pgUpdatePreview();
+}
+function pgSetDiff(d){
+  const modal=document.getElementById('promptGenModal');
+  modal._diff=d;
+  ['Easy','Normal','Hard'].forEach(x=>{
+    const btn=document.getElementById('pgDiff'+x);
+    const active=x===d;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+function pgToggleFmt(val){
+  const modal=document.getElementById('promptGenModal');
+  if(modal._fmts.has(val))modal._fmts.delete(val);
+  else modal._fmts.add(val);
+  const map={mc:'pgFmtMc',type:'pgFmtType',char:'pgFmtChar'};
+  ['mc','type','char'].forEach(v=>{
+    const btn=document.getElementById(map[v]);
+    const active=modal._fmts.has(v);
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+function pgSetQty(q){
+  const modal=document.getElementById('promptGenModal');
+  modal._qty=q;
+  document.getElementById('pgQtyCustom').value='';
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    const active=x===q;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+function pgSetQtyCustom(){
+  const modal=document.getElementById('promptGenModal');
+  const v=parseInt(document.getElementById('pgQtyCustom').value,10);
+  modal._qty=(!isNaN(v)&&v>0)?v:null;
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    btn.style.background='var(--bg3)';
+    btn.style.borderColor='var(--border2)';
+    btn.style.color='var(--muted)';
+  });
+  pgUpdatePreview();
+}
+function pgBuildPrompt(){
+  const modal=document.getElementById('promptGenModal');
+  if(!modal)return'';
+  const{_topicValue:tv,_topicType:tt,_diff:diff,_fmts:fmts,_qty:qty}=modal;
+  if(!diff||!fmts.size||!qty)return'(configure difficulty, format, and quantity above)';
+  const fmtLabelMap={mc:'Multiple Choice',type:'Type Answer',char:'Name Character'};
+  const fmtValList=[...fmts];
+  return fmtValList.map(f=>{
+    const perFmt=fmtValList.length>1?Math.round(qty/fmtValList.length):qty;
+    return `Generate ${perFmt} ${diff} ${fmtLabelMap[f]} questions about ${tt} "${tv}".\n- format: '${f}'\n- topic_type: '${tt}'\n- topic_value: '${tv}'\n- difficulty: '${diff.toLowerCase()}'`;
+  }).join('\n\n');
+}
+function pgUpdatePreview(){
+  const pre=document.getElementById('pgPreview');
+  if(pre)pre.textContent=pgBuildPrompt();
+}
+function pgCopy(){
+  const text=pgBuildPrompt();
+  if(text.startsWith('('))return;
+  navigator.clipboard.writeText(text).then(()=>{
+    const lbl=document.getElementById('pgCopyLabel');
+    if(!lbl)return;
+    lbl.textContent='Copied!';
+    setTimeout(()=>{ if(lbl)lbl.textContent='Copy Prompt'; },2000);
+  });
 }
 let _importParsed=[];
 function adminImportParse(){
