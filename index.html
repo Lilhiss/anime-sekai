@@ -8779,7 +8779,7 @@ async function adminDismiss(id){
 // SHA-256 hex of your chosen PIN. To change: run  crypto.subtle.digest('SHA-256',
 // new TextEncoder().encode('yourpin')).then(b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').then(console.log))
 // in the browser console and paste the result below.
-const ADMIN_PIN_HASH='YOUR_PIN_HASH_HERE'; // ← replace before deploying
+const ADMIN_PIN_HASH='03ca1c3278cf01923ea5fbf6780b3dace51a548cf7829816be97d6621a66cc8e'; // ← replace before deploying
 const ADMIN_UNLOCK_MS=10*60*1000; // 10 minutes
 
 let _adminUnlocked=false;
