@@ -888,6 +888,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-search-wrap{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 13px}
 .admin-search-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:600}
 .admin-filter{background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+.admin-pager{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:4px 0}
+.admin-pager-btn{background:var(--bg2);border:1.5px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 14px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .2s,color .2s,border-color .2s}
+.admin-pager-btn:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff}
+.admin-pager-btn:disabled{opacity:.35;cursor:not-allowed}
+.admin-pager-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.admin-pager-info{font-size:12px;font-weight:700;color:var(--muted)}
 .admin-cov-group{margin-bottom:18px}
 .admin-cov-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .admin-cov-row{display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:11px;padding:10px 14px;margin-bottom:6px;backdrop-filter:blur(8px)}
@@ -2044,9 +2050,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-tab" id="adminTabSuspect" onclick="switchAdminTab('suspect')">🚩 Suspect <span class="admin-tab-count" id="adminCountSuspect"></span></button>
       </div>
       <div class="admin-browse-bar slide-in" id="adminBrowseBar" style="display:none">
-        <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions, answers, topics…" oninput="renderAdminSection()"></div>
-        <select class="admin-filter" id="adminFilterFormat" onchange="renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
-        <select class="admin-filter" id="adminFilterDiff" onchange="renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
+        <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection()"></div>
+        <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
+        <select class="admin-filter" id="adminFilterDiff" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
+        <select class="admin-filter" id="adminSortAnime" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All anime</option></select>
+        <select class="admin-filter" id="adminSortGenre" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All genres</option></select>
       </div>
       <div id="adminCoverage" class="slide-in" style="display:none"></div>
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
@@ -2078,6 +2086,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
       </div>
+      <div id="adminBrowsePager" class="admin-pager slide-in" style="display:none"></div>
     </div>
   </div>
 
@@ -8134,6 +8143,8 @@ let isAdmin=false;try{isAdmin=localStorage.getItem('as_admin')==='1';}catch(e){}
 let adminTab='submitted';
 let adminSection='review';
 let adminAll=[];
+let adminBrowsePage=0;
+const ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
 const ADMIN_ANIME_TOPICS=["One Piece","Naruto","Dragon Ball","Attack on Titan","Demon Slayer","My Hero Academia","Hunter x Hunter","Fullmetal Alchemist","Jujutsu Kaisen","Death Note","Bleach","Sword Art Online","Fairy Tail","Vinland Saga","Tokyo Revengers","Chainsaw Man","Spy x Family","Mob Psycho 100","Cowboy Bebop","Neon Genesis Evangelion","Code Geass","Re:Zero","Steins;Gate","Your Lie in April","Toradora","Haikyuu!!","Black Clover","Overlord","KonoSuba","Fruits Basket"];
 const ADMIN_GENRE_TOPICS=["Shōnen","Isekai","Shōjo","Seinen","Mecha","Slice of Life","Romance","Horror","Sports","Fantasy","Sci-Fi","Comedy","Psychological","Action","Adventure","Mystery"];
@@ -8183,6 +8194,7 @@ function renderAdminBadges(){
 function adminJump(tab){switchAdminSection('review');switchAdminTab(tab);}
 function switchAdminSection(section){
   adminSection=section;
+  if(section==='browse')adminBrowsePage=0;
   document.getElementById('adminSecReview').classList.toggle('active',section==='review');
   document.getElementById('adminSecBrowse').classList.toggle('active',section==='browse');
   document.getElementById('adminSecCoverage').classList.toggle('active',section==='coverage');
@@ -8192,6 +8204,7 @@ function switchAdminSection(section){
   document.getElementById('adminCoverage').style.display=section==='coverage'?'block':'none';
   document.getElementById('adminImport').style.display=section==='import'?'flex':'none';
   document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import')?'none':'flex';
+  const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   renderAdminSection();
 }
 function switchAdminTab(tab){
@@ -8222,27 +8235,113 @@ function renderAdminBrowse(){
   adminHL=qstr;
   const fmt=document.getElementById('adminFilterFormat')?.value||'';
   const diff=document.getElementById('adminFilterDiff')?.value||'';
+  const animeFilter=document.getElementById('adminSortAnime')?.value||'';
+  const genreFilter=document.getElementById('adminSortGenre')?.value||'';
+  // Populate anime/genre dropdowns from live data (idempotent)
+  _adminPopulateTopicDropdowns();
   let rows=adminAll.slice();
   if(fmt)rows=rows.filter(q=>q.format===fmt);
   if(diff)rows=rows.filter(q=>(q.difficulty||'normal')===diff);
-  if(qstr)rows=rows.filter(q=>[q.question,q.answer,(q.options||[]).join(' '),(q.aliases||[]).join(' '),q.topic_value||''].join(' ').toLowerCase().includes(qstr));
+  if(animeFilter)rows=rows.filter(q=>q.topic_type==='anime'&&q.topic_value===animeFilter);
+  if(genreFilter)rows=rows.filter(q=>q.topic_type==='genre'&&q.topic_value===genreFilter);
+  if(qstr)rows=rows.filter(q=>[q.question,q.answer,(q.options||[]).join(' '),(q.aliases||[]).join(' ')].join(' ').toLowerCase().includes(qstr));
   rows.sort((a,b)=>(a.topic_value||'~').localeCompare(b.topic_value||'~'));
   const list=document.getElementById('adminQuestionList');
+  const pager=document.getElementById('adminBrowsePager');
   _bulkIds.clear();
   _bulkSyncBar();
-  if(!rows.length){list.innerHTML='<div class="admin-empty">No questions match your search.</div>';return;}
-  const shown=rows.slice(0,100);
+  if(!rows.length){
+    list.innerHTML='<div class="admin-empty">No questions match your filters.</div>';
+    if(pager)pager.style.display='none';
+    return;
+  }
+  const totalPages=Math.ceil(rows.length/ADMIN_PAGE_SIZE);
+  if(adminBrowsePage>=totalPages)adminBrowsePage=totalPages-1;
+  const start=adminBrowsePage*ADMIN_PAGE_SIZE;
+  const shown=rows.slice(start,start+ADMIN_PAGE_SIZE);
   list.innerHTML='';
   const selRow=document.createElement('div');
   selRow.style.cssText='display:flex;align-items:center;gap:10px;padding:2px 2px 4px';
-  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button><span style="font-size:12px;color:var(--muted);font-weight:700">Showing '+shown.length+' of '+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
+  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button>'
+    +'<span style="font-size:12px;color:var(--muted);font-weight:700">Showing '+(start+1)+'–'+(start+shown.length)+' of '+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
   list.appendChild(selRow);
   shown.forEach(q=>{
     const card=buildAdminCard(q);
     card.classList.add('bulk-mode');
     list.appendChild(card);
   });
+  // Render pager
+  if(pager){
+    if(totalPages<=1){pager.style.display='none';}
+    else{
+      pager.style.display='flex';
+      pager.innerHTML='';
+      const prevBtn=document.createElement('button');
+      prevBtn.className='admin-pager-btn';
+      prevBtn.innerHTML='<i class="ti ti-chevron-left" style="font-size:14px"></i> Prev';
+      prevBtn.disabled=adminBrowsePage===0;
+      prevBtn.onclick=()=>{adminBrowsePage--;renderAdminBrowse();list.scrollIntoView({behavior:'smooth',block:'start'});};
+      pager.appendChild(prevBtn);
+      // Page number buttons — show up to 7 around current page
+      const range=_pagerRange(adminBrowsePage,totalPages);
+      range.forEach(item=>{
+        if(item==='…'){
+          const sep=document.createElement('span');sep.className='admin-pager-info';sep.textContent='…';pager.appendChild(sep);
+        } else {
+          const btn=document.createElement('button');
+          btn.className='admin-pager-btn'+(item===adminBrowsePage?' active':'');
+          btn.textContent=item+1;
+          btn.onclick=(()=>{const p=item;return()=>{adminBrowsePage=p;renderAdminBrowse();list.scrollIntoView({behavior:'smooth',block:'start'});};})();
+          pager.appendChild(btn);
+        }
+      });
+      const nextBtn=document.createElement('button');
+      nextBtn.className='admin-pager-btn';
+      nextBtn.innerHTML='Next <i class="ti ti-chevron-right" style="font-size:14px"></i>';
+      nextBtn.disabled=adminBrowsePage>=totalPages-1;
+      nextBtn.onclick=()=>{adminBrowsePage++;renderAdminBrowse();list.scrollIntoView({behavior:'smooth',block:'start'});};
+      pager.appendChild(nextBtn);
+      const info=document.createElement('span');
+      info.className='admin-pager-info';
+      info.textContent='Page '+(adminBrowsePage+1)+' of '+totalPages;
+      pager.appendChild(info);
+    }
+  }
   applyTheme();
+}
+function _pagerRange(cur,total){
+  if(total<=7)return Array.from({length:total},(_,i)=>i);
+  const pages=[];
+  pages.push(0);
+  if(cur>2)pages.push('…');
+  for(let i=Math.max(1,cur-1);i<=Math.min(total-2,cur+1);i++)pages.push(i);
+  if(cur<total-3)pages.push('…');
+  pages.push(total-1);
+  return pages;
+}
+let _adminTopicDropsFilled=false;
+function _adminPopulateTopicDropdowns(){
+  const animeEl=document.getElementById('adminSortAnime');
+  const genreEl=document.getElementById('adminSortGenre');
+  if(!animeEl||!genreEl)return;
+  // Rebuild only when adminAll has changed size or first run
+  const sig=adminAll.length;
+  if(animeEl.dataset.sig===String(sig))return;
+  animeEl.dataset.sig=sig;
+  const savedAnime=animeEl.value;
+  const savedGenre=genreEl.value;
+  const animeSet=new Set(),genreSet=new Set();
+  adminAll.forEach(q=>{
+    if(!q.topic_value)return;
+    if(q.topic_type==='anime')animeSet.add(q.topic_value);
+    else if(q.topic_type==='genre')genreSet.add(q.topic_value);
+  });
+  const buildOpts=(el,set,label,saved)=>{
+    el.innerHTML=`<option value="">${label}</option>`
+      +[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"${v===saved?' selected':''}>${v}</option>`).join('');
+  };
+  buildOpts(animeEl,animeSet,'All anime',savedAnime);
+  buildOpts(genreEl,genreSet,'All genres',savedGenre);
 }
 function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
