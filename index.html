@@ -2341,7 +2341,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <label class="form-label">Correct Answer</label>
           <input class="form-input" id="sqAnswer" type="text" placeholder="The correct answer">
         </div>
-        <div>
+        <div id="sqAliasesWrap">
           <label class="form-label">Aliases <span class="optional-tag">Optional</span></label>
           <input class="form-input" id="sqAliases" type="text" placeholder="AOT, Shingeki no Kyojin, …">
           <div class="form-hint" style="margin-top:4px">Comma-separated alternate answers that should also be accepted.</div>
@@ -4737,6 +4737,7 @@ document.addEventListener('change',e=>{
     const isMC=e.target.value==='mc';
     document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
     document.getElementById('sqAnswerWrap').style.display=isMC?'none':'block';
+    document.getElementById('sqAliasesWrap').style.display=isMC?'none':'block';
     if(isMC&&!document.querySelector('#sqOptionRows .ae-opt-row'))sqBuildOptions();
   }
 });
@@ -4757,6 +4758,7 @@ function sqInitForm(){
   const isMC=document.getElementById('sqFormat').value==='mc';
   document.getElementById('sqOptionsWrap').style.display=isMC?'block':'none';
   document.getElementById('sqAnswerWrap').style.display=isMC?'none':'block';
+  document.getElementById('sqAliasesWrap').style.display=isMC?'none':'block';
   if(isMC)sqBuildOptions();else rowsEl.innerHTML='';
 }
 // ── TOPIC AUTOCOMPLETE ────────────────────────────────────────
