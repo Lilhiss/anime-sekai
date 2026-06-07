@@ -2054,9 +2054,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection()"></div>
         <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
         <select class="admin-filter" id="adminFilterDiff" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
-        <select class="admin-filter" id="adminSortAnime" onchange="adminBrowsePage=0;_adminMutualExclusion('anime');renderAdminSection()"><option value="">All anime</option></select>
-        <select class="admin-filter" id="adminSortGenre" onchange="adminBrowsePage=0;_adminMutualExclusion('genre');renderAdminSection()"><option value="">All genres</option></select>
+        <input id="adminTopicFilter" class="admin-filter" list="adminTopicList" placeholder="Filter by topic…" autocomplete="off" style="min-width:160px" oninput="adminBrowsePage=0;fetchAdminBrowse()">
+        <datalist id="adminTopicList"></datalist>
         <select class="admin-filter" id="adminBrowseSort" onchange="adminBrowsePage=0;fetchAdminBrowse()"><option value="topic">Sort: Topic A–Z</option><option value="date_desc">Sort: Newest first</option><option value="date_asc">Sort: Oldest first</option></select>
+        <select class="admin-filter" id="adminPageSize" onchange="ADMIN_PAGE_SIZE=+this.value;adminBrowsePage=0;fetchAdminBrowse()" title="Questions per page"><option value="25">25 / page</option><option value="50" selected>50 / page</option><option value="100">100 / page</option><option value="200">200 / page</option></select>
       </div>
       <div id="adminCoverage" class="slide-in" style="display:none"></div>
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
@@ -8150,7 +8151,7 @@ let adminBrowseRows=[];  // current page of full rows for Browse
 let adminBrowseTotal=0;  // server-reported total matching Browse filters (for pager)
 let adminBrowsePage=0;
 let adminReviewDateAsc=false; // false = newest first (default)
-const ADMIN_PAGE_SIZE=50;
+let ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
 const ADMIN_ANIME_TOPICS=["One Piece","Naruto","Dragon Ball","Attack on Titan","Demon Slayer","My Hero Academia","Hunter x Hunter","Fullmetal Alchemist","Jujutsu Kaisen","Death Note","Bleach","Sword Art Online","Fairy Tail","Vinland Saga","Tokyo Revengers","Chainsaw Man","Spy x Family","Mob Psycho 100","Cowboy Bebop","Neon Genesis Evangelion","Code Geass","Re:Zero","Steins;Gate","Your Lie in April","Toradora","Haikyuu!!","Black Clover","Overlord","KonoSuba","Fruits Basket"];
 const ADMIN_GENRE_TOPICS=["Shōnen","Isekai","Shōjo","Seinen","Mecha","Slice of Life","Romance","Horror","Sports","Fantasy","Sci-Fi","Comedy","Psychological","Action","Adventure","Mystery"];
@@ -8232,26 +8233,34 @@ async function fetchReviewTab(){
   }
 }
 
-function _adminMutualExclusion(changed){
-  const anime=document.getElementById('adminSortAnime');
-  const genre=document.getElementById('adminSortGenre');
-  if(!anime||!genre)return;
-  if(changed==='anime'&&anime.value){genre.value='';genre.disabled=true;}
-  else if(changed==='genre'&&genre.value){anime.value='';anime.disabled=true;}
-  else{anime.disabled=false;genre.disabled=false;}
+function _adminPopulateTopicDatalist(){
+  const dl=document.getElementById('adminTopicList');
+  if(!dl)return;
+  const sig=adminLite.length;
+  if(dl.dataset.sig===String(sig))return;
+  dl.dataset.sig=sig;
+  const animeSet=new Set(),genreSet=new Set();
+  adminLite.forEach(q=>{
+    if(!q.topic_value)return;
+    if(q.topic_type==='anime')animeSet.add(q.topic_value);
+    else if(q.topic_type==='genre')genreSet.add(q.topic_value);
+  });
+  const toOpts=(set)=>[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"></option>`).join('');
+  dl.innerHTML=toOpts(animeSet)+toOpts(genreSet);
 }
 // ── Browse fetcher — server-side filtered + paginated ─────────────────────────
 async function fetchAdminBrowse(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
-  _adminPopulateTopicDropdowns();
+  _adminPopulateTopicDatalist();
   const qstr=(document.getElementById('adminSearchInput')?.value||'').trim();
   adminHL=qstr.toLowerCase();
   const fmt=document.getElementById('adminFilterFormat')?.value||'';
   const diff=document.getElementById('adminFilterDiff')?.value||'';
-  const animeFilter=document.getElementById('adminSortAnime')?.value||'';
-  const genreFilter=document.getElementById('adminSortGenre')?.value||'';
+  const topicFilter=(document.getElementById('adminTopicFilter')?.value||'').trim();
+  const animeFilter=ADMIN_ANIME_TOPICS.includes(topicFilter)?topicFilter:'';
+  const genreFilter=!animeFilter&&ADMIN_GENRE_TOPICS.includes(topicFilter)?topicFilter:'';
   try{
     // Count query — same filters, no data returned
     let cq=sb.from('questions').select('id',{count:'exact',head:true});
@@ -8415,29 +8424,7 @@ function _pagerRange(cur,total){
   return pages;
 }
 let _adminTopicDropsFilled=false;
-function _adminPopulateTopicDropdowns(){
-  const animeEl=document.getElementById('adminSortAnime');
-  const genreEl=document.getElementById('adminSortGenre');
-  if(!animeEl||!genreEl)return;
-  // Rebuild only when adminLite has changed size or first run
-  const sig=adminLite.length;
-  if(animeEl.dataset.sig===String(sig))return;
-  animeEl.dataset.sig=sig;
-  const savedAnime=animeEl.value;
-  const savedGenre=genreEl.value;
-  const animeSet=new Set(),genreSet=new Set();
-  adminLite.forEach(q=>{
-    if(!q.topic_value)return;
-    if(q.topic_type==='anime')animeSet.add(q.topic_value);
-    else if(q.topic_type==='genre')genreSet.add(q.topic_value);
-  });
-  const buildOpts=(el,set,label,saved)=>{
-    el.innerHTML=`<option value="">${label}</option>`
-      +[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"${v===saved?' selected':''}>${v}</option>`).join('');
-  };
-  buildOpts(animeEl,animeSet,'All anime',savedAnime);
-  buildOpts(genreEl,genreSet,'All genres',savedGenre);
-}
+function _adminPopulateTopicDatalist_noop(){} // replaced above
 function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
   const approved=adminLite.filter(q=>q.status==='approved');
