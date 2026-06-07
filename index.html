@@ -2081,63 +2081,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- PROMPT GENERATOR MODAL -->
-  <div id="adminPGModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1100;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:560px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden">
-      <!-- Fixed header -->
-      <div style="padding:24px 24px 0;flex-shrink:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">🪄 Prompt Generator</div>
-          <button onclick="document.getElementById('adminPGModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
-        </div>
-        <div style="font-size:13px;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--border)">Copy and paste this prompt into your favourite AI to generate new questions for this topic.</div>
-      </div>
-      <!-- Scrollable body -->
-      <div style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:14px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <div style="flex:1;min-width:120px">
-            <label class="form-label">Topic</label>
-            <input class="form-input" id="pgTopic" type="text" placeholder="e.g. One Piece" oninput="pgBuild()">
-          </div>
-          <div style="width:130px">
-            <label class="form-label">Type</label>
-            <select class="form-input" id="pgType" style="cursor:pointer" onchange="pgBuild()">
-              <option value="anime">Anime series</option>
-              <option value="genre">Genre / theme</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px">
-          <div style="flex:1">
-            <label class="form-label">Format</label>
-            <select class="form-input" id="pgFormat" style="cursor:pointer" onchange="pgBuild()">
-              <option value="mc">Multiple Choice (mc)</option>
-              <option value="type">Type Answer (type)</option>
-              <option value="char">Name the Character (char)</option>
-            </select>
-          </div>
-          <div style="width:110px">
-            <label class="form-label">Count</label>
-            <select class="form-input" id="pgCount" style="cursor:pointer" onchange="pgBuild()">
-              <option value="5">5 questions</option>
-              <option value="10" selected>10 questions</option>
-              <option value="15">15 questions</option>
-              <option value="20">20 questions</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label class="form-label">Generated Prompt</label>
-          <textarea id="pgOutput" rows="14" readonly style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:12px;padding:14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;outline:none;resize:vertical;line-height:1.6"></textarea>
-        </div>
-      </div>
-      <!-- Fixed footer -->
-      <div style="padding:14px 24px 22px;flex-shrink:0;border-top:1px solid var(--border);display:flex;gap:10px">
-        <button class="action-btn primary" style="flex:1" onclick="pgCopy()"><i class="ti ti-copy" style="font-size:15px"></i> <span id="pgCopyLabel">Copy prompt</span></button>
-        <button class="ghost-btn" onclick="document.getElementById('adminPGModal').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
+  <!-- PROMPT GENERATOR MODAL (dynamically injected via openPromptGenerator) -->
 
   <!-- GAME SETTINGS MODAL -->
   <div id="timeLimitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
@@ -8761,28 +8705,159 @@ async function bulkDiff(diff){
 
 // ── PROMPT GENERATOR ─────────────────────────────────────────
 function openPromptGenerator(topicValue,topicType){
-  document.getElementById('pgTopic').value=topicValue||'';
-  document.getElementById('pgType').value=topicType||'anime';
-  pgBuild();
-  document.getElementById('adminPGModal').style.display='flex';
+  const existing=document.getElementById('promptGenModal');
+  if(existing)existing.remove();
+
+  const fmtOptions=[
+    {id:'pgFmtMc',val:'mc',label:'Multiple Choice'},
+    {id:'pgFmtType',val:'type',label:'Type Answer'},
+    {id:'pgFmtChar',val:'char',label:'Name Character'}
+  ];
+
+  const modal=document.createElement('div');
+  modal.id='promptGenModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0008;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">Generate Prompt</div>
+        <button onclick="document.getElementById('promptGenModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px">&times;</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Topic</label>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--text)">${topicValue}</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--muted)">${topicType}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Difficulty</label>
+        <div style="display:flex;gap:8px">
+          ${['Easy','Normal','Hard'].map(d=>`<button id="pgDiff${d}" onclick="pgSetDiff('${d}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${d}</button>`).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Format <span style="font-size:10px;font-weight:600;color:var(--muted)">(multi-select)</span></label>
+        <div style="display:flex;gap:8px">
+          ${fmtOptions.map(f=>`<button id="${f.id}" onclick="pgToggleFmt('${f.val}')" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${f.label}</button>`).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Quantity</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${[10,20,30].map(q=>`<button id="pgQty${q}" onclick="pgSetQty(${q})" style="flex:1;padding:7px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);transition:all .15s">${q}</button>`).join('')}
+          <input id="pgQtyCustom" type="number" min="1" max="200" placeholder="Custom" oninput="pgSetQtyCustom()" style="flex:1;padding:7px 10px;border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;border:1px solid var(--border2);background:var(--bg3);color:var(--text);text-align:center;outline:none">
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Preview</label>
+        <pre id="pgPreview" style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-word;font-family:'Nunito',sans-serif;line-height:1.6;min-height:60px;margin:0"></pre>
+      </div>
+
+      <button onclick="pgCopy()" style="background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="ti ti-copy" style="font-size:14px"></i> <span id="pgCopyLabel">Copy Prompt</span>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
   applyTheme();
+
+  modal._topicValue=topicValue;
+  modal._topicType=topicType;
+  modal._diff=null;
+  modal._fmts=new Set();
+  modal._qty=null;
+
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  pgUpdatePreview();
 }
-function pgBuild(){
-  const topic=document.getElementById('pgTopic').value.trim()||'General Anime';
-  const type=document.getElementById('pgType').value;
-  const fmt=document.getElementById('pgFormat').value;
-  const count=document.getElementById('pgCount').value;
-  const typeWord=type==='genre'?'genre':'anime';
-  const fmtLabel={mc:'multiple choice',type:'type answer',char:'name the character'};
-  const prompt='Generate '+count+' NORMAL '+fmtLabel[fmt]+' questions about the '+typeWord+' "'+topic+'".\n- format: \''+fmt+'\'\n- topic_type: \''+type+'\'\n- topic_value: \''+topic+'\'\n- difficulty: \'normal\'\nFollow all quality rules and output only the SQL INSERT.';
-  document.getElementById('pgOutput').value=prompt;
+
+function pgSetDiff(d){
+  const modal=document.getElementById('promptGenModal');
+  modal._diff=d;
+  ['Easy','Normal','Hard'].forEach(x=>{
+    const btn=document.getElementById('pgDiff'+x);
+    const active=x===d;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
 }
+
+function pgToggleFmt(val){
+  const modal=document.getElementById('promptGenModal');
+  if(modal._fmts.has(val))modal._fmts.delete(val);else modal._fmts.add(val);
+  const map={mc:'pgFmtMc',type:'pgFmtType',char:'pgFmtChar'};
+  ['mc','type','char'].forEach(v=>{
+    const btn=document.getElementById(map[v]);
+    const active=modal._fmts.has(v);
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgSetQty(q){
+  const modal=document.getElementById('promptGenModal');
+  modal._qty=q;
+  document.getElementById('pgQtyCustom').value='';
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    const active=x===q;
+    btn.style.background=active?'var(--accent-soft)':'var(--bg3)';
+    btn.style.borderColor=active?'var(--accent)':'var(--border2)';
+    btn.style.color=active?'var(--accent)':'var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgSetQtyCustom(){
+  const modal=document.getElementById('promptGenModal');
+  const v=parseInt(document.getElementById('pgQtyCustom').value,10);
+  modal._qty=(!isNaN(v)&&v>0)?v:null;
+  [10,20,30].forEach(x=>{
+    const btn=document.getElementById('pgQty'+x);
+    btn.style.background='var(--bg3)';
+    btn.style.borderColor='var(--border2)';
+    btn.style.color='var(--muted)';
+  });
+  pgUpdatePreview();
+}
+
+function pgBuildPrompt(){
+  const modal=document.getElementById('promptGenModal');
+  if(!modal)return'';
+  const{_topicValue:tv,_topicType:tt,_diff:diff,_fmts:fmts,_qty:qty}=modal;
+  if(!diff||!fmts.size||!qty)return'(configure difficulty, format, and quantity above)';
+  const fmtLabelMap={mc:'Multiple Choice',type:'Type Answer',char:'Name Character'};
+  const fmtValList=[...fmts];
+  const blocks=fmtValList.map(f=>{
+    const perFmt=fmtValList.length>1?Math.round(qty/fmtValList.length):qty;
+    return'Generate '+perFmt+' '+diff+' '+fmtLabelMap[f]+' questions about '+tt+' "'+tv+'".\n- format: \''+f+'\'\n- topic_type: \''+tt+'\'\n- topic_value: \''+tv+'\'\n- difficulty: \''+diff.toLowerCase()+'\'\nFollow all quality rules and output only the SQL INSERT.';
+  });
+  return blocks.join('\n\n');
+}
+
+function pgUpdatePreview(){
+  const pre=document.getElementById('pgPreview');
+  if(pre)pre.textContent=pgBuildPrompt();
+}
+
 function pgCopy(){
-  const txt=document.getElementById('pgOutput').value;
-  navigator.clipboard.writeText(txt).then(()=>{
+  const text=pgBuildPrompt();
+  if(text.startsWith('('))return;
+  navigator.clipboard.writeText(text).then(()=>{
     const lbl=document.getElementById('pgCopyLabel');
+    if(!lbl)return;
     lbl.textContent='Copied!';
-    setTimeout(()=>lbl.textContent='Copy prompt',2000);
+    setTimeout(()=>{if(lbl)lbl.textContent='Copy Prompt';},2000);
   });
 }
 
