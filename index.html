@@ -8162,17 +8162,38 @@ function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
   const approved=adminAll.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span></div>';};
-  const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(tally).sort((a,b)=>a.total-b.total).map(rowHTML).join('')+'</div>';
+  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span>'+dlBtn+'</div>';};
+  const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
   const extrasHTML=extras.length?groupHTML('❓ Other topics (not in your canonical list)',extras):'';
   cov.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next.</div>'
     +groupHTML('📺 Anime',ADMIN_ANIME_TOPICS)
     +groupHTML('🎭 Genre',ADMIN_GENRE_TOPICS)
-    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length})+'</div>'
+    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length},'__general__')+'</div>'
     +extrasHTML;
   applyTheme();
+}
+function exportTopicQuestions(topicKey){
+  const approved=adminAll.filter(q=>q.status==='approved');
+  const qs=topicKey==='__general__'?approved:approved.filter(q=>(q.topic_value||'')===topicKey);
+  if(!qs.length)return;
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'};
+  const lines=qs.map((q,i)=>{
+    let out=(i+1)+'. ['+( fmtLabel[q.format]||q.format)+'] '+q.question+'\n   Answer: '+q.answer;
+    if(q.aliases&&q.aliases.length)out+='\n   Aliases: '+q.aliases.join(', ');
+    if(q.format==='mc'&&q.options&&q.options.length)out+='\n   Options: '+q.options.join(' | ');
+    if(q.topic_value)out+='\n   Topic: '+q.topic_value;
+    return out;
+  });
+  const header='# Anime Sekai — Question Export\n# Topic: '+(topicKey==='__general__'?'General Anime':topicKey)+'\n# Total: '+qs.length+' questions\n# Exported: '+new Date().toLocaleDateString()+'\n\n';
+  const blob=new Blob([header+lines.join('\n\n')],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='questions-'+(topicKey==='__general__'?'general-anime':topicKey.toLowerCase().replace(/[^a-z0-9]+/g,'-'))+'.txt';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 function renderAdminList(rows,emptyMsg){
   const list=document.getElementById('adminQuestionList');
