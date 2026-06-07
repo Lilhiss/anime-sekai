@@ -997,7 +997,6 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div class="entry-wrap slide-in">
       <div style="text-align:center">
-        <div class="entry-badge">🎉 The Anime Trivia Arena</div>
         <!-- Placeholder logo. To use your own later: replace this div with <img src="your-logo.png" class="entry-logo-mark entry-logo-pop" alt="Anime Sekai"> -->
         <div class="entry-logo-mark entry-logo-pop" id="entryLogoMark">AS</div>
         <div class="entry-title">Anime <span>Sekai</span></div>
@@ -1008,13 +1007,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="entry-card-emoji">🧠</div>
           <div class="entry-card-title">Solo Quiz</div>
           <div class="entry-card-desc">Just you vs. the questions — how far can you go?</div>
-          <div class="entry-card-go">Let's go <i class="ti ti-arrow-right"></i></div>
         </div>
         <div class="entry-card" tabindex="0" role="button" aria-label="Play with friends" onclick="choosePath('multiplayer')">
           <div class="entry-card-emoji">⚔️</div>
           <div class="entry-card-title">Play with Friends</div>
           <div class="entry-card-desc">Make a lobby, share the code, battle live!</div>
-          <div class="entry-card-go">Let's go <i class="ti ti-arrow-right"></i></div>
         </div>
       </div>
       <button class="daily-banner" onclick="openDailyQuiz()">
@@ -1075,6 +1072,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- MULTIPLAYER HUB -->
   <div class="page" id="page-multiplayer">
+    <div class="fun-floats" aria-hidden="true">
+      <span style="left:6%;top:18%;animation-delay:0s">⚔️</span>
+      <span style="left:84%;top:22%;animation-delay:1.1s">👥</span>
+      <span style="left:11%;top:70%;animation-delay:.5s">🏆</span>
+      <span style="left:80%;top:68%;animation-delay:1.7s">🎮</span>
+      <span style="left:46%;top:7%;animation-delay:.9s">💬</span>
+      <span style="left:90%;top:48%;animation-delay:2.2s">🔥</span>
+      <span style="left:3%;top:44%;animation-delay:1.4s">⚡</span>
+    </div>
     <div style="text-align:center" class="slide-in">
       <div class="step-eyebrow"><button class="back-btn" onclick="goStep('landing')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Multiplayer</div>
       <h1>Play <span class="hi">Together</span></h1>
@@ -1084,7 +1090,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
       <!-- LEFT: CREATE LOBBY -->
       <div class="entry-card mp-hub-create" onclick="createLobby()" style="cursor:pointer">
-        <div class="entry-card-icon"><i class="ti ti-plus"></i></div>
+        <div class="entry-card-emoji">🎮</div>
         <div class="entry-card-title">Create Lobby</div>
         <div class="entry-card-desc">Start a game, share the code and compete with friends in real time.</div>
         <div style="width:100%;display:flex;flex-direction:column;gap:8px" onclick="event.stopPropagation()">
