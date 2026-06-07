@@ -8170,7 +8170,7 @@ function renderAdminCoverage(){
   cov.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next.</div>'
     +groupHTML('📺 Anime',ADMIN_ANIME_TOPICS)
     +groupHTML('🎭 Genre',ADMIN_GENRE_TOPICS)
-    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General (no topic)</div>'+rowHTML(tally(''))+'</div>'
+    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length})+'</div>'
     +extrasHTML;
   applyTheme();
 }
