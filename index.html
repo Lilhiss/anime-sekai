@@ -8142,7 +8142,9 @@ function srClearReveal(){
 let isAdmin=false;try{isAdmin=localStorage.getItem('as_admin')==='1';}catch(e){}
 let adminTab='submitted';
 let adminSection='review';
-let adminAll=[];
+let adminLite=[];   // lightweight rows — id,status,report_count,answer_count,correct_count,format,topic_type,topic_value — always loaded
+let adminAll=[];    // full rows — loaded lazily on first Review/Browse visit, refreshed after mutations
+let adminAllLoaded=false; // true once the full fetch has completed at least once
 let adminBrowsePage=0;
 const ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
@@ -8166,30 +8168,59 @@ function goAdmin(){
   loadAdminData();
 }
 
+// ── Lightweight fetch — runs every time the admin panel opens ─────────────────
+// Fetches only the columns needed for stats/badges/coverage (~7 small columns).
 async function loadAdminData(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
-  try{const {data}=await sb.from('questions').select('*').limit(5000);adminAll=data||[];}catch(e){adminAll=[];}
+  try{
+    const {data}=await sb.from('questions')
+      .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
+      .limit(10000);
+    adminLite=data||[];
+  }catch(e){adminLite=[];}
+  // Invalidate any previously cached full rows so the next Review/Browse visit
+  // re-fetches — ensures stale data from a prior session isn't shown.
+  adminAll=[];adminAllLoaded=false;
   renderAdminStats();renderAdminBadges();renderAdminSection();
+}
+
+// ── Full fetch — runs once per panel session, on first Review or Browse visit ─
+// Fetches every column. Results are cached in adminAll for the rest of the session;
+// individual mutation helpers (approve/delete/edit) keep the cache in sync so a
+// re-fetch is only needed when loadAdminData() explicitly invalidates it.
+async function loadAdminFull(){
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  if(adminAllLoaded)return; // already have full data for this session
+  const list=document.getElementById('adminQuestionList');
+  if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
+  try{
+    const {data}=await sb.from('questions')
+      .select('id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at')
+      .limit(10000);
+    adminAll=data||[];adminAllLoaded=true;
+  }catch(e){adminAll=[];}
 }
 function _adminIsSuspect(q){return q.answer_count>=8&&q.status==='approved'&&(q.correct_count/q.answer_count)<0.33;}
 function renderAdminStats(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  const pending=adminAll.filter(q=>q.status==='pending').length;
-  const reported=adminAll.filter(q=>q.report_count>0).length;
-  const suspect=adminAll.filter(_adminIsSuspect).length;
+  const src=adminLite; // lightweight rows always available
+  const pending=src.filter(q=>q.status==='pending').length;
+  const reported=src.filter(q=>q.report_count>0).length;
+  const suspect=src.filter(_adminIsSuspect).length;
   set('ahPending',pending);set('ahReported',reported);set('ahSuspect',suspect);
   const glow=(id,n)=>{const el=document.getElementById(id);if(el)el.classList.toggle('glow',n>0);};
   glow('ahPendingItem',pending);glow('ahReportedItem',reported);glow('ahSuspectItem',suspect);
-  const total=adminAll.length,approved=adminAll.filter(q=>q.status==='approved').length,plays=adminAll.reduce((s,q)=>s+(q.answer_count||0),0);
+  const total=src.length,approved=src.filter(q=>q.status==='approved').length,plays=src.reduce((s,q)=>s+(q.answer_count||0),0);
   set('adminSummary',total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved · '+plays.toLocaleString()+' plays');
 }
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
-  set('adminCountSubmitted',adminAll.filter(q=>q.status==='pending').length);
-  set('adminCountReported',adminAll.filter(q=>q.report_count>0).length);
-  set('adminCountSuspect',adminAll.filter(_adminIsSuspect).length);
+  const src=adminLite; // lightweight rows always available
+  set('adminCountSubmitted',src.filter(q=>q.status==='pending').length);
+  set('adminCountReported',src.filter(q=>q.report_count>0).length);
+  set('adminCountSuspect',src.filter(_adminIsSuspect).length);
 }
 function adminJump(tab){switchAdminSection('review');switchAdminTab(tab);}
 function switchAdminSection(section){
@@ -8214,8 +8245,10 @@ function switchAdminTab(tab){
   document.getElementById('adminTabSuspect').classList.toggle('active',tab==='suspect');
   if(adminSection==='review')renderAdminSection();
 }
-function renderAdminSection(){
+async function renderAdminSection(){
   if(adminSection==='coverage')return renderAdminCoverage();
+  // Review and Browse need full question data — load lazily on first visit
+  await loadAdminFull();
   if(adminSection==='browse')return renderAdminBrowse();
   let rows,empty;
   if(adminTab==='submitted'){
@@ -8324,14 +8357,14 @@ function _adminPopulateTopicDropdowns(){
   const animeEl=document.getElementById('adminSortAnime');
   const genreEl=document.getElementById('adminSortGenre');
   if(!animeEl||!genreEl)return;
-  // Rebuild only when adminAll has changed size or first run
-  const sig=adminAll.length;
+  // Rebuild only when adminLite has changed size or first run
+  const sig=adminLite.length;
   if(animeEl.dataset.sig===String(sig))return;
   animeEl.dataset.sig=sig;
   const savedAnime=animeEl.value;
   const savedGenre=genreEl.value;
   const animeSet=new Set(),genreSet=new Set();
-  adminAll.forEach(q=>{
+  adminLite.forEach(q=>{
     if(!q.topic_value)return;
     if(q.topic_type==='anime')animeSet.add(q.topic_value);
     else if(q.topic_type==='genre')genreSet.add(q.topic_value);
@@ -8345,7 +8378,7 @@ function _adminPopulateTopicDropdowns(){
 }
 function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
-  const approved=adminAll.filter(q=>q.status==='approved');
+  const approved=adminLite.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
   const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+'\',' +'\''+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
@@ -8360,7 +8393,8 @@ function renderAdminCoverage(){
     +extrasHTML;
   applyTheme();
 }
-function exportTopicQuestions(topicKey){
+async function exportTopicQuestions(topicKey){
+  await loadAdminFull();
   const approved=adminAll.filter(q=>q.status==='approved');
   const qs=topicKey==='__general__'?approved:approved.filter(q=>(q.topic_value||'')===topicKey);
   if(!qs.length)return;
@@ -8449,7 +8483,7 @@ function adminImportParse(){
     if(q.question&&q.answer&&q.format)_importParsed.push(q);
   });
   // Deduplicate against existing questions
-  const existingSet=new Set(adminAll.map(q=>(q.question||'').trim().toLowerCase()));
+  const existingSet=new Set(adminLite.map(q=>(q.question||'').trim().toLowerCase()));
   const newQs=_importParsed.filter(q=>!existingSet.has((q.question||'').trim().toLowerCase()));
   const dupCount=_importParsed.length-newQs.length;
   // Show summary
@@ -8489,7 +8523,7 @@ function adminImportParse(){
   applyTheme();
 }
 async function adminImportConfirm(){
-  const existingSet=new Set(adminAll.map(q=>(q.question||'').trim().toLowerCase()));
+  const existingSet=new Set(adminLite.map(q=>(q.question||'').trim().toLowerCase()));
   const newQs=_importParsed.filter(q=>!existingSet.has((q.question||'').trim().toLowerCase()));
   if(!newQs.length)return;
   const btn=document.getElementById('adminImportBtn');
@@ -8510,9 +8544,13 @@ async function adminImportConfirm(){
     result.style.display='block';
     result.textContent='✅ '+newQs.length+' question'+(newQs.length===1?'':'s')+' imported successfully!';
     btn.style.display='none';
-    // Refresh adminAll so duplicates are caught if user imports again
-    const {data}=await sb.from('questions').select('*').limit(5000);
-    if(data)adminAll=data;
+    // Refresh adminLite so duplicates are caught if user imports again;
+    // invalidate full cache so Review/Browse picks up new rows next visit.
+    const {data}=await sb.from('questions')
+      .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
+      .limit(10000);
+    if(data)adminLite=data;
+    adminAll=[];adminAllLoaded=false;
     renderAdminStats();renderAdminBadges();
   }catch(e){
     const result=document.getElementById('adminImportResult');
@@ -8648,24 +8686,24 @@ async function toggleAdminReports(qid){
 
 async function adminApprove(id){
   await sb.from('questions').update({status:'approved'}).eq('id',id);
-  const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.status='approved';
+  [adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q)q.status='approved';});
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 async function adminDismiss(id){
   await sb.from('questions').update({report_count:0}).eq('id',id);
   await sb.from('question_reports').delete().eq('question_id',id);
-  const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.report_count=0;
+  [adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q)q.report_count=0;});
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 async function adminDelete(id){
   await sb.from('questions').delete().eq('id',id);
+  adminLite=adminLite.filter(x=>String(x.id)!==String(id));
   adminAll=adminAll.filter(x=>String(x.id)!==String(id));
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 async function adminClearStats(id){
-  // "Looks fine" — reset answer tracking so the question drops off the Suspect list
   await sb.from('questions').update({answer_count:0,correct_count:0}).eq('id',id);
-  const q=adminAll.find(x=>String(x.id)===String(id));if(q){q.answer_count=0;q.correct_count=0;}
+  [adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q){q.answer_count=0;q.correct_count=0;}});
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 function aeOptionRow(value,checked){
@@ -8736,7 +8774,8 @@ async function saveAdminEdit(){
   try{({error}=await sb.from('questions').update(update).eq('id',aeEditId));}catch(e){error=e;}
   if(btn){btn.disabled=false;btn.style.opacity='1';}
   if(error)return showErrLocal(error.code==='23505'?'Another question already has that exact text.':'Could not save — try again.');
-  const q=adminAll.find(x=>String(x.id)===String(aeEditId));if(q)Object.assign(q,update);
+  // Sync the edit into both caches
+  [adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(aeEditId));if(q)Object.assign(q,update);});
   closeAdminEdit();
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
@@ -8781,7 +8820,7 @@ async function bulkApprove(){
   if(!_bulkIds.size)return;
   const ids=[..._bulkIds];
   await sb.from('questions').update({status:'approved'}).in('id',ids);
-  ids.forEach(id=>{const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.status='approved';});
+  ids.forEach(id=>{[adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q)q.status='approved';});});
   _bulkIds.clear();
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
@@ -8789,6 +8828,7 @@ async function bulkDelete(){
   if(!_bulkIds.size)return;
   const ids=[..._bulkIds];
   await sb.from('questions').delete().in('id',ids);
+  adminLite=adminLite.filter(x=>!ids.includes(String(x.id)));
   adminAll=adminAll.filter(x=>!ids.includes(String(x.id)));
   _bulkIds.clear();
   renderAdminStats();renderAdminBadges();renderAdminSection();
@@ -8797,7 +8837,7 @@ async function bulkDiff(diff){
   if(!_bulkIds.size)return;
   const ids=[..._bulkIds];
   await sb.from('questions').update({difficulty:diff}).in('id',ids);
-  ids.forEach(id=>{const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.difficulty=diff;});
+  ids.forEach(id=>{[adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q)q.difficulty=diff;});});
   _bulkIds.clear();
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
@@ -8962,7 +9002,7 @@ function pgCopy(){
 
 // ── COVERAGE GAP: thinnest-topic shortcut ────────────────────
 function openCoverageGapPrompt(){
-  const approved=adminAll.filter(q=>q.status==='approved');
+  const approved=adminLite.filter(q=>q.status==='approved');
   const allTopics=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS];
   let thinnest=null,min=Infinity;
   allTopics.forEach(t=>{
@@ -8977,7 +9017,7 @@ function openCoverageGapPrompt(){
 // ── QUICK DIFFICULTY INLINE EDIT ─────────────────────────────
 async function quickSetDiff(id,val){
   await sb.from('questions').update({difficulty:val}).eq('id',id);
-  const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.difficulty=val;
+  [adminLite,adminAll].forEach(arr=>{const q=arr.find(x=>String(x.id)===String(id));if(q)q.difficulty=val;});
 }
 
 applyTheme();
