@@ -898,6 +898,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-cov-total{font-family:'Lilita One',cursive;font-size:16px;color:var(--accent);min-width:34px;text-align:right}
 .admin-btn.edit{background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent)}
 .admin-btn.edit:hover{border-color:var(--accent)}
+/* ── Bulk action bar ── */
+.admin-bulk-bar{position:sticky;top:0;z-index:200;background:var(--bg2);border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 20px color-mix(in srgb,var(--accent) 20%,transparent);margin-bottom:8px}
+.admin-bulk-bar-count{font-size:13px;font-weight:800;color:var(--accent);flex:1;white-space:nowrap}
+.admin-bulk-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);color:var(--accent)}
+.admin-bulk-btn:hover{border-color:var(--accent)}
+.admin-bulk-btn.danger{color:#f87171;border-color:var(--border2)}.admin-bulk-btn.danger:hover{border-color:#f87171}
+.admin-bulk-btn.approve-bulk{background:#4ade8020;color:#4ade80;border-color:#4ade8040}.admin-bulk-btn.approve-bulk:hover{border-color:#4ade80}
+/* checkbox on each card */
+.admin-q-card{position:relative}
+.admin-card-cb{position:absolute;top:14px;right:16px;width:18px;height:18px;accent-color:var(--accent);cursor:pointer;display:none}
+.bulk-mode .admin-card-cb{display:block}
+.admin-q-card.bulk-selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--card-bg))}
+/* difficulty inline dropdown */
+.diff-inline{font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid var(--border2);color:var(--muted);background:var(--bg3);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none}
+.diff-inline:hover,.diff-inline:focus{border-color:var(--accent);color:var(--accent)}
 .ae-opt-row{display:flex;align-items:center;gap:10px}
 .ae-opt-row input[type=radio]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border:2px solid var(--border2);border-radius:50%;cursor:pointer;flex-shrink:0;transition:border-color .15s,background .15s;position:relative;margin:0}
 .ae-opt-row input[type=radio]:checked{border-color:var(--accent);background:var(--accent)}
@@ -2050,8 +2065,60 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div id="adminImportResult" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#4ade80;padding:8px"></div>
         </div>
       </div>
+      <!-- Bulk action bar (hidden until selections exist) -->
+      <div id="adminBulkBar" class="admin-bulk-bar slide-in" style="display:none">
+        <span class="admin-bulk-bar-count" id="adminBulkCount">0 selected</span>
+        <button class="admin-bulk-btn approve-bulk" id="adminBulkApprove" onclick="bulkApprove()"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
+        <button class="admin-bulk-btn" onclick="bulkDiff('easy')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Easy</button>
+        <button class="admin-bulk-btn" onclick="bulkDiff('normal')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Normal</button>
+        <button class="admin-bulk-btn" onclick="bulkDiff('hard')"><i class="ti ti-flame" style="font-size:12px"></i> → Hard</button>
+        <button class="admin-bulk-btn danger" onclick="bulkDelete()"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>
+        <button class="admin-bulk-btn" onclick="bulkClear()" style="margin-left:auto"><i class="ti ti-x" style="font-size:12px"></i> Clear</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:10px" id="adminQuestionList" class="slide-in">
         <div class="admin-empty">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROMPT GENERATOR MODAL -->
+  <div id="adminPGModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1100;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:560px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden">
+      <!-- Fixed header -->
+      <div style="padding:24px 24px 0;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">🪄 Prompt Generator</div>
+          <button onclick="document.getElementById('adminPGModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+        </div>
+        <div style="font-size:13px;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--border)">Copy and paste this prompt into your favourite AI to generate new questions for this topic.</div>
+      </div>
+      <!-- Scrollable body -->
+      <div style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label class="form-label">Topic</label>
+            <input class="form-input" id="pgTopic" type="text" placeholder="e.g. One Piece">
+          </div>
+          <div style="width:130px">
+            <label class="form-label">Type</label>
+            <select class="form-input" id="pgType" style="cursor:pointer">
+              <option value="anime">Anime series</option>
+              <option value="genre">Genre / theme</option>
+            </select>
+          </div>
+          <div style="width:90px;display:flex;align-items:flex-end">
+            <button onclick="pgBuild()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:9px 14px;border-radius:9px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-refresh" style="font-size:13px"></i> Build</button>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Generated Prompt</label>
+          <textarea id="pgOutput" rows="14" readonly style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:12px;padding:14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;outline:none;resize:vertical;line-height:1.6"></textarea>
+        </div>
+      </div>
+      <!-- Fixed footer -->
+      <div style="padding:14px 24px 22px;flex-shrink:0;border-top:1px solid var(--border);display:flex;gap:10px">
+        <button class="action-btn primary" style="flex:1" onclick="pgCopy()"><i class="ti ti-copy" style="font-size:15px"></i> <span id="pgCopyLabel">Copy prompt</span></button>
+        <button class="ghost-btn" onclick="document.getElementById('adminPGModal').style.display='none'">Close</button>
       </div>
     </div>
   </div>
@@ -8201,14 +8268,20 @@ function renderAdminBrowse(){
   if(qstr)rows=rows.filter(q=>[q.question,q.answer,(q.options||[]).join(' '),(q.aliases||[]).join(' '),q.topic_value||''].join(' ').toLowerCase().includes(qstr));
   rows.sort((a,b)=>(a.topic_value||'~').localeCompare(b.topic_value||'~'));
   const list=document.getElementById('adminQuestionList');
+  _bulkIds.clear();
+  _bulkSyncBar();
   if(!rows.length){list.innerHTML='<div class="admin-empty">No questions match your search.</div>';return;}
   const shown=rows.slice(0,100);
   list.innerHTML='';
-  const note=document.createElement('div');
-  note.style.cssText='font-size:12px;color:var(--muted);font-weight:700;padding:2px 2px 4px';
-  note.textContent='Showing '+shown.length+' of '+rows.length+' question'+(rows.length===1?'':'s');
-  list.appendChild(note);
-  shown.forEach(q=>list.appendChild(buildAdminCard(q)));
+  const selRow=document.createElement('div');
+  selRow.style.cssText='display:flex;align-items:center;gap:10px;padding:2px 2px 4px';
+  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button><span style="font-size:12px;color:var(--muted);font-weight:700">Showing '+shown.length+' of '+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
+  list.appendChild(selRow);
+  shown.forEach(q=>{
+    const card=buildAdminCard(q);
+    card.classList.add('bulk-mode');
+    list.appendChild(card);
+  });
   applyTheme();
 }
 function renderAdminCoverage(){
@@ -8220,7 +8293,8 @@ function renderAdminCoverage(){
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
   const extrasHTML=extras.length?groupHTML('❓ Other topics (not in your canonical list)',extras):'';
-  cov.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next.</div>'
+  cov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><button onclick="openCoverageGapPrompt()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-wand" style="font-size:14px"></i> Fill thinnest gap</button><span style="font-size:13px;color:var(--muted)">Opens the prompt generator pre-loaded with the topic that has the fewest questions.</span></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next.</div>'
     +groupHTML('📺 Anime',ADMIN_ANIME_TOPICS)
     +groupHTML('🎭 Genre',ADMIN_GENRE_TOPICS)
     +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length},'__general__')+'</div>'
@@ -8392,9 +8466,20 @@ async function adminImportConfirm(){
 }
 function renderAdminList(rows,emptyMsg){
   const list=document.getElementById('adminQuestionList');
+  _bulkIds.clear();
+  _bulkSyncBar();
   if(!rows.length){list.innerHTML='<div class="admin-empty">'+emptyMsg+'</div>';return;}
   list.innerHTML='';
-  rows.forEach(q=>list.appendChild(buildAdminCard(q)));
+  // Select-all toggle row
+  const selRow=document.createElement('div');
+  selRow.style.cssText='display:flex;align-items:center;gap:10px;padding:2px 2px 4px';
+  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button><span style="font-size:12px;color:var(--muted);font-weight:700">'+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
+  list.appendChild(selRow);
+  rows.forEach(q=>{
+    const card=buildAdminCard(q);
+    card.classList.add('bulk-mode');
+    list.appendChild(card);
+  });
   applyTheme();
 }
 
@@ -8410,7 +8495,7 @@ function buildAdminCard(q){
   const isSuspect=adminSection==='review'&&adminTab==='suspect';
   const showStats=(isSuspect||adminSection==='browse')&&q.answer_count>0;
   const card=document.createElement('div');
-  card.className='admin-q-card'+((isReported||isSuspect)?' reported':'');
+  card.className='admin-q-card'+((isReported||isSuspect)?' reported':'')+(_bulkIds.has(String(q.id))?' bulk-selected bulk-mode':'');
   card.id=`adminCard_${q.id}`;
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_adminHL(o)}</span>`).join(' · ')}</div>`:'';
@@ -8438,7 +8523,12 @@ function buildAdminCard(q){
     ?`<div style="margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--border);max-height:160px"><img src="${q.media_url}" alt="Submitted image" style="width:100%;max-height:160px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'"></div>`
     :'';
 
+  const diffVal=q.difficulty||'normal';
+  const diffDropdown=`<select class="diff-inline" title="Change difficulty" onchange="quickSetDiff('${q.id}',this.value)"><option value="easy"${diffVal==='easy'?' selected':''}>Easy</option><option value="normal"${diffVal==='normal'?' selected':''}>Normal</option><option value="hard"${diffVal==='hard'?' selected':''}>Hard</option></select>`;
+  const cbChecked=_bulkIds.has(String(q.id));
+
   card.innerHTML=`
+    <input type="checkbox" class="admin-card-cb" data-id="${q.id}" ${cbChecked?'checked':''} onchange="_bulkToggle('${q.id}',this)" title="Select for bulk action">
     <div>
       <div class="admin-q-text">${_adminHL(q.question)}</div>
       ${optionsHtml}${answerHtml}${aliasHtml}${mediaHtml}
@@ -8447,7 +8537,7 @@ function buildAdminCard(q){
       <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
       <span class="admin-badge">${q.topic_value?_adminHL(q.topic_value):'General'}</span>
       ${adminSection==='browse'?`<span class="admin-badge${q.status==='pending'?' reported':''}">${q.status}</span>`:''}
-      <span class="admin-badge">${q.difficulty||'normal'}</span>
+      ${diffDropdown}
       ${q.submitted_by?`<span class="admin-badge submitted"><i class="ti ti-user" style="font-size:10px"></i> ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
       ${dateStr?`<span class="admin-badge"><i class="ti ti-calendar" style="font-size:10px"></i> ${dateStr}</span>`:''}
       ${reportBadge}${suspectBadge}
@@ -8590,6 +8680,115 @@ async function saveAdminEdit(){
   const q=adminAll.find(x=>String(x.id)===String(aeEditId));if(q)Object.assign(q,update);
   closeAdminEdit();
   renderAdminStats();renderAdminBadges();renderAdminSection();
+}
+
+// ── BULK ACTIONS ─────────────────────────────────────────────
+let _bulkIds=new Set();
+
+function _bulkSyncBar(){
+  const bar=document.getElementById('adminBulkBar');
+  const n=_bulkIds.size;
+  if(n===0){bar.style.display='none';return;}
+  bar.style.display='flex';
+  document.getElementById('adminBulkCount').textContent=n+' selected';
+  const showApprove=(adminSection==='review'&&adminTab==='submitted')||adminSection==='browse';
+  document.getElementById('adminBulkApprove').style.display=showApprove?'inline-flex':'none';
+}
+function _bulkToggle(id,el){
+  if(el.checked)_bulkIds.add(String(id));else _bulkIds.delete(String(id));
+  const card=document.getElementById('adminCard_'+id);
+  if(card)card.classList.toggle('bulk-selected',el.checked);
+  _bulkSyncBar();
+}
+function bulkSelectAll(){
+  const list=document.getElementById('adminQuestionList');
+  const cbs=list.querySelectorAll('.admin-card-cb');
+  const nSelected=[..._bulkIds].length;
+  const allChecked=nSelected>0&&nSelected===cbs.length;
+  cbs.forEach(cb=>{
+    const id=cb.dataset.id;
+    if(allChecked){cb.checked=false;_bulkIds.delete(id);document.getElementById('adminCard_'+id)?.classList.remove('bulk-selected');}
+    else{cb.checked=true;_bulkIds.add(id);document.getElementById('adminCard_'+id)?.classList.add('bulk-selected');}
+  });
+  _bulkSyncBar();
+}
+function bulkClear(){
+  _bulkIds.forEach(id=>{document.getElementById('adminCard_'+id)?.classList.remove('bulk-selected');});
+  _bulkIds.clear();
+  document.getElementById('adminQuestionList').querySelectorAll('.admin-card-cb').forEach(cb=>cb.checked=false);
+  _bulkSyncBar();
+}
+async function bulkApprove(){
+  if(!_bulkIds.size)return;
+  const ids=[..._bulkIds];
+  await sb.from('questions').update({status:'approved'}).in('id',ids);
+  ids.forEach(id=>{const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.status='approved';});
+  _bulkIds.clear();
+  renderAdminStats();renderAdminBadges();renderAdminSection();
+}
+async function bulkDelete(){
+  if(!_bulkIds.size)return;
+  const ids=[..._bulkIds];
+  await sb.from('questions').delete().in('id',ids);
+  adminAll=adminAll.filter(x=>!ids.includes(String(x.id)));
+  _bulkIds.clear();
+  renderAdminStats();renderAdminBadges();renderAdminSection();
+}
+async function bulkDiff(diff){
+  if(!_bulkIds.size)return;
+  const ids=[..._bulkIds];
+  await sb.from('questions').update({difficulty:diff}).in('id',ids);
+  ids.forEach(id=>{const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.difficulty=diff;});
+  _bulkIds.clear();
+  renderAdminStats();renderAdminBadges();renderAdminSection();
+}
+
+// ── PROMPT GENERATOR ─────────────────────────────────────────
+function openPromptGenerator(topicValue,topicType){
+  document.getElementById('pgTopic').value=topicValue||'';
+  document.getElementById('pgType').value=topicType||'anime';
+  pgBuild();
+  document.getElementById('adminPGModal').style.display='flex';
+  applyTheme();
+}
+function pgBuild(){
+  const topic=document.getElementById('pgTopic').value.trim()||'General Anime';
+  const type=document.getElementById('pgType').value;
+  const typeLabel=type==='genre'?'genre/theme ('+topic+')':'anime series';
+  const existing=adminAll.filter(q=>q.status==='approved'&&(q.topic_value||'')===topic);
+  const exStr=existing.length>0
+    ?'\n\nFor reference, here are '+Math.min(existing.length,5)+' existing questions to help you avoid duplicates:\n'+existing.slice(0,5).map((q,i)=>(i+1)+'. '+q.question).join('\n')
+    :'';
+  const prompt='You are writing trivia questions for an anime quiz app called Anime Sekai.\n\nTopic: '+topic+' ('+typeLabel+')\n\nPlease generate 10 high-quality trivia questions for this topic. Follow these rules:\n\nFORMATS — generate a mix:\n• Multiple Choice (mc): question + 4 options (A–D) + correct answer index (0–3)\n• Type Answer (type): question + exact answer + optional aliases\n• Name the Character (char): describe a character + their name as the answer\n\nDIFFICULTY — mix of easy, normal, and hard\n\nOUTPUT FORMAT — JSON array only, no other text:\n[\n  {\n    "question": "...",\n    "format": "mc",\n    "options": ["A","B","C","D"],\n    "answer": 0,\n    "difficulty": "normal",\n    "topic_value": "'+topic+'",\n    "topic_type": "'+type+'"\n  },\n  {\n    "question": "...",\n    "format": "type",\n    "answer": "exact answer",\n    "aliases": ["alt"],\n    "difficulty": "easy",\n    "topic_value": "'+topic+'",\n    "topic_type": "'+type+'"\n  }\n]\n\nRules:\n- All facts must be accurate\n- MC distractors should be plausible but clearly wrong to those who know the material\n- Avoid duplicate questions'+exStr;
+  document.getElementById('pgOutput').value=prompt;
+}
+function pgCopy(){
+  const txt=document.getElementById('pgOutput').value;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const lbl=document.getElementById('pgCopyLabel');
+    lbl.textContent='Copied!';
+    setTimeout(()=>lbl.textContent='Copy prompt',2000);
+  });
+}
+
+// ── COVERAGE GAP: thinnest-topic shortcut ────────────────────
+function openCoverageGapPrompt(){
+  const approved=adminAll.filter(q=>q.status==='approved');
+  const allTopics=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS];
+  let thinnest=null,min=Infinity;
+  allTopics.forEach(t=>{
+    const n=approved.filter(q=>(q.topic_value||'')===t).length;
+    if(n<min){min=n;thinnest=t;}
+  });
+  if(!thinnest)return;
+  const type=ADMIN_ANIME_TOPICS.includes(thinnest)?'anime':'genre';
+  openPromptGenerator(thinnest,type);
+}
+
+// ── QUICK DIFFICULTY INLINE EDIT ─────────────────────────────
+async function quickSetDiff(id,val){
+  await sb.from('questions').update({difficulty:val}).eq('id',id);
+  const q=adminAll.find(x=>String(x.id)===String(id));if(q)q.difficulty=val;
 }
 
 applyTheme();
