@@ -2038,6 +2038,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-focus" id="ahSuspectItem" onclick="adminJump('suspect')"><div class="admin-focus-val" id="ahSuspect">—</div><div class="admin-focus-label">🚩 Suspect</div></button>
       </div>
       <div class="admin-summary slide-in" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="adminSummary">—</span><button onclick="loadAdminData()" title="Refresh" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1;transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'"><i class="ti ti-refresh" style="font-size:16px"></i></button></div>
+      <div style="display:flex;justify-content:center" class="slide-in" id="adminUnlockBadgeWrap" style="display:none">
+        <div id="adminUnlockBadge" style="display:none;align-items:center;gap:8px;background:color-mix(in srgb,var(--accent) 12%,transparent);border:1.5px solid var(--accent);border-radius:10px;padding:7px 14px;font-size:12px;font-weight:800;color:var(--accent)">
+          <i class="ti ti-lock-open" style="font-size:14px"></i>
+          <span>Unlocked — <span id="adminUnlockTimer">10:00</span> remaining</span>
+          <button onclick="_lockAdmin()" title="Lock now" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;margin-left:4px;display:flex;align-items:center;opacity:.7;transition:opacity .2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'"><i class="ti ti-lock" style="font-size:14px"></i></button>
+        </div>
+      </div>
       <div class="admin-sections slide-in">
         <button class="admin-section-btn active" id="adminSecReview" onclick="switchAdminSection('review')"><i class="ti ti-inbox" style="font-size:15px"></i> Review</button>
         <button class="admin-section-btn" id="adminSecBrowse" onclick="switchAdminSection('browse')"><i class="ti ti-search" style="font-size:15px"></i> Browse</button>
@@ -2300,6 +2307,26 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="document.getElementById('contactModal').style.display='none'">Cancel</button>
         <button class="action-btn primary" onclick="submitContact()"><i class="ti ti-send" style="font-size:15px"></i> Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN UNLOCK MODAL -->
+  <div id="adminUnlockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);z-index:1200;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:32px 28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
+      <div style="font-size:36px;line-height:1">🔐</div>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Admin Unlock</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Enter your PIN to unlock admin actions for 10 minutes.</div>
+      </div>
+      <input id="adminUnlockInput" type="password" inputmode="numeric" maxlength="16" placeholder="Enter PIN…" autocomplete="off"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:18px;font-weight:800;outline:none;text-align:center;letter-spacing:.2em;transition:border-color .2s"
+        oninput="document.getElementById('adminUnlockErr').style.display='none'"
+        onkeydown="if(event.key==='Enter')_submitAdminPin()">
+      <div id="adminUnlockErr" style="display:none;font-size:12px;color:#f87171;font-weight:700;margin-top:-8px">Incorrect PIN — try again.</div>
+      <div style="display:flex;gap:10px">
+        <button class="action-btn primary" style="flex:1" onclick="_submitAdminPin()"><i class="ti ti-lock-open" style="font-size:15px"></i> Unlock</button>
+        <button class="ghost-btn" onclick="_cancelAdminPin()">Cancel</button>
       </div>
     </div>
   </div>
@@ -8576,38 +8603,39 @@ async function adminImportConfirm(){
   const existingSet=new Set(adminLite.map(q=>(q.question||'').trim().toLowerCase()));
   const newQs=_importParsed.filter(q=>!existingSet.has((q.question||'').trim().toLowerCase()));
   if(!newQs.length)return;
-  const btn=document.getElementById('adminImportBtn');
-  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:17px;animation:spin .8s linear infinite"></i> Importing…';
-  try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/questions`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_ANON,
-        'Authorization':`Bearer ${SUPABASE_ANON}`,
-        'Content-Type':'application/json',
-        'Prefer':'resolution=ignore-duplicates,return=minimal'
-      },
-      body:JSON.stringify(newQs)
-    });
-    if(!res.ok){const t=await res.text();throw new Error(t||'Import failed');}
-    const result=document.getElementById('adminImportResult');
-    result.style.display='block';
-    result.textContent='✅ '+newQs.length+' question'+(newQs.length===1?'':'s')+' imported successfully!';
-    btn.style.display='none';
-    // Refresh adminLite so duplicates are caught if user imports again
-    const {data}=await sb.from('questions')
-      .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
-      .limit(10000);
-    if(data)adminLite=data;
-    renderAdminStats();renderAdminBadges();
-  }catch(e){
-    const result=document.getElementById('adminImportResult');
-    result.style.display='block';
-    result.style.color='#f87171';
-    result.textContent='❌ '+e.message;
-    btn.disabled=false;
-    btn.innerHTML='<i class="ti ti-database-import" style="font-size:17px"></i> Import Questions';
-  }
+  requireAdminUnlock(async()=>{
+    const btn=document.getElementById('adminImportBtn');
+    btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:17px;animation:spin .8s linear infinite"></i> Importing…';
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/questions`,{
+        method:'POST',
+        headers:{
+          'apikey':SUPABASE_ANON,
+          'Authorization':`Bearer ${SUPABASE_ANON}`,
+          'Content-Type':'application/json',
+          'Prefer':'resolution=ignore-duplicates,return=minimal'
+        },
+        body:JSON.stringify(newQs)
+      });
+      if(!res.ok){const t=await res.text();throw new Error(t||'Import failed');}
+      const result=document.getElementById('adminImportResult');
+      result.style.display='block';
+      result.textContent='✅ '+newQs.length+' question'+(newQs.length===1?'':'s')+' imported successfully!';
+      btn.style.display='none';
+      const {data}=await sb.from('questions')
+        .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
+        .limit(10000);
+      if(data)adminLite=data;
+      renderAdminStats();renderAdminBadges();
+    }catch(e){
+      const result=document.getElementById('adminImportResult');
+      result.style.display='block';
+      result.style.color='#f87171';
+      result.textContent='❌ '+e.message;
+      btn.disabled=false;
+      btn.innerHTML='<i class="ti ti-database-import" style="font-size:17px"></i> Import Questions';
+    }
+  });
 }
 function renderAdminList(rows,emptyMsg){
   const list=document.getElementById('adminQuestionList');
@@ -8733,16 +8761,103 @@ async function toggleAdminReports(qid){
 }
 
 async function adminApprove(id){
-  await sb.from('questions').update({status:'approved'}).eq('id',id);
-  const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';
-  renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').update({status:'approved'}).eq('id',id);
+    const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';
+    renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  });
 }
 async function adminDismiss(id){
-  await sb.from('questions').update({report_count:0}).eq('id',id);
-  await sb.from('question_reports').delete().eq('question_id',id);
-  const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.report_count=0;
-  renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').update({report_count:0}).eq('id',id);
+    await sb.from('question_reports').delete().eq('question_id',id);
+    const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.report_count=0;
+    renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  });
 }
+// ── ADMIN PIN UNLOCK ─────────────────────────────────────────────────────────
+// SHA-256 hex of your chosen PIN. To change: run  crypto.subtle.digest('SHA-256',
+// new TextEncoder().encode('yourpin')).then(b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').then(console.log))
+// in the browser console and paste the result below.
+const ADMIN_PIN_HASH='YOUR_PIN_HASH_HERE'; // ← replace before deploying
+const ADMIN_UNLOCK_MS=10*60*1000; // 10 minutes
+
+let _adminUnlocked=false;
+let _adminUnlockExpiry=0;
+let _adminUnlockTimer=null;
+let _adminPinCallback=null; // pending action to run after unlock
+
+async function _hashPin(pin){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pin));
+  return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+function _isAdminUnlocked(){
+  if(_adminUnlocked&&Date.now()<_adminUnlockExpiry)return true;
+  _adminUnlocked=false;return false;
+}
+
+function _lockAdmin(){
+  _adminUnlocked=false;_adminUnlockExpiry=0;
+  clearInterval(_adminUnlockTimer);_adminUnlockTimer=null;
+  const badge=document.getElementById('adminUnlockBadge');
+  if(badge)badge.style.display='none';
+}
+
+function _startUnlockTimer(){
+  const badge=document.getElementById('adminUnlockBadge');
+  const timerEl=document.getElementById('adminUnlockTimer');
+  if(badge)badge.style.display='flex';
+  clearInterval(_adminUnlockTimer);
+  _adminUnlockTimer=setInterval(()=>{
+    const rem=_adminUnlockExpiry-Date.now();
+    if(rem<=0){_lockAdmin();return;}
+    const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);
+    if(timerEl)timerEl.textContent=m+':'+(s<10?'0':'')+s;
+  },1000);
+}
+
+async function _submitAdminPin(){
+  const input=document.getElementById('adminUnlockInput');
+  const err=document.getElementById('adminUnlockErr');
+  const pin=(input?.value||'').trim();
+  if(!pin)return;
+  const hash=await _hashPin(pin);
+  if(hash!==ADMIN_PIN_HASH){
+    if(err)err.style.display='block';
+    if(input){input.value='';input.focus();}
+    return;
+  }
+  // Correct — unlock
+  _adminUnlocked=true;
+  _adminUnlockExpiry=Date.now()+ADMIN_UNLOCK_MS;
+  document.getElementById('adminUnlockModal').style.display='none';
+  if(input)input.value='';
+  _startUnlockTimer();
+  // Run the pending action
+  if(_adminPinCallback){const cb=_adminPinCallback;_adminPinCallback=null;cb();}
+}
+
+function _cancelAdminPin(){
+  document.getElementById('adminUnlockModal').style.display='none';
+  const input=document.getElementById('adminUnlockInput');
+  if(input)input.value='';
+  document.getElementById('adminUnlockErr').style.display='none';
+  _adminPinCallback=null;
+}
+
+// Gate: call requireAdminUnlock(()=>{ /* your action */ }) from any admin action.
+// If already unlocked, runs immediately. Otherwise shows the PIN modal and queues the callback.
+function requireAdminUnlock(cb){
+  if(_isAdminUnlocked()){cb();return;}
+  _adminPinCallback=cb;
+  const modal=document.getElementById('adminUnlockModal');
+  modal.style.display='flex';
+  applyTheme();
+  setTimeout(()=>{const i=document.getElementById('adminUnlockInput');if(i)i.focus();},80);
+}
+
+// ── GATED ADMIN ACTIONS ───────────────────────────────────────────────────────
 function showAdminToast(msg){
   const t=document.createElement('div');
   t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
@@ -8751,16 +8866,19 @@ function showAdminToast(msg){
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},2800);
 }
 async function adminDelete(id){
-  await sb.from('questions').delete().eq('id',id);
-  adminLite=adminLite.filter(x=>String(x.id)!==String(id));
-  showAdminToast('Question deleted 🗑️');
-  renderAdminStats();renderAdminBadges();await renderAdminSection();
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').delete().eq('id',id);
+    adminLite=adminLite.filter(x=>String(x.id)!==String(id));
+    showAdminToast('Question deleted 🗑️');
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
 }
 async function adminClearStats(id){
-  // "Looks fine" — reset answer tracking so the question drops off the Suspect list
-  await sb.from('questions').update({answer_count:0,correct_count:0}).eq('id',id);
-  const l=adminLite.find(x=>String(x.id)===String(id));if(l){l.answer_count=0;l.correct_count=0;}
-  renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').update({answer_count:0,correct_count:0}).eq('id',id);
+    const l=adminLite.find(x=>String(x.id)===String(id));if(l){l.answer_count=0;l.correct_count=0;}
+    renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  });
 }
 function aeOptionRow(value,checked){
   const div=document.createElement('div');
@@ -8805,39 +8923,40 @@ async function openAdminEdit(id){
 function closeAdminEdit(){document.getElementById('adminEditModal').style.display='none';aeEditId=null;}
 async function saveAdminEdit(){
   if(!aeEditId)return;
-  const showErrLocal=(m)=>{const e=document.getElementById('aeErr');e.textContent=m;e.style.display='block';};
-  const question=document.getElementById('aeQuestion').value.trim();
-  const fmt=document.getElementById('aeFormat').value;
-  const topic=document.getElementById('aeTopic').value.trim();
-  const diff=document.getElementById('aeDiff').value;
-  const aliases=document.getElementById('aeAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
-  if(!question)return showErrLocal('Please enter the question text.');
-  let options=null,answerVal;
-  if(fmt==='mc'){
-    const rows=[...document.querySelectorAll('#aeOptionRows .ae-opt-row')].map(r=>({val:r.querySelector('.ae-opt-input').value.trim(),checked:r.querySelector('input[type=radio]').checked}));
-    if(rows.some(r=>!r.val))return showErrLocal('Please fill in all 4 options.');
-    const correctIdx=rows.findIndex(r=>r.checked);
-    if(correctIdx<0)return showErrLocal('Tap the circle next to the correct option.');
-    options=rows.map(r=>r.val);
-    answerVal=String(correctIdx);
-  }else{
-    answerVal=document.getElementById('aeAnswer').value.trim();
-    if(!answerVal)return showErrLocal('Please enter the correct answer.');
-  }
-  const topic_value=topic||null;
-  const topic_type=topic?((aeOrig&&aeOrig.topic_type)||'anime'):null;
-  const update={question,format:fmt,options,answer:answerVal,aliases,topic_value,topic_type,difficulty:diff};
-  const btn=document.querySelector('#adminEditModal .action-btn.primary');
-  if(btn){btn.disabled=true;btn.style.opacity='.6';}
-  let error;
-  try{({error}=await sb.from('questions').update(update).eq('id',aeEditId));}catch(e){error=e;}
-  if(btn){btn.disabled=false;btn.style.opacity='1';}
-  if(error)return showErrLocal(error.code==='23505'?'Another question already has that exact text.':'Could not save — try again.');
-  // Sync lightweight fields into adminLite so stats/badges stay accurate
-  const l=adminLite.find(x=>String(x.id)===String(aeEditId));
-  if(l)Object.assign(l,{question:update.question,format:update.format,topic_type:update.topic_type,topic_value:update.topic_value,difficulty:update.difficulty});
-  closeAdminEdit();
-  renderAdminStats();renderAdminBadges();await renderAdminSection();
+  requireAdminUnlock(async()=>{
+    const showErrLocal=(m)=>{const e=document.getElementById('aeErr');e.textContent=m;e.style.display='block';};
+    const question=document.getElementById('aeQuestion').value.trim();
+    const fmt=document.getElementById('aeFormat').value;
+    const topic=document.getElementById('aeTopic').value.trim();
+    const diff=document.getElementById('aeDiff').value;
+    const aliases=document.getElementById('aeAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
+    if(!question)return showErrLocal('Please enter the question text.');
+    let options=null,answerVal;
+    if(fmt==='mc'){
+      const rows=[...document.querySelectorAll('#aeOptionRows .ae-opt-row')].map(r=>({val:r.querySelector('.ae-opt-input').value.trim(),checked:r.querySelector('input[type=radio]').checked}));
+      if(rows.some(r=>!r.val))return showErrLocal('Please fill in all 4 options.');
+      const correctIdx=rows.findIndex(r=>r.checked);
+      if(correctIdx<0)return showErrLocal('Tap the circle next to the correct option.');
+      options=rows.map(r=>r.val);
+      answerVal=String(correctIdx);
+    }else{
+      answerVal=document.getElementById('aeAnswer').value.trim();
+      if(!answerVal)return showErrLocal('Please enter the correct answer.');
+    }
+    const topic_value=topic||null;
+    const topic_type=topic?((aeOrig&&aeOrig.topic_type)||'anime'):null;
+    const update={question,format:fmt,options,answer:answerVal,aliases,topic_value,topic_type,difficulty:diff};
+    const btn=document.querySelector('#adminEditModal .action-btn.primary');
+    if(btn){btn.disabled=true;btn.style.opacity='.6';}
+    let error;
+    try{({error}=await sb.from('questions').update(update).eq('id',aeEditId));}catch(e){error=e;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(error)return showErrLocal(error.code==='23505'?'Another question already has that exact text.':'Could not save — try again.');
+    const l=adminLite.find(x=>String(x.id)===String(aeEditId));
+    if(l)Object.assign(l,{question:update.question,format:update.format,topic_type:update.topic_type,topic_value:update.topic_value,difficulty:update.difficulty});
+    closeAdminEdit();
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
 }
 
 // ── BULK ACTIONS ─────────────────────────────────────────────
@@ -8878,28 +8997,34 @@ function bulkClear(){
 }
 async function bulkApprove(){
   if(!_bulkIds.size)return;
-  const ids=[..._bulkIds];
-  await sb.from('questions').update({status:'approved'}).in('id',ids);
-  ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';});
-  _bulkIds.clear();
-  renderAdminStats();renderAdminBadges();await renderAdminSection();
+  requireAdminUnlock(async()=>{
+    const ids=[..._bulkIds];
+    await sb.from('questions').update({status:'approved'}).in('id',ids);
+    ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';});
+    _bulkIds.clear();
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
 }
 async function bulkDelete(){
   if(!_bulkIds.size)return;
-  const ids=[..._bulkIds];
-  await sb.from('questions').delete().in('id',ids);
-  adminLite=adminLite.filter(x=>!ids.includes(String(x.id)));
-  _bulkIds.clear();
-  showAdminToast(ids.length+' question'+(ids.length===1?'':'s')+' deleted 🗑️');
-  renderAdminStats();renderAdminBadges();await renderAdminSection();
+  requireAdminUnlock(async()=>{
+    const ids=[..._bulkIds];
+    await sb.from('questions').delete().in('id',ids);
+    adminLite=adminLite.filter(x=>!ids.includes(String(x.id)));
+    _bulkIds.clear();
+    showAdminToast(ids.length+' question'+(ids.length===1?'':'s')+' deleted 🗑️');
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
 }
 async function bulkDiff(diff){
   if(!_bulkIds.size)return;
-  const ids=[..._bulkIds];
-  await sb.from('questions').update({difficulty:diff}).in('id',ids);
-  ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.difficulty=diff;});
-  _bulkIds.clear();
-  renderAdminStats();renderAdminBadges();await renderAdminSection();
+  requireAdminUnlock(async()=>{
+    const ids=[..._bulkIds];
+    await sb.from('questions').update({difficulty:diff}).in('id',ids);
+    ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.difficulty=diff;});
+    _bulkIds.clear();
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
 }
 
 // ── PROMPT GENERATOR ─────────────────────────────────────────
@@ -9076,8 +9201,10 @@ function openCoverageGapPrompt(){
 
 // ── QUICK DIFFICULTY INLINE EDIT ─────────────────────────────
 async function quickSetDiff(id,val){
-  await sb.from('questions').update({difficulty:val}).eq('id',id);
-  const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.difficulty=val;
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').update({difficulty:val}).eq('id',id);
+    const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.difficulty=val;
+  });
 }
 
 applyTheme();
