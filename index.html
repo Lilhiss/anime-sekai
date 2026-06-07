@@ -2037,7 +2037,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-focus" id="ahReportedItem" onclick="adminJump('reported')"><div class="admin-focus-val" id="ahReported">—</div><div class="admin-focus-label">⚠️ Reported</div></button>
         <button class="admin-focus" id="ahSuspectItem" onclick="adminJump('suspect')"><div class="admin-focus-val" id="ahSuspect">—</div><div class="admin-focus-label">🚩 Suspect</div></button>
       </div>
-      <div class="admin-summary slide-in" id="adminSummary">—</div>
+      <div class="admin-summary slide-in" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="adminSummary">—</span><button onclick="loadAdminData()" title="Refresh" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1;transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'"><i class="ti ti-refresh" style="font-size:16px"></i></button></div>
       <div class="admin-sections slide-in">
         <button class="admin-section-btn active" id="adminSecReview" onclick="switchAdminSection('review')"><i class="ti ti-inbox" style="font-size:15px"></i> Review</button>
         <button class="admin-section-btn" id="adminSecBrowse" onclick="switchAdminSection('browse')"><i class="ti ti-search" style="font-size:15px"></i> Browse</button>
@@ -2048,13 +2048,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted <span class="admin-tab-count" id="adminCountSubmitted"></span></button>
         <button class="admin-tab" id="adminTabReported" onclick="switchAdminTab('reported')">⚠️ Reported <span class="admin-tab-count" id="adminCountReported"></span></button>
         <button class="admin-tab" id="adminTabSuspect" onclick="switchAdminTab('suspect')">🚩 Suspect <span class="admin-tab-count" id="adminCountSuspect"></span></button>
+        <button id="adminReviewDateToggle" onclick="toggleReviewDateSort()" title="Toggle date order" style="margin-left:auto;background:var(--bg2);border:1px solid var(--border2);color:var(--muted);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:5px 10px;border-radius:8px;cursor:pointer;display:none;align-items:center;gap:5px;transition:color .2s,border-color .2s"><i class="ti ti-arrow-down" style="font-size:13px" id="adminReviewDateIcon"></i> Newest</button>
       </div>
       <div class="admin-browse-bar slide-in" id="adminBrowseBar" style="display:none">
         <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection()"></div>
         <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
         <select class="admin-filter" id="adminFilterDiff" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
-        <select class="admin-filter" id="adminSortAnime" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All anime</option></select>
-        <select class="admin-filter" id="adminSortGenre" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All genres</option></select>
+        <select class="admin-filter" id="adminSortAnime" onchange="adminBrowsePage=0;_adminMutualExclusion('anime');renderAdminSection()"><option value="">All anime</option></select>
+        <select class="admin-filter" id="adminSortGenre" onchange="adminBrowsePage=0;_adminMutualExclusion('genre');renderAdminSection()"><option value="">All genres</option></select>
+        <select class="admin-filter" id="adminBrowseSort" onchange="adminBrowsePage=0;fetchAdminBrowse()"><option value="topic">Sort: Topic A–Z</option><option value="date_desc">Sort: Newest first</option><option value="date_asc">Sort: Oldest first</option></select>
       </div>
       <div id="adminCoverage" class="slide-in" style="display:none"></div>
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
@@ -8147,6 +8149,7 @@ let adminReviewRows=[];  // current page of full rows for the active Review tab
 let adminBrowseRows=[];  // current page of full rows for Browse
 let adminBrowseTotal=0;  // server-reported total matching Browse filters (for pager)
 let adminBrowsePage=0;
+let adminReviewDateAsc=false; // false = newest first (default)
 const ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
 const ADMIN_ANIME_TOPICS=["One Piece","Naruto","Dragon Ball","Attack on Titan","Demon Slayer","My Hero Academia","Hunter x Hunter","Fullmetal Alchemist","Jujutsu Kaisen","Death Note","Bleach","Sword Art Online","Fairy Tail","Vinland Saga","Tokyo Revengers","Chainsaw Man","Spy x Family","Mob Psycho 100","Cowboy Bebop","Neon Genesis Evangelion","Code Geass","Re:Zero","Steins;Gate","Your Lie in April","Toradora","Haikyuu!!","Black Clover","Overlord","KonoSuba","Fruits Basket"];
@@ -8186,6 +8189,14 @@ async function loadAdminData(){
 
 const ADMIN_FULL_COLS='id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at';
 
+function toggleReviewDateSort(){
+  adminReviewDateAsc=!adminReviewDateAsc;
+  const icon=document.getElementById('adminReviewDateIcon');
+  const btn=document.getElementById('adminReviewDateToggle');
+  if(icon)icon.className='ti '+(adminReviewDateAsc?'ti-arrow-up':'ti-arrow-down')+' ';
+  if(btn)btn.lastChild.textContent=adminReviewDateAsc?' Oldest':' Newest';
+  fetchReviewTab();
+}
 // ── Review fetchers — one per tab, server-side filtered ───────────────────────
 async function fetchReviewTab(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
@@ -8195,7 +8206,7 @@ async function fetchReviewTab(){
     let q=sb.from('questions').select(ADMIN_FULL_COLS);
     let empty='';
     if(adminTab==='submitted'){
-      q=q.eq('status','pending').order('created_at',{ascending:false});
+      q=q.eq('status','pending').order('created_at',{ascending:adminReviewDateAsc});
       empty='No submitted questions — all clear! 🎉';
     } else if(adminTab==='reported'){
       q=q.gt('report_count',0).order('report_count',{ascending:false});
@@ -8205,6 +8216,8 @@ async function fetchReviewTab(){
       q=q.eq('status','approved').gte('answer_count',8);
       empty='No suspect questions — nothing players keep getting wrong. 🎉';
     }
+    const dateToggle=document.getElementById('adminReviewDateToggle');
+    if(dateToggle)dateToggle.style.display=adminTab==='submitted'?'inline-flex':'none';
     const {data}=await q.limit(500);
     let rows=data||[];
     if(adminTab==='suspect'){
@@ -8219,6 +8232,14 @@ async function fetchReviewTab(){
   }
 }
 
+function _adminMutualExclusion(changed){
+  const anime=document.getElementById('adminSortAnime');
+  const genre=document.getElementById('adminSortGenre');
+  if(!anime||!genre)return;
+  if(changed==='anime'&&anime.value){genre.value='';genre.disabled=true;}
+  else if(changed==='genre'&&genre.value){anime.value='';anime.disabled=true;}
+  else{anime.disabled=false;genre.disabled=false;}
+}
 // ── Browse fetcher — server-side filtered + paginated ─────────────────────────
 async function fetchAdminBrowse(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
@@ -8253,8 +8274,18 @@ async function fetchAdminBrowse(){
     if(animeFilter)dq=dq.eq('topic_type','anime').eq('topic_value',animeFilter);
     else if(genreFilter)dq=dq.eq('topic_type','genre').eq('topic_value',genreFilter);
     if(qstr)dq=dq.ilike('question','%'+qstr+'%');
-    dq=dq.order('topic_value',{ascending:true,nullsFirst:false}).range(start,end);
-    const {data}=await dq;
+    const browseSort=document.getElementById('adminBrowseSort')?.value||'topic';
+    let dq2=sb.from('questions').select(ADMIN_FULL_COLS);
+    if(fmt)dq2=dq2.eq('format',fmt);
+    if(diff)dq2=dq2.eq('difficulty',diff);
+    if(animeFilter)dq2=dq2.eq('topic_type','anime').eq('topic_value',animeFilter);
+    else if(genreFilter)dq2=dq2.eq('topic_type','genre').eq('topic_value',genreFilter);
+    if(qstr)dq2=dq2.ilike('question','%'+qstr+'%');
+    if(browseSort==='date_desc')dq2=dq2.order('created_at',{ascending:false});
+    else if(browseSort==='date_asc')dq2=dq2.order('created_at',{ascending:true});
+    else dq2=dq2.order('topic_value',{ascending:true,nullsFirst:false});
+    dq2=dq2.range(start,end);
+    const {data}=await dq2;
     adminBrowseRows=data||[];
     renderAdminBrowseFromCache();
   }catch(e){
@@ -8274,7 +8305,7 @@ function renderAdminStats(){
   const glow=(id,n)=>{const el=document.getElementById(id);if(el)el.classList.toggle('glow',n>0);};
   glow('ahPendingItem',pending);glow('ahReportedItem',reported);glow('ahSuspectItem',suspect);
   const total=src.length,approved=src.filter(q=>q.status==='approved').length,plays=src.reduce((s,q)=>s+(q.answer_count||0),0);
-  set('adminSummary',total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved · '+plays.toLocaleString()+' plays');
+  const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved · '+plays.toLocaleString()+' plays';
 }
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
@@ -8328,7 +8359,7 @@ function renderAdminBrowseFromCache(){
   list.innerHTML='';
   const selRow=document.createElement('div');
   selRow.style.cssText='display:flex;align-items:center;gap:10px;padding:2px 2px 4px';
-  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button>'
+  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select page</button>'
     +'<span style="font-size:12px;color:var(--muted);font-weight:700">Showing '+(start+1)+'–'+(start+rows.length)+' of '+total+' question'+(total===1?'':'s')+'</span>';
   list.appendChild(selRow);
   rows.forEach(q=>{
@@ -8600,7 +8631,7 @@ function renderAdminList(rows,emptyMsg){
   // Select-all toggle row
   const selRow=document.createElement('div');
   selRow.style.cssText='display:flex;align-items:center;gap:10px;padding:2px 2px 4px';
-  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select all</button><span style="font-size:12px;color:var(--muted);font-weight:700">'+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
+  selRow.innerHTML='<button onclick="bulkSelectAll()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-checkbox" style="font-size:13px"></i> Select page</button><span style="font-size:12px;color:var(--muted);font-weight:700">'+rows.length+' question'+(rows.length===1?'':'s')+'</span>';
   list.appendChild(selRow);
   rows.forEach(q=>{
     const card=buildAdminCard(q);
@@ -8725,9 +8756,17 @@ async function adminDismiss(id){
   const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.report_count=0;
   renderAdminStats();renderAdminBadges();await fetchReviewTab();
 }
+function showAdminToast(msg){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},2800);
+}
 async function adminDelete(id){
   await sb.from('questions').delete().eq('id',id);
   adminLite=adminLite.filter(x=>String(x.id)!==String(id));
+  showAdminToast('Question deleted 🗑️');
   renderAdminStats();renderAdminBadges();await renderAdminSection();
 }
 async function adminClearStats(id){
@@ -8864,6 +8903,7 @@ async function bulkDelete(){
   await sb.from('questions').delete().in('id',ids);
   adminLite=adminLite.filter(x=>!ids.includes(String(x.id)));
   _bulkIds.clear();
+  showAdminToast(ids.length+' question'+(ids.length===1?'':'s')+' deleted 🗑️');
   renderAdminStats();renderAdminBadges();await renderAdminSection();
 }
 async function bulkDiff(diff){
