@@ -4033,7 +4033,7 @@ async function loadTopicsFromSupabase(){
   try{
     // Use plain fetch to avoid Supabase JS client hanging on getSession()
     const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     if(!res.ok) throw new Error('Failed to load topics');
@@ -4053,12 +4053,20 @@ async function loadTopicsFromSupabase(){
       if(!row.topic_value)return;
       const name=row.topic_value;
       const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'&&!animeSet.has(key)){
-        const emoji=animeEmojiMap[name.toLowerCase()]||'🎌';
-        animeSet.set(key,{key,emoji,name,type:'anime'});
-      } else if(row.topic_type==='genre'&&!genreSet.has(key)){
-        const emoji=genreEmojiMap[name.toLowerCase()]||'🎭';
-        genreSet.set(key,{key,emoji,name,type:'genre'});
+      if(row.topic_type==='anime'){
+        if(!animeSet.has(key)){
+          const emoji=animeEmojiMap[name.toLowerCase()]||'🎌';
+          animeSet.set(key,{key,emoji,name,type:'anime',counts:{}});
+        }
+        const t=animeSet.get(key);
+        t.counts[row.format]=(t.counts[row.format]||0)+1;
+      } else if(row.topic_type==='genre'){
+        if(!genreSet.has(key)){
+          const emoji=genreEmojiMap[name.toLowerCase()]||'🎭';
+          genreSet.set(key,{key,emoji,name,type:'genre',counts:{}});
+        }
+        const t=genreSet.get(key);
+        t.counts[row.format]=(t.counts[row.format]||0)+1;
       }
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
@@ -4088,9 +4096,11 @@ function renderTopicList(filter=''){
   }
   list.innerHTML=items.map(t=>{
     const sel=selectedTopics.some(s=>s.key===t.key);
+    const cnt=t.counts?t.counts[selectedFormat]||0:null;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
     return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
-      <div class="topic-result-left"><span class="topic-result-emoji">${t.emoji}</span><span>${t.name}</span></div>
-      <i class="ti ti-check topic-result-check"></i>
+      <div class="topic-result-left"><span>${t.name}</span></div>
+      ${badge}<i class="ti ti-check topic-result-check"></i>
     </div>`;
   }).join('');
 }
@@ -6861,6 +6871,8 @@ function setLobbyFormat(fmt,el){
   // Write format to DB immediately so joining players see correct info
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
   if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
+  // Re-render topic list so question counts reflect the new format
+  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput')?document.getElementById('lobbyTopicSearchInput').value:'');
   setTimeout(()=>goStep('lobby-mode'),300);
 }
 function openLobbyTopicPage(){
@@ -6876,7 +6888,7 @@ async function loadLobbyTopics(){
   if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading…</div>';
   try{
     const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const data=await res.json();
@@ -6885,10 +6897,12 @@ async function loadLobbyTopics(){
       if(!row.topic_value)return;
       const name=row.topic_value;
       const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'&&!animeSet.has(key)){
-        animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime'});
-      } else if(row.topic_type==='genre'&&!genreSet.has(key)){
-        genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre'});
+      if(row.topic_type==='anime'){
+        if(!animeSet.has(key)){animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime',counts:{}});}
+        const t=animeSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
+      } else if(row.topic_type==='genre'){
+        if(!genreSet.has(key)){genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre',counts:{}});}
+        const t=genreSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
       }
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
@@ -6906,9 +6920,11 @@ function renderLobbyTopicList(filter=''){
   if(!items.length){list.innerHTML='<div class="topic-empty">No results</div>';return;}
   list.innerHTML=items.map(t=>{
     const sel=lobbyTopics.some(s=>s.key===t.key);
+    const cnt=t.counts?t.counts[lobbyFormat]||0:null;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
     return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
-      <div class="topic-result-left"><span class="topic-result-emoji">${t.emoji}</span><span>${t.name}</span></div>
-      <i class="ti ti-check topic-result-check"></i>
+      <div class="topic-result-left"><span>${t.name}</span></div>
+      ${badge}<i class="ti ti-check topic-result-check"></i>
     </div>`;
   }).join('');
 }
