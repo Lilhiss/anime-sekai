@@ -4487,7 +4487,7 @@ async function sbGetQuestion(format,topic){
     const excludeFilter='';
     // Fetch a pool of unseen questions and pick one client-side at random.
     // PostgREST does not support order=random() so shuffling is done here instead.
-    const poolLimit=100;
+    const poolLimit=500;
     const qRes=await fetch(
       `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&limit=${poolLimit}`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
@@ -8179,6 +8179,7 @@ let adminBrowseTotal=0;  // server-reported total matching Browse filters (for p
 let adminBrowsePage=0;
 let adminTrueTotal=0;     // server-reported total question count (unaffected by row cap)
 let adminTrueApproved=0; // server-reported approved question count
+let adminTruePending=0;  // server-reported pending question count
 let adminReviewDateAsc=false; // false = newest first (default)
 let ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
@@ -8215,13 +8216,15 @@ async function loadAdminData(){
       .limit(1000);
     adminLite=data||[];
     // Fetch exact counts separately so the summary bar is never capped
-    const [{count:tc},{count:ac}]=await Promise.all([
+    const [{count:tc},{count:ac},{count:pc}]=await Promise.all([
       sb.from('questions').select('id',{count:'exact',head:true}),
-      sb.from('questions').select('id',{count:'exact',head:true}).eq('status','approved')
+      sb.from('questions').select('id',{count:'exact',head:true}).eq('status','approved'),
+      sb.from('questions').select('id',{count:'exact',head:true}).eq('status','pending')
     ]);
     adminTrueTotal=tc||0;
     adminTrueApproved=ac||0;
-  }catch(e){adminLite=[];adminTrueTotal=0;adminTrueApproved=0;}
+    adminTruePending=pc||0;
+  }catch(e){adminLite=[];adminTrueTotal=0;adminTrueApproved=0;adminTruePending=0;}
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 
@@ -8350,7 +8353,7 @@ function _adminIsSuspect(q){return q.answer_count>=8&&q.status==='approved'&&(q.
 function renderAdminStats(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   const src=adminLite; // lightweight rows always available
-  const pending=src.filter(q=>q.status==='pending').length;
+  const pending=adminTruePending||src.filter(q=>q.status==='pending').length;
   const reported=src.filter(q=>q.report_count>0).length;
   const suspect=src.filter(_adminIsSuspect).length;
   set('ahPending',pending);set('ahReported',reported);set('ahSuspect',suspect);
@@ -8364,7 +8367,7 @@ function renderAdminStats(){
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
   const src=adminLite; // lightweight rows always available
-  set('adminCountSubmitted',src.filter(q=>q.status==='pending').length);
+  set('adminCountSubmitted',adminTruePending||src.filter(q=>q.status==='pending').length);
   set('adminCountReported',src.filter(q=>q.report_count>0).length);
   set('adminCountSuspect',src.filter(_adminIsSuspect).length);
 }
