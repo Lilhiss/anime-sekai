@@ -4059,43 +4059,37 @@ async function loadTopicsFromSupabase(){
   const list=document.getElementById('topicResultsList');
   if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading topics…</div>';
   try{
-    // Use plain fetch to avoid Supabase JS client hanging on getSession()
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    if(!res.ok) throw new Error('Failed to load topics');
-    const data=await res.json();
-    const error=null;
-    if(!data){
-      if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.</div>';
-      return;
-    }
-    if(!data||data.length===0){
+    // Fetch approved topics from the topics table
+    const [topicsRes,questionsRes]=await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type&status=eq.approved`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
+      fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
+    ]);
+    if(!topicsRes.ok) throw new Error('Failed to load topics');
+    const topicsData=await topicsRes.json();
+    if(!topicsData||!topicsData.length){
       if(list)list.innerHTML='<div class="topic-empty">No topics available yet.</div>';
       return;
     }
+    // Build count map from questions
+    const countMap={};
+    if(questionsRes.ok){
+      const qData=await questionsRes.json();
+      (qData||[]).forEach(row=>{
+        if(!row.topic_value)return;
+        if(!countMap[row.topic_value])countMap[row.topic_value]={};
+        countMap[row.topic_value][row.format]=(countMap[row.topic_value][row.format]||0)+1;
+      });
+    }
     const animeSet=new Map();
     const genreSet=new Map();
-    data.forEach(row=>{
-      if(!row.topic_value)return;
-      const name=row.topic_value;
+    topicsData.forEach(row=>{
+      const name=row.name;
       const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'){
-        if(!animeSet.has(key)){
-          const emoji=animeEmojiMap[name.toLowerCase()]||'🎌';
-          animeSet.set(key,{key,emoji,name,type:'anime',counts:{}});
-        }
-        const t=animeSet.get(key);
-        t.counts[row.format]=(t.counts[row.format]||0)+1;
-      } else if(row.topic_type==='genre'){
-        if(!genreSet.has(key)){
-          const emoji=genreEmojiMap[name.toLowerCase()]||'🎭';
-          genreSet.set(key,{key,emoji,name,type:'genre',counts:{}});
-        }
-        const t=genreSet.get(key);
-        t.counts[row.format]=(t.counts[row.format]||0)+1;
-      }
+      const counts=countMap[name]||{};
+      if(row.type==='anime') animeSet.set(key,{key,emoji:'',name,type:'anime',counts});
+      else if(row.type==='genre') genreSet.set(key,{key,emoji:'',name,type:'genre',counts});
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
     genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
@@ -8276,18 +8270,32 @@ async function loadAdminData(){
       .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
       .limit(5000);
     adminLite=data||[];
-    // Seed from canonical emoji maps so zero-question topics always appear in coverage
-    const _titleCase=k=>k.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
-    const _animeSet=new Set(Object.keys(animeEmojiMap).map(_titleCase));
-    const _genreSet=new Set(Object.keys(genreEmojiMap).map(_titleCase));
-    // Union live data so topics added via question submissions also appear
-    adminLite.forEach(r=>{
-      if(!r.topic_value)return;
-      if(r.topic_type==="anime")_animeSet.add(r.topic_value);
-      else if(r.topic_type==="genre")_genreSet.add(r.topic_value);
-    });
-    ADMIN_ANIME_TOPICS=[..._animeSet].sort((a,b)=>a.localeCompare(b));
-    ADMIN_GENRE_TOPICS=[..._genreSet].sort((a,b)=>a.localeCompare(b));
+    // Seed canonical topic lists from the topics table so zero-question topics appear in coverage
+    try{
+      const tRes=await fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type&status=eq.approved`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+      const tData=tRes.ok?await tRes.json():[];
+      const _animeSet=new Set(tData.filter(t=>t.type==='anime').map(t=>t.name));
+      const _genreSet=new Set(tData.filter(t=>t.type==='genre').map(t=>t.name));
+      // Also union any topic_values from questions not yet in the table (safety net)
+      adminLite.forEach(r=>{
+        if(!r.topic_value)return;
+        if(r.topic_type==="anime")_animeSet.add(r.topic_value);
+        else if(r.topic_type==="genre")_genreSet.add(r.topic_value);
+      });
+      ADMIN_ANIME_TOPICS=[..._animeSet].sort((a,b)=>a.localeCompare(b));
+      ADMIN_GENRE_TOPICS=[..._genreSet].sort((a,b)=>a.localeCompare(b));
+    }catch(e){
+      // Fallback: derive from live data only
+      const _animeSet=new Set(),_genreSet=new Set();
+      adminLite.forEach(r=>{
+        if(!r.topic_value)return;
+        if(r.topic_type==="anime")_animeSet.add(r.topic_value);
+        else if(r.topic_type==="genre")_genreSet.add(r.topic_value);
+      });
+      ADMIN_ANIME_TOPICS=[..._animeSet].sort((a,b)=>a.localeCompare(b));
+      ADMIN_GENRE_TOPICS=[..._genreSet].sort((a,b)=>a.localeCompare(b));
+    }
     // Fetch exact counts separately so the summary bar is never capped
     const [{count:tc},{count:ac},{count:pc}]=await Promise.all([
       sb.from('questions').select('id',{count:'exact',head:true}),
@@ -8589,9 +8597,11 @@ async function actionAdminSuggestion(id){
   const topic=document.getElementById('sugg-topic-'+id)?.value.trim();
   const type=document.getElementById('sugg-type-'+id)?.value;
   if(!topic)return;
-  // Add to the in-memory canonical list if not already present
-  if(type==='anime'&&!ADMIN_ANIME_TOPICS.includes(topic))ADMIN_ANIME_TOPICS.push(topic);
-  if(type==='genre'&&!ADMIN_GENRE_TOPICS.includes(topic))ADMIN_GENRE_TOPICS.push(topic);
+  // Persist to topics table so it survives refresh and appears in coverage
+  await sb.from('topics').upsert({name:topic,type,status:'approved'},{onConflict:'name',ignoreDuplicates:false});
+  // Update in-memory lists immediately so coverage re-renders without a full reload
+  if(type==='anime'&&!ADMIN_ANIME_TOPICS.includes(topic)){ADMIN_ANIME_TOPICS.push(topic);ADMIN_ANIME_TOPICS.sort((a,b)=>a.localeCompare(b));}
+  if(type==='genre'&&!ADMIN_GENRE_TOPICS.includes(topic)){ADMIN_GENRE_TOPICS.push(topic);ADMIN_GENRE_TOPICS.sort((a,b)=>a.localeCompare(b));}
   // Delete the suggestion row
   await sb.from('topic_suggestions').delete().eq('id',id);
   // Remove from DOM
