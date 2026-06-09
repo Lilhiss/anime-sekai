@@ -4341,7 +4341,8 @@ function shareDaily(ev){
   if(sp){const o=sp.textContent;sp.textContent='Copied!';setTimeout(()=>{sp.textContent=o;},2000);}
 }
 async function fetchQuestion(){
-  const bankTopic=selectedTopics.length>0?{type:selectedTopics[0].type,value:selectedTopics[0].name}:{type:'all',value:''};
+  const _t=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+  const bankTopic=_t?{type:_t.type,value:_t.name}:{type:'all',value:''};
   const banked=await sbGetQuestion(selectedFormat,bankTopic);
   if(banked){/*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/return banked;}
   return getFallback();
@@ -4513,12 +4514,12 @@ async function sbGetQuestion(format,topic){
       const retryData=await retryRes.json();
       if(!Array.isArray(retryData)||!retryData.length)return null;
       const row=retryData[Math.floor(Math.random()*retryData.length)];
-      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null};
+      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null};
     }
     const filtered=data.filter(q=>!seenQs.includes(q.question));
     const pool=filtered.length?filtered:data;
     const row=pool[Math.floor(Math.random()*pool.length)];
-    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null};
+    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null};
   }catch(e){return null}
 }
 
@@ -4580,7 +4581,7 @@ function showQuestion(qData){
       d.onclick=()=>answerMC(i,d,qData);grid.appendChild(d);
     });
   }
-  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null});
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,topic:qData.topic_value||null});
   startTimer();
 }
 function answerMC(idx,el,qData){
@@ -4745,7 +4746,7 @@ function buildRecap(){
   const list=document.getElementById('recapList');list.innerHTML='';
   quizHistory.forEach((a,i)=>{
     const item=document.createElement('div');item.className='recap-item '+(a.correct?'correct':'wrong');
-    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div></div><span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div></div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
     list.appendChild(item);
   });
 }
@@ -6352,7 +6353,7 @@ function renderMpRecap(){
     item.className='recap-item '+(a.correct?'correct':'wrong');
     const reportId='mpRecapReport_'+i;
     const dropId='mpRecapDrop_'+i;
-    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div><div style="margin-top:6px"><button class="report-link" style="font-size:11px" onclick="toggleMpRecapReport(${i})"><i class="ti ti-alert-circle" style="font-size:11px"></i> Report</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="mprr${i}" value="${v}"> ${v.charAt(0).toUpperCase()+v.slice(1).replace('wrong','Wrong answer marked correct').replace('unclear','Unclear or ambiguous').replace('outdated','Information is outdated').replace('duplicate','Duplicate question').replace('other','Other')}</label>`).join('')}</div><textarea class="report-textarea" id="mpRRDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="mpRRBtn_${i}" onclick="submitMpRecapReport(${i},'${a.id||''}')">Submit report</button></div></div></div><span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div><div style="margin-top:6px"><button class="report-link" style="font-size:11px" onclick="toggleMpRecapReport(${i})"><i class="ti ti-alert-circle" style="font-size:11px"></i> Report</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="mprr${i}" value="${v}"> ${v.charAt(0).toUpperCase()+v.slice(1).replace('wrong','Wrong answer marked correct').replace('unclear','Unclear or ambiguous').replace('outdated','Information is outdated').replace('duplicate','Duplicate question').replace('other','Other')}</label>`).join('')}</div><textarea class="report-textarea" id="mpRRDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="mpRRBtn_${i}" onclick="submitMpRecapReport(${i},'${a.id||''}')">Submit report</button></div></div></div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
     list.appendChild(item);
   });
 }
@@ -7616,7 +7617,7 @@ function mpShowQuestion(qData,hpFuse){
       d.onclick=()=>mpAnswerMC(i,d,qData);grid.appendChild(d);
     });
   }
-  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null});
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
   const questionTimeLimit=isHP?(hpFuse||5+Math.random()*5):raceTimeLimit; // use host-broadcast fuse for HP
   clearInterval(timerInterval);
   timeLeft=questionTimeLimit;
