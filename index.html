@@ -2060,7 +2060,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
         <div style="font-size:13px;color:var(--muted);line-height:1.6">Paste one or more SQL INSERT batches below. Questions already in the database will be skipped automatically.</div>
         <textarea id="adminImportInput" placeholder="Paste SQL here…" oninput="adminImportParse()" style="width:100%;min-height:180px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:12px;padding:14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;resize:vertical;line-height:1.6"></textarea>
-        <div id="adminImportSummary" style="display:none;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;display:none;flex-direction:column;gap:6px">
+        <div id="adminImportSummary" style="display:none;flex-direction:column;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <span id="adminImportStatParsed" style="font-size:13px;font-weight:800;color:var(--text)"></span>
             <span id="adminImportStatDups" style="font-size:13px;font-weight:800;color:#f87171"></span>
