@@ -2054,6 +2054,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <select class="admin-filter" id="adminBrowseSort" onchange="adminBrowsePage=0;fetchAdminBrowse()"><option value="topic">Sort: Topic A–Z</option><option value="date_desc">Sort: Newest first</option><option value="date_asc">Sort: Oldest first</option></select>
         <select class="admin-filter" id="adminPageSize" onchange="ADMIN_PAGE_SIZE=+this.value;adminBrowsePage=0;fetchAdminBrowse()" title="Questions per page"><option value="25">25 / page</option><option value="50" selected>50 / page</option><option value="100">100 / page</option><option value="200">200 / page</option></select>
       </div>
+      <div id="covBulkBarWrap"></div>
       <div id="adminCoverage" class="slide-in" style="display:none"></div>
       <div id="adminSuggestions" class="slide-in" style="display:none;flex-direction:column;gap:12px"></div>
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
@@ -8648,7 +8649,7 @@ function updateCovBulkBar(){
   if(covSelectedTopics.size===0){if(bar)bar.remove();return;}
   if(!bar){
     bar=document.createElement('div');bar.id='covBulkBar';bar.className='admin-bulk-bar';
-    const cov=document.getElementById('adminCoverage');cov.prepend(bar);
+    const wrap=document.getElementById('covBulkBarWrap');wrap.appendChild(bar);
   }
   bar.innerHTML='<span class="admin-bulk-bar-count">'+covSelectedTopics.size+' topic'+(covSelectedTopics.size===1?'':'s')+' selected</span>'
     +'<button class="admin-bulk-btn danger" onclick="deleteCovTopics()"><i class="ti ti-trash" style="font-size:13px"></i> Delete selected</button>'
@@ -8674,11 +8675,11 @@ async function deleteCovTopics(){
   renderAdminCoverage();
 }
 function renderAdminCoverage(){
-  covSelectedTopics.clear();
+  covSelectedTopics.clear();updateCovBulkBar();
   const cov=document.getElementById('adminCoverage');
   const approved=adminLite.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r,exportKey,deletable=true)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const cb=deletable?'<input type="checkbox" class="cov-cb" onchange="toggleCovRow('+JSON.stringify(r.name)+',this)">':'';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+"','"+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'">'+cb+'<span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
+  const rowHTML=(r,exportKey,deletable=true)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const cb=deletable?'<input type="checkbox" class="cov-cb" onchange="toggleCovRow(\''+r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',this)">':'';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+"','"+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'">'+cb+'<span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
