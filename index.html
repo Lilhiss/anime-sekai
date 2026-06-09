@@ -2546,6 +2546,24 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- COV DELETE CONFIRM MODAL -->
+  <div id="covDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1200;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid #f8717155;border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:#f87171;display:flex;align-items:center;gap:8px"><i class="ti ti-trash" style="font-size:20px"></i> Delete <span id="covDeleteModalCount"></span></div>
+        <button onclick="closeCovDeleteModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="background:#f8717112;border:1px solid #f8717155;border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+        <i class="ti ti-alert-circle" style="color:#f87171;font-size:18px;flex-shrink:0;margin-top:1px"></i>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">This removes <span id="covDeleteModalPreview" style="color:var(--text);font-weight:800"></span> from the topics table only. Their questions will <b style="color:var(--text)">not</b> be deleted and will still appear under "Other topics".</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeCovDeleteModal()">Cancel</button>
+        <button class="action-btn" onclick="confirmCovDelete()" style="background:#f87171;border-color:#f87171;color:#fff;font-weight:800"><i class="ti ti-trash" style="font-size:15px"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -8660,11 +8678,20 @@ function clearCovSelection(){
   document.querySelectorAll('.cov-cb').forEach(cb=>{cb.checked=false;cb.closest('.admin-cov-row').classList.remove('cov-selected');});
   updateCovBulkBar();
 }
-async function deleteCovTopics(){
+function deleteCovTopics(){
   if(!covSelectedTopics.size)return;
   const names=[...covSelectedTopics];
   const preview=names.slice(0,3).map(n=>'"'+n+'"').join(', ')+(names.length>3?' and '+(names.length-3)+' more':'');
-  if(!confirm('Delete '+preview+' from the topics table? This will not delete their questions.'))return;
+  document.getElementById('covDeleteModalCount').textContent=names.length+' topic'+(names.length===1?'':'s');
+  document.getElementById('covDeleteModalPreview').textContent=preview;
+  const m=document.getElementById('covDeleteModal');m.style.display='flex';applyTheme();
+}
+function closeCovDeleteModal(){
+  document.getElementById('covDeleteModal').style.display='none';
+}
+async function confirmCovDelete(){
+  closeCovDeleteModal();
+  const names=[...covSelectedTopics];
   const{error}=await sb.from('topics').delete().in('name',names);
   if(error){alert('Delete failed: '+error.message);return;}
   names.forEach(n=>{
