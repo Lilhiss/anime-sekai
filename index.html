@@ -8221,8 +8221,8 @@ let adminTruePending=0;  // server-reported pending question count
 let adminReviewDateAsc=false; // false = newest first (default)
 let ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
-let ADMIN_ANIME_TOPICS=["One Piece","Naruto","Dragon Ball","Attack on Titan","Demon Slayer","My Hero Academia","Hunter x Hunter","Fullmetal Alchemist","Jujutsu Kaisen","Death Note","Bleach","Sword Art Online","Fairy Tail","Vinland Saga","Tokyo Revengers","Chainsaw Man","Spy x Family","Mob Psycho 100","Cowboy Bebop","Neon Genesis Evangelion","Code Geass","Re:Zero","Steins;Gate","Your Lie in April","Toradora","Haikyuu!!","Black Clover","Overlord","KonoSuba","Fruits Basket"];
-let ADMIN_GENRE_TOPICS=["Shōnen","Isekai","Shōjo","Seinen","Mecha","Slice of Life","Romance","Horror","Sports","Fantasy","Sci-Fi","Comedy","Psychological","Action","Adventure","Mystery"];
+let ADMIN_ANIME_TOPICS=[];
+let ADMIN_GENRE_TOPICS=[];
 const ADMIN_COV_THIN=10;
 
 async function checkAdminRole(){
@@ -8253,6 +8253,15 @@ async function loadAdminData(){
       .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
       .limit(5000);
     adminLite=data||[];
+    // Derive canonical topic lists from live data so they are never stale
+    const _animeSet=new Set(),_genreSet=new Set();
+    adminLite.forEach(r=>{
+      if(!r.topic_value)return;
+      if(r.topic_type==="anime")_animeSet.add(r.topic_value);
+      else if(r.topic_type==="genre")_genreSet.add(r.topic_value);
+    });
+    ADMIN_ANIME_TOPICS=[..._animeSet].sort((a,b)=>a.localeCompare(b));
+    ADMIN_GENRE_TOPICS=[..._genreSet].sort((a,b)=>a.localeCompare(b));
     // Fetch exact counts separately so the summary bar is never capped
     const [{count:tc},{count:ac},{count:pc}]=await Promise.all([
       sb.from('questions').select('id',{count:'exact',head:true}),
