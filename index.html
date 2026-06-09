@@ -2791,6 +2791,7 @@ let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
 let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
 let selectedQuestionLimit=10;
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
+let reportedQuestionIds=new Set(); // tracks IDs flagged in-game or via recap
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
 
@@ -4201,7 +4202,7 @@ function proceedFromTopic(){
 
 
 function startQuiz(mode){
-  selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
   document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':'Survival');
@@ -4581,7 +4582,7 @@ function showQuestion(qData){
       d.onclick=()=>answerMC(i,d,qData);grid.appendChild(d);
     });
   }
-  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,topic:qData.topic_value||null});
+  quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
   startTimer();
 }
 function answerMC(idx,el,qData){
@@ -4742,11 +4743,43 @@ function renderResults(){
   document.getElementById('viewProfileWrap').style.display=(!currentUser||isGuest)?'none':'block';
   applyTheme();
 }
+function buildRecapReportUI(i, qid){
+  const already=qid&&reportedQuestionIds.has(qid);
+  const btnStyle=already?'opacity:.5;cursor:not-allowed;pointer-events:none':'';
+  const btnLabel=already?'<i class="ti ti-flag" style="font-size:11px"></i> Reported':'<i class="ti ti-alert-circle" style="font-size:11px"></i> Report';
+  const dropId='recapDrop_'+i;
+  return `<div style="margin-top:6px"><button class="report-link" id="recapReportBtn_${i}" style="font-size:11px;${btnStyle}" onclick="toggleRecapReport(${i})" ${already?'disabled':''}>${btnLabel}</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="rr${i}" value="${v}"> ${v==='wrong'?'Wrong answer marked correct':v==='unclear'?'Unclear or ambiguous':v==='outdated'?'Information is outdated':v==='duplicate'?'Duplicate question':'Other'}</label>`).join('')}</div><textarea class="report-textarea" id="rrDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="rrBtn_${i}" onclick="submitRecapReport(${i},'${qid||''}')">Submit report</button></div></div>`;
+}
+function toggleRecapReport(i){
+  const drop=document.getElementById('recapDrop_'+i);
+  if(drop)drop.classList.toggle('open');
+}
+async function submitRecapReport(i,qid){
+  const btn=document.getElementById('rrBtn_'+i);
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  const reasonEl=document.querySelector(`input[name="rr${i}"]:checked`);
+  const reason=reasonEl?reasonEl.value:'other';
+  const detail=document.getElementById('rrDetail_'+i)?.value?.trim()||'';
+  const id=qid||quizHistory[i]?.id;
+  if(id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    await sb.rpc('increment_report_count',{question_id:id}).catch(async()=>{
+      const{data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
+      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
+    });
+    await sb.from('question_reports').insert({
+      question_id:id,reason,detail:detail||null,reported_by:currentUser||null
+    }).catch(()=>{});
+  }
+  if(id)reportedQuestionIds.add(id);
+  document.getElementById('recapDrop_'+i)?.classList.remove('open');
+  const flagBtn=document.getElementById('recapReportBtn_'+i);
+  if(flagBtn){flagBtn.disabled=true;flagBtn.style.opacity='.5';flagBtn.style.cursor='not-allowed';flagBtn.style.pointerEvents='none';flagBtn.innerHTML='<i class="ti ti-flag" style="font-size:11px"></i> Reported';}
+}
 function buildRecap(){
   const list=document.getElementById('recapList');list.innerHTML='';
   quizHistory.forEach((a,i)=>{
     const item=document.createElement('div');item.className='recap-item '+(a.correct?'correct':'wrong');
-    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div></div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div>${a.id?buildRecapReportUI(i,a.id):''}</div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
     list.appendChild(item);
   });
 }
@@ -5360,6 +5393,7 @@ async function flagQuestion(){
   _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
   document.body.appendChild(_ft);
   setTimeout(()=>_ft.remove(),3000);
+  if(currentQData?.id)reportedQuestionIds.add(currentQData.id);
   btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged';
 }
 
@@ -6331,6 +6365,7 @@ async function flagMpQuestion(){
   _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
   document.body.appendChild(_ft);
   setTimeout(()=>_ft.remove(),3000);
+  if(currentQData?.id)reportedQuestionIds.add(currentQData.id);
   btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged';
 }
 
@@ -6353,37 +6388,9 @@ function renderMpRecap(){
     item.className='recap-item '+(a.correct?'correct':'wrong');
     const reportId='mpRecapReport_'+i;
     const dropId='mpRecapDrop_'+i;
-    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div><div style="margin-top:6px"><button class="report-link" style="font-size:11px" onclick="toggleMpRecapReport(${i})"><i class="ti ti-alert-circle" style="font-size:11px"></i> Report</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="mprr${i}" value="${v}"> ${v.charAt(0).toUpperCase()+v.slice(1).replace('wrong','Wrong answer marked correct').replace('unclear','Unclear or ambiguous').replace('outdated','Information is outdated').replace('duplicate','Duplicate question').replace('other','Other')}</label>`).join('')}</div><textarea class="report-textarea" id="mpRRDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="mpRRBtn_${i}" onclick="submitMpRecapReport(${i},'${a.id||''}')">Submit report</button></div></div></div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div>${a.id?buildRecapReportUI(i,a.id):''}</div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
     list.appendChild(item);
   });
-}
-
-function toggleMpRecapReport(i){
-  const drop=document.getElementById('mpRecapDrop_'+i);
-  if(drop)drop.classList.toggle('open');
-}
-
-async function submitMpRecapReport(i,qid){
-  const btn=document.getElementById('mpRRBtn_'+i);
-  btn.disabled=true;btn.textContent='Submitting…';
-  const reasonEl=document.querySelector(`input[name="mprr${i}"]:checked`);
-  const reason=reasonEl?reasonEl.value:'other';
-  const detail=document.getElementById('mpRRDetail_'+i)?.value?.trim()||'';
-  const id=qid||quizHistory[i]?.id;
-  if(id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.rpc('increment_report_count',{question_id:id}).catch(async()=>{
-      const {data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
-      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
-    });
-    await sb.from('question_reports').insert({
-      question_id:id,reason,detail:detail||null,reported_by:currentUser||null
-    }).catch(()=>{});
-  }
-  btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('mpRecapDrop_'+i)?.classList.remove('open');
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
 }
 
 // ── LEADERBOARD ──────────────────────────────────────────────
@@ -7246,7 +7253,7 @@ function startLobbyGame(){
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
