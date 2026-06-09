@@ -8855,32 +8855,42 @@ function adminImportParse(){
     document.getElementById('adminImportActions').style.display='none';
     return;
   }
+  // Strip Postgres type casts (e.g. '...'::jsonb, '...'::text) so they don't
+  // interfere with column splitting — the values themselves are what we need.
+  const cleaned=raw.replace(/'::[\w]+/g,"'");
   // Extract all value rows from one or more INSERT blocks
   // Match each (...) row between VALUES and ON CONFLICT / semicolon
-  const valueBlocks=raw.match(/VALUES\s*([\s\S]*?)(?:ON CONFLICT|;|$)/gi)||[];
-  const rowRe=/\(('(?:[^']|'')*'|NULL)(?:\s*,\s*('(?:[^']|'')*'|NULL))*\)/g;
+  const valueBlocks=cleaned.match(/VALUES\s*([\s\S]*?)(?:ON CONFLICT|;|$)/gi)||[];
+  // Allow quoted strings, NULL, or bare numbers (integers/decimals) as column values
+  const rowRe=/\(('(?:[^']|'')*'|NULL|-?\d+(?:\.\d+)?)(?:\s*,\s*('(?:[^']|'')*'|NULL|-?\d+(?:\.\d+)?))*\)/g;
   const allRows=[];
   valueBlocks.forEach(block=>{
+    rowRe.lastIndex=0; // reset /g state for each new block
     let m;
     while((m=rowRe.exec(block))!==null){
       allRows.push(m[0]);
     }
   });
-  // Parse each row into a question object
-  // Column order: question, options, answer, aliases, format, topic_type, topic_value, difficulty, report_count, submitted_by, status
+  // Parse each row into a question object.
+  // Read the column list from the INSERT statement so the parser works regardless
+  // of whether the export includes an `id` column or uses a different order.
   const parseVal=s=>{
     if(!s||s.trim()==='NULL')return null;
-    // Strip outer quotes and unescape ''
-    const stripped=s.trim().replace(/^'/,'').replace(/'(?:::jsonb)?$/,'').replace(/''/g,"'");
-    return stripped;
+    const t=s.trim();
+    if(/^-?\d+(?:\.\d+)?$/.test(t))return t; // bare number
+    return t.replace(/^'/,'').replace(/'$/,'').replace(/''/g,"'");
   };
   const parseJsonb=s=>{
     if(!s||s.trim()==='NULL')return null;
-    try{return JSON.parse(s.trim().replace(/^'/,'').replace(/'(?:::jsonb)?$/,'').replace(/''/g,"'"));}catch(e){return null;}
+    try{return JSON.parse(s.trim().replace(/^'/,'').replace(/'$/,'').replace(/''/g,"'"));}catch(e){return null;}
   };
-  allRows.forEach(row=>{
-    // Split on commas that are not inside quotes or brackets
-    const inner=row.slice(1,-1); // strip outer parens
+  // Extract column names from INSERT INTO questions (...) — strip quotes/backticks
+  const colNamesMatch=cleaned.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+  const colNames=colNamesMatch
+    ? colNamesMatch[1].split(',').map(c=>c.trim().replace(/^["'`]|["'`]$/g,'').toLowerCase())
+    : ['question','options','answer','aliases','format','topic_type','topic_value','difficulty','report_count','submitted_by','status'];
+  // Helper: split a row's inner text on commas not inside quotes or brackets
+  const splitCols=inner=>{
     const cols=[];
     let depth=0,inQ=false,cur='';
     for(let i=0;i<inner.length;i++){
@@ -8896,19 +8906,24 @@ function adminImportParse(){
       cur+=c;
     }
     if(cur.trim())cols.push(cur.trim());
-    if(cols.length<11)return;
+    return cols;
+  };
+  allRows.forEach(row=>{
+    const cols=splitCols(row.slice(1,-1));
+    if(cols.length<colNames.length)return;
+    const get=(name,parser=parseVal)=>parser(cols[colNames.indexOf(name)]??null);
     const q={
-      question:parseVal(cols[0]),
-      options:parseJsonb(cols[1]),
-      answer:parseVal(cols[2]),
-      aliases:parseJsonb(cols[3]),
-      format:parseVal(cols[4]),
-      topic_type:parseVal(cols[5]),
-      topic_value:parseVal(cols[6]),
-      difficulty:parseVal(cols[7]),
+      question:get('question'),
+      options:get('options',parseJsonb),
+      answer:get('answer'),
+      aliases:get('aliases',parseJsonb),
+      format:get('format'),
+      topic_type:get('topic_type'),
+      topic_value:get('topic_value'),
+      difficulty:get('difficulty'),
       report_count:0,
-      submitted_by:parseVal(cols[9]),
-      status:parseVal(cols[10])||'approved'
+      submitted_by:get('submitted_by'),
+      status:get('status')||'approved'
     };
     if(q.question&&q.answer&&q.format)_importParsed.push(q);
   });
@@ -8931,10 +8946,10 @@ function adminImportParse(){
       +newQs.slice(0,10).map((q,i)=>'<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
         +'<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.4">'+(i+1)+'. '+q.question+'</div>'
         +'<div style="font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap">'
-        +'<span>✅ '+q.answer+'</span>'
+        +'<span>✅ '+(q.options&&q.answer!==null?q.options[parseInt(q.answer)]||q.answer:q.answer)+'</span>'
         +'<span>'+({mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'}[q.format]||q.format)+'</span>'
         +(q.topic_value?'<span>📺 '+q.topic_value+'</span>':'')
-        +'<span>'+( q.difficulty||'normal')+'</span>'
+        +'<span>'+(q.difficulty||'normal')+'</span>'
         +'</div>'
         +'</div>').join('')
       +(newQs.length>10?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:6px">…and '+(newQs.length-10)+' more</div>':'');
@@ -8943,11 +8958,18 @@ function adminImportParse(){
     document.getElementById('adminImportResult').style.display='none';
   } else {
     preview.style.display='none';
-    document.getElementById('adminImportActions').style.display=_importParsed.length>0?'flex':'none';
     if(_importParsed.length>0){
+      // All parsed questions already exist — show a clear explanation and offer force-import
+      document.getElementById('adminImportActions').style.display='flex';
       document.getElementById('adminImportBtn').disabled=true;
-      document.getElementById('adminImportResult').style.display='block';
-      document.getElementById('adminImportResult').textContent='All questions already exist in the database.';
+      document.getElementById('adminImportBtn').style.opacity='.45';
+      const result=document.getElementById('adminImportResult');
+      result.style.display='block';
+      result.style.color='var(--muted)';
+      result.innerHTML='⚠️ All '+_importParsed.length+' question'+(1===_importParsed.length?'':'s')+' already exist in the database — nothing new to import.'
+        +'<br><span style="font-size:11px">If you expected new questions, check that the question text doesn\'t match existing entries.</span>';
+    } else {
+      document.getElementById('adminImportActions').style.display='none';
     }
   }
   applyTheme();
