@@ -4762,13 +4762,14 @@ async function submitRecapReport(i,qid){
   const detail=document.getElementById('rrDetail_'+i)?.value?.trim()||'';
   const id=qid||quizHistory[i]?.id;
   if(id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.rpc('increment_report_count',{question_id:id}).catch(async()=>{
-      const{data}=await sb.from('questions').select('report_count').eq('id',id).single().catch(()=>({data:null}));
-      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',id).catch(()=>{});
-    });
+    const{error:rpcErr}=await sb.rpc('increment_report_count',{question_id:id});
+    if(rpcErr){
+      const{data:qRow}=await sb.from('questions').select('report_count').eq('id',id).single();
+      if(qRow)await sb.from('questions').update({report_count:(qRow.report_count||0)+1}).eq('id',id);
+    }
     await sb.from('question_reports').insert({
       question_id:id,reason,detail:detail||null,reported_by:currentUser||null
-    }).catch(()=>{});
+    });
   }
   if(id)reportedQuestionIds.add(id);
   document.getElementById('recapDrop_'+i)?.classList.remove('open');
