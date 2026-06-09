@@ -4171,7 +4171,7 @@ function renderSelectedTags(){
   const tags=document.getElementById('topicSelectedTags');
   if(selectedTopics.length===0){wrap.style.display='none';return;}
   wrap.style.display='flex';
-  tags.innerHTML=selectedTopics.map(t=>`<div class="topic-tag">${t.emoji} ${t.name}<button class="topic-tag-remove" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"><i class="ti ti-x"></i></button></div>`).join('');
+  tags.innerHTML=selectedTopics.map(t=>`<div class="topic-tag">${t.name}<button class="topic-tag-remove" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"><i class="ti ti-x"></i></button></div>`).join('');
 }
 
 function updateProceedBtn(){
@@ -4198,7 +4198,7 @@ function proceedFromTopic(){
   const pill=txt=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:800;color:var(--accent)">${txt}</span>`;
   let pills='';
   if(isGeneralSelected){pills+=pill('🌐 General Anime');}
-  else if(selectedTopics.length>0){pills+=selectedTopics.map(t=>pill(`${t.emoji} ${t.name}`)).join('');}
+  else if(selectedTopics.length>0){pills+=selectedTopics.map(t=>pill(t.name)).join('');}
   badge.innerHTML=pills;badge.style.display='flex';
   showTimeLimitPicker(pendingMode);
 }
@@ -8276,8 +8276,11 @@ async function loadAdminData(){
       .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
       .limit(5000);
     adminLite=data||[];
-    // Derive canonical topic lists from live data so they are never stale
-    const _animeSet=new Set(),_genreSet=new Set();
+    // Seed from canonical emoji maps so zero-question topics always appear in coverage
+    const _titleCase=k=>k.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    const _animeSet=new Set(Object.keys(animeEmojiMap).map(_titleCase));
+    const _genreSet=new Set(Object.keys(genreEmojiMap).map(_titleCase));
+    // Union live data so topics added via question submissions also appear
     adminLite.forEach(r=>{
       if(!r.topic_value)return;
       if(r.topic_type==="anime")_animeSet.add(r.topic_value);
