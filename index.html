@@ -6996,7 +6996,7 @@ function renderLobbyTopicList(filter=''){
   list.innerHTML=items.map(t=>{
     const sel=lobbyTopics.some(s=>s.key===t.key);
     const cnt=t.counts?t.counts[lobbyFormat]||0:null;
-    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
     return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
       <div class="topic-result-left"><span>${t.name}</span></div>
       ${badge}<i class="ti ti-check topic-result-check"></i>
@@ -7193,8 +7193,8 @@ function gsRenderTopicList(){
   list.innerHTML=items.map(t=>{
     const sel=lobbyTopics.some(s=>s.key===t.key);
     const cnt=t.counts?t.counts[lobbyFormat]||0:null;
-    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0">${cnt}Q</span>`:'';
-    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.emoji} ${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
+    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
   }).join('');
 }
 function gsTopicToggle(key,emoji,name,type){
