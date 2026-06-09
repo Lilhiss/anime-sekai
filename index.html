@@ -1377,19 +1377,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       </div>
       <div class="answers" id="answersGrid"></div>
       <div style="text-align:right">
-        <button class="report-link" onclick="toggleReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
-        <div class="report-drop" id="reportDrop">
-          <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px">What's the issue?</div>
-          <div class="report-opts">
-            <label class="report-opt"><input type="radio" name="rpt" value="wrong"> Wrong answer marked correct</label>
-            <label class="report-opt"><input type="radio" name="rpt" value="unclear"> Question is unclear or ambiguous</label>
-            <label class="report-opt"><input type="radio" name="rpt" value="outdated"> Information is outdated</label>
-            <label class="report-opt"><input type="radio" name="rpt" value="duplicate"> Duplicate question</label>
-            <label class="report-opt"><input type="radio" name="rpt" value="other"> Other</label>
-          </div>
-          <textarea class="report-textarea" id="reportDetail" rows="2" placeholder="Optional: describe the issue..."></textarea>
-          <button class="report-submit" id="reportSubmitBtn" onclick="submitReport()">Submit report</button>
-        </div>
+        <button class="report-link" id="reportFlagBtn" onclick="flagQuestion()"><i class="ti ti-flag" style="font-size:13px"></i> Flag this question</button>
       </div>
     </div>
   </div>
@@ -1701,19 +1689,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div class="answers" id="mpAnswersGrid"></div>
         <div id="mpReportWrap" style="display:none;text-align:right;margin-top:4px">
-          <button class="report-link" onclick="toggleMpReport()"><i class="ti ti-alert-circle" style="font-size:13px"></i> Problem with this question?</button>
-          <div class="report-drop" id="mpReportDrop">
-            <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px">What's the issue?</div>
-            <div class="report-opts">
-              <label class="report-opt"><input type="radio" name="mprpt" value="wrong"> Wrong answer marked correct</label>
-              <label class="report-opt"><input type="radio" name="mprpt" value="unclear"> Question is unclear or ambiguous</label>
-              <label class="report-opt"><input type="radio" name="mprpt" value="outdated"> Information is outdated</label>
-              <label class="report-opt"><input type="radio" name="mprpt" value="duplicate"> Duplicate question</label>
-              <label class="report-opt"><input type="radio" name="mprpt" value="other"> Other</label>
-            </div>
-            <textarea class="report-textarea" id="mpReportDetail" rows="2" placeholder="Optional: describe the issue..."></textarea>
-            <button class="report-submit" id="mpReportSubmitBtn" onclick="submitMpReport()">Submit report</button>
-          </div>
+          <button class="report-link" id="mpReportFlagBtn" onclick="flagMpQuestion()"><i class="ti ti-flag" style="font-size:13px"></i> Flag this question</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px">
@@ -2837,7 +2813,7 @@ function applyTheme(){
   const light=!isDark;
   document.getElementById('logoMark').style.color='';
   const em=document.getElementById('entryLogoMark');if(em)em.style.color='';
-  ['guestSubmitBtn','signinSubmitBtn','regSubmitBtn','reportSubmitBtn','nextBtn','playAgainBtn','profileCtaBtn'].forEach(id=>{
+  ['guestSubmitBtn','signinSubmitBtn','regSubmitBtn','nextBtn','playAgainBtn','profileCtaBtn'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.color=light?'#fff':'';
   });
   document.querySelectorAll('.type-submit,.form-submit').forEach(el=>el.style.color=light?'#fff':'');
@@ -4539,7 +4515,6 @@ async function loadQuestion(){
   answered=false;
   clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
   document.getElementById('qCardFeedback').style.display='none';
-  document.getElementById('reportDrop').classList.remove('open');
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
@@ -4691,19 +4666,7 @@ function nextQuestion(){
   loadQuestion();
 }
 
-function toggleReport(){
-  const drop=document.getElementById('reportDrop');
-  const isOpening=!drop.classList.contains('open');
-  drop.classList.toggle('open');
-  // Pause auto-next while report is open, resume when closed
-  if(isOpening){
-    soloAutoNextPaused=true;
-    const el=document.getElementById('soloAutoNext');
-    if(el)el.textContent='Paused';
-  } else {
-    soloAutoNextPaused=false;
-  }
-}
+// toggleReport removed -- replaced by flagQuestion()
 function endQuiz(){
   clearInterval(timerInterval);clearInterval(soloAutoNextInterval);
   // Update lifetime stats
@@ -5293,27 +5256,25 @@ function launchConfetti(){
     document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
   },i*30);}
 }
-async function submitReport(){
-  const btn=document.getElementById('reportSubmitBtn');
-  btn.disabled=true;btn.textContent='Submitting…';
-  const reasonEl=document.querySelector('input[name="rpt"]:checked');
-  const reason=reasonEl?reasonEl.value:'other';
-  const detail=document.getElementById('reportDetail')?.value?.trim()||'';
+async function flagQuestion(){
+  const btn=document.getElementById('reportFlagBtn');
+  if(!btn||btn.disabled)return;
+  btn.disabled=true;
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
     await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
+      question_id:currentQData.id,reason:'other',detail:null,reported_by:currentUser||null
     }).catch(()=>{});
   }
-  btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('reportDrop').classList.remove('open');
-    soloAutoNextPaused=false;
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
+  const _ft=document.createElement('div');
+  _ft.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
+  _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
+  document.body.appendChild(_ft);
+  setTimeout(()=>_ft.remove(),3000);
+  btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged';
 }
 
 // ── SUPABASE REALTIME ─────────────────────────────────────────
@@ -5706,7 +5667,6 @@ function rtSubscribe(lobbyId){
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
     document.getElementById('mpQCardFeedback').style.display='none';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
-    const mpRdNQ=document.getElementById('mpReportDrop');if(mpRdNQ)mpRdNQ.classList.remove('open');
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
@@ -6267,31 +6227,25 @@ function mpStartAutoNext(onDone){
   },1000);
 }
 
-function toggleMpReport(){
-  const drop=document.getElementById('mpReportDrop');
-  drop.classList.toggle('open');
-}
-
-async function submitMpReport(){
-  const btn=document.getElementById('mpReportSubmitBtn');
-  btn.disabled=true;btn.textContent='Submitting…';
-  const reasonEl=document.querySelector('input[name="mprpt"]:checked');
-  const reason=reasonEl?reasonEl.value:'other';
-  const detail=document.getElementById('mpReportDetail')?.value?.trim()||'';
+async function flagMpQuestion(){
+  const btn=document.getElementById('mpReportFlagBtn');
+  if(!btn||btn.disabled)return;
+  btn.disabled=true;
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
     await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason,detail:detail||null,reported_by:currentUser||null
+      question_id:currentQData.id,reason:'other',detail:null,reported_by:currentUser||null
     }).catch(()=>{});
   }
-  btn.textContent='Reported — thank you!';
-  setTimeout(()=>{
-    document.getElementById('mpReportDrop').classList.remove('open');
-    btn.textContent='Submit report';btn.disabled=false;
-  },2000);
+  const _ft=document.createElement('div');
+  _ft.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
+  _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
+  document.body.appendChild(_ft);
+  setTimeout(()=>_ft.remove(),3000);
+  btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged';
 }
 
 let mpRecapOpen=true;
@@ -7540,7 +7494,6 @@ function mpShowQuestion(qData,hpFuse){
   document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
-  const mpRdSQ=document.getElementById('mpReportDrop');if(mpRdSQ)mpRdSQ.classList.remove('open');
   document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
@@ -7686,9 +7639,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   // Show report button, reset any previously open dropdown
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
-  const rb=document.getElementById('mpReportSubmitBtn');if(rb){rb.textContent='Submit report';rb.disabled=false;}
-  document.querySelectorAll('input[name="mprpt"]').forEach(r=>r.checked=false);
-  const rdt=document.getElementById('mpReportDetail');if(rdt)rdt.value='';
+  const rb=document.getElementById('mpReportFlagBtn');if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;}
   document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const title=override||(playerName?(playerName+(correct?' got it!':' missed!')):correct?'Correct!':'Wrong!');
   document.getElementById('mpFbTitle').textContent=title;
@@ -7738,7 +7689,6 @@ async function mpLoadQuestion(){
   lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
-  const mpRdLQ=document.getElementById('mpReportDrop');if(mpRdLQ)mpRdLQ.classList.remove('open');
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
