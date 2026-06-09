@@ -9314,12 +9314,12 @@ function pgBuildPrompt(){
   const modal=document.getElementById('promptGenModal');
   if(!modal)return'';
   const{_topicValue:tv,_topicType:tt,_diff:diff,_fmts:fmts,_qty:qty}=modal;
-  if(!diff||!fmts.size||!qty)return'(configure difficulty, format, and quantity above)';
-  const fmtLabelMap={mc:'Multiple Choice',type:'Type Answer',char:'Name Character'};
+  if(!fmts.size||!qty)return'(configure format and quantity above)';
   const fmtValList=[...fmts];
   const blocks=fmtValList.map(f=>{
     const perFmt=fmtValList.length>1?Math.round(qty/fmtValList.length):qty;
-    return'Generate '+perFmt+' '+diff+' '+fmtLabelMap[f]+' questions about '+tt+' "'+tv+'".\n- format: \''+f+'\'\n- topic_type: \''+tt+'\'\n- topic_value: \''+tv+'\'\n- difficulty: \''+diff.toLowerCase()+'\'\nFollow all quality rules and output only the SQL INSERT.';
+    const diffLine=diff?'\nDifficulty: '+diff.toLowerCase():'';
+    return'Generate exactly '+perFmt+' trivia questions.\nTopic type: '+tt+'\nTopic value: '+tv+'\nFormat: '+f+diffLine+'\nOutput only the SQL INSERT statement.';
   });
   return blocks.join('\n\n');
 }
