@@ -5662,6 +5662,7 @@ function rtSubscribe(lobbyId){
     mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();});
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
+    if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     currentQData=payload.qData;qIndex=payload.qIndex;
     document.getElementById('mpQLoading').style.display='none';
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
