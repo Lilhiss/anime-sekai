@@ -582,7 +582,11 @@ h1 .hi{color:var(--accent)}
 .gs-topic-search{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:8px}
 .gs-topic-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600}
 .gs-topic-search i{color:var(--muted);font-size:14px}
-.gs-topic-list{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:5px;padding-right:2px}
+.gs-topic-list{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:5px;padding-right:2px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.gs-topic-list::-webkit-scrollbar{width:4px}
+.gs-topic-list::-webkit-scrollbar-track{background:transparent}
+.gs-topic-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.gs-topic-list::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 .gs-topic-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .12s}
 .gs-topic-item:hover{border-color:var(--border2)}
 .gs-topic-item.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
@@ -7188,7 +7192,9 @@ function gsRenderTopicList(){
   if(!items.length){list.innerHTML='<div class="gs-topic-empty">No matches</div>';return;}
   list.innerHTML=items.map(t=>{
     const sel=lobbyTopics.some(s=>s.key===t.key);
-    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.emoji} ${t.name}</span><i class="ti ti-check gs-topic-item-check"></i></div>`;
+    const cnt=t.counts?t.counts[lobbyFormat]||0:null;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0">${cnt}Q</span>`:'';
+    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.emoji} ${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
   }).join('');
 }
 function gsTopicToggle(key,emoji,name,type){
@@ -7201,14 +7207,19 @@ function gsTopicToggle(key,emoji,name,type){
 async function gsEnsureTopics(){
   if(animeTopics.length||genreTopics.length)return;
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value&status=eq.approved&report_count=lt.3`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
     const data=await res.json();
     const animeSet=new Map(),genreSet=new Map();
     (data||[]).forEach(row=>{
       if(!row.topic_value)return;
       const name=row.topic_value,key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'&&!animeSet.has(key))animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime'});
-      else if(row.topic_type==='genre'&&!genreSet.has(key))genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre'});
+      if(row.topic_type==='anime'){
+        if(!animeSet.has(key))animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime',counts:{}});
+        const t=animeSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
+      } else if(row.topic_type==='genre'){
+        if(!genreSet.has(key))genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre',counts:{}});
+        const t=genreSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
+      }
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
     genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
