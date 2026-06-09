@@ -270,9 +270,12 @@ h1 .hi{color:var(--accent)}
 .report-drop{display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-top:8px}
 .report-drop.open{display:block}
 .report-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.report-opt{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .15s}
+.report-opt{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .15s,color .15s}
 .report-opt:hover{background:var(--bg3);color:var(--text)}
-.report-opt input{accent-color:var(--accent)}
+.report-opt input[type="radio"]{appearance:none;-webkit-appearance:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);background:var(--bg3);flex-shrink:0;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.report-opt input[type="radio"]:checked{border-color:var(--accent);background:var(--accent)}
+.report-opt input[type="radio"]:checked::after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;top:50%;left:50%;transform:translate(-50%,-50%)}
+.report-opt:has(input:checked){background:var(--accent-soft);color:var(--text)}
 .report-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:12px;resize:none;margin-bottom:10px;outline:none}
 .report-textarea:focus{border-color:var(--accent)}
 .report-submit{font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;background:var(--accent);border:none;padding:7px 16px;border-radius:8px;cursor:pointer;transition:opacity .2s}
@@ -4748,7 +4751,7 @@ function buildRecapReportUI(i, qid){
   const btnStyle=already?'opacity:.5;cursor:not-allowed;pointer-events:none':'';
   const btnLabel=already?'<i class="ti ti-flag" style="font-size:11px"></i> Reported':'<i class="ti ti-alert-circle" style="font-size:11px"></i> Report';
   const dropId='recapDrop_'+i;
-  return `<div style="margin-top:6px"><button class="report-link" id="recapReportBtn_${i}" style="font-size:11px;${btnStyle}" onclick="toggleRecapReport(${i})" ${already?'disabled':''}>${btnLabel}</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map(v=>`<label class="report-opt"><input type="radio" name="rr${i}" value="${v}"> ${v==='wrong'?'Wrong answer marked correct':v==='unclear'?'Unclear or ambiguous':v==='outdated'?'Information is outdated':v==='duplicate'?'Duplicate question':'Other'}</label>`).join('')}</div><textarea class="report-textarea" id="rrDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="rrBtn_${i}" onclick="submitRecapReport(${i},'${qid||''}')">Submit report</button></div></div>`;
+  return `<div style="margin-top:6px"><button class="report-link" id="recapReportBtn_${i}" style="font-size:11px;${btnStyle}" onclick="toggleRecapReport(${i})" ${already?'disabled':''}>${btnLabel}</button><div class="report-drop" id="${dropId}"><div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px">What's the issue?</div><div class="report-opts">${['wrong','unclear','outdated','duplicate','other'].map((v,vi)=>`<label class="report-opt"><input type="radio" name="rr${i}" value="${v}"${vi===0?' checked':''}> ${v==='wrong'?'Wrong answer marked correct':v==='unclear'?'Unclear or ambiguous':v==='outdated'?'Information is outdated':v==='duplicate'?'Duplicate question':'Other'}</label>`).join('')}</div><textarea class="report-textarea" id="rrDetail_${i}" rows="2" placeholder="Optional: describe the issue..."></textarea><button class="report-submit" id="rrBtn_${i}" onclick="submitRecapReport(${i},&apos;${qid||''}&apos;)">Submit report</button></div></div>`;
 }
 function toggleRecapReport(i){
   const drop=document.getElementById('recapDrop_'+i);
