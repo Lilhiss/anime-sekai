@@ -903,9 +903,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-pager-info{font-size:12px;font-weight:700;color:var(--muted)}
 .admin-cov-group{margin-bottom:18px}
 .admin-cov-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.admin-cov-row{display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:11px;padding:10px 14px;margin-bottom:6px;backdrop-filter:blur(8px)}
+.admin-cov-row{display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:11px;padding:10px 14px;margin-bottom:6px;backdrop-filter:blur(8px);transition:border-color .15s,background .15s}
 .admin-cov-row.thin{border-color:#fbbf24}
 .admin-cov-row.empty{border-color:#f87171}
+.admin-cov-row.cov-selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--card-bg))}
+.cov-cb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:5px;border:2px solid var(--border2);background:var(--bg3);flex-shrink:0;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.cov-cb:checked{border-color:var(--accent);background:var(--accent)}
+.cov-cb:checked::after{content:'';position:absolute;width:4px;height:7px;border:2px solid #fff;border-top:none;border-left:none;top:1px;left:4px;transform:rotate(45deg)}
 .admin-cov-name{flex:1;font-size:13px;font-weight:700;color:var(--text)}
 .admin-cov-fmts{font-size:11px;color:var(--muted);font-weight:700;text-align:right;white-space:nowrap}
 .admin-cov-total{font-family:'Lilita One',cursive;font-size:16px;color:var(--accent);min-width:34px;text-align:right}
@@ -8632,20 +8636,58 @@ async function dismissAdminSuggestion(id){
   }
 }
 
+let covSelectedTopics=new Set();
+function toggleCovRow(name,el){
+  const row=el.closest('.admin-cov-row');
+  if(el.checked){covSelectedTopics.add(name);row.classList.add('cov-selected');}
+  else{covSelectedTopics.delete(name);row.classList.remove('cov-selected');}
+  updateCovBulkBar();
+}
+function updateCovBulkBar(){
+  let bar=document.getElementById('covBulkBar');
+  if(covSelectedTopics.size===0){if(bar)bar.remove();return;}
+  if(!bar){
+    bar=document.createElement('div');bar.id='covBulkBar';bar.className='admin-bulk-bar';
+    const cov=document.getElementById('adminCoverage');cov.prepend(bar);
+  }
+  bar.innerHTML='<span class="admin-bulk-bar-count">'+covSelectedTopics.size+' topic'+(covSelectedTopics.size===1?'':'s')+' selected</span>'
+    +'<button class="admin-bulk-btn danger" onclick="deleteCovTopics()"><i class="ti ti-trash" style="font-size:13px"></i> Delete selected</button>'
+    +'<button class="admin-bulk-btn" onclick="clearCovSelection()"><i class="ti ti-x" style="font-size:13px"></i> Cancel</button>';
+}
+function clearCovSelection(){
+  covSelectedTopics.clear();
+  document.querySelectorAll('.cov-cb').forEach(cb=>{cb.checked=false;cb.closest('.admin-cov-row').classList.remove('cov-selected');});
+  updateCovBulkBar();
+}
+async function deleteCovTopics(){
+  if(!covSelectedTopics.size)return;
+  const names=[...covSelectedTopics];
+  const preview=names.slice(0,3).map(n=>'"'+n+'"').join(', ')+(names.length>3?' and '+(names.length-3)+' more':'');
+  if(!confirm('Delete '+preview+' from the topics table? This will not delete their questions.'))return;
+  const{error}=await sb.from('topics').delete().in('name',names);
+  if(error){alert('Delete failed: '+error.message);return;}
+  names.forEach(n=>{
+    const idx=ADMIN_ANIME_TOPICS.indexOf(n);if(idx>-1)ADMIN_ANIME_TOPICS.splice(idx,1);
+    const idx2=ADMIN_GENRE_TOPICS.indexOf(n);if(idx2>-1)ADMIN_GENRE_TOPICS.splice(idx2,1);
+  });
+  covSelectedTopics.clear();
+  renderAdminCoverage();
+}
 function renderAdminCoverage(){
+  covSelectedTopics.clear();
   const cov=document.getElementById('adminCoverage');
   const approved=adminLite.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r,exportKey)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+'\',' +'\''+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'"><span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
+  const rowHTML=(r,exportKey,deletable=true)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const cb=deletable?'<input type="checkbox" class="cov-cb" onchange="toggleCovRow('+JSON.stringify(r.name)+',this)">':'';const gpBtn='<button onclick="openPromptGenerator(''+r.name.replace(/'/g,"\'")+'','+'''+topicType+'')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(''+exportKey+'')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'">'+cb+'<span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
   const extrasHTML=extras.length?groupHTML('❓ Other topics (not in your canonical list)',extras):'';
-  cov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><button onclick="openCoverageGapPrompt()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-wand" style="font-size:14px"></i> Fill thinnest gap</button><span style="font-size:13px;color:var(--muted)">Opens the prompt generator pre-loaded with the topic that has the fewest questions.</span></div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next.</div>'
+  cov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><button onclick="openCoverageGapPrompt()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-wand" style="font-size:14px"></i> Fill thinnest gap</button><span style="font-size:13px;color:var(--muted)">Opens the prompt generator pre-loaded with the topic that has the fewest questions.</span></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next. Check a topic to delete it.</div>'
     +groupHTML('📺 Anime',ADMIN_ANIME_TOPICS)
     +groupHTML('🎭 Genre',ADMIN_GENRE_TOPICS)
-    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length},'__general__')+'</div>'
+    +'<div class="admin-cov-group"><div class="admin-cov-title">🌐 General Anime</div>'+rowHTML({name:'General Anime',total:approved.length,mc:approved.filter(q=>q.format==='mc').length,type:approved.filter(q=>q.format==='type').length,char:approved.filter(q=>q.format==='char').length},'__general__',false)+'</div>'
     +extrasHTML;
   applyTheme();
 }
