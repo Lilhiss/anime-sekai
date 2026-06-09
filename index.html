@@ -2428,11 +2428,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div id="sqBodySuggest" class="sq-scroll-body" style="display:none;flex:1;overflow-y:auto;padding:16px 28px;display:none;flex-direction:column;gap:12px">
         <div>
           <label class="form-label">Anime or Genre</label>
-          <input class="form-input" id="sqSuggestTopic" type="text" placeholder="e.g. Bleach, Mecha, Blue Lock…" autocomplete="off">
+          <input class="form-input" id="sqSuggestTopic" type="text" placeholder="e.g. Bleach, Mecha, Blue Lock…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitTopicSuggestion();}">
         </div>
         <div>
           <label class="form-label">Note <span class="optional-tag">Optional</span></label>
-          <input class="form-input" id="sqSuggestNote" type="text" placeholder="Any extra context or reason…">
+          <input class="form-input" id="sqSuggestNote" type="text" placeholder="Any extra context or reason…" onkeydown="if(event.key==='Enter'){event.preventDefault();submitTopicSuggestion();}">
         </div>
         <div class="form-err" id="sqSuggestErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqSuggestErrMsg"></span></div>
       </div>
@@ -5029,7 +5029,9 @@ function sqSwitchTab(tab){
   btn.onclick=isQ?submitQuestion:submitTopicSuggestion;
 }
 
+let _sqSuggestSubmitting=false;
 async function submitTopicSuggestion(){
+  if(_sqSuggestSubmitting)return;
   if(!currentUser||isGuest){
     showErr('sqSuggestErr','sqSuggestErrMsg','You need a registered account to suggest a topic.');
     return;
@@ -5037,6 +5039,9 @@ async function submitTopicSuggestion(){
   const topic=document.getElementById('sqSuggestTopic').value.trim();
   if(!topic){showErr('sqSuggestErr','sqSuggestErrMsg','Please enter an anime or genre name.');return;}
   const note=document.getElementById('sqSuggestNote').value.trim();
+  _sqSuggestSubmitting=true;
+  const btn=document.getElementById('sqSubmitBtn');
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';}
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
     let error;
     try{
@@ -5044,8 +5049,14 @@ async function submitTopicSuggestion(){
         topic,note:note||null,suggested_by:currentUser,created_at:new Date().toISOString()
       }));
     }catch(e){error=e;}
-    if(error){showErr('sqSuggestErr','sqSuggestErrMsg','Could not submit. Try again.');return;}
+    if(error){
+      _sqSuggestSubmitting=false;
+      if(btn){btn.disabled=false;btn.style.opacity='';}
+      showErr('sqSuggestErr','sqSuggestErrMsg','Could not submit. Try again.');return;
+    }
   }
+  _sqSuggestSubmitting=false;
+  if(btn){btn.disabled=false;btn.style.opacity='';}
   document.getElementById('submitQModal').style.display='none';
   document.getElementById('sqSuggestTopic').value='';
   document.getElementById('sqSuggestNote').value='';
