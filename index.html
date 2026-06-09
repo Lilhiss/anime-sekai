@@ -8177,6 +8177,8 @@ let adminReviewRows=[];  // current page of full rows for the active Review tab
 let adminBrowseRows=[];  // current page of full rows for Browse
 let adminBrowseTotal=0;  // server-reported total matching Browse filters (for pager)
 let adminBrowsePage=0;
+let adminTrueTotal=0;     // server-reported total question count (unaffected by row cap)
+let adminTrueApproved=0; // server-reported approved question count
 let adminReviewDateAsc=false; // false = newest first (default)
 let ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
@@ -8207,11 +8209,19 @@ async function loadAdminData(){
   const list=document.getElementById('adminQuestionList');
   if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
   try{
+    // Fetch lightweight rows for badges/coverage (capped at 1000 by PostgREST, that's fine)
     const {data}=await sb.from('questions')
       .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
-      .limit(10000);
+      .limit(1000);
     adminLite=data||[];
-  }catch(e){adminLite=[];}
+    // Fetch exact counts separately so the summary bar is never capped
+    const [{count:tc},{count:ac}]=await Promise.all([
+      sb.from('questions').select('id',{count:'exact',head:true}),
+      sb.from('questions').select('id',{count:'exact',head:true}).eq('status','approved')
+    ]);
+    adminTrueTotal=tc||0;
+    adminTrueApproved=ac||0;
+  }catch(e){adminLite=[];adminTrueTotal=0;adminTrueApproved=0;}
   renderAdminStats();renderAdminBadges();renderAdminSection();
 }
 
@@ -8260,27 +8270,33 @@ async function fetchReviewTab(){
   }
 }
 
-function _adminPopulateTopicDatalist(){
+async function _adminPopulateTopicDatalist(){
   const dl=document.getElementById('adminTopicList');
   if(!dl)return;
-  const sig=adminLite.length;
-  if(dl.dataset.sig===String(sig))return;
-  dl.dataset.sig=sig;
-  const animeSet=new Set(),genreSet=new Set();
-  adminLite.forEach(q=>{
-    if(!q.topic_value)return;
-    if(q.topic_type==='anime')animeSet.add(q.topic_value);
-    else if(q.topic_type==='genre')genreSet.add(q.topic_value);
-  });
-  const toOpts=(set)=>[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"></option>`).join('');
-  dl.innerHTML=toOpts(animeSet)+toOpts(genreSet);
+  // Fetch distinct topic values directly from the DB so the datalist is never
+  // limited by the adminLite row cap. Returns all unique topic_value entries
+  // regardless of how many total questions exist.
+  try{
+    const {data}=await sb.from('questions')
+      .select('topic_type,topic_value')
+      .not('topic_value','is',null)
+      .neq('topic_value','');
+    if(!data)return;
+    const animeSet=new Set(),genreSet=new Set();
+    data.forEach(q=>{
+      if(q.topic_type==='anime')animeSet.add(q.topic_value);
+      else if(q.topic_type==='genre')genreSet.add(q.topic_value);
+    });
+    const toOpts=(set)=>[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"></option>`).join('');
+    dl.innerHTML=toOpts(animeSet)+toOpts(genreSet);
+  }catch(e){}
 }
 // ── Browse fetcher — server-side filtered + paginated ─────────────────────────
 async function fetchAdminBrowse(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
-  _adminPopulateTopicDatalist();
+  await _adminPopulateTopicDatalist();
   const qstr=(document.getElementById('adminSearchInput')?.value||'').trim();
   adminHL=qstr.toLowerCase();
   const fmt=document.getElementById('adminFilterFormat')?.value||'';
@@ -8340,7 +8356,9 @@ function renderAdminStats(){
   set('ahPending',pending);set('ahReported',reported);set('ahSuspect',suspect);
   const glow=(id,n)=>{const el=document.getElementById(id);if(el)el.classList.toggle('glow',n>0);};
   glow('ahPendingItem',pending);glow('ahReportedItem',reported);glow('ahSuspectItem',suspect);
-  const total=src.length,approved=src.filter(q=>q.status==='approved').length,plays=src.reduce((s,q)=>s+(q.answer_count||0),0);
+  const plays=src.reduce((s,q)=>s+(q.answer_count||0),0);
+  const total=adminTrueTotal||src.length;
+  const approved=adminTrueApproved||src.filter(q=>q.status==='approved').length;
   const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved · '+plays.toLocaleString()+' plays';
 }
 function renderAdminBadges(){
