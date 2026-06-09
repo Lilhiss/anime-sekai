@@ -2355,14 +2355,20 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:480px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden">
       <!-- Fixed header -->
       <div style="padding:28px 28px 0;flex-shrink:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Submit a Question</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Contribute</div>
           <button onclick="document.getElementById('submitQModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
         </div>
-        <div style="font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
+        <!-- Tab switcher -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
+          <button id="sqTabQuestion" onclick="sqSwitchTab('question')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:10px;cursor:pointer;border:1.5px solid var(--accent);background:var(--accent);color:#fff;transition:all .2s"><i class="ti ti-pencil" style="font-size:13px"></i> Submit a Question</button>
+          <button id="sqTabSuggest" onclick="sqSwitchTab('suggest')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border2);background:none;color:var(--muted);transition:all .2s"><i class="ti ti-bulb" style="font-size:13px"></i> Suggest a Topic</button>
+        </div>
+        <div id="sqTabQuestionSub" style="font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
+        <div id="sqTabSuggestSub" style="display:none;font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Want to see more questions on a specific anime or genre? Let us know and we'll add it to the list!</div>
       </div>
-      <!-- Scrollable body -->
-      <div class="sq-scroll-body" style="flex:1;overflow-y:auto;padding:16px 28px;display:flex;flex-direction:column;gap:12px">
+      <!-- Scrollable body — Question tab -->
+      <div id="sqBodyQuestion" class="sq-scroll-body" style="flex:1;overflow-y:auto;padding:16px 28px;display:flex;flex-direction:column;gap:12px">
         <div>
           <label class="form-label">Question</label>
           <input class="form-input" id="sqQuestion" type="text" placeholder="What is the name of…">
@@ -2404,10 +2410,22 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
         <div class="form-err" id="sqErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqErrMsg"></span></div>
       </div>
+      <!-- Scrollable body — Suggest tab -->
+      <div id="sqBodySuggest" class="sq-scroll-body" style="display:none;flex:1;overflow-y:auto;padding:16px 28px;display:none;flex-direction:column;gap:12px">
+        <div>
+          <label class="form-label">Anime or Genre</label>
+          <input class="form-input" id="sqSuggestTopic" type="text" placeholder="e.g. Bleach, Mecha, Blue Lock…" autocomplete="off">
+        </div>
+        <div>
+          <label class="form-label">Note <span class="optional-tag">Optional</span></label>
+          <input class="form-input" id="sqSuggestNote" type="text" placeholder="Any extra context or reason…">
+        </div>
+        <div class="form-err" id="sqSuggestErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="sqSuggestErrMsg"></span></div>
+      </div>
       <!-- Fixed footer -->
       <div style="padding:16px 28px 24px;flex-shrink:0;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="document.getElementById('submitQModal').style.display='none'">Cancel</button>
-        <button class="action-btn primary" onclick="submitQuestion()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button>
+        <button id="sqSubmitBtn" class="action-btn primary" onclick="submitQuestion()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button>
       </div>
     </div>
   </div>
@@ -4921,10 +4939,61 @@ function openSubmitQuestion(){
     document.getElementById('submitSignInModal').style.display='flex';
   } else {
     document.getElementById('submitQModal').style.display='flex';
+    sqSwitchTab('question');
     sqInitForm();
     sqTopicCache=null; // refresh topics each time the modal opens
     sqLoadTopics();    // pre-fetch in background so first keystroke is instant
   }
+}
+
+function sqSwitchTab(tab){
+  const isQ=tab==='question';
+  // Tab buttons
+  const qBtn=document.getElementById('sqTabQuestion');
+  const sBtn=document.getElementById('sqTabSuggest');
+  qBtn.style.background=isQ?'var(--accent)':'none';
+  qBtn.style.color=isQ?'#fff':'var(--muted)';
+  qBtn.style.borderColor=isQ?'var(--accent)':'var(--border2)';
+  sBtn.style.background=isQ?'none':'var(--accent)';
+  sBtn.style.color=isQ?'var(--muted)':'#fff';
+  sBtn.style.borderColor=isQ?'var(--border2)':'var(--accent)';
+  // Subtitles
+  document.getElementById('sqTabQuestionSub').style.display=isQ?'block':'none';
+  document.getElementById('sqTabSuggestSub').style.display=isQ?'none':'block';
+  // Bodies
+  document.getElementById('sqBodyQuestion').style.display=isQ?'flex':'none';
+  document.getElementById('sqBodySuggest').style.display=isQ?'none':'flex';
+  // Footer button
+  const btn=document.getElementById('sqSubmitBtn');
+  btn.onclick=isQ?submitQuestion:submitTopicSuggestion;
+}
+
+async function submitTopicSuggestion(){
+  if(!currentUser||isGuest){
+    showErr('sqSuggestErr','sqSuggestErrMsg','You need a registered account to suggest a topic.');
+    return;
+  }
+  const topic=document.getElementById('sqSuggestTopic').value.trim();
+  if(!topic){showErr('sqSuggestErr','sqSuggestErrMsg','Please enter an anime or genre name.');return;}
+  const note=document.getElementById('sqSuggestNote').value.trim();
+  if(!SUPABASE_URL.includes('YOUR_PROJECT')){
+    let error;
+    try{
+      ({error}=await sb.from('topic_suggestions').insert({
+        topic,note:note||null,suggested_by:currentUser,created_at:new Date().toISOString()
+      }));
+    }catch(e){error=e;}
+    if(error){showErr('sqSuggestErr','sqSuggestErrMsg','Could not submit. Try again.');return;}
+  }
+  document.getElementById('submitQModal').style.display='none';
+  document.getElementById('sqSuggestTopic').value='';
+  document.getElementById('sqSuggestNote').value='';
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  toast.textContent='Topic suggestion received — thanks! 💡';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),3000);
+  applyTheme();
 }
 
 function openSubmitAuth(){
