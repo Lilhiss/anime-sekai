@@ -2321,6 +2321,36 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- ADMIN QUESTION PREVIEW MODAL -->
+  <div id="adminPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:1200;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAdminPreview()">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:22px;padding:28px 24px;width:100%;max-width:600px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">👁️</span>
+          <span style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">In-Game Preview</span>
+        </div>
+        <button onclick="closeAdminPreview()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <!-- Fake timer bar (static, 60% full) -->
+      <div class="timer-wrap"><div class="timer-bar" id="previewTimerBar" style="width:60%"></div></div>
+      <!-- Question card replica -->
+      <div class="q-card" id="previewQCard" style="min-height:unset">
+        <div class="q-card-top-meta">
+          <span class="q-card-meta-pill" id="previewQBadge"></span>
+          <span class="q-card-meta-pill">Q1</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px 0 8px">
+          <div class="q-text" id="previewQText"></div>
+        </div>
+      </div>
+      <!-- Answer area -->
+      <div id="previewAnswersWrap"></div>
+      <!-- Disclaimer -->
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-style:italic">This is a read-only preview — options are not interactive.</div>
+    </div>
+  </div>
+
   <!-- ADMIN EDIT QUESTION MODAL -->
   <div id="adminEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1100;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px;max-height:90vh;overflow-y:auto">
@@ -9060,6 +9090,7 @@ function buildAdminCard(q){
   const card=document.createElement('div');
   card.className='admin-q-card'+((isReported||isSuspect)?' reported':'')+(_bulkIds.has(String(q.id))?' bulk-selected bulk-mode':'');
   card.id=`adminCard_${q.id}`;
+  card.dataset.q=JSON.stringify({id:q.id,question:q.question,format:q.format,options:q.options||null,answer:q.answer,topic_value:q.topic_value||null,difficulty:q.difficulty||'normal'});
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_adminHL(o)}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${_adminHL(q.answer)}</div>`:'';
@@ -9072,7 +9103,7 @@ function buildAdminCard(q){
     ?`<span class="admin-report-counter"><i class="ti ti-chart-bar" style="font-size:12px"></i> ${Math.round(100*q.correct_count/q.answer_count)}% correct (${q.correct_count}/${q.answer_count})</span>`
     :'';
 
-  const editBtn=`<button class="admin-btn edit" onclick="openAdminEdit('${q.id}')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button>`;
+  const editBtn=`<button class="admin-btn edit" onclick="openAdminEdit('${q.id}')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button><button class="admin-btn edit" onclick="openAdminPreview('${q.id}')" title="Preview how this question looks in-game"><i class="ti ti-eye" style="font-size:12px"></i> Preview</button>`;
   const actionsHtml=editBtn+(isSuspect
     ?`<button class="admin-btn dismiss" onclick="adminClearStats('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Looks fine</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
@@ -9595,6 +9626,63 @@ async function quickSetDiff(id,val){
     await sb.from('questions').update({difficulty:val}).eq('id',id);
     const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.difficulty=val;
   });
+}
+
+// ── ADMIN QUESTION PREVIEW ────────────────────────────────────
+function openAdminPreview(id){
+  const card=document.getElementById('adminCard_'+id);
+  if(!card||!card.dataset.q)return;
+  let q;
+  try{q=JSON.parse(card.dataset.q);}catch(e){return;}
+
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  const diffEmoji={easy:'🟢',normal:'🟡',hard:'🔴'};
+  const topicStr=q.topic_value||'General Anime';
+  const diffStr=(diffEmoji[q.difficulty]||'🟡')+' '+(q.difficulty?q.difficulty.charAt(0).toUpperCase()+q.difficulty.slice(1):'Normal');
+
+  // Populate badge and question text
+  document.getElementById('previewQBadge').textContent=fmtLabel[q.format]||q.format;
+  document.getElementById('previewQText').textContent=q.question;
+
+  // Build the answer area depending on format
+  const wrap=document.getElementById('previewAnswersWrap');
+  if(q.format==='mc'&&q.options&&q.options.length){
+    // Multiple-choice: render the answers grid, correct option highlighted
+    const keys=['A','B','C','D'];
+    wrap.innerHTML='<div class="answers" style="pointer-events:none">'
+      +q.options.map((opt,i)=>{
+        const isCorrect=String(i)===String(q.answer);
+        return `<div class="ans locked${isCorrect?' correct':''}">
+          <div class="ans-key">${keys[i]||String.fromCharCode(65+i)}</div>
+          <div class="ans-text">${opt}</div>
+        </div>`;
+      }).join('')
+      +'</div>';
+  } else {
+    // Type / Char format: show answer reveal style
+    wrap.innerHTML=`<div style="text-align:center;padding:10px 0">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Correct Answer</div>
+      <div class="q-answer-reveal">${q.answer||'—'}</div>
+    </div>`;
+  }
+
+  // Footer info strip
+  document.getElementById('previewQCard').insertAdjacentHTML('beforeend',
+    `<div id="previewQFooter" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <span class="q-card-meta-pill">🎌 ${topicStr}</span>
+      <span class="q-card-meta-pill">${diffStr}</span>
+    </div>`
+  );
+
+  const modal=document.getElementById('adminPreviewModal');
+  modal.style.display='flex';
+  applyTheme();
+}
+function closeAdminPreview(){
+  document.getElementById('adminPreviewModal').style.display='none';
+  // Remove the dynamically-appended footer so it doesn't duplicate on next open
+  const footer=document.getElementById('previewQFooter');
+  if(footer)footer.remove();
 }
 
 applyTheme();
