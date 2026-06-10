@@ -1374,6 +1374,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
+        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
+          <img id="qImage" src="" alt="Question image" style="width:100%;height:auto;max-height:280px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+        </div>
         <!-- Inline feedback shown inside the card after answer/timeout -->
         <div id="qCardFeedback" style="display:none;margin-top:22px;text-align:center">
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
@@ -1685,6 +1688,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div id="mpQuestionArea" style="flex:1;display:flex;align-items:center;justify-content:center">
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
+          </div>
+          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
+            <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:280px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
           <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
@@ -4619,6 +4625,10 @@ function showQuestion(qData){
   document.getElementById('qLoading').style.display='none';
   document.getElementById('questionText').style.display='block';
   document.getElementById('questionText').textContent=qData.question||'Question unavailable';
+  const imgWrap=document.getElementById('qImageWrap');
+  const imgEl=document.getElementById('qImage');
+  if(qData.media_url){imgEl.src=qData.media_url;imgWrap.style.display='flex';}
+  else{imgWrap.style.display='none';imgEl.src='';}
   const grid=document.getElementById('answersGrid');grid.innerHTML='';
   const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
   if(isType){
@@ -7756,6 +7766,10 @@ function mpShowQuestion(qData,hpFuse){
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
   document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
+  const mpImgWrap=document.getElementById('mpQImageWrap');
+  const mpImgEl=document.getElementById('mpQImage');
+  if(qData.media_url){mpImgEl.src=qData.media_url;mpImgWrap.style.display='flex';}
+  else{mpImgWrap.style.display='none';mpImgEl.src='';}
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
   const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
   const isHP=lobbyMode==='potato';
