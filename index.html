@@ -4577,12 +4577,12 @@ async function sbGetQuestion(format,topic){
       const retryData=await retryRes.json();
       if(!Array.isArray(retryData)||!retryData.length)return null;
       const row=retryData[Math.floor(Math.random()*retryData.length)];
-      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null};
+      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null};
     }
     const filtered=data.filter(q=>!seenQs.includes(q.question));
     const pool=filtered.length?filtered:data;
     const row=pool[Math.floor(Math.random()*pool.length)];
-    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null};
+    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null};
   }catch(e){return null}
 }
 
