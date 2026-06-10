@@ -551,7 +551,7 @@ h1 .hi{color:var(--accent)}
 .lobby-cs-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .lobby-cs-start{height:100%;flex-direction:column;font-size:18px;gap:6px;text-shadow:0 2px 10px #0006;box-shadow:0 14px 32px color-mix(in srgb,var(--accent) 38%,transparent),inset 0 2px 7px #ffffff66;animation:logoGlow 3s ease-in-out infinite}
 @media(max-width:760px){.lobby-cs-row{grid-template-columns:1fr}}
-.gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
+.gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 .gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
 .gs-bigcard.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
 .gs-bc-emoji{font-size:30px;line-height:1;transition:transform .2s}
@@ -1289,9 +1289,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="topic-page-grid slide-in">
       <div class="topic-chips-row">
         <!-- General Anime chip -->
-        <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()" style="flex:1;padding:28px 24px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;min-height:220px;height:100%">
+        <div class="topic-general-opt" id="topicGeneralOpt" onclick="toggleGeneral()" style="flex:1;padding:28px 24px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;min-height:220px">
           <span style="font-size:52px">🌐</span>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
             <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text);letter-spacing:.3px">General Anime</div>
             <div style="font-size:13px;color:var(--muted);line-height:1.6">Questions from across the entire anime universe</div>
           </div>
@@ -7309,7 +7309,7 @@ function gsBuildTopicContent(){
   const content=document.getElementById('gsTopicContent');if(!content)return;
   content.dataset.sub=gsTopicSub;
   if(gsTopicSub==='general'){
-    content.innerHTML=`<div class="gs-bigcard${lobbyIsGeneral?' selected':''}" onclick="gsSetGeneral()" style="height:100%"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🌐</div><div class="gs-bc-title">General Anime</div><div class="gs-bc-desc">Questions from every anime and genre</div></div>`;
+    content.innerHTML=`<div class="gs-bigcard${lobbyIsGeneral?' selected':''}" onclick="gsSetGeneral()" style="height:100%"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji" style="font-size:52px">🌐</div><div class="gs-bc-title" style="font-size:22px;margin-top:8px">General Anime</div><div class="gs-bc-desc" style="font-size:13px">Questions from every anime and genre</div></div>`;
   } else {
     const ph=gsTopicSub==='anime'?'Search anime…':'Search genres…';
     content.innerHTML=`<div class="gs-topic-search"><i class="ti ti-search"></i><input id="gsTopicSearch" type="text" placeholder="${ph}" oninput="gsRenderTopicList()"></div><div class="gs-topic-list" id="gsTopicList"><div class="gs-topic-empty">Loading…</div></div>`;
