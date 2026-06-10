@@ -8568,7 +8568,7 @@ async function fetchAdminBrowse(){
     if(diff)cq=cq.eq('difficulty',diff);
     if(animeFilter)cq=cq.eq('topic_type','anime').eq('topic_value',animeFilter);
     else if(genreFilter)cq=cq.eq('topic_type','genre').eq('topic_value',genreFilter);
-    if(qstr)cq=cq.ilike('question','%'+qstr+'%');
+    if(qstr)cq=cq.or('question.ilike.%'+qstr+'%,answer.ilike.%'+qstr+'%');
     const {count}=await cq;
     adminBrowseTotal=count||0;
     // If current page is now out of range, reset to 0
@@ -8582,14 +8582,14 @@ async function fetchAdminBrowse(){
     if(diff)dq=dq.eq('difficulty',diff);
     if(animeFilter)dq=dq.eq('topic_type','anime').eq('topic_value',animeFilter);
     else if(genreFilter)dq=dq.eq('topic_type','genre').eq('topic_value',genreFilter);
-    if(qstr)dq=dq.ilike('question','%'+qstr+'%');
+    if(qstr)dq=dq.or('question.ilike.%'+qstr+'%,answer.ilike.%'+qstr+'%');
     const browseSort=document.getElementById('adminBrowseSort')?.value||'topic';
     let dq2=sb.from('questions').select(ADMIN_FULL_COLS);
     if(fmt)dq2=dq2.eq('format',fmt);
     if(diff)dq2=dq2.eq('difficulty',diff);
     if(animeFilter)dq2=dq2.eq('topic_type','anime').eq('topic_value',animeFilter);
     else if(genreFilter)dq2=dq2.eq('topic_type','genre').eq('topic_value',genreFilter);
-    if(qstr)dq2=dq2.ilike('question','%'+qstr+'%');
+    if(qstr)dq2=dq2.or('question.ilike.%'+qstr+'%,answer.ilike.%'+qstr+'%');
     if(browseSort==='date_desc')dq2=dq2.order('created_at',{ascending:false});
     else if(browseSort==='date_asc')dq2=dq2.order('created_at',{ascending:true});
     else dq2=dq2.order('topic_value',{ascending:true,nullsFirst:false});
