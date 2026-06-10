@@ -2349,6 +2349,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px 0 8px">
           <div class="q-text" id="previewQText"></div>
         </div>
+        <div id="previewQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);align-items:center;justify-content:center">
+          <img id="previewQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:280px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+        </div>
       </div>
       <!-- Answer area -->
       <div id="previewAnswersWrap"></div>
@@ -9104,7 +9107,7 @@ function buildAdminCard(q){
   const card=document.createElement('div');
   card.className='admin-q-card'+((isReported||isSuspect)?' reported':'')+(_bulkIds.has(String(q.id))?' bulk-selected bulk-mode':'');
   card.id=`adminCard_${q.id}`;
-  card.dataset.q=JSON.stringify({id:q.id,question:q.question,format:q.format,options:q.options||null,answer:q.answer,topic_value:q.topic_value||null,difficulty:q.difficulty||'normal'});
+  card.dataset.q=JSON.stringify({id:q.id,question:q.question,format:q.format,options:q.options||null,answer:q.answer,topic_value:q.topic_value||null,difficulty:q.difficulty||'normal',media_url:q.media_url||null});
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_adminHL(o)}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${_adminHL(q.answer)}</div>`:'';
@@ -9656,6 +9659,12 @@ function openAdminPreview(id){
 
   document.getElementById('previewQBadge').textContent=fmtLabel[q.format]||q.format;
   document.getElementById('previewQText').textContent=q.question;
+
+  // Show image if present
+  const previewImgWrap=document.getElementById('previewQImageWrap');
+  const previewImgEl=document.getElementById('previewQImage');
+  if(q.media_url){previewImgEl.src=q.media_url;previewImgWrap.style.display='flex';}
+  else{previewImgWrap.style.display='none';previewImgEl.src='';}
 
   const wrap=document.getElementById('previewAnswersWrap');
   if(q.format==='mc'&&q.options&&q.options.length){
