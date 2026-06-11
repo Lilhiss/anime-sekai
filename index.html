@@ -895,7 +895,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-search-wrap{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 13px}
 .admin-search-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:600}
 .admin-filter{background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
-.admin-pager{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:4px 0}
+.admin-topic-suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;overflow-y:auto;max-height:220px;z-index:500;box-shadow:0 8px 24px #0008;display:none}
+.admin-topic-suggest.open{display:block}
+.admin-topic-suggest-item{padding:8px 12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;transition:background .12s}
+.admin-topic-suggest-item:hover,.admin-topic-suggest-item.focused{background:var(--accent);color:#fff}
+.admin-topic-suggest-group{padding:5px 12px 3px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+
 .admin-pager-btn{background:var(--bg2);border:1.5px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 14px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .2s,color .2s,border-color .2s}
 .admin-pager-btn:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff}
 .admin-pager-btn:disabled{opacity:.35;cursor:not-allowed}
@@ -2055,8 +2060,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear()"><button id="adminSearchClear" onclick="document.getElementById('adminSearchInput').value='';adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear();document.getElementById('adminSearchInput').focus()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear search"><i class="ti ti-x" style="font-size:15px"></i></button></div>
         <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
         <select class="admin-filter" id="adminFilterDiff" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
-        <div style="position:relative;display:inline-flex;align-items:center;min-width:160px"><input id="adminTopicFilter" class="admin-filter" list="adminTopicList" placeholder="Filter by topic…" autocomplete="off" style="min-width:160px;padding-right:28px" oninput="adminBrowsePage=0;fetchAdminBrowse();toggleAdminTopicClear()"><button id="adminTopicClear" onclick="document.getElementById('adminTopicFilter').value='';adminBrowsePage=0;fetchAdminBrowse();toggleAdminTopicClear();document.getElementById('adminTopicFilter').focus()" style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear filter"><i class="ti ti-x" style="font-size:13px"></i></button></div>
-        <datalist id="adminTopicList"></datalist>
+        <div style="position:relative;display:inline-flex;align-items:center;min-width:160px"><input id="adminTopicFilter" class="admin-filter" placeholder="Filter by topic…" autocomplete="off" style="min-width:160px;padding-right:28px;width:100%" oninput="adminBrowsePage=0;_adminTopicSuggest();toggleAdminTopicClear()" onkeydown="_adminTopicSuggestKey(event)" onblur="_adminTopicSuggestBlur()"><button id="adminTopicClear" onclick="document.getElementById('adminTopicFilter').value='';adminBrowsePage=0;fetchAdminBrowse();_adminTopicSuggestClose();toggleAdminTopicClear();document.getElementById('adminTopicFilter').focus()" style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear filter"><i class="ti ti-x" style="font-size:13px"></i></button><div id="adminTopicSuggestDrop" class="admin-topic-suggest"></div></div>
         <select class="admin-filter" id="adminBrowseSort" onchange="adminBrowsePage=0;fetchAdminBrowse()"><option value="topic">Sort: Topic A–Z</option><option value="date_desc">Sort: Newest first</option><option value="date_asc">Sort: Oldest first</option></select>
         <select class="admin-filter" id="adminPageSize" onchange="ADMIN_PAGE_SIZE=+this.value;adminBrowsePage=0;fetchAdminBrowse()" title="Questions per page"><option value="25">25 / page</option><option value="50" selected>50 / page</option><option value="100">100 / page</option><option value="200">200 / page</option></select>
       </div>
@@ -8560,33 +8564,61 @@ async function fetchReviewTab(){
   }
 }
 
-async function _adminPopulateTopicDatalist(){
-  const dl=document.getElementById('adminTopicList');
-  if(!dl)return;
-  // Fetch distinct topic values directly from the DB so the datalist is never
-  // limited by the adminLite row cap. Returns all unique topic_value entries
-  // regardless of how many total questions exist.
-  try{
-    const {data}=await sb.from('questions')
-      .select('topic_type,topic_value')
-      .not('topic_value','is',null)
-      .neq('topic_value','');
-    if(!data)return;
-    const animeSet=new Set(),genreSet=new Set();
-    data.forEach(q=>{
-      if(q.topic_type==='anime')animeSet.add(q.topic_value);
-      else if(q.topic_type==='genre')genreSet.add(q.topic_value);
-    });
-    const toOpts=(set)=>[...set].sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${v.replace(/"/g,'&quot;')}"></option>`).join('');
-    dl.innerHTML=toOpts(animeSet)+toOpts(genreSet);
-  }catch(e){}
+let _adminTopicSuggestIdx=-1;
+function _adminTopicSuggest(){
+  const inp=document.getElementById('adminTopicFilter');
+  const drop=document.getElementById('adminTopicSuggestDrop');
+  if(!inp||!drop)return;
+  const q=inp.value.trim().toLowerCase();
+  if(q.length<3){drop.classList.remove('open');drop.innerHTML='';_adminTopicSuggestIdx=-1;return;}
+  const all=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS];
+  const anime=ADMIN_ANIME_TOPICS.filter(t=>t.toLowerCase().includes(q));
+  const genre=ADMIN_GENRE_TOPICS.filter(t=>t.toLowerCase().includes(q));
+  if(!anime.length&&!genre.length){drop.classList.remove('open');drop.innerHTML='';return;}
+  let html='';
+  if(anime.length){html+='<div class="admin-topic-suggest-group">📺 Anime</div>';anime.forEach(t=>{html+=`<div class="admin-topic-suggest-item" onmousedown="_adminTopicSuggestPick('${t.replace(/'/g,"\\'")}')">  ${t}</div>`;});}
+  if(genre.length){html+='<div class="admin-topic-suggest-group">🎭 Genre</div>';genre.forEach(t=>{html+=`<div class="admin-topic-suggest-item" onmousedown="_adminTopicSuggestPick('${t.replace(/'/g,"\\'")}')">  ${t}</div>`;});}
+  drop.innerHTML=html;drop.classList.add('open');_adminTopicSuggestIdx=-1;
 }
+function _adminTopicSuggestPick(val){
+  const inp=document.getElementById('adminTopicFilter');
+  if(inp)inp.value=val;
+  _adminTopicSuggestClose();
+  toggleAdminTopicClear();
+  adminBrowsePage=0;fetchAdminBrowse();
+}
+function _adminTopicSuggestClose(){
+  const drop=document.getElementById('adminTopicSuggestDrop');
+  if(drop){drop.classList.remove('open');drop.innerHTML='';}
+  _adminTopicSuggestIdx=-1;
+}
+function _adminTopicSuggestBlur(){
+  // Delay so onmousedown on an item fires before the input loses focus
+  setTimeout(_adminTopicSuggestClose,150);
+  // If user typed a complete valid topic, trigger browse
+  const val=(document.getElementById('adminTopicFilter')?.value||'').trim();
+  const valid=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS].includes(val);
+  if(val&&valid){adminBrowsePage=0;fetchAdminBrowse();}
+}
+function _adminTopicSuggestKey(e){
+  const drop=document.getElementById('adminTopicSuggestDrop');
+  if(!drop||!drop.classList.contains('open'))return;
+  const items=[...drop.querySelectorAll('.admin-topic-suggest-item')];
+  if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_adminTopicSuggestIdx=Math.min(_adminTopicSuggestIdx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();_adminTopicSuggestIdx=Math.max(_adminTopicSuggestIdx-1,0);}
+  else if(e.key==='Enter'&&_adminTopicSuggestIdx>=0){e.preventDefault();_adminTopicSuggestPick(items[_adminTopicSuggestIdx].textContent.trim());return;}
+  else if(e.key==='Escape'){_adminTopicSuggestClose();return;}
+  else return;
+  items.forEach((el,i)=>el.classList.toggle('focused',i===_adminTopicSuggestIdx));
+  items[_adminTopicSuggestIdx]?.scrollIntoView({block:'nearest'});
+}
+
 // ── Browse fetcher — server-side filtered + paginated ─────────────────────────
 async function fetchAdminBrowse(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
   const list=document.getElementById('adminQuestionList');
   if(list)list.innerHTML='<div class="admin-empty">Loading…</div>';
-  await _adminPopulateTopicDatalist();
   const qstr=(document.getElementById('adminSearchInput')?.value||'').trim();
   adminHL=qstr.toLowerCase();
   const fmt=document.getElementById('adminFilterFormat')?.value||'';
@@ -8767,7 +8799,7 @@ function _pagerRange(cur,total){
   return pages;
 }
 let _adminTopicDropsFilled=false;
-function _adminPopulateTopicDatalist_noop(){} // replaced above
+
 async function fetchAdminSuggestions(){
   const wrap=document.getElementById('adminSuggestions');
   if(!wrap)return;
