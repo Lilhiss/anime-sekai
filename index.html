@@ -1340,7 +1340,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="fmt-card" onclick="selectFormat('mc')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
       <div class="fmt-card" onclick="selectFormat('type')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
       <div class="fmt-card" onclick="selectFormat('img')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
-      <div class="fmt-card" onclick="selectFormat('char')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
+      <div class="fmt-card" onclick="openCharFmtModal()"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
     </div>
   </div>
 
@@ -2900,7 +2900,7 @@ let allHistory=[];
 
 const accentHex={midnight:'#a78bfa',blossom:'#f472b6',abyss:'#38bdf8',inferno:'#fb923c',jade:'#4ade80',arcane:'#e879f9'};
 const colorNames={midnight:'Ethereal',blossom:'Blossom',abyss:'Abyss',inferno:'Inferno',jade:'Jade',arcane:'Arcane'};
-const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character'};
+const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character','char-mc':'Name the Character (MC)'};
 const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
 const keys=['A','B','C','D'];
 const ranks=[
@@ -4122,6 +4122,18 @@ function hideJoiningOverlay(){const o=document.getElementById('joiningOverlay');
 })();
 
 function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
+function openCharFmtModal(){
+  const m=document.getElementById('charFmtModal');
+  m.style.display='flex';
+}
+function closeCharFmtModal(){
+  document.getElementById('charFmtModal').style.display='none';
+}
+function selectCharFormat(fmt){
+  closeCharFmtModal();
+  selectedFormat=fmt;
+  goStep('mode');
+}
 function selectSoloMode(mode){
   pendingMode=mode;
   selectedTopics=[];isGeneralSelected=false;
@@ -4441,9 +4453,27 @@ function shareDaily(ev){
 async function fetchQuestion(){
   const _t=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
   const bankTopic=_t?{type:_t.type,value:_t.name}:{type:'all',value:''};
-  const banked=await sbGetQuestion(selectedFormat,bankTopic);
-  if(banked){/*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/return banked;}
+  // char-mc fetches char questions but builds MC options from distractors
+  const fetchFmt = selectedFormat==='char-mc' ? 'char' : selectedFormat;
+  const banked=await sbGetQuestion(fetchFmt,bankTopic);
+  if(banked){
+    /*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/
+    if(selectedFormat==='char-mc') return buildCharMcQuestion(banked);
+    return banked;
+  }
   return getFallback();
+}
+
+function buildCharMcQuestion(q){
+  // q.distractors is an array of 3 wrong character names from the DB
+  const distractors = Array.isArray(q.distractors) && q.distractors.length>=3
+    ? q.distractors.slice(0,3)
+    : ['???','???','???']; // fallback if distractors not yet populated
+  // Shuffle correct answer into a random position among the 4 options
+  const opts = [...distractors];
+  const correctIdx = Math.floor(Math.random()*4);
+  opts.splice(correctIdx, 0, q.answer);
+  return {...q, options: opts, answer: correctIdx};
 }
 
 
@@ -4540,7 +4570,7 @@ function getFallback(){
     {question:"This character is a chainsaw devil hybrid who just wants to eat good food and be with women. Who are they?",answer:"Denji",aliases:["Chainsaw Man"]},
   ];
   // Filter to match current format where possible
-  const typeFormats=['type','char'];
+  const typeFormats=['type','char']; // char-mc uses MC path, handled separately
   const mcFormats=['mc','img'];
   let pool;
   if(selectedFormat==='type'||selectedFormat==='char'){
@@ -4612,12 +4642,12 @@ async function sbGetQuestion(format,topic){
       const retryData=await retryRes.json();
       if(!Array.isArray(retryData)||!retryData.length)return null;
       const row=retryData[Math.floor(Math.random()*retryData.length)];
-      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null};
+      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
     }
     const filtered=data.filter(q=>!seenQs.includes(q.question));
     const pool=filtered.length?filtered:data;
     const row=pool[Math.floor(Math.random()*pool.length)];
-    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null};
+    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
   }catch(e){return null}
 }
 
@@ -4668,7 +4698,7 @@ function showQuestion(qData){
   if(qData.media_url){imgEl.src=qData.media_url;imgWrap.style.display='flex';}
   else{imgWrap.style.display='none';imgEl.src='';}
   const grid=document.getElementById('answersGrid');grid.innerHTML='';
-  const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
+  const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   if(isType){
     document.querySelector('.q-card').classList.add('type-mode');
     const wrap=document.createElement('div');wrap.className='type-wrap';
@@ -7809,7 +7839,7 @@ function mpShowQuestion(qData,hpFuse){
   if(qData.media_url){mpImgEl.src=qData.media_url;mpImgWrap.style.display='flex';}
   else{mpImgWrap.style.display='none';mpImgEl.src='';}
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
-  const isType=selectedFormat==='type'||selectedFormat==='char'||(!qData.options&&typeof qData.answer==='string');
+  const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   const isHP=lobbyMode==='potato';
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
 
@@ -9914,3 +9944,28 @@ function syncDrawerState(){
   }
 }
 </script>
+
+  <!-- CHAR FORMAT MODAL -->
+  <div id="charFmtModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:20px">
+      <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);text-align:center">🎭 Name the Character</div>
+      <div style="font-size:13px;color:var(--muted);text-align:center;margin-top:-8px">How do you want to answer?</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="selectCharFormat('char-mc')" style="display:flex;align-items:center;gap:14px;background:var(--card-bg);border:1.5px solid var(--border2);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:26px">📝</span>
+          <div>
+            <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">Multiple Choice</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Four options — pick the right name.</div>
+          </div>
+        </button>
+        <button onclick="selectCharFormat('char')" style="display:flex;align-items:center;gap:14px;background:var(--card-bg);border:1.5px solid var(--border2);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:26px">⌨️</span>
+          <div>
+            <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">Type the Answer</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">No hints. Spell it out. True otaku mode.</div>
+          </div>
+        </button>
+      </div>
+      <button onclick="closeCharFmtModal()" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:4px">Cancel</button>
+    </div>
+  </div>
