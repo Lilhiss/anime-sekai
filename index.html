@@ -2082,6 +2082,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div id="romanizeTopicDrop" class="admin-topic-suggest"></div>
           </div>
           <button onclick="fetchRomanizeCandidates()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-search" style="font-size:14px"></i> Find candidates</button>
+          <label style="display:inline-flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;user-select:none"><input type="checkbox" id="romanizeIncludeAliases" checked onchange="fetchRomanizeCandidates()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"> Include aliases</label>
           <div id="romanizeStatus" style="font-size:13px;color:var(--muted)"></div>
         </div>
         <!-- Results list -->
@@ -9064,6 +9065,7 @@ function _romanizeTopicKey(e){
 let _romanizeCandidates=[];
 async function fetchRomanizeCandidates(){
   const topic=(document.getElementById('romanizeTopicInput')?.value||'').trim();
+  const includeAliases=document.getElementById('romanizeIncludeAliases')?.checked!==false;
   const status=document.getElementById('romanizeStatus');
   const results=document.getElementById('romanizeResults');
   const bar=document.getElementById('romanizeConfirmBar');
@@ -9072,30 +9074,30 @@ async function fetchRomanizeCandidates(){
   const{data,error}=await sb.from('questions').select('id,answer,aliases').eq('format','char').eq('topic_value',topic);
   if(error){status.textContent='Error: '+error.message;return;}
   if(!data||!data.length){status.textContent='No char questions found for "'+topic+'".';return;}
-  // Build candidate list: rows where answer OR any alias needs change
   _romanizeCandidates=data.map(q=>{
     const aliases=Array.isArray(q.aliases)?q.aliases:(typeof q.aliases==='string'&&q.aliases?q.aliases.split(',').map(s=>s.trim()):[]);
     const answerChanged=_romanizeNeedsChange(q.answer);
     const aliasChanges=aliases.map(a=>({original:a,romanized:_romanizeStr(a),changed:_romanizeNeedsChange(a)}));
     return {id:q.id,answer:q.answer,answerRomanized:_romanizeStr(q.answer),answerChanged,aliases,aliasChanges,selected:true};
-  }).filter(r=>r.answerChanged||r.aliasChanges.some(a=>a.changed));
+  }).filter(r=>r.answerChanged||(includeAliases&&r.aliasChanges.some(a=>a.changed)));
   if(!_romanizeCandidates.length){status.textContent='✓ No romanization needed for "'+topic+'" — all names look clean.';return;}
-  status.textContent=_romanizeCandidates.length+' candidate'+(  _romanizeCandidates.length!==1?'s':'')+' found in "'+topic+'".';
+  status.textContent=_romanizeCandidates.length+' candidate'+(_romanizeCandidates.length!==1?'s':'')+' found in "'+topic+'".';
   renderRomanizeResults();
 }
 function renderRomanizeResults(){
   const results=document.getElementById('romanizeResults');
   const bar=document.getElementById('romanizeConfirmBar');
   const countEl=document.getElementById('romanizeConfirmCount');
+  const includeAliases=document.getElementById('romanizeIncludeAliases')?.checked!==false;
   if(!_romanizeCandidates.length){results.innerHTML='';bar.style.display='none';return;}
   let html='';
   _romanizeCandidates.forEach((r,i)=>{
     const answerHtml=r.answerChanged
       ?`<span style="color:var(--muted)">${r.answer}</span> <i class="ti ti-arrow-right" style="font-size:11px;color:var(--muted)"></i> <span style="color:#4ade80;font-weight:800">${r.answerRomanized}</span>`
       :`<span>${r.answer}</span>`;
-    const aliasRows=r.aliasChanges.filter(a=>a.changed).map(a=>
+    const aliasRows=includeAliases?r.aliasChanges.filter(a=>a.changed).map(a=>
       `<span style="font-size:12px;color:var(--muted)">${a.original} <i class="ti ti-arrow-right" style="font-size:10px"></i> <span style="color:#4ade80">${a.romanized}</span></span>`
-    ).join('');
+    ).join(''):'';
     html+=`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:11px">
       <input type="checkbox" ${r.selected?'checked':''} onchange="_romanizeToggle(${i},this.checked)" style="margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;cursor:pointer">
       <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
@@ -9117,6 +9119,7 @@ function _romanizeToggle(i,checked){
   document.getElementById('romanizeConfirmCount').textContent=sel+' of '+_romanizeCandidates.length+' selected';
 }
 async function confirmRomanize(){
+  const includeAliases=document.getElementById('romanizeIncludeAliases')?.checked!==false;
   const toSave=_romanizeCandidates.filter(r=>r.selected);
   if(!toSave.length)return;
   const btn=document.getElementById('romanizeConfirmBtn');
@@ -9124,7 +9127,7 @@ async function confirmRomanize(){
   let saved=0,failed=0;
   for(const r of toSave){
     const newAnswer=r.answerChanged?r.answerRomanized:r.answer;
-    const newAliases=r.aliasChanges.map(a=>a.changed?a.romanized:a.original);
+    const newAliases=includeAliases?r.aliasChanges.map(a=>a.changed?a.romanized:a.original):r.aliases;
     const{error}=await sb.from('questions').update({answer:newAnswer,aliases:newAliases.length?newAliases:r.aliases}).eq('id',r.id);
     if(error)failed++;else{r.selected=false;saved++;}
   }
