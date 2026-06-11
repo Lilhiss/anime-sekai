@@ -8569,11 +8569,12 @@ function _adminTopicSuggest(){
   const inp=document.getElementById('adminTopicFilter');
   const drop=document.getElementById('adminTopicSuggestDrop');
   if(!inp||!drop)return;
-  const q=inp.value.trim().toLowerCase();
+  const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const q=normalize(inp.value.trim());
   if(q.length<3){drop.classList.remove('open');drop.innerHTML='';_adminTopicSuggestIdx=-1;return;}
   const all=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS];
-  const anime=ADMIN_ANIME_TOPICS.filter(t=>t.toLowerCase().includes(q));
-  const genre=ADMIN_GENRE_TOPICS.filter(t=>t.toLowerCase().includes(q));
+  const anime=ADMIN_ANIME_TOPICS.filter(t=>normalize(t).includes(q));
+  const genre=ADMIN_GENRE_TOPICS.filter(t=>normalize(t).includes(q));
   if(!anime.length&&!genre.length){drop.classList.remove('open');drop.innerHTML='';return;}
   let html='';
   if(anime.length){html+='<div class="admin-topic-suggest-group">📺 Anime</div>';anime.forEach(t=>{html+=`<div class="admin-topic-suggest-item" onmousedown="_adminTopicSuggestPick('${t.replace(/'/g,"\\'")}')">  ${t}</div>`;});}
