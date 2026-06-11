@@ -4230,7 +4230,8 @@ function renderTopicList(filter=''){
   }
   list.innerHTML=items.map(t=>{
     const sel=selectedTopics.some(s=>s.key===t.key);
-    const cnt=t.counts?t.counts[selectedFormat]||0:null;
+    const cntFmt=selectedFormat==='char-mc'?'char':selectedFormat;
+    const cnt=t.counts?t.counts[cntFmt]||0:null;
     const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
     return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
       <div class="topic-result-left"><span>${t.name}</span></div>
