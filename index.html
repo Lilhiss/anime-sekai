@@ -2589,6 +2589,37 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   </div>
 
   <!-- COV DELETE CONFIRM MODAL -->
+  <!-- ADD TOPIC MODAL -->
+  <div id="addTopicModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1200;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAddTopicModal()">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-plus" style="font-size:20px;color:var(--accent)"></i> Add Topic</div>
+        <button onclick="closeAddTopicModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Topic name</label>
+          <input id="addTopicName" type="text" placeholder="e.g. Demon Slayer" autocomplete="off"
+            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;outline:none;transition:border-color .2s"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
+            onkeydown="if(event.key==='Enter')confirmAddTopic()">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Type</label>
+          <select id="addTopicType" style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:10px 13px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;outline:none;cursor:pointer">
+            <option value="anime">📺 Anime</option>
+            <option value="genre">🎭 Genre</option>
+          </select>
+        </div>
+        <div id="addTopicErr" style="display:none;font-size:12px;color:#f87171;font-weight:700;align-items:center;gap:5px"><i class="ti ti-alert-circle"></i> <span id="addTopicErrMsg"></span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="action-btn secondary" onclick="closeAddTopicModal()">Cancel</button>
+        <button class="action-btn primary" onclick="confirmAddTopic()" id="addTopicConfirmBtn"><i class="ti ti-check" style="font-size:15px"></i> Add Topic</button>
+      </div>
+    </div>
+  </div>
+
   <div id="covDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1200;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid #f8717155;border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -8856,6 +8887,42 @@ async function confirmCovDelete(){
   covSelectedTopics.clear();
   renderAdminCoverage();
 }
+function openAddTopicModal(){
+  const m=document.getElementById('addTopicModal');
+  document.getElementById('addTopicName').value='';
+  document.getElementById('addTopicType').value='anime';
+  document.getElementById('addTopicErr').style.display='none';
+  const btn=document.getElementById('addTopicConfirmBtn');
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Add Topic';
+  m.style.display='flex';applyTheme();
+  setTimeout(()=>document.getElementById('addTopicName').focus(),80);
+}
+function closeAddTopicModal(){
+  document.getElementById('addTopicModal').style.display='none';
+}
+async function confirmAddTopic(){
+  const topic=document.getElementById('addTopicName').value.trim();
+  const type=document.getElementById('addTopicType').value;
+  const errWrap=document.getElementById('addTopicErr');
+  const errMsg=document.getElementById('addTopicErrMsg');
+  errWrap.style.display='none';
+  if(!topic){errMsg.textContent='Please enter a topic name.';errWrap.style.display='flex';return;}
+  const isDup=(type==='anime'?ADMIN_ANIME_TOPICS:ADMIN_GENRE_TOPICS).some(t=>t.toLowerCase()===topic.toLowerCase());
+  if(isDup){errMsg.textContent='"'+topic+'" already exists in '+type+' topics.';errWrap.style.display='flex';return;}
+  const btn=document.getElementById('addTopicConfirmBtn');
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:15px"></i> Saving…';
+  const{error}=await sb.from('topics').upsert({name:topic,type,status:'approved'},{onConflict:'name',ignoreDuplicates:false});
+  if(error){btn.disabled=false;btn.innerHTML='<i class="ti ti-check" style="font-size:15px"></i> Add Topic';errMsg.textContent='Save failed: '+error.message;errWrap.style.display='flex';return;}
+  if(type==='anime'&&!ADMIN_ANIME_TOPICS.includes(topic)){ADMIN_ANIME_TOPICS.push(topic);ADMIN_ANIME_TOPICS.sort((a,b)=>a.localeCompare(b));}
+  if(type==='genre'&&!ADMIN_GENRE_TOPICS.includes(topic)){ADMIN_GENRE_TOPICS.push(topic);ADMIN_GENRE_TOPICS.sort((a,b)=>a.localeCompare(b));}
+  closeAddTopicModal();
+  renderAdminCoverage();
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  toast.textContent='"'+topic+'" added to '+type+' topics ✓';
+  document.body.appendChild(toast);setTimeout(()=>toast.remove(),3000);
+}
+
 function renderAdminCoverage(){
   covSelectedTopics.clear();updateCovBulkBar();
   const cov=document.getElementById('adminCoverage');
@@ -8866,7 +8933,7 @@ function renderAdminCoverage(){
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
   const extrasHTML=extras.length?groupHTML('❓ Other topics (not in your canonical list)',extras):'';
-  cov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><button onclick="openCoverageGapPrompt()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-wand" style="font-size:14px"></i> Fill thinnest gap</button><span style="font-size:13px;color:var(--muted)">Opens the prompt generator pre-loaded with the topic that has the fewest questions.</span></div>'
+  cov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><button onclick="openCoverageGapPrompt()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-wand" style="font-size:14px"></i> Fill thinnest gap</button><button onclick="openAddTopicModal()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-plus" style="font-size:14px"></i> Add Topic</button><span style="font-size:13px;color:var(--muted)">Opens the prompt generator pre-loaded with the topic that has the fewest questions.</span></div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Thinnest topics first. <b style="color:#fbbf24">Amber</b> = under '+ADMIN_COV_THIN+' questions, <b style="color:#f87171">red</b> = none yet — generate these next. Check a topic to delete it.</div>'
     +groupHTML('📺 Anime',ADMIN_ANIME_TOPICS)
     +groupHTML('🎭 Genre',ADMIN_GENRE_TOPICS)
