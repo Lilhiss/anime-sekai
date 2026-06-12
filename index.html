@@ -9189,12 +9189,12 @@ async function fetchCharLibrary(){
             ?`<img class="char-lib-img" src="${ch.media_url}" alt="${(ch.answer||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
             :''}
           <div class="char-lib-no-img" style="display:${hasImg?'none':'flex'};width:100%;height:100%;align-items:center;justify-content:center">🎭</div>
-          <button class="char-lib-edit-fab" title="Edit character" onclick="openCharEdit(${ch.id})"><i class="ti ti-pencil"></i></button>
+          <button class="char-lib-edit-fab" title="Edit character" onclick="openCharEdit('${ch.id}')"><i class="ti ti-pencil"></i></button>
         </div>
         <div class="char-lib-body">
           <div class="char-lib-name">${ch.answer||'—'}</div>
           <div class="char-lib-topic">${ch.topic_value||ch.topic_type||'—'}</div>
-          <button class="char-lib-del" onclick="removeCharacter(${ch.id},'${(ch.answer||'').replace(/'/g,"\\'")}','${(ch.topic_value||'').replace(/'/g,"\\'")}')">
+          <button class="char-lib-del" onclick="removeCharacter('${ch.id}','${(ch.answer||'').replace(/'/g,"\\'")}','${(ch.topic_value||'').replace(/'/g,"\\'")}')">
             <i class="ti ti-trash" style="font-size:12px"></i> Remove
           </button>
         </div>`;
