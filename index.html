@@ -942,6 +942,29 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .ae-opt-input{flex:1}
 .ae-opt-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:6px;display:flex;align-items:center;flex-shrink:0;border-radius:8px}
 .ae-opt-del:hover{color:#f87171;background:var(--bg3)}
+
+/* ── CHARACTER LIBRARY ── */
+#adminCharLib{display:none;flex-direction:column;gap:16px}
+.char-lib-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.char-lib-topic-wrap{position:relative;display:inline-flex;align-items:center;min-width:200px}
+.char-lib-topic-input{flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:9px 32px 9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;outline:none;transition:border-color .2s;min-width:200px;width:100%}
+.char-lib-topic-input:focus{border-color:var(--accent)}
+.char-lib-topic-input::placeholder{color:var(--muted);font-weight:400}
+.char-lib-count{font-size:12px;font-weight:700;color:var(--muted);margin-left:auto;white-space:nowrap}
+.char-lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+@media(max-width:600px){.char-lib-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}}
+.char-lib-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .2s,box-shadow .2s;position:relative}
+.char-lib-card:hover{border-color:var(--border2);transform:translateY(-3px);box-shadow:0 8px 24px #0005}
+.char-lib-img-wrap{width:100%;aspect-ratio:1;background:var(--bg3);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.char-lib-img{width:100%;height:100%;object-fit:cover;display:block}
+.char-lib-no-img{font-size:38px;opacity:.5}
+.char-lib-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.char-lib-name{font-family:'Lilita One',cursive;font-size:14px;color:var(--text);line-height:1.2;word-break:break-word}
+.char-lib-topic{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.char-lib-del{width:100%;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:#f87171;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .2s,border-color .2s}
+.char-lib-del:hover{background:#f8717118;border-color:#f87171}
+.char-lib-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:14px;line-height:1.8}
+.char-lib-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 20px;color:var(--muted);font-size:13px}
 </style>
 
 <div class="scene">
@@ -2050,6 +2073,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-section-btn" id="adminSecImport" onclick="switchAdminSection('import')"><i class="ti ti-file-upload" style="font-size:15px"></i> Import</button>
         <button class="admin-section-btn" id="adminSecSuggestions" onclick="switchAdminSection('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
         <button class="admin-section-btn" id="adminSecRomanize" onclick="switchAdminSection('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+        <button class="admin-section-btn" id="adminSecCharLib" onclick="switchAdminSection('charlib')"><i class="ti ti-user-circle" style="font-size:15px"></i> Characters</button>
       </div>
       <div class="admin-tabs slide-in" id="adminReviewTabs">
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted <span class="admin-tab-count" id="adminCountSubmitted"></span></button>
@@ -2092,6 +2116,27 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <span id="romanizeConfirmCount" style="font-size:13px;font-weight:800;color:var(--text);flex:1"></span>
           <button onclick="confirmRomanize()" id="romanizeConfirmBtn" style="background:var(--accent);border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-check" style="font-size:14px"></i> Confirm &amp; Save</button>
         </div>
+      </div>
+      <div id="adminCharLib" class="slide-in" style="display:none;flex-direction:column;gap:16px">
+        <!-- Toolbar -->
+        <div class="char-lib-toolbar">
+          <div class="char-lib-topic-wrap">
+            <input id="charLibTopicInput" class="char-lib-topic-input" placeholder="Select a topic…" autocomplete="off"
+              oninput="_charLibTopicSuggest()" onkeydown="_charLibTopicKey(event)" onblur="_charLibTopicBlur()">
+            <button id="charLibTopicClear" onclick="_charLibClearTopic()" title="Clear"
+              style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s"
+              onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+              <i class="ti ti-x" style="font-size:13px"></i>
+            </button>
+            <div id="charLibTopicDrop" class="admin-topic-suggest"></div>
+          </div>
+          <button onclick="fetchCharLibrary()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+            <i class="ti ti-search" style="font-size:14px"></i> Load
+          </button>
+          <span class="char-lib-count" id="charLibCount" style="display:none"></span>
+        </div>
+        <!-- Grid -->
+        <div id="charLibGrid"></div>
       </div>
       <div id="adminImport" class="slide-in" style="display:none;flex-direction:column;gap:16px">
         <div style="font-size:13px;color:var(--muted);line-height:1.6">Paste one or more SQL INSERT batches below. Questions already in the database will be skipped automatically.</div>
@@ -8763,13 +8808,15 @@ async function switchAdminSection(section){
   document.getElementById('adminSecImport').classList.toggle('active',section==='import');
   document.getElementById('adminSecSuggestions').classList.toggle('active',section==='suggestions');
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
+  document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
   document.getElementById('adminBrowseBar').style.display=section==='browse'?'flex':'none';
   document.getElementById('adminCoverage').style.display=section==='coverage'?'block':'none';
   document.getElementById('adminImport').style.display=section==='import'?'flex':'none';
   document.getElementById('adminSuggestions').style.display=section==='suggestions'?'flex':'none';
   document.getElementById('adminRomanize').style.display=section==='romanize'?'flex':'none';
-  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize')?'none':'flex';
+  document.getElementById('adminCharLib').style.display=section==='charlib'?'flex':'none';
+  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='charlib')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   await renderAdminSection();
 }
@@ -8784,6 +8831,7 @@ async function renderAdminSection(){
   if(adminSection==='coverage')return renderAdminCoverage();
   if(adminSection==='browse')return fetchAdminBrowse();
   if(adminSection==='suggestions')return fetchAdminSuggestions();
+  if(adminSection==='charlib')return fetchCharLibrary();
   return fetchReviewTab();
 }
 // Pure render — called after fetchAdminBrowse() populates adminBrowseRows/adminBrowseTotal
@@ -8894,6 +8942,132 @@ async function fetchAdminSuggestions(){
     wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">⚠️ Couldn\'t load suggestions.</div>';
   }
   applyTheme();
+}
+
+// ── CHARACTER LIBRARY ─────────────────────────────────────────────────────────
+let _charLibTopicDropFilled=false;
+let _charLibTopicItems=[];
+
+function _charLibTopicSuggest(){
+  const inp=document.getElementById('charLibTopicInput');
+  const drop=document.getElementById('charLibTopicDrop');
+  const clearBtn=document.getElementById('charLibTopicClear');
+  const val=(inp.value||'').trim().toLowerCase();
+  clearBtn.style.display=val?'block':'none';
+  const all=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS].sort((a,b)=>a.localeCompare(b));
+  const matches=val?all.filter(t=>t.toLowerCase().includes(val)):all;
+  if(!matches.length){drop.style.display='none';return;}
+  drop.innerHTML=matches.slice(0,40).map((t,i)=>`<div class="admin-topic-suggest-item" data-val="${t.replace(/"/g,'&quot;')}" onmousedown="event.preventDefault();_charLibPickTopic('${t.replace(/'/g,"\\'")}');">${t}</div>`).join('');
+  drop.style.display='block';
+}
+
+function _charLibPickTopic(topic){
+  document.getElementById('charLibTopicInput').value=topic;
+  document.getElementById('charLibTopicDrop').style.display='none';
+  document.getElementById('charLibTopicClear').style.display='block';
+  fetchCharLibrary();
+}
+
+function _charLibTopicKey(e){
+  const drop=document.getElementById('charLibTopicDrop');
+  const items=[...drop.querySelectorAll('.admin-topic-suggest-item')];
+  const focused=drop.querySelector('.focused');
+  const idx=items.indexOf(focused);
+  if(e.key==='ArrowDown'){e.preventDefault();const n=items[(idx+1)%items.length];if(focused)focused.classList.remove('focused');n.classList.add('focused');n.scrollIntoView({block:'nearest'});}
+  else if(e.key==='ArrowUp'){e.preventDefault();const n=items[(idx-1+items.length)%items.length];if(focused)focused.classList.remove('focused');n.classList.add('focused');n.scrollIntoView({block:'nearest'});}
+  else if(e.key==='Enter'){if(focused)focused.dispatchEvent(new MouseEvent('mousedown'));else fetchCharLibrary();}
+  else if(e.key==='Escape'){drop.style.display='none';}
+}
+
+function _charLibTopicBlur(){
+  setTimeout(()=>{document.getElementById('charLibTopicDrop').style.display='none';},180);
+}
+
+function _charLibClearTopic(){
+  document.getElementById('charLibTopicInput').value='';
+  document.getElementById('charLibTopicClear').style.display='none';
+  document.getElementById('charLibTopicDrop').style.display='none';
+  document.getElementById('charLibGrid').innerHTML='';
+  document.getElementById('charLibCount').style.display='none';
+}
+
+async function fetchCharLibrary(){
+  const topic=(document.getElementById('charLibTopicInput').value||'').trim();
+  const grid=document.getElementById('charLibGrid');
+  const countEl=document.getElementById('charLibCount');
+  grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
+  countEl.style.display='none';
+  try{
+    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type').eq('format','char').eq('status','approved');
+    if(topic)q=q.eq('topic_value',topic);
+    q=q.order('answer',{ascending:true});
+    const{data,error}=await q;
+    if(error)throw error;
+    // Deduplicate by character name (answer), keeping the first occurrence
+    const seen=new Set();
+    const chars=(data||[]).filter(r=>{
+      const key=(r.answer||'').toLowerCase().trim();
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+    });
+    if(!chars.length){
+      grid.innerHTML=`<div class="char-lib-empty">🎭 No characters found${topic?' for <b>'+topic+'</b>':''}.<br>Character questions use <b>format = char</b>.</div>`;
+      countEl.style.display='none';
+      return;
+    }
+    countEl.textContent=chars.length+' character'+(chars.length===1?'':'s')+(topic?' in '+topic:'');
+    countEl.style.display='inline';
+    grid.innerHTML='';
+    const gridEl=document.createElement('div');gridEl.className='char-lib-grid';
+    chars.forEach(ch=>{
+      const card=document.createElement('div');
+      card.className='char-lib-card';
+      card.id='charlib-card-'+ch.id;
+      const hasImg=ch.media_url&&ch.media_url.trim();
+      card.innerHTML=`
+        <div class="char-lib-img-wrap">
+          ${hasImg
+            ?`<img class="char-lib-img" src="${ch.media_url}" alt="${(ch.answer||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+            :''}
+          <div class="char-lib-no-img" style="display:${hasImg?'none':'flex'};width:100%;height:100%;align-items:center;justify-content:center">🎭</div>
+        </div>
+        <div class="char-lib-body">
+          <div class="char-lib-name">${ch.answer||'—'}</div>
+          <div class="char-lib-topic">${ch.topic_value||ch.topic_type||'—'}</div>
+          <button class="char-lib-del" onclick="removeCharacter(${ch.id},'${(ch.answer||'').replace(/'/g,"\\'")}','${(ch.topic_value||'').replace(/'/g,"\\'")}')">
+            <i class="ti ti-trash" style="font-size:12px"></i> Remove
+          </button>
+        </div>`;
+      gridEl.appendChild(card);
+    });
+    grid.appendChild(gridEl);
+  }catch(e){
+    grid.innerHTML='<div class="char-lib-empty">⚠️ Couldn\'t load characters. Check your connection and try again.</div>';
+  }
+  applyTheme();
+}
+
+async function removeCharacter(id,name,topic){
+  requireAdminUnlock(async()=>{
+    if(!confirm(`Delete all questions for "${name}"${topic?' ('+topic+')':''}?\n\nThis will permanently delete every question linked to this character. This cannot be undone.`))return;
+    // Delete all questions with this character name (same answer) and format=char for this topic
+    const{error}=await sb.from('questions').delete().eq('format','char').eq('answer',name).eq('topic_value',topic);
+    if(error){showAdminToast('⚠️ Delete failed — try again.');return;}
+    // Remove the card from the DOM
+    const card=document.getElementById('charlib-card-'+id);if(card)card.remove();
+    // Update count label
+    const grid=document.getElementById('charLibGrid');
+    const remaining=grid.querySelectorAll('.char-lib-card').length;
+    const countEl=document.getElementById('charLibCount');
+    if(remaining===0){
+      grid.innerHTML='<div class="char-lib-empty">🎭 No characters left for this topic.</div>';
+      countEl.style.display='none';
+    } else {
+      countEl.textContent=remaining+' character'+(remaining===1?'':'s')+(topic?' in '+topic:'');
+    }
+    showAdminToast('"'+name+'" removed 🗑️');
+    renderAdminStats();
+  });
 }
 
 async function actionAdminSuggestion(id){
