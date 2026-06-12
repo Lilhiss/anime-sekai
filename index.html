@@ -963,6 +963,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .char-lib-topic{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .char-lib-del{width:100%;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:#f87171;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .2s,border-color .2s}
 .char-lib-del:hover{background:#f8717118;border-color:#f87171}
+.char-lib-edit-fab{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:#000a;border:1px solid #fff3;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s;font-size:14px}
+.char-lib-card:hover .char-lib-edit-fab,.char-lib-edit-fab:focus{opacity:1}
+.char-lib-edit-fab:hover{background:var(--accent)}
 .char-lib-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:14px;line-height:1.8}
 .char-lib-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 20px;color:var(--muted);font-size:13px}
 </style>
@@ -2483,7 +2486,58 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- SUBMIT QUESTION MODAL -->
+  <!-- CHARACTER EDIT MODAL (Character Library) -->
+  <div id="charEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1100;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">🎭 Edit Character</div>
+        <button onclick="closeCharEdit()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div id="ceImgPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);align-items:center;justify-content:center">
+        <img id="ceImgPreview" src="" alt="Preview" style="width:100%;height:auto;max-height:180px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+      </div>
+      <div>
+        <label class="form-label">Name</label>
+        <input class="form-input" id="ceAnswer" type="text" placeholder="Character name">
+      </div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1">
+          <label class="form-label">Gender</label>
+          <select class="form-input" id="ceGender" style="cursor:pointer">
+            <option value="">— Unset —</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Non-binary">Non-binary</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label class="form-label">Topic <span style="color:var(--muted);font-weight:600">(read-only)</span></label>
+          <input class="form-input" id="ceTopic" type="text" disabled style="opacity:.65;cursor:not-allowed">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Aliases <span class="optional-tag">Optional</span></label>
+        <input class="form-input" id="ceAliases" type="text" placeholder="comma-separated alternate names">
+        <div class="form-hint" style="margin-top:4px">Alternate spellings or names that should also be accepted as correct.</div>
+      </div>
+      <div>
+        <label class="form-label">Distractors <span class="optional-tag">Optional</span></label>
+        <input class="form-input" id="ceDistractors" type="text" placeholder="comma-separated wrong-answer names">
+        <div class="form-hint" style="margin-top:4px">Other character names shown as wrong options for "Name the Character" questions.</div>
+      </div>
+      <div>
+        <label class="form-label">Image URL <span class="optional-tag">Optional</span></label>
+        <input class="form-input" id="ceMediaUrl" type="url" placeholder="https://… (direct image link)" oninput="ceImagePreview()">
+      </div>
+      <div class="form-hint" id="ceScopeNote" style="margin-top:-4px"></div>
+      <div id="ceErr" style="display:none;font-size:12px;color:#f87171;font-weight:700"></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="action-btn primary" style="flex:1" onclick="saveCharEdit()"><i class="ti ti-device-floppy" style="font-size:16px"></i> Save changes</button>
+        <button class="ghost-btn" onclick="closeCharEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="submitQModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;width:100%;max-width:480px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden">
       <!-- Fixed header -->
@@ -9073,7 +9127,7 @@ async function fetchCharLibrary(){
   }
   grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
   try{
-    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type').eq('format','char').eq('status','approved').eq('topic_value',topic);
+    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type,gender,distractors').eq('format','char').eq('status','approved').eq('topic_value',topic);
     q=q.order('answer',{ascending:true});
     const{data,error}=await q;
     if(error)throw error;
@@ -9104,6 +9158,7 @@ async function fetchCharLibrary(){
             ?`<img class="char-lib-img" src="${ch.media_url}" alt="${(ch.answer||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
             :''}
           <div class="char-lib-no-img" style="display:${hasImg?'none':'flex'};width:100%;height:100%;align-items:center;justify-content:center">🎭</div>
+          <button class="char-lib-edit-fab" title="Edit character" onclick="openCharEdit(${ch.id})"><i class="ti ti-pencil"></i></button>
         </div>
         <div class="char-lib-body">
           <div class="char-lib-name">${ch.answer||'—'}</div>
@@ -9140,6 +9195,72 @@ async function removeCharacter(id,name,topic){
       countEl.textContent=remaining+' character'+(remaining===1?'':'s')+(topic?' in '+topic:'');
     }
     showAdminToast('"'+name+'" removed 🗑️');
+    renderAdminStats();
+  });
+}
+
+// ── CHARACTER LIBRARY: EDIT MODAL ──────────────────────────────────────
+let ceEditId=null,ceOrig=null;
+
+async function openCharEdit(id){
+  // Fetch the full row fresh so edits always start from current data
+  let q=null;
+  try{const{data}=await sb.from('questions').select('id,answer,aliases,gender,distractors,media_url,topic_value,topic_type').eq('id',id).single();q=data;}catch(e){}
+  if(!q)return;
+  ceEditId=id;ceOrig=q;
+  document.getElementById('ceAnswer').value=q.answer||'';
+  document.getElementById('ceGender').value=q.gender||'';
+  document.getElementById('ceTopic').value=q.topic_value||'General';
+  document.getElementById('ceAliases').value=(q.aliases||[]).join(', ');
+  document.getElementById('ceDistractors').value=(q.distractors||[]).join(', ');
+  document.getElementById('ceMediaUrl').value=q.media_url||'';
+  ceImagePreview();
+  document.getElementById('ceScopeNote').textContent='Name, gender, aliases & distractors update every approved "'+(q.answer||'character')+'" question in '+(q.topic_value||'this topic')+'. The image only changes this entry.';
+  document.getElementById('ceErr').style.display='none';
+  document.getElementById('charEditModal').style.display='flex';
+  applyTheme();
+}
+
+function closeCharEdit(){document.getElementById('charEditModal').style.display='none';ceEditId=null;ceOrig=null;}
+
+function ceImagePreview(){
+  const url=document.getElementById('ceMediaUrl').value.trim();
+  const wrap=document.getElementById('ceImgPreviewWrap');
+  const img=document.getElementById('ceImgPreview');
+  if(url){img.src=url;wrap.style.display='flex';}else{wrap.style.display='none';img.src='';}
+}
+
+async function saveCharEdit(){
+  if(!ceEditId||!ceOrig)return;
+  requireAdminUnlock(async()=>{
+    const showErrLocal=(m)=>{const e=document.getElementById('ceErr');e.textContent=m;e.style.display='block';};
+    const answer=document.getElementById('ceAnswer').value.trim();
+    const gender=document.getElementById('ceGender').value||null;
+    const aliases=document.getElementById('ceAliases').value.split(',').map(a=>a.trim()).filter(Boolean);
+    const distractors=document.getElementById('ceDistractors').value.split(',').map(a=>a.trim()).filter(Boolean);
+    const media_url=document.getElementById('ceMediaUrl').value.trim()||null;
+    if(!answer)return showErrLocal('Please enter the character name.');
+    const btn=document.querySelector('#charEditModal .action-btn.primary');
+    if(btn){btn.disabled=true;btn.style.opacity='.6';}
+    let error;
+    try{
+      // Name, gender, aliases & distractors apply to every approved char
+      // question for this character within the same topic, so identity
+      // stays consistent across all of its question rows.
+      ({error}=await sb.from('questions').update({answer,gender,aliases,distractors})
+        .eq('format','char').eq('status','approved')
+        .eq('topic_value',ceOrig.topic_value).eq('answer',ceOrig.answer));
+      // Image only applies to this specific question/row
+      if(!error&&media_url!==(ceOrig.media_url||null)){
+        ({error}=await sb.from('questions').update({media_url}).eq('id',ceEditId));
+      }
+    }catch(e){error=e;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(error)return showErrLocal('Could not save — try again.');
+    showAdminToast('"'+answer+'" updated ✏️');
+    closeCharEdit();
+    _charLibOverviewData=null; // counts/grouping may have changed
+    fetchCharLibrary();
     renderAdminStats();
   });
 }
