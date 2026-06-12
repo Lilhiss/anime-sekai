@@ -2133,8 +2133,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button onclick="fetchCharLibrary()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
             <i class="ti ti-search" style="font-size:14px"></i> Load
           </button>
+          <button id="charLibOverviewBtn" onclick="toggleCharLibOverview()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+            <i class="ti ti-list" style="font-size:14px"></i> Browse Topics
+          </button>
           <span class="char-lib-count" id="charLibCount" style="display:none"></span>
         </div>
+        <!-- Topic overview (lightweight counts, fetched on demand) -->
+        <div id="charLibOverview" class="slide-in" style="display:none;flex-direction:column"></div>
         <!-- Grid -->
         <div id="charLibGrid"></div>
       </div>
@@ -8987,19 +8992,78 @@ function _charLibClearTopic(){
   document.getElementById('charLibTopicInput').value='';
   document.getElementById('charLibTopicClear').style.display='none';
   document.getElementById('charLibTopicDrop').style.display='none';
-  document.getElementById('charLibGrid').innerHTML='';
+  document.getElementById('charLibGrid').innerHTML='<div class="char-lib-empty">🎭 Select a topic above to load its characters.</div>';
   document.getElementById('charLibCount').style.display='none';
+}
+
+// ── CHARACTER LIBRARY: TOPIC OVERVIEW (lightweight, on-demand) ────────────
+// Fetches only topic_value + answer (no media_url/aliases) so it's far
+// cheaper than loading full character cards, and only runs when the admin
+// explicitly opens the panel — results are cached until manually refreshed.
+let _charLibOverviewData=null;
+
+async function toggleCharLibOverview(){
+  const panel=document.getElementById('charLibOverview');
+  const btn=document.getElementById('charLibOverviewBtn');
+  const opening=panel.style.display==='none';
+  panel.style.display=opening?'flex':'none';
+  btn.style.background=opening?'var(--accent-soft)':'var(--bg2)';
+  btn.style.color=opening?'var(--accent)':'var(--text)';
+  if(opening&&!_charLibOverviewData)await fetchCharLibOverview();
+}
+
+async function fetchCharLibOverview(forceRefresh){
+  const panel=document.getElementById('charLibOverview');
+  panel.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading topic overview…</div></div>';
+  try{
+    if(forceRefresh||!_charLibOverviewData){
+      const{data,error}=await sb.from('questions').select('topic_value,answer').eq('format','char').eq('status','approved');
+      if(error)throw error;
+      // Count distinct characters (by lowercased answer) per topic
+      const byTopic={};
+      (data||[]).forEach(r=>{
+        const topic=r.topic_value||'—';
+        const key=(r.answer||'').toLowerCase().trim();
+        if(!byTopic[topic])byTopic[topic]=new Set();
+        byTopic[topic].add(key);
+      });
+      _charLibOverviewData=Object.entries(byTopic)
+        .map(([topic,set])=>({topic,count:set.size}))
+        .sort((a,b)=>b.count-a.count||a.topic.localeCompare(b.topic));
+    }
+    if(!_charLibOverviewData.length){
+      panel.innerHTML='<div class="char-lib-empty">🎭 No character-format questions found yet.</div>';
+      return;
+    }
+    panel.innerHTML='<div class="admin-cov-title" style="margin-top:4px">'
+      +'<span>🎭 Characters by topic</span>'
+      +'<button onclick="fetchCharLibOverview(true)" title="Refresh counts" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;display:inline-flex;align-items:center" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'"><i class="ti ti-refresh" style="font-size:15px"></i></button>'
+      +'</div>'
+      +_charLibOverviewData.map(r=>(
+        '<div class="admin-cov-row" style="cursor:pointer" onclick="_charLibPickTopic(\''+r.topic.replace(/'/g,"\\'")+'\')">'
+        +'<span class="admin-cov-name">'+r.topic+'</span>'
+        +'<span class="admin-cov-total">'+r.count+'</span>'
+        +'</div>'
+      )).join('');
+  }catch(e){
+    panel.innerHTML='<div class="char-lib-empty">⚠️ Couldn\'t load topic overview. Check your connection and try again.</div>';
+  }
+  applyTheme();
 }
 
 async function fetchCharLibrary(){
   const topic=(document.getElementById('charLibTopicInput').value||'').trim();
   const grid=document.getElementById('charLibGrid');
   const countEl=document.getElementById('charLibCount');
-  grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
   countEl.style.display='none';
+  // Avoid an unscoped fetch of every char-format question — require a topic first.
+  if(!topic){
+    grid.innerHTML='<div class="char-lib-empty">🎭 Select a topic above to load its characters.</div>';
+    return;
+  }
+  grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
   try{
-    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type').eq('format','char').eq('status','approved');
-    if(topic)q=q.eq('topic_value',topic);
+    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type').eq('format','char').eq('status','approved').eq('topic_value',topic);
     q=q.order('answer',{ascending:true});
     const{data,error}=await q;
     if(error)throw error;
