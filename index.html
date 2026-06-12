@@ -891,6 +891,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-section-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .admin-section-divider{width:1.5px;background:var(--border2);align-self:stretch;margin:4px 2px;border-radius:1px}
 @media(max-width:640px){.admin-section-divider{width:100%;height:1.5px;margin:2px 0}}
+.admin-section-header{text-align:center;margin-top:-4px}
+.admin-section-title{font-family:'Lilita One',cursive;font-size:17px;color:var(--text)}
+.admin-section-desc{font-size:12px;font-weight:600;color:var(--muted);margin-top:3px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5}
 .admin-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bg3);color:var(--muted);font-size:11px;font-weight:800;margin-left:3px}
 .admin-tab.active .admin-tab-count{background:rgba(255,255,255,.25);color:#fff}
 .admin-browse-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -2080,6 +2083,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-section-btn" id="adminSecImport" onclick="switchAdminSection('import')"><i class="ti ti-file-upload" style="font-size:15px"></i> Import</button>
         <button class="admin-section-btn" id="adminSecSuggestions" onclick="switchAdminSection('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
         <button class="admin-section-btn" id="adminSecRomanize" onclick="switchAdminSection('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+      </div>
+      <div class="admin-section-header slide-in" id="adminSectionHeader">
+        <div class="admin-section-title">📬 Review</div>
+        <div class="admin-section-desc">Approve, reject, and resolve submitted, reported, and flagged questions.</div>
       </div>
       <div class="admin-tabs slide-in" id="adminReviewTabs">
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted <span class="admin-tab-count" id="adminCountSubmitted"></span></button>
@@ -8605,6 +8612,15 @@ function srClearReveal(){
 // ── ADMIN PANEL ───────────────────────────────────────────────
 let isAdmin=false;try{isAdmin=localStorage.getItem('as_admin')==='1';}catch(e){}
 let adminTab='submitted';
+const ADMIN_SECTION_INFO={
+  review:{icon:'📬',title:'Review',desc:'Approve, reject, and resolve submitted, reported, and flagged questions.'},
+  browse:{icon:'🔍',title:'Browse',desc:'Search and filter the full question bank.'},
+  coverage:{icon:'📊',title:'Coverage',desc:'See how many questions exist per topic and format.'},
+  charlib:{icon:'🎭',title:'Characters',desc:'Browse, search, and edit characters used in Name-the-Character questions.'},
+  import:{icon:'📥',title:'Import',desc:'Bulk-import new questions from SQL.'},
+  suggestions:{icon:'💡',title:'Suggestions',desc:'Review topic suggestions submitted by players.'},
+  romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'}
+};
 function toggleAdminSearchClear(){const v=document.getElementById('adminSearchInput')?.value;const btn=document.getElementById('adminSearchClear');if(btn)btn.style.display=v?'block':'none';}
 function toggleAdminTopicClear(){const v=document.getElementById('adminTopicFilter')?.value;const btn=document.getElementById('adminTopicClear');if(btn)btn.style.display=v?'block':'none';}
 let adminSection='review';
@@ -8871,6 +8887,8 @@ function adminJump(tab){switchAdminSection('review');switchAdminTab(tab);}
 async function switchAdminSection(section){
   adminSection=section;
   if(section==='browse')adminBrowsePage=0;
+  const info=ADMIN_SECTION_INFO[section];
+  if(info)document.getElementById('adminSectionHeader').innerHTML=`<div class="admin-section-title">${info.icon} ${info.title}</div><div class="admin-section-desc">${info.desc}</div>`;
   document.getElementById('adminSecReview').classList.toggle('active',section==='review');
   document.getElementById('adminSecBrowse').classList.toggle('active',section==='browse');
   document.getElementById('adminSecCoverage').classList.toggle('active',section==='coverage');
