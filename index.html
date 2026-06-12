@@ -2133,6 +2133,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             </button>
             <div id="charLibTopicDrop" class="admin-topic-suggest"></div>
           </div>
+          <div class="char-lib-topic-wrap" style="min-width:180px">
+            <input id="charLibNameInput" class="char-lib-topic-input" placeholder="Search by character name…" autocomplete="off"
+              onkeydown="if(event.key==='Enter')fetchCharLibrary()" oninput="_charLibNameToggleClear()">
+            <button id="charLibNameClear" onclick="_charLibClearName()" title="Clear"
+              style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s"
+              onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+              <i class="ti ti-x" style="font-size:13px"></i>
+            </button>
+          </div>
+          <select id="charLibGenderInput" class="char-lib-topic-input" style="min-width:130px;max-width:150px;cursor:pointer;padding-right:12px" onchange="fetchCharLibrary()">
+            <option value="">Any gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Non-binary">Non-binary</option>
+          </select>
           <button onclick="fetchCharLibrary()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
             <i class="ti ti-search" style="font-size:14px"></i> Load
           </button>
@@ -9046,8 +9061,17 @@ function _charLibClearTopic(){
   document.getElementById('charLibTopicInput').value='';
   document.getElementById('charLibTopicClear').style.display='none';
   document.getElementById('charLibTopicDrop').style.display='none';
-  document.getElementById('charLibGrid').innerHTML='<div class="char-lib-empty">🎭 Select a topic above to load its characters.</div>';
-  document.getElementById('charLibCount').style.display='none';
+  fetchCharLibrary();
+}
+
+function _charLibNameToggleClear(){
+  document.getElementById('charLibNameClear').style.display=document.getElementById('charLibNameInput').value?'block':'none';
+}
+
+function _charLibClearName(){
+  document.getElementById('charLibNameInput').value='';
+  document.getElementById('charLibNameClear').style.display='none';
+  fetchCharLibrary();
 }
 
 // ── CHARACTER LIBRARY: TOPIC OVERVIEW (lightweight, on-demand) ────────────
@@ -9117,17 +9141,22 @@ async function fetchCharLibOverview(forceRefresh){
 
 async function fetchCharLibrary(){
   const topic=(document.getElementById('charLibTopicInput').value||'').trim();
+  const nameSearch=(document.getElementById('charLibNameInput').value||'').trim();
+  const gender=document.getElementById('charLibGenderInput').value||'';
   const grid=document.getElementById('charLibGrid');
   const countEl=document.getElementById('charLibCount');
   countEl.style.display='none';
-  // Avoid an unscoped fetch of every char-format question — require a topic first.
-  if(!topic){
-    grid.innerHTML='<div class="char-lib-empty">🎭 Select a topic above to load its characters.</div>';
+  // Avoid an unscoped fetch of every char-format question — require a topic or a name search.
+  if(!topic&&!nameSearch){
+    grid.innerHTML='<div class="char-lib-empty">🎭 Select a topic or search a character name to load results.</div>';
     return;
   }
   grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
   try{
-    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type,gender,distractors').eq('format','char').eq('status','approved').eq('topic_value',topic);
+    let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type,gender,distractors').eq('format','char').eq('status','approved');
+    if(topic)q=q.eq('topic_value',topic);
+    if(nameSearch)q=q.ilike('answer','%'+nameSearch.replace(/[%_\\]/g,c=>'\\'+c)+'%');
+    if(gender)q=q.eq('gender',gender);
     q=q.order('answer',{ascending:true});
     const{data,error}=await q;
     if(error)throw error;
@@ -9138,12 +9167,14 @@ async function fetchCharLibrary(){
       if(seen.has(key))return false;
       seen.add(key);return true;
     });
+    const filterBits=[topic,nameSearch?`"${nameSearch}"`:'',gender].filter(Boolean);
+    const filterDesc=filterBits.join(' · ');
     if(!chars.length){
-      grid.innerHTML=`<div class="char-lib-empty">🎭 No characters found${topic?' for <b>'+topic+'</b>':''}.<br>Character questions use <b>format = char</b>.</div>`;
+      grid.innerHTML=`<div class="char-lib-empty">🎭 No characters found${filterDesc?' for '+filterDesc:''}.<br>Character questions use <b>format = char</b>.</div>`;
       countEl.style.display='none';
       return;
     }
-    countEl.textContent=chars.length+' character'+(chars.length===1?'':'s')+(topic?' in '+topic:'');
+    countEl.textContent=chars.length+' character'+(chars.length===1?'':'s')+(filterDesc?' — '+filterDesc:'');
     countEl.style.display='inline';
     grid.innerHTML='';
     const gridEl=document.createElement('div');gridEl.className='char-lib-grid';
