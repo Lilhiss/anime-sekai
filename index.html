@@ -889,6 +889,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-sections{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 .admin-section-btn{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;padding:10px 18px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
 .admin-section-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.admin-section-divider{width:1.5px;background:var(--border2);align-self:stretch;margin:4px 2px;border-radius:1px}
+@media(max-width:640px){.admin-section-divider{width:100%;height:1.5px;margin:2px 0}}
 .admin-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bg3);color:var(--muted);font-size:11px;font-weight:800;margin-left:3px}
 .admin-tab.active .admin-tab-count{background:rgba(255,255,255,.25);color:#fff}
 .admin-browse-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -2073,10 +2075,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-section-btn active" id="adminSecReview" onclick="switchAdminSection('review')"><i class="ti ti-inbox" style="font-size:15px"></i> Review</button>
         <button class="admin-section-btn" id="adminSecBrowse" onclick="switchAdminSection('browse')"><i class="ti ti-search" style="font-size:15px"></i> Browse</button>
         <button class="admin-section-btn" id="adminSecCoverage" onclick="switchAdminSection('coverage')"><i class="ti ti-layout-grid" style="font-size:15px"></i> Coverage</button>
+        <button class="admin-section-btn" id="adminSecCharLib" onclick="switchAdminSection('charlib')"><i class="ti ti-user-circle" style="font-size:15px"></i> Characters</button>
+        <div class="admin-section-divider" role="separator"></div>
         <button class="admin-section-btn" id="adminSecImport" onclick="switchAdminSection('import')"><i class="ti ti-file-upload" style="font-size:15px"></i> Import</button>
         <button class="admin-section-btn" id="adminSecSuggestions" onclick="switchAdminSection('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
         <button class="admin-section-btn" id="adminSecRomanize" onclick="switchAdminSection('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
-        <button class="admin-section-btn" id="adminSecCharLib" onclick="switchAdminSection('charlib')"><i class="ti ti-user-circle" style="font-size:15px"></i> Characters</button>
       </div>
       <div class="admin-tabs slide-in" id="adminReviewTabs">
         <button class="admin-tab active" id="adminTabSubmitted" onclick="switchAdminTab('submitted')">📬 Submitted <span class="admin-tab-count" id="adminCountSubmitted"></span></button>
@@ -2124,8 +2127,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <!-- Toolbar -->
         <div class="char-lib-toolbar">
           <div class="char-lib-topic-wrap">
-            <input id="charLibTopicInput" class="char-lib-topic-input" placeholder="Select a topic…" autocomplete="off"
-              oninput="_charLibTopicSuggest()" onkeydown="_charLibTopicKey(event)" onblur="_charLibTopicBlur()">
+            <input id="charLibTopicInput" class="char-lib-topic-input" placeholder="Select or browse a topic…" autocomplete="off"
+              oninput="_charLibTopicSuggest()" onfocus="_charLibTopicSuggest()" onkeydown="_charLibTopicKey(event)" onblur="_charLibTopicBlur()">
             <button id="charLibTopicClear" onclick="_charLibClearTopic()" title="Clear"
               style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s"
               onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
@@ -2135,7 +2138,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </div>
           <div class="char-lib-topic-wrap" style="min-width:180px">
             <input id="charLibNameInput" class="char-lib-topic-input" placeholder="Search by character name…" autocomplete="off"
-              onkeydown="if(event.key==='Enter')fetchCharLibrary()" oninput="_charLibNameToggleClear()">
+              onkeydown="if(event.key==='Enter'){clearTimeout(_charLibNameDebounce);fetchCharLibrary();}" oninput="_charLibNameInput()">
             <button id="charLibNameClear" onclick="_charLibClearName()" title="Clear"
               style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s"
               onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
@@ -2148,16 +2151,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <option value="Female">Female</option>
             <option value="Non-binary">Non-binary</option>
           </select>
-          <button onclick="fetchCharLibrary()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
-            <i class="ti ti-search" style="font-size:14px"></i> Load
-          </button>
-          <button id="charLibOverviewBtn" onclick="toggleCharLibOverview()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
-            <i class="ti ti-list" style="font-size:14px"></i> Browse Topics
-          </button>
           <span class="char-lib-count" id="charLibCount" style="display:none"></span>
         </div>
-        <!-- Topic overview (lightweight counts, fetched on demand) -->
-        <div id="charLibOverview" class="slide-in" style="display:none;flex-direction:column"></div>
         <!-- Grid -->
         <div id="charLibGrid"></div>
       </div>
@@ -9021,15 +9016,20 @@ async function fetchAdminSuggestions(){
 // ── CHARACTER LIBRARY ─────────────────────────────────────────────────────────
 let _charLibTopicDropFilled=false;
 let _charLibTopicItems=[];
+let _charLibNameDebounce=null;
 
+// When the topic field is empty, show a "browse by topic" dropdown with
+// per-topic character counts (lazy-loaded, cached). When typing, fall back
+// to a simple filtered list of known topic names.
 function _charLibTopicSuggest(){
   const inp=document.getElementById('charLibTopicInput');
-  const drop=document.getElementById('charLibTopicDrop');
   const clearBtn=document.getElementById('charLibTopicClear');
   const val=(inp.value||'').trim().toLowerCase();
   clearBtn.style.display=val?'block':'none';
+  if(!val){_charLibShowOverviewDrop();return;}
+  const drop=document.getElementById('charLibTopicDrop');
   const all=[...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS].sort((a,b)=>a.localeCompare(b));
-  const matches=val?all.filter(t=>t.toLowerCase().includes(val)):all;
+  const matches=all.filter(t=>t.toLowerCase().includes(val));
   if(!matches.length){drop.style.display='none';return;}
   drop.innerHTML=matches.slice(0,40).map((t,i)=>`<div class="admin-topic-suggest-item" data-val="${t.replace(/"/g,'&quot;')}" onmousedown="event.preventDefault();_charLibPickTopic('${t.replace(/'/g,"\\'")}');">${t}</div>`).join('');
   drop.style.display='block';
@@ -9064,79 +9064,68 @@ function _charLibClearTopic(){
   fetchCharLibrary();
 }
 
-function _charLibNameToggleClear(){
+// Debounced auto-search as the admin types a character name
+function _charLibNameInput(){
   document.getElementById('charLibNameClear').style.display=document.getElementById('charLibNameInput').value?'block':'none';
+  clearTimeout(_charLibNameDebounce);
+  _charLibNameDebounce=setTimeout(()=>fetchCharLibrary(),400);
 }
 
 function _charLibClearName(){
   document.getElementById('charLibNameInput').value='';
   document.getElementById('charLibNameClear').style.display='none';
+  clearTimeout(_charLibNameDebounce);
   fetchCharLibrary();
 }
 
 // ── CHARACTER LIBRARY: TOPIC OVERVIEW (lightweight, on-demand) ────────────
 // Fetches only topic_value + answer (no media_url/aliases) so it's far
 // cheaper than loading full character cards, and only runs when the admin
-// explicitly opens the panel — results are cached until manually refreshed.
+// focuses the (empty) topic field — results are cached for the session.
 let _charLibOverviewData=null;
 
-async function toggleCharLibOverview(){
-  const panel=document.getElementById('charLibOverview');
-  const btn=document.getElementById('charLibOverviewBtn');
-  const opening=panel.style.display==='none';
-  panel.style.display=opening?'flex':'none';
-  btn.style.background=opening?'var(--accent-soft)':'var(--bg2)';
-  btn.style.color=opening?'var(--accent)':'var(--text)';
-  if(opening&&!_charLibOverviewData)await fetchCharLibOverview();
+async function _loadCharLibOverviewData(forceRefresh){
+  if(!forceRefresh&&_charLibOverviewData)return _charLibOverviewData;
+  const{data,error}=await sb.from('questions').select('topic_value,answer').eq('format','char').eq('status','approved');
+  if(error)throw error;
+  // Count distinct characters (by lowercased answer) per topic
+  const byTopic={};
+  (data||[]).forEach(r=>{
+    const topic=r.topic_value||'—';
+    const key=(r.answer||'').toLowerCase().trim();
+    if(!byTopic[topic])byTopic[topic]=new Set();
+    byTopic[topic].add(key);
+  });
+  _charLibOverviewData=Object.entries(byTopic)
+    .map(([topic,set])=>({topic,count:set.size}))
+    .sort((a,b)=>b.count-a.count||a.topic.localeCompare(b.topic));
+  return _charLibOverviewData;
 }
 
-// Picking a topic from the overview closes the panel before loading it
-function _charLibOverviewPick(topic){
-  const panel=document.getElementById('charLibOverview');
-  const btn=document.getElementById('charLibOverviewBtn');
-  panel.style.display='none';
-  btn.style.background='var(--bg2)';
-  btn.style.color='var(--text)';
-  _charLibPickTopic(topic);
-}
-
-async function fetchCharLibOverview(forceRefresh){
-  const panel=document.getElementById('charLibOverview');
-  panel.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading topic overview…</div></div>';
-  try{
-    if(forceRefresh||!_charLibOverviewData){
-      const{data,error}=await sb.from('questions').select('topic_value,answer').eq('format','char').eq('status','approved');
-      if(error)throw error;
-      // Count distinct characters (by lowercased answer) per topic
-      const byTopic={};
-      (data||[]).forEach(r=>{
-        const topic=r.topic_value||'—';
-        const key=(r.answer||'').toLowerCase().trim();
-        if(!byTopic[topic])byTopic[topic]=new Set();
-        byTopic[topic].add(key);
-      });
-      _charLibOverviewData=Object.entries(byTopic)
-        .map(([topic,set])=>({topic,count:set.size}))
-        .sort((a,b)=>b.count-a.count||a.topic.localeCompare(b.topic));
-    }
-    if(!_charLibOverviewData.length){
-      panel.innerHTML='<div class="char-lib-empty">🎭 No character-format questions found yet.</div>';
+// Shows a "browse by topic" list (with character counts) inside the topic
+// dropdown when the topic field is empty
+async function _charLibShowOverviewDrop(){
+  const drop=document.getElementById('charLibTopicDrop');
+  if(!_charLibOverviewData){
+    drop.innerHTML='<div class="admin-topic-suggest-item" style="opacity:.6;cursor:default">Loading topics…</div>';
+    drop.style.display='block';
+    try{await _loadCharLibOverviewData();}catch(e){
+      drop.innerHTML='<div class="admin-topic-suggest-item" style="opacity:.6;cursor:default">⚠️ Couldn\'t load topics.</div>';
       return;
     }
-    panel.innerHTML='<div class="admin-cov-title" style="margin-top:4px">'
-      +'<span>🎭 Characters by topic</span>'
-      +'<button onclick="fetchCharLibOverview(true)" title="Refresh counts" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;display:inline-flex;align-items:center" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'"><i class="ti ti-refresh" style="font-size:15px"></i></button>'
-      +'</div>'
-      +_charLibOverviewData.map(r=>(
-        '<div class="admin-cov-row" style="cursor:pointer" onclick="_charLibOverviewPick(\''+r.topic.replace(/'/g,"\\'")+'\')">'
-        +'<span class="admin-cov-name">'+r.topic+'</span>'
-        +'<span class="admin-cov-total">'+r.count+'</span>'
-        +'</div>'
-      )).join('');
-  }catch(e){
-    panel.innerHTML='<div class="char-lib-empty">⚠️ Couldn\'t load topic overview. Check your connection and try again.</div>';
   }
-  applyTheme();
+  if(!_charLibOverviewData.length){
+    drop.innerHTML='<div class="admin-topic-suggest-item" style="opacity:.6;cursor:default">No characters yet.</div>';
+    drop.style.display='block';
+    return;
+  }
+  drop.innerHTML=_charLibOverviewData.map(r=>(
+    '<div class="admin-topic-suggest-item" style="display:flex;align-items:center;gap:10px" onmousedown="event.preventDefault();_charLibPickTopic(\''+r.topic.replace(/'/g,"\\'")+'\')">'
+    +'<span>'+r.topic+'</span>'
+    +'<span style="margin-left:auto;font-size:11px;font-weight:800;opacity:.7">'+r.count+'</span>'
+    +'</div>'
+  )).join('');
+  drop.style.display='block';
 }
 
 async function fetchCharLibrary(){
@@ -9226,6 +9215,7 @@ async function removeCharacter(id,name,topic){
       countEl.textContent=remaining+' character'+(remaining===1?'':'s')+(topic?' in '+topic:'');
     }
     showAdminToast('"'+name+'" removed 🗑️');
+    _charLibOverviewData=null; // counts/grouping may have changed
     renderAdminStats();
   });
 }
