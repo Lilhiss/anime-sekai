@@ -9235,9 +9235,16 @@ let ceEditId=null,ceOrig=null;
 
 async function openCharEdit(id){
   // Fetch the full row fresh so edits always start from current data
-  let q=null;
-  try{const{data}=await sb.from('questions').select('id,answer,aliases,gender,distractors,media_url,topic_value,topic_type').eq('id',id).single();q=data;}catch(e){}
-  if(!q)return;
+  let q=null,err=null;
+  try{
+    const{data,error}=await sb.from('questions').select('id,answer,aliases,gender,distractors,media_url,topic_value,topic_type').eq('id',id).single();
+    q=data;err=error;
+  }catch(e){err=e;}
+  if(!q){
+    console.error('openCharEdit failed:',err);
+    showAdminToast('⚠️ Could not load character — '+(err&&err.message?err.message:'try again.'));
+    return;
+  }
   ceEditId=id;ceOrig=q;
   document.getElementById('ceAnswer').value=q.answer||'';
   document.getElementById('ceGender').value=q.gender||'';
