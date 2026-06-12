@@ -9012,6 +9012,16 @@ async function toggleCharLibOverview(){
   if(opening&&!_charLibOverviewData)await fetchCharLibOverview();
 }
 
+// Picking a topic from the overview closes the panel before loading it
+function _charLibOverviewPick(topic){
+  const panel=document.getElementById('charLibOverview');
+  const btn=document.getElementById('charLibOverviewBtn');
+  panel.style.display='none';
+  btn.style.background='var(--bg2)';
+  btn.style.color='var(--text)';
+  _charLibPickTopic(topic);
+}
+
 async function fetchCharLibOverview(forceRefresh){
   const panel=document.getElementById('charLibOverview');
   panel.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading topic overview…</div></div>';
@@ -9040,7 +9050,7 @@ async function fetchCharLibOverview(forceRefresh){
       +'<button onclick="fetchCharLibOverview(true)" title="Refresh counts" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;display:inline-flex;align-items:center" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'"><i class="ti ti-refresh" style="font-size:15px"></i></button>'
       +'</div>'
       +_charLibOverviewData.map(r=>(
-        '<div class="admin-cov-row" style="cursor:pointer" onclick="_charLibPickTopic(\''+r.topic.replace(/'/g,"\\'")+'\')">'
+        '<div class="admin-cov-row" style="cursor:pointer" onclick="_charLibOverviewPick(\''+r.topic.replace(/'/g,"\\'")+'\')">'
         +'<span class="admin-cov-name">'+r.topic+'</span>'
         +'<span class="admin-cov-total">'+r.count+'</span>'
         +'</div>'
