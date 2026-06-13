@@ -2417,14 +2417,27 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">Contact</div>
         <button onclick="document.getElementById('contactModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.6">Got feedback, found a bug, or want to get in touch? Fill in the form below.</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div><label class="form-label">Your name</label><input class="form-input" id="contactName" type="text" placeholder="Optional"></div>
-        <div><label class="form-label">Message</label><textarea class="form-input" id="contactMessage" rows="4" placeholder="Tell us what's on your mind…" style="resize:vertical;font-family:'Nunito',sans-serif;font-size:13px"></textarea></div>
+      <!-- Shown to signed-in users -->
+      <div id="contactForm">
+        <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">Got feedback, found a bug, or want to get in touch? Fill in the form below.</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div><label class="form-label">Your name</label><input class="form-input" id="contactName" type="text" placeholder="Optional"></div>
+          <div><label class="form-label">Message</label><textarea class="form-input" id="contactMessage" rows="4" placeholder="Tell us what's on your mind…" style="resize:vertical;font-family:'Nunito',sans-serif;font-size:13px"></textarea></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
+          <button class="action-btn secondary" onclick="document.getElementById('contactModal').style.display='none'">Cancel</button>
+          <button class="action-btn primary" onclick="submitContact()"><i class="ti ti-send" style="font-size:15px"></i> Send</button>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button class="action-btn secondary" onclick="document.getElementById('contactModal').style.display='none'">Cancel</button>
-        <button class="action-btn primary" onclick="submitContact()"><i class="ti ti-send" style="font-size:15px"></i> Send</button>
+      <!-- Shown to guests / logged-out users -->
+      <div id="contactGuestWall" style="display:none;flex-direction:column;align-items:center;gap:16px;padding:8px 0 4px;text-align:center">
+        <div style="font-size:36px">🔐</div>
+        <div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">Account required</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.6">Only registered players can send messages. Create a free account to get in touch!</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
+          <button class="action-btn secondary" onclick="document.getElementById('contactModal').style.display='none'">Cancel</button>
+          <button class="action-btn primary" onclick="document.getElementById('contactModal').style.display='none';goStep('auth')"><i class="ti ti-user" style="font-size:15px"></i> Sign in</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2666,7 +2679,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <a class="foot-link" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()">About</a>
       <a class="foot-link" onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()">Privacy</a>
       <a class="foot-link" onclick="document.getElementById('termsModal').style.display='flex';applyTheme()">Terms</a>
-      <a class="foot-link" onclick="document.getElementById('contactModal').style.display='flex';applyTheme()">Contact</a>
+      <a class="foot-link" onclick="openContactModal()">Contact</a>
     </div>
   </footer>
 
@@ -5128,7 +5141,16 @@ function playAgain(){
 }
 
 // ── CONTACT ───────────────────────────────────────────────────
+function openContactModal(){
+  const isAccount=currentUser&&!isGuest;
+  document.getElementById('contactForm').style.display=isAccount?'block':'none';
+  document.getElementById('contactGuestWall').style.display=isAccount?'none':'flex';
+  document.getElementById('contactModal').style.display='flex';
+  applyTheme();
+}
 async function submitContact(){
+  // Server-side guard: block guests and logged-out users
+  if(!currentUser||isGuest){document.getElementById('contactModal').style.display='none';return;}
   const name=document.getElementById('contactName').value.trim();
   const msg=document.getElementById('contactMessage').value.trim();
   if(!msg){return;}
