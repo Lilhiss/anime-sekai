@@ -2442,6 +2442,19 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
+  <!-- INBOX MODAL -->
+  <div id="inboxModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;max-height:80vh">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">✉️ Inbox</div>
+        <button onclick="closeInboxModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div id="inboxContent" style="overflow-y:auto;display:flex;flex-direction:column;gap:12px;flex:1;scrollbar-width:thin;scrollbar-color:var(--border2) transparent">
+        <div class="admin-empty">Loading…</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ADMIN UNLOCK MODAL -->
   <div id="adminUnlockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);z-index:1200;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:32px 28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
@@ -3168,6 +3181,7 @@ function updateNav(){
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
         ${getNavAvatarHTML(currentUser[0].toUpperCase())}${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
+      <button class="ghost-btn" id="inboxBtn" onclick="openInboxModal()" title="Inbox" style="position:relative;padding:7px 11px"><i class="ti ti-mail" style="font-size:16px"></i><span id="inboxDot" style="display:none;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#f87171;box-shadow:0 0 0 2px var(--bg2)"></span></button>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
     document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
   } else {
@@ -3177,7 +3191,72 @@ function updateNav(){
   if(_adminLink)_adminLink.style.display=isAdmin?'inline-flex':'none';
   applyTheme();
   if(typeof syncDrawerState==='function')syncDrawerState();
+  if(currentUser&&!isGuest)checkInboxBadge();
 }
+// ── INBOX (player reply notifications) ───────────────────────────────────────
+async function checkInboxBadge(){
+  if(!currentUserId||isGuest)return;
+  try{
+    const{data}=await sb.from('contact_messages')
+      .select('id')
+      .eq('user_id',currentUserId)
+      .not('reply','is',null)
+      .is('read_at',null);
+    const dot=document.getElementById('inboxDot');
+    const btn=document.getElementById('inboxBtn');
+    const unread=data&&data.length>0;
+    if(dot)dot.style.display=unread?'block':'none';
+    if(btn)btn.style.display='inline-flex';
+  }catch(e){}
+}
+async function openInboxModal(){
+  const modal=document.getElementById('inboxModal');
+  const content=document.getElementById('inboxContent');
+  if(!modal||!content)return;
+  modal.style.display='flex';
+  content.innerHTML='<div class="admin-empty">Loading\u2026</div>';
+  applyTheme();
+  if(!currentUserId){content.innerHTML='<div class="admin-empty" style="color:var(--muted)">Not signed in.</div>';return;}
+  try{
+    const{data,error}=await sb.from('contact_messages')
+      .select('id,message,sent_at,reply,replied_at,read_at')
+      .eq('user_id',currentUserId)
+      .order('sent_at',{ascending:false});
+    if(error)throw error;
+    if(!data||!data.length){
+      content.innerHTML='<div class="admin-empty" style="color:var(--muted)">You haven\'t sent any messages yet.</div>';
+      return;
+    }
+    content.innerHTML=data.map(m=>{
+      const hasReply=!!(m.reply&&m.replied_at);
+      const isUnread=hasReply&&!m.read_at;
+      return `<div style="background:var(--bg3);border:1.5px solid ${isUnread?'var(--accent)':'var(--border)'};border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--muted)">${m.sent_at?new Date(m.sent_at).toLocaleDateString():''}</span>
+          ${isUnread?'<span style="font-size:11px;font-weight:800;color:#fff;background:var(--accent);border-radius:99px;padding:1px 8px">New reply</span>':''}
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(m.message||'').replace(/</g,'&lt;')}</div>
+        ${hasReply?`<div style="padding:10px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11px;font-weight:800;color:var(--accent)">\u{1F4AC} Reply \u00b7 ${new Date(m.replied_at).toLocaleDateString()}</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(m.reply||'').replace(/</g,'&lt;')}</div>
+        </div>`:'<div style="font-size:12px;color:var(--muted);font-style:italic">No reply yet.</div>'}
+      </div>`;
+    }).join('');
+    // Mark all unread replies as read
+    const unreadIds=data.filter(m=>m.reply&&m.replied_at&&!m.read_at).map(m=>m.id);
+    if(unreadIds.length){
+      await sb.from('contact_messages').update({read_at:new Date().toISOString()}).in('id',unreadIds).catch(()=>{});
+      const dot=document.getElementById('inboxDot');
+      if(dot)dot.style.display='none';
+    }
+  }catch(e){
+    content.innerHTML='<div class="admin-empty" style="color:var(--muted)">&#x26A0;&#xFE0F; Couldn\'t load messages.</div>';
+  }
+}
+function closeInboxModal(){
+  document.getElementById('inboxModal').style.display='none';
+}
+
 function signOut(){
   // Show confirmation modal instead of signing out immediately
   document.getElementById('signOutModal').style.display='flex';
@@ -5156,7 +5235,8 @@ async function submitContact(){
   if(!msg){return;}
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
     await sb.from('contact_messages').insert({
-      name:name||'Anonymous',
+      user_id:currentUserId,
+      name:name||currentUser||'Anonymous',
       message:msg,
       sent_at:new Date().toISOString()
     }).catch(()=>{});
@@ -9169,11 +9249,10 @@ async function fetchAdminSuggestions(){
 async function fetchAdminMessages(){
   const wrap=document.getElementById('adminMessages');
   if(!wrap)return;
-  wrap.innerHTML='<div class="admin-empty">Loading…</div>';
+  wrap.innerHTML='<div class="admin-empty">Loading\u2026</div>';
   try{
     const{data,error,count}=await sb.from('contact_messages').select('*',{count:'exact'}).order('sent_at',{ascending:false});
     if(error)throw error;
-    // Update badge
     const badge=document.getElementById('adminCountMessages');
     if(badge){badge.textContent=count||0;badge.style.display=(count&&count>0)?'inline-flex':'none';}
     if(!data||!data.length){
@@ -9181,21 +9260,53 @@ async function fetchAdminMessages(){
       return;
     }
     wrap.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:4px">'+data.length+' message'+(data.length===1?'':'s')+'</div>'
-      +data.map(m=>`
+      +data.map(m=>{
+        const replied=!!(m.reply&&m.replied_at);
+        const replySection=replied
+          ?`<div style="margin-top:10px;padding:10px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:11px;font-weight:800;color:var(--accent)">YOUR REPLY \u00b7 ${new Date(m.replied_at).toLocaleString()}</div>
+              <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(m.reply||'').replace(/</g,'&lt;')}</div>
+              <button onclick="clearAdminReply(${m.id})" style="align-self:flex-end;margin-top:4px;background:none;border:none;font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;color:var(--muted);cursor:pointer;padding:0" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--muted)'">Remove reply</button>
+            </div>`
+          :`<div style="margin-top:10px;display:flex;gap:8px;align-items:flex-end">
+              <textarea id="reply-input-${m.id}" placeholder="Write a reply\u2026" rows="2" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:8px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"></textarea>
+              <button onclick="sendAdminReply(${m.id})" style="flex-shrink:0;background:var(--accent);border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 14px;border-radius:10px;cursor:pointer;transition:opacity .15s;align-self:flex-end" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"><i class="ti ti-send" style="font-size:14px"></i> Reply</button>
+            </div>`;
+        return `
       <div class="admin-cov-row" id="msg-row-${m.id}" style="display:flex;gap:14px;padding:14px 16px;align-items:flex-start;flex-wrap:wrap">
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:13px;font-weight:800;color:var(--text)">${(m.name||'Anonymous').replace(/</g,'&lt;')}</span>
+            ${m.user_id?`<span style="font-size:11px;color:var(--muted);font-family:monospace">${m.user_id.slice(0,8)}\u2026</span>`:''}
             <span style="font-size:11px;color:var(--muted)">${m.sent_at?new Date(m.sent_at).toLocaleString():''}</span>
+            ${replied?'<span style="font-size:11px;font-weight:800;color:var(--accent)">Replied \u2713</span>':'<span style="font-size:11px;font-weight:800;color:#f87171">Awaiting reply</span>'}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(m.message||'').replace(/</g,'&lt;')}</div>
+          ${replySection}
         </div>
         <button onclick="deleteAdminMessage(${m.id})" title="Delete message" style="flex-shrink:0;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;transition:all .15s" onmouseover="this.style.color='#f87171';this.style.borderColor='#f87171'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'"><i class="ti ti-trash" style="font-size:14px"></i></button>
-      </div>`).join('');
+      </div>`;
+      }).join('');
   }catch(e){
     wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">&#x26A0;&#xFE0F; Couldn\'t load messages.</div>';
   }
   applyTheme();
+}
+async function sendAdminReply(id){
+  const ta=document.getElementById('reply-input-'+id);
+  if(!ta)return;
+  const reply=ta.value.trim();
+  if(!reply)return;
+  const btn=ta.nextElementSibling;
+  if(btn){btn.disabled=true;btn.textContent='Sending\u2026';}
+  const{error}=await sb.from('contact_messages').update({reply,replied_at:new Date().toISOString(),read_at:null}).eq('id',id);
+  if(error){if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-send" style="font-size:14px"></i> Reply';}showToast('Failed to send reply.');return;}
+  await fetchAdminMessages();
+}
+async function clearAdminReply(id){
+  if(!confirm('Remove this reply? The player will no longer see it.'))return;
+  await sb.from('contact_messages').update({reply:null,replied_at:null,read_at:null}).eq('id',id).catch(()=>{});
+  await fetchAdminMessages();
 }
 async function deleteAdminMessage(id){
   if(!confirm('Delete this message?'))return;
