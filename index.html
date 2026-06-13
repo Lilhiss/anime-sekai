@@ -3202,13 +3202,13 @@ async function checkInboxBadge(){
   if(!currentUserId||isGuest)return;
   try{
     const{data}=await sb.from('contact_messages')
-      .select('id,read_at')
-      .eq('user_id',currentUserId)
-      .neq('reply',null);
+      .select('id,reply,read_at')
+      .eq('user_id',currentUserId);
     const btn=document.getElementById('inboxBtn');
     const dot=document.getElementById('inboxDot');
-    const hasReplied=data&&data.length>0;
-    const hasUnread=data&&data.some(m=>!m.read_at);
+    const replied=(data||[]).filter(m=>m.reply);
+    const hasReplied=replied.length>0;
+    const hasUnread=replied.some(m=>!m.read_at);
     if(dot)dot.style.display=hasUnread?'block':'none';
     if(btn){
       const wasVisible=btn.style.display==='inline-flex';
@@ -3245,10 +3245,10 @@ async function openInboxModal(){
     const{data,error}=await sb.from('contact_messages')
       .select('id,message,sent_at,reply,replied_at,read_at')
       .eq('user_id',currentUserId)
-      .neq('reply',null)
       .order('sent_at',{ascending:false});
     if(error)throw error;
-    if(!data||!data.length){
+    const replied=(data||[]).filter(m=>m.reply&&m.replied_at);
+    if(!replied.length){
       content.innerHTML='<div class="admin-empty" style="color:var(--muted)">No replies yet.</div>';
       return;
     }
@@ -3273,11 +3273,11 @@ async function openInboxModal(){
         </div>`;
       }).join('');
     };
-    render(data);
-    // Mark all unread replies as read
-    const unreadIds=data.filter(m=>!m.read_at).map(m=>m.id);
+    render(replied);
+    // Mark all unread replied messages as read
+    const unreadIds=replied.filter(m=>!m.read_at).map(m=>m.id);
     if(unreadIds.length){
-      await sb.from('contact_messages').update({read_at:new Date().toISOString()}).in('id',unreadIds).catch(()=>{});
+      await sb.from('contact_messages').update({read_at:new Date().toISOString()}).in('id',unreadIds);
       const dot=document.getElementById('inboxDot');
       if(dot)dot.style.display='none';
     }
@@ -3307,12 +3307,11 @@ async function closeInboxModal(){
   if(!currentUserId||isGuest)return;
   try{
     const{data}=await sb.from('contact_messages')
-      .select('id')
-      .eq('user_id',currentUserId)
-      .neq('reply',null);
+      .select('id,reply')
+      .eq('user_id',currentUserId);
     const btn=document.getElementById('inboxBtn');
     const dot=document.getElementById('inboxDot');
-    const hasReplied=data&&data.length>0;
+    const hasReplied=(data||[]).some(m=>m.reply);
     if(dot)dot.style.display='none'; // unread dot always off after reading
     if(btn&&!hasReplied){
       _hideInboxBtn(btn);
@@ -5301,12 +5300,14 @@ async function submitContact(){
   const msg=document.getElementById('contactMessage').value.trim();
   if(!msg){return;}
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.from('contact_messages').insert({
-      user_id:currentUserId,
-      name:name||currentUser||'Anonymous',
-      message:msg,
-      sent_at:new Date().toISOString()
-    }).catch(()=>{});
+    try{
+      await sb.from('contact_messages').insert({
+        user_id:currentUserId,
+        name:name||currentUser||'Anonymous',
+        message:msg,
+        sent_at:new Date().toISOString()
+      });
+    }catch(e){}
   }
   document.getElementById('contactMessage').value='';
   document.getElementById('contactName').value='';
