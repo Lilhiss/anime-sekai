@@ -4269,7 +4269,9 @@ function hideJoiningOverlay(){const o=document.getElementById('joiningOverlay');
 })();
 
 function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
-function openCharFmtModal(){
+let charFmtContext='solo'; // 'solo' | 'lobby'
+function openCharFmtModal(ctx){
+  charFmtContext=ctx||'solo';
   const m=document.getElementById('charFmtModal');
   m.style.display='flex';
 }
@@ -4278,8 +4280,13 @@ function closeCharFmtModal(){
 }
 function selectCharFormat(fmt){
   closeCharFmtModal();
-  selectedFormat=fmt;
-  goStep('mode');
+  if(charFmtContext==='lobby'){
+    lobbyFormat=fmt;selectedFormat=fmt;
+    gsAfterChange();
+  } else {
+    selectedFormat=fmt;
+    goStep('mode');
+  }
 }
 function selectSoloMode(mode){
   pendingMode=mode;
@@ -7521,7 +7528,11 @@ function gsUpdateHostLabel(){
   if(typeof updateLobbyTopicsLabel==='function')updateLobbyTopicsLabel();
 }
 function gsSyncUI(){
-  document.querySelectorAll('#gsFormatGrid [data-fmt]').forEach(b=>b.classList.toggle('selected',b.dataset.fmt===lobbyFormat));
+  document.querySelectorAll('#gsFormatGrid [data-fmt]').forEach(b=>{
+    const fmt=b.dataset.fmt;
+    // char bigcard should appear selected for both char and char-mc
+    b.classList.toggle('selected',fmt===lobbyFormat||(fmt==='char'&&lobbyFormat==='char-mc'));
+  });
   document.querySelectorAll('#gsModeGrid [data-mode]').forEach(b=>b.classList.toggle('selected',b.dataset.mode===lobbyMode));
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
@@ -7533,7 +7544,7 @@ function gsSyncUI(){
   gsRenderTopic();
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭','char-mc':'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
@@ -7541,7 +7552,10 @@ function gsSyncUI(){
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
-function gsSetFormat(f){lobbyFormat=f;selectedFormat=f;gsAfterChange();}
+function gsSetFormat(f){
+  if(f==='char'){openCharFmtModal('lobby');return;}
+  lobbyFormat=f;selectedFormat=f;gsAfterChange();
+}
 function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
@@ -10524,7 +10538,8 @@ function syncDrawerState(){
             <div style="font-size:12px;color:var(--muted);margin-top:2px">Four options — pick the right name.</div>
           </div>
         </button>
-        <button onclick="selectCharFormat('char')" style="display:flex;align-items:center;gap:14px;background:var(--card-bg);border:1.5px solid var(--border2);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <button onclick="selectCharFormat('char')" style="position:relative;display:flex;align-items:center;gap:14px;background:var(--card-bg);border:1.5px solid var(--border2);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="position:absolute;top:-9px;right:10px;font-size:10px;font-weight:800;color:#fff;background:var(--accent);border-radius:99px;padding:2px 9px;letter-spacing:.05em;pointer-events:none">Hard</span>
           <span style="font-size:26px">⌨️</span>
           <div>
             <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">Type the Answer</div>
