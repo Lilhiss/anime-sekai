@@ -1016,14 +1016,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <div class="ctrl-wrap" id="themeWrap">
         <button class="ghost-btn" onclick="toggleDrop()">
           <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
-          <span id="tlabel">Midnight</span>
+          <span id="tlabel">Ethereal</span>
           <i class="ti ti-chevron-down" style="font-size:13px"></i>
         </button>
         <div class="drop" id="drop">
           <div class="drop-section" style="display:none">Mode</div>
           <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
           <div class="drop-sep" style="display:none"></div>
-          <div class="drop-section">Sound</div><div class="toggle-row"><span class="toggle-label"><i class="ti ti-volume" style="font-size:15px"></i> Sound effects</span><button class="tog" id="soundToggle" onclick="toggleSound()"></button></div><div class="drop-sep"></div><div class="drop-section">Color</div>
+          <div class="drop-section">Color</div>
           <button class="drop-row active" onclick="setColor('midnight','#a78bfa','Ethereal',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#a78bfa,#7c5cbf)"></span>Ethereal</div><i class="ti ti-check drop-check"></i></button>
           <button class="drop-row" onclick="setColor('blossom','#f472b6','Blossom',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#f472b6,#be185d)"></span>Blossom</div><i class="ti ti-check drop-check"></i></button>
           <button class="drop-row" onclick="setColor('abyss','#38bdf8','Abyss',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,#38bdf8,#1d4ed8)"></span>Abyss</div><i class="ti ti-check drop-check"></i></button>
@@ -3216,7 +3216,7 @@ function buildThemeDropHTML(){
   return `<div class="drop-section" style="display:none">Mode</div>
     <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog${!isDark?' on':''}" id="modeToggle" onclick="toggleMode()"></button></div>
     <div class="drop-sep" style="display:none"></div>
-    <div class="drop-section">Sound</div><div class="toggle-row"><span class="toggle-label"><i class="ti ti-volume" style="font-size:15px"></i> Sound effects</span><button class="tog" id="soundToggle" onclick="toggleSound()"></button></div><div class="drop-sep"></div><div class="drop-section">Color</div>
+    <div class="drop-section">Color</div>
     ${[
       {k:'midnight',g:'#a78bfa,#7c5cbf'},
       {k:'blossom', g:'#f472b6,#be185d'},
@@ -3230,11 +3230,12 @@ function updateNav(){
   const nr=document.getElementById('navRight');
   if(currentUser){
     nr.innerHTML=`
+      <button class="ghost-btn" id="inboxBtn" onclick="openInboxModal()" title="Inbox" style="display:none;position:relative;padding:7px 11px"><i class="ti ti-mail" style="font-size:16px"></i><span id="inboxDot" style="display:none;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#f87171;box-shadow:0 0 0 2px var(--bg2)"></span></button>
       <button class="ghost-btn" id="soundBtn" onclick="toggleSound()" title="Toggle sound" style="padding:7px 11px"><i class="ti ti-volume" id="soundBtnIcon" style="font-size:16px"></i></button>
       <div class="ctrl-wrap" id="themeWrap">
         <button class="ghost-btn" onclick="toggleDrop()">
           <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:${accentHex[currentColor]};flex-shrink:0"></span>
-          <span id="tlabel">${isDark?'Dark':'Light'} · ${colorNames[currentColor]}</span>
+          <span id="tlabel">${colorNames[currentColor]}</span>
           <i class="ti ti-chevron-down" style="font-size:13px"></i>
         </button>
         <div class="drop" id="drop">${buildThemeDropHTML()}</div>
@@ -3244,7 +3245,6 @@ function updateNav(){
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
         ${getNavAvatarHTML(currentUser[0].toUpperCase())}${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
-      <button class="ghost-btn" id="inboxBtn" onclick="openInboxModal()" title="Inbox" style="display:none;position:relative;padding:7px 11px"><i class="ti ti-mail" style="font-size:16px"></i><span id="inboxDot" style="display:none;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#f87171;box-shadow:0 0 0 2px var(--bg2)"></span></button>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
     document.addEventListener('click',e=>{const tw=document.getElementById('themeWrap');if(tw&&!tw.contains(e.target))closeDrop()});
   } else {
