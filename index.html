@@ -3086,7 +3086,6 @@ sb.auth.onAuthStateChange(async (event, session) => {
       }
       updateNav();
       checkAdminRole();
-      _appReady();
       // Arrived via an invite link while already signed in — join now that the
       // session has restored (the boot router ran before currentUser was set).
       if(typeof pendingInviteCode!=='undefined'&&pendingInviteCode)afterAuth();
@@ -3127,9 +3126,21 @@ function _appReady(){
   },180);
 }
 
-// Fallback: if no registered session exists, fire after a short delay so
-// users with no account don't sit on an invisible page.
-setTimeout(()=>_appReady(),600);
+// Reveal the nav and landing content as soon as the DOM is parsed and fonts
+// are ready — no need to wait for auth. Auth updates the nav button quietly
+// in the background via updateNav() once it resolves.
+function _triggerAppReady(){
+  if(document.fonts&&document.fonts.ready){
+    document.fonts.ready.then(()=>_appReady());
+  } else {
+    _appReady();
+  }
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_triggerAppReady,{once:true});
+} else {
+  _triggerAppReady();
+}
 </script>
 
 <script>
