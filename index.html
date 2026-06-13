@@ -3204,7 +3204,7 @@ async function checkInboxBadge(){
     const{data}=await sb.from('contact_messages')
       .select('id,read_at')
       .eq('user_id',currentUserId)
-      .not('reply','is',null);
+      .neq('reply',null);
     const btn=document.getElementById('inboxBtn');
     const dot=document.getElementById('inboxDot');
     const hasReplied=data&&data.length>0;
@@ -3245,7 +3245,7 @@ async function openInboxModal(){
     const{data,error}=await sb.from('contact_messages')
       .select('id,message,sent_at,reply,replied_at,read_at')
       .eq('user_id',currentUserId)
-      .not('reply','is',null)
+      .neq('reply',null)
       .order('sent_at',{ascending:false});
     if(error)throw error;
     if(!data||!data.length){
@@ -3309,7 +3309,7 @@ async function closeInboxModal(){
     const{data}=await sb.from('contact_messages')
       .select('id')
       .eq('user_id',currentUserId)
-      .not('reply','is',null);
+      .neq('reply',null);
     const btn=document.getElementById('inboxBtn');
     const dot=document.getElementById('inboxDot');
     const hasReplied=data&&data.length>0;
