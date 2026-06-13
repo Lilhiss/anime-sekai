@@ -978,6 +978,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .char-lib-edit-fab{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:#000a;border:1px solid #fff3;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s;font-size:14px}
 .char-lib-card:hover .char-lib-edit-fab,.char-lib-edit-fab:focus{opacity:1}
 .char-lib-edit-fab:hover{background:var(--accent)}
+.char-lib-cb{appearance:none;-webkit-appearance:none;position:absolute;top:8px;left:8px;width:20px;height:20px;border-radius:6px;border:1.5px solid #fff8;background:#000a;cursor:pointer;transition:opacity .2s,border-color .15s,background .15s;opacity:0;z-index:2}
+.char-lib-card:hover .char-lib-cb,.char-lib-cb:checked,.char-lib-cb:focus{opacity:1}
+.char-lib-cb:checked{border-color:var(--accent);background:var(--accent)}
+.char-lib-cb:checked::after{content:'';position:absolute;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;top:2px;left:6px;transform:rotate(45deg)}
+.char-lib-card.char-lib-selected{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
 .char-lib-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;background:var(--card-bg);border:1.5px dashed var(--border);border-radius:14px;line-height:1.8}
 .char-lib-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 20px;color:var(--muted);font-size:13px}
 </style>
@@ -2172,6 +2177,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </select>
           <span class="char-lib-count" id="charLibCount" style="display:none"></span>
         </div>
+        <!-- Bulk action bar (filled in by updateCharLibBulkBar) -->
+        <div id="charLibBulkBarWrap"></div>
         <!-- Grid -->
         <div id="charLibGrid"></div>
       </div>
@@ -8953,7 +8960,6 @@ document.addEventListener('click',(e)=>{
 
 async function switchAdminSection(section){
   adminSection=section;
-  if(section==='browse')adminBrowsePage=0;
   const info=ADMIN_SECTION_INFO[section];
   if(info)document.getElementById('adminSectionHeader').innerHTML=`<div class="admin-section-title">${info.icon} ${info.title}</div><div class="admin-section-desc">${info.desc}</div>`;
   document.getElementById('adminSecReview').classList.toggle('active',section==='review');
@@ -9228,6 +9234,7 @@ async function fetchCharLibrary(){
     return;
   }
   grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
+  clearCharLibSelection();
   try{
     let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type,gender,distractors').eq('format','char').eq('status','approved');
     if(topic)q=q.eq('topic_value',topic);
@@ -9265,6 +9272,7 @@ async function fetchCharLibrary(){
             ?`<img class="char-lib-img" src="${ch.media_url}" alt="${(ch.answer||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
             :''}
           <div class="char-lib-no-img" style="display:${hasImg?'none':'flex'};width:100%;height:100%;align-items:center;justify-content:center">🎭</div>
+          <input type="checkbox" class="char-lib-cb" title="Select" onchange="toggleCharLibSelect('${(ch.answer||'').replace(/'/g,"\\'")}','${(ch.topic_value||'').replace(/'/g,"\\'")}',this)">
           <button class="char-lib-edit-fab" title="Edit character" onclick="openCharEdit('${ch.id}')"><i class="ti ti-pencil"></i></button>
         </div>
         <div class="char-lib-body">
@@ -9307,7 +9315,85 @@ async function removeCharacter(id,name,topic){
   });
 }
 
-// ── CHARACTER LIBRARY: EDIT MODAL ──────────────────────────────────────
+// ── CHARACTER LIBRARY: BULK ACTIONS ────────────────────────────────────
+// Selection is keyed by "answer|||topic_value" so bulk edits/deletes apply
+// to every approved char question for that character, same scope as the
+// single-character edit modal.
+let charLibSelected=new Map();
+
+function toggleCharLibSelect(answer,topic,el){
+  const key=answer+'|||'+topic;
+  const card=el.closest('.char-lib-card');
+  if(el.checked){charLibSelected.set(key,{answer,topic});card.classList.add('char-lib-selected');}
+  else{charLibSelected.delete(key);card.classList.remove('char-lib-selected');}
+  updateCharLibBulkBar();
+}
+
+function clearCharLibSelection(){
+  charLibSelected.clear();
+  document.querySelectorAll('.char-lib-cb').forEach(cb=>{
+    cb.checked=false;
+    const card=cb.closest('.char-lib-card');if(card)card.classList.remove('char-lib-selected');
+  });
+  updateCharLibBulkBar();
+}
+
+function updateCharLibBulkBar(){
+  const wrap=document.getElementById('charLibBulkBarWrap');
+  if(!wrap)return;
+  if(charLibSelected.size===0){wrap.innerHTML='';return;}
+  const n=charLibSelected.size;
+  wrap.innerHTML='<div class="admin-bulk-bar">'
+    +'<span class="admin-bulk-bar-count">'+n+' character'+(n===1?'':'s')+' selected</span>'
+    +'<span style="font-size:12px;font-weight:800;color:var(--muted)">Set gender:</span>'
+    +'<button class="admin-bulk-btn" onclick="bulkSetCharGender(\'Male\')">Male</button>'
+    +'<button class="admin-bulk-btn" onclick="bulkSetCharGender(\'Female\')">Female</button>'
+    +'<button class="admin-bulk-btn" onclick="bulkSetCharGender(\'Non-binary\')">Non-binary</button>'
+    +'<button class="admin-bulk-btn danger" onclick="bulkDeleteCharacters()"><i class="ti ti-trash" style="font-size:13px"></i> Delete</button>'
+    +'<button class="admin-bulk-btn" onclick="clearCharLibSelection()" style="margin-left:auto"><i class="ti ti-x" style="font-size:13px"></i> Cancel</button>'
+    +'</div>';
+  applyTheme();
+}
+
+async function bulkSetCharGender(gender){
+  if(!charLibSelected.size)return;
+  requireAdminUnlock(async()=>{
+    const items=[...charLibSelected.values()];
+    if(!confirm(`Set gender to "${gender}" for ${items.length} character${items.length===1?'':'s'}?`))return;
+    let failures=0;
+    for(const{answer,topic}of items){
+      const{error}=await sb.from('questions').update({gender})
+        .eq('format','char').eq('status','approved').eq('topic_value',topic).eq('answer',answer);
+      if(error)failures++;
+    }
+    showAdminToast(failures
+      ?`⚠️ Updated ${items.length-failures}/${items.length} — ${failures} failed`
+      :`Gender set to "${gender}" for ${items.length} character${items.length===1?'':'s'} ✏️`);
+    fetchCharLibrary();
+  });
+}
+
+async function bulkDeleteCharacters(){
+  if(!charLibSelected.size)return;
+  requireAdminUnlock(async()=>{
+    const items=[...charLibSelected.values()];
+    const names=items.map(i=>i.answer).join(', ');
+    if(!confirm(`Delete ${items.length} character${items.length===1?'':'s'} and ALL their questions?\n\n${names}\n\nThis cannot be undone.`))return;
+    let failures=0;
+    for(const{answer,topic}of items){
+      const{error}=await sb.from('questions').delete().eq('format','char').eq('answer',answer).eq('topic_value',topic);
+      if(error)failures++;
+    }
+    showAdminToast(failures
+      ?`⚠️ Deleted ${items.length-failures}/${items.length} — ${failures} failed`
+      :`${items.length} character${items.length===1?'':'s'} removed 🗑️`);
+    _charLibOverviewData=null; // counts/grouping may have changed
+    fetchCharLibrary();
+    renderAdminStats();
+  });
+}
+
+
 let ceEditId=null,ceOrig=null;
 
 async function openCharEdit(id){
