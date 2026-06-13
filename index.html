@@ -894,6 +894,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-section-header{text-align:center;margin-top:-4px}
 .admin-section-title{font-family:'Lilita One',cursive;font-size:17px;color:var(--text)}
 .admin-section-desc{font-size:12px;font-weight:600;color:var(--muted);margin-top:3px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5}
+.admin-more-wrap{position:relative;display:inline-block}
+.admin-more-menu{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1.5px solid var(--border2);border-radius:11px;padding:6px;flex-direction:column;gap:4px;z-index:60;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.admin-more-menu.open{display:flex}
+.admin-more-item{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;padding:9px 14px;border-radius:8px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;text-align:left;width:100%}
+.admin-more-item:hover{background:var(--bg3);color:var(--text)}
+.admin-more-item.active{background:var(--accent-soft);color:var(--accent)}
+.admin-section-btn#adminSecMore.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .admin-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bg3);color:var(--muted);font-size:11px;font-weight:800;margin-left:3px}
 .admin-tab.active .admin-tab-count{background:rgba(255,255,255,.25);color:#fff}
 .admin-browse-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -2081,8 +2088,13 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-section-btn" id="adminSecCharLib" onclick="switchAdminSection('charlib')"><i class="ti ti-user-circle" style="font-size:15px"></i> Characters</button>
         <div class="admin-section-divider" role="separator"></div>
         <button class="admin-section-btn" id="adminSecImport" onclick="switchAdminSection('import')"><i class="ti ti-file-upload" style="font-size:15px"></i> Import</button>
-        <button class="admin-section-btn" id="adminSecSuggestions" onclick="switchAdminSection('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
-        <button class="admin-section-btn" id="adminSecRomanize" onclick="switchAdminSection('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+        <div class="admin-more-wrap">
+          <button class="admin-section-btn" id="adminSecMore" onclick="_toggleAdminMoreMenu()"><i class="ti ti-dots" style="font-size:15px"></i> More <i class="ti ti-chevron-down" style="font-size:13px"></i></button>
+          <div class="admin-more-menu" id="adminMoreMenu">
+            <button class="admin-more-item" id="adminSecSuggestions" onclick="_pickAdminMore('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
+            <button class="admin-more-item" id="adminSecRomanize" onclick="_pickAdminMore('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+          </div>
+        </div>
       </div>
       <div class="admin-section-header slide-in" id="adminSectionHeader">
         <div class="admin-section-title">📬 Review</div>
@@ -8898,6 +8910,47 @@ function renderAdminBadges(){
   set('adminCountSuspect',src.filter(_adminIsSuspect).length);
 }
 function adminJump(tab){switchAdminSection('review');switchAdminTab(tab);}
+
+// Jump from a Coverage row straight into Browse, pre-filtered by that topic
+async function coverageJumpToBrowse(topic){
+  await switchAdminSection('browse');
+  const inp=document.getElementById('adminTopicFilter');
+  if(inp)inp.value=topic;
+  toggleAdminTopicClear();
+  adminBrowsePage=0;
+  fetchAdminBrowse();
+}
+
+// Jump from a Coverage row straight into the Character Library, pre-filtered by that topic
+async function coverageJumpToCharacters(topic){
+  await switchAdminSection('charlib');
+  const topicInp=document.getElementById('charLibTopicInput');
+  const nameInp=document.getElementById('charLibNameInput');
+  const genderInp=document.getElementById('charLibGenderInput');
+  if(topicInp)topicInp.value=topic;
+  document.getElementById('charLibTopicClear').style.display='block';
+  document.getElementById('charLibTopicDrop').style.display='none';
+  if(nameInp)nameInp.value='';
+  document.getElementById('charLibNameClear').style.display='none';
+  if(genderInp)genderInp.value='';
+  fetchCharLibrary();
+}
+
+
+function _toggleAdminMoreMenu(){
+  document.getElementById('adminMoreMenu').classList.toggle('open');
+}
+function _pickAdminMore(section){
+  document.getElementById('adminMoreMenu').classList.remove('open');
+  switchAdminSection(section);
+}
+document.addEventListener('click',(e)=>{
+  const wrap=document.getElementById('adminMoreMenu');
+  if(wrap&&wrap.classList.contains('open')&&!e.target.closest('.admin-more-wrap')){
+    wrap.classList.remove('open');
+  }
+});
+
 async function switchAdminSection(section){
   adminSection=section;
   if(section==='browse')adminBrowsePage=0;
@@ -8907,9 +8960,11 @@ async function switchAdminSection(section){
   document.getElementById('adminSecBrowse').classList.toggle('active',section==='browse');
   document.getElementById('adminSecCoverage').classList.toggle('active',section==='coverage');
   document.getElementById('adminSecImport').classList.toggle('active',section==='import');
+  document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
   document.getElementById('adminSecSuggestions').classList.toggle('active',section==='suggestions');
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
-  document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
+  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize');
+  document.getElementById('adminMoreMenu').classList.remove('open');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
   document.getElementById('adminBrowseBar').style.display=section==='browse'?'flex':'none';
   document.getElementById('adminCoverage').style.display=section==='coverage'?'block':'none';
@@ -9573,7 +9628,7 @@ function renderAdminCoverage(){
   const cov=document.getElementById('adminCoverage');
   const approved=adminLite.filter(q=>q.status==='approved');
   const tally=(name)=>{const qs=approved.filter(q=>(q.topic_value||'')===name);return{name:name||'Untagged questions',total:qs.length,mc:qs.filter(q=>q.format==='mc').length,type:qs.filter(q=>q.format==='type').length,char:qs.filter(q=>q.format==='char').length};};
-  const rowHTML=(r,exportKey,deletable=true)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const cb=deletable?'<input type="checkbox" class="cov-cb" onchange="toggleCovRow(\''+r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',this)">':'';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+"','"+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';return '<div class="admin-cov-row '+cls+'">'+cb+'<span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0">'+gpBtn+dlBtn+'</div></div>';};
+  const rowHTML=(r,exportKey,deletable=true)=>{const cls=r.total===0?'empty':(r.total<ADMIN_COV_THIN?'thin':'');const isAnime=ADMIN_ANIME_TOPICS.includes(r.name);const isGenre=ADMIN_GENRE_TOPICS.includes(r.name);const topicType=isAnime?'anime':isGenre?'genre':'anime';const cb=deletable?'<input type="checkbox" class="cov-cb" onchange="toggleCovRow(\''+r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',this)">':'';const gpBtn='<button onclick="openPromptGenerator(\''+r.name.replace(/'/g,"\\'")+"','"+topicType+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-wand" style="font-size:12px"></i> Prompt</button>';const dlBtn=r.total>0?'<button onclick="exportTopicQuestions(\''+exportKey+'\')" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><i class="ti ti-download" style="font-size:12px"></i> Export</button>':'';const viewBtn=(exportKey&&exportKey!=='__general__')?'<button onclick="coverageJumpToBrowse(\''+exportKey.replace(/'/g,"\\'")+'\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0" title="View these questions in Browse"><i class="ti ti-eye" style="font-size:12px"></i> View</button>':'';const charBtn=(exportKey&&exportKey!=='__general__'&&r.char>0)?'<button onclick="coverageJumpToCharacters(\''+exportKey.replace(/'/g,"\\'")+'\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:\'Nunito\',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;flex-shrink:0" title="View this topic'+"'"+'s characters"><i class="ti ti-user-circle" style="font-size:12px"></i> Characters</button>':'';return '<div class="admin-cov-row '+cls+'">'+cb+'<span class="admin-cov-name">'+r.name+'</span><span class="admin-cov-fmts">MC '+r.mc+' · Type '+r.type+' · Char '+r.char+'</span><span class="admin-cov-total">'+r.total+'</span><div style="display:inline-flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap">'+viewBtn+charBtn+gpBtn+dlBtn+'</div></div>';};
   const groupHTML=(title,names)=>'<div class="admin-cov-group"><div class="admin-cov-title">'+title+'</div>'+names.map(n=>({t:tally(n),n})).sort((a,b)=>a.t.total-b.t.total).map(({t,n})=>rowHTML(t,n)).join('')+'</div>';
   const known=new Set([...ADMIN_ANIME_TOPICS,...ADMIN_GENRE_TOPICS,'']);
   const extras=[...new Set(approved.map(q=>q.topic_value).filter(v=>v&&!known.has(v)))];
