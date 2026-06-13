@@ -2101,7 +2101,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="admin-more-wrap">
           <button class="admin-section-btn" id="adminSecMore" onclick="_toggleAdminMoreMenu()"><i class="ti ti-dots" style="font-size:15px"></i> More <i class="ti ti-chevron-down" style="font-size:13px"></i></button>
           <div class="admin-more-menu" id="adminMoreMenu">
-            <button class="admin-more-item" id="adminSecSuggestions" onclick="_pickAdminMore('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
+            <button class="admin-more-item" id="adminSecSuggestions" onclick="_pickAdminMore('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions <span class="admin-tab-count" id="adminCountSuggestions" style="display:none"></span></button>
             <button class="admin-more-item" id="adminSecRomanize" onclick="_pickAdminMore('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
             <button class="admin-more-item" id="adminSecMessages" onclick="_pickAdminMore('messages')"><i class="ti ti-mail" style="font-size:15px"></i> Messages <span class="admin-tab-count" id="adminCountMessages" style="display:none"></span></button>
           </div>
@@ -8935,11 +8935,16 @@ async function loadAdminData(){
     adminTruePending=pc||0;
   }catch(e){adminLite=[];adminTrueTotal=0;adminTrueApproved=0;adminTruePending=0;}
   renderAdminStats();renderAdminBadges();renderAdminSection();
-  // Prefetch message count so the Messages badge is visible immediately
+  // Prefetch message + suggestion counts so badges are visible immediately
   try{
-    const{count}=await sb.from('contact_messages').select('id',{count:'exact',head:true});
-    const badge=document.getElementById('adminCountMessages');
-    if(badge){badge.textContent=count||0;badge.style.display=(count&&count>0)?'inline-flex':'none';}
+    const[{count:mc},{count:sc}]=await Promise.all([
+      sb.from('contact_messages').select('id',{count:'exact',head:true}),
+      sb.from('topic_suggestions').select('id',{count:'exact',head:true})
+    ]);
+    const msgBadge=document.getElementById('adminCountMessages');
+    if(msgBadge){msgBadge.textContent=mc||0;msgBadge.style.display=(mc&&mc>0)?'inline-flex':'none';}
+    const suggBadge=document.getElementById('adminCountSuggestions');
+    if(suggBadge){suggBadge.textContent=sc||0;suggBadge.style.display=(sc&&sc>0)?'inline-flex':'none';}
   }catch(e){}
 }
 
@@ -9298,8 +9303,10 @@ async function fetchAdminSuggestions(){
   if(!wrap)return;
   wrap.innerHTML='<div class="admin-empty">Loading…</div>';
   try{
-    const{data,error}=await sb.from('topic_suggestions').select('*').order('created_at',{ascending:false});
+    const{data,error,count}=await sb.from('topic_suggestions').select('*',{count:'exact'}).order('created_at',{ascending:false});
     if(error)throw error;
+    const badge=document.getElementById('adminCountSuggestions');
+    if(badge){badge.textContent=count||0;badge.style.display=(count&&count>0)?'inline-flex':'none';}
     if(!data||!data.length){
       wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">No topic suggestions yet.</div>';
       return;
@@ -9312,29 +9319,28 @@ async function fetchAdminSuggestions(){
           :'';
         const replySection=hasUserId
           ?(s.reply&&s.replied_at
-            ?`<div style="margin-top:8px;padding:10px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:4px">
+            ?`<div style="padding:10px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:4px">
                 <div style="font-size:11px;font-weight:800;color:var(--accent)">YOUR REPLY · ${new Date(s.replied_at).toLocaleString()}</div>
                 <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(s.reply||'').replace(/</g,'&lt;')}</div>
               </div>`
-            :`<div style="margin-top:8px;display:flex;gap:8px;align-items:flex-end">
-                <textarea id="sugg-reply-${s.id}" placeholder="Optional reply to player…" rows="2" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:8px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"></textarea>
-              </div>`)
+            :`<textarea id="sugg-reply-${s.id}" placeholder="Optional reply to player…" rows="2" style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:8px 10px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"></textarea>`)
           :'';
         return `
-        <div class="admin-cov-row" id="sugg-row-${s.id}" style="display:flex;flex-direction:column;gap:8px;padding:12px 14px">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <input id="sugg-topic-${s.id}" class="form-input" style="font-size:13px;font-weight:800;padding:6px 10px;flex:1;min-width:160px" value="${(s.topic||'').replace(/"/g,'&quot;')}">
-            <select id="sugg-type-${s.id}" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
+        <div class="admin-cov-row" id="sugg-row-${s.id}" style="display:flex;flex-direction:column;gap:10px;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:800;color:var(--text)">${(s.suggested_by||'anonymous').replace(/</g,'&lt;')}</span>
+            <span style="font-size:11px;color:var(--muted)">${s.created_at?new Date(s.created_at).toLocaleDateString():''}</span>
+            ${statusBadge}
+          </div>
+          <input id="sugg-topic-${s.id}" class="form-input" style="font-size:14px;font-weight:800;padding:8px 12px;width:100%" value="${(s.topic||'').replace(/"/g,'&quot;')}">
+          ${s.note?`<div style="font-size:12px;color:var(--muted);font-style:italic;padding:0 2px">"${s.note.replace(/</g,'&lt;')}"</div>`:''}
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="sugg-type-${s.id}" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
               <option value="anime">Anime</option>
               <option value="genre">Genre</option>
             </select>
-            <button onclick="actionAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;background:var(--accent);border:none;color:#fff;white-space:nowrap">Add to Topics</button>
-            <button onclick="dismissAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:5px 12px;border-radius:8px;cursor:pointer;background:var(--bg3);border:1px solid var(--border2);color:var(--muted)">Dismiss</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--muted)">${s.suggested_by||'anonymous'} · ${s.created_at?new Date(s.created_at).toLocaleDateString():''}</span>
-            ${statusBadge}
-            ${s.note?`<span style="font-size:11px;color:var(--muted);font-style:italic">"${s.note}"</span>`:''}
+            <button onclick="actionAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--accent);border:none;color:#fff;white-space:nowrap">Add to Topics</button>
+            <button onclick="dismissAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--bg3);border:1px solid var(--border2);color:var(--muted)">Dismiss</button>
           </div>
           ${replySection}
         </div>`;
@@ -9807,6 +9813,8 @@ async function actionAdminSuggestion(id){
   if(wrap&&!wrap.querySelector('.admin-cov-row')){
     wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">No topic suggestions yet.</div>';
   }
+  const suggBadge=document.getElementById('adminCountSuggestions');
+  if(suggBadge){const n=Math.max(0,(parseInt(suggBadge.textContent)||1)-1);suggBadge.textContent=n;suggBadge.style.display=n>0?'inline-flex':'none';}
   // Re-render coverage so the new topic shows up immediately
   if(document.getElementById('adminCoverage').style.display!=='none')renderAdminCoverage();
   // Toast confirmation
@@ -9837,6 +9845,8 @@ async function dismissAdminSuggestion(id){
   if(wrap&&!wrap.querySelector('.admin-cov-row')){
     wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">No topic suggestions yet.</div>';
   }
+  const suggBadge=document.getElementById('adminCountSuggestions');
+  if(suggBadge){const n=Math.max(0,(parseInt(suggBadge.textContent)||1)-1);suggBadge.textContent=n;suggBadge.style.display=n>0?'inline-flex':'none';}
 }
 
 let covSelectedTopics=new Set();
