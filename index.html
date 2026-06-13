@@ -876,9 +876,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 @keyframes spin-once{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .spinning{animation:spin-once .5s linear}
 @keyframes inboxBtnPopIn{0%{opacity:0;transform:scale(.6) rotate(-12deg)}60%{transform:scale(1.12) rotate(4deg)}80%{transform:scale(.96)}100%{opacity:1;transform:scale(1) rotate(0)}}
-@keyframes inboxBtnPopOut{0%{opacity:1;transform:scale(1)}40%{opacity:.8;transform:scale(1.08) rotate(5deg)}100%{opacity:0;transform:scale(.5) rotate(-15deg)}}
+@keyframes inboxBtnPopOut{0%{opacity:1;transform:scale(1);max-width:120px;padding:7px 11px;margin:0}60%{opacity:0;transform:scale(.5) rotate(-15deg);max-width:120px;padding:7px 11px;margin:0}100%{opacity:0;transform:scale(.5) rotate(-15deg);max-width:0;padding:0;margin:0}}
 .inbox-pop-in{animation:inboxBtnPopIn .42s cubic-bezier(.34,1.56,.64,1) both}
-.inbox-pop-out{animation:inboxBtnPopOut .32s cubic-bezier(.55,.055,.675,.19) forwards}
+.inbox-pop-out{animation:inboxBtnPopOut .55s cubic-bezier(.55,.055,.675,.19) forwards;overflow:hidden}
 .admin-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:600px){.admin-stat-row{grid-template-columns:1fr 1fr}}
 .admin-health{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
