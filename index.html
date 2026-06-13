@@ -3240,7 +3240,7 @@ function updateNav(){
         <div class="drop" id="drop">${buildThemeDropHTML()}</div>
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-      <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="display:none"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
+      <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="opacity:0;pointer-events:none;transition:opacity .3s ease"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
       <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
         ${getNavAvatarHTML(currentUser[0].toUpperCase())}${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
@@ -3251,7 +3251,7 @@ function updateNav(){
     nr.innerHTML=originalNavHTML;
   }
   const _adminLink=document.getElementById('adminNavLink');
-  if(_adminLink)_adminLink.style.display=isAdmin?'inline-flex':'none';
+  if(_adminLink){_adminLink.style.opacity=isAdmin?'1':'0';_adminLink.style.pointerEvents=isAdmin?'':'none';}
   applyTheme();
   if(typeof syncDrawerState==='function')syncDrawerState();
   if(currentUser&&!isGuest)checkInboxBadge();
@@ -8945,7 +8945,7 @@ async function checkAdminRole(){
   isAdmin=isAdminResult;
   try{localStorage.setItem('as_admin',isAdmin?'1':'0');}catch(e){}
   const adminLink=document.getElementById('adminNavLink');
-  if(adminLink)adminLink.style.display=isAdmin?'inline-flex':'none';
+  if(adminLink){adminLink.style.opacity=isAdmin?'1':'0';adminLink.style.pointerEvents=isAdmin?'':'none';}
 }
 
 function goAdmin(){
