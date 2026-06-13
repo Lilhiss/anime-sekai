@@ -2098,6 +2098,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <div class="admin-more-menu" id="adminMoreMenu">
             <button class="admin-more-item" id="adminSecSuggestions" onclick="_pickAdminMore('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions</button>
             <button class="admin-more-item" id="adminSecRomanize" onclick="_pickAdminMore('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+            <button class="admin-more-item" id="adminSecMessages" onclick="_pickAdminMore('messages')"><i class="ti ti-mail" style="font-size:15px"></i> Messages <span class="admin-tab-count" id="adminCountMessages" style="display:none"></span></button>
           </div>
         </div>
       </div>
@@ -2147,6 +2148,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           <button onclick="confirmRomanize()" id="romanizeConfirmBtn" style="background:var(--accent);border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-check" style="font-size:14px"></i> Confirm &amp; Save</button>
         </div>
       </div>
+      <div id="adminMessages" class="slide-in" style="display:none;flex-direction:column;gap:14px"></div>
       <div id="adminCharLib" class="slide-in" style="display:none;flex-direction:column;gap:16px">
         <!-- Toolbar -->
         <div class="char-lib-toolbar">
@@ -8666,7 +8668,8 @@ const ADMIN_SECTION_INFO={
   charlib:{icon:'🎭',title:'Characters',desc:'Browse, search, and edit characters used in Name-the-Character questions.'},
   import:{icon:'📥',title:'Import',desc:'Bulk-import new questions from SQL.'},
   suggestions:{icon:'💡',title:'Suggestions',desc:'Review topic suggestions submitted by players.'},
-  romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'}
+  romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'},
+  messages:{icon:'✉️',title:'Messages',desc:'Contact messages sent by players via the footer form.'}
 };
 function toggleAdminSearchClear(){const v=document.getElementById('adminSearchInput')?.value;const btn=document.getElementById('adminSearchClear');if(btn)btn.style.display=v?'block':'none';}
 function toggleAdminTopicClear(){const v=document.getElementById('adminTopicFilter')?.value;const btn=document.getElementById('adminTopicClear');if(btn)btn.style.display=v?'block':'none';}
@@ -8983,7 +8986,8 @@ async function switchAdminSection(section){
   document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
   document.getElementById('adminSecSuggestions').classList.toggle('active',section==='suggestions');
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
-  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize');
+  document.getElementById('adminSecMessages').classList.toggle('active',section==='messages');
+  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='messages');
   document.getElementById('adminMoreMenu').classList.remove('open');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
   document.getElementById('adminBrowseBar').style.display=section==='browse'?'flex':'none';
@@ -8992,7 +8996,8 @@ async function switchAdminSection(section){
   document.getElementById('adminSuggestions').style.display=section==='suggestions'?'flex':'none';
   document.getElementById('adminRomanize').style.display=section==='romanize'?'flex':'none';
   document.getElementById('adminCharLib').style.display=section==='charlib'?'flex':'none';
-  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='charlib')?'none':'flex';
+  document.getElementById('adminMessages').style.display=section==='messages'?'flex':'none';
+  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='charlib'||section==='messages')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   await renderAdminSection();
 }
@@ -9008,6 +9013,7 @@ async function renderAdminSection(){
   if(adminSection==='browse')return fetchAdminBrowse();
   if(adminSection==='suggestions')return fetchAdminSuggestions();
   if(adminSection==='charlib')return fetchCharLibrary();
+  if(adminSection==='messages')return fetchAdminMessages();
   return fetchReviewTab();
 }
 // Pure render — called after fetchAdminBrowse() populates adminBrowseRows/adminBrowseTotal
@@ -9118,6 +9124,48 @@ async function fetchAdminSuggestions(){
     wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">⚠️ Couldn\'t load suggestions.</div>';
   }
   applyTheme();
+}
+
+// ── CONTACT MESSAGES ──────────────────────────────────────────────────────────
+async function fetchAdminMessages(){
+  const wrap=document.getElementById('adminMessages');
+  if(!wrap)return;
+  wrap.innerHTML='<div class="admin-empty">Loading…</div>';
+  try{
+    const{data,error,count}=await sb.from('contact_messages').select('*',{count:'exact'}).order('sent_at',{ascending:false});
+    if(error)throw error;
+    // Update badge
+    const badge=document.getElementById('adminCountMessages');
+    if(badge){badge.textContent=count||0;badge.style.display=(count&&count>0)?'inline-flex':'none';}
+    if(!data||!data.length){
+      wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">No messages yet.</div>';
+      return;
+    }
+    wrap.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:4px">'+data.length+' message'+(data.length===1?'':'s')+'</div>'
+      +data.map(m=>`
+      <div class="admin-cov-row" id="msg-row-${m.id}" style="display:flex;gap:14px;padding:14px 16px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:800;color:var(--text)">${(m.name||'Anonymous').replace(/</g,'&lt;')}</span>
+            <span style="font-size:11px;color:var(--muted)">${m.sent_at?new Date(m.sent_at).toLocaleString():''}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word">${(m.message||'').replace(/</g,'&lt;')}</div>
+        </div>
+        <button onclick="deleteAdminMessage(${m.id})" title="Delete message" style="flex-shrink:0;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;transition:all .15s" onmouseover="this.style.color='#f87171';this.style.borderColor='#f87171'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'"><i class="ti ti-trash" style="font-size:14px"></i></button>
+      </div>`).join('');
+  }catch(e){
+    wrap.innerHTML='<div class="admin-empty" style="color:var(--muted)">&#x26A0;&#xFE0F; Couldn\'t load messages.</div>';
+  }
+  applyTheme();
+}
+async function deleteAdminMessage(id){
+  if(!confirm('Delete this message?'))return;
+  await sb.from('contact_messages').delete().eq('id',id).catch(()=>{});
+  document.getElementById('msg-row-'+id)?.remove();
+  const remaining=document.querySelectorAll('[id^="msg-row-"]').length;
+  if(!remaining)document.getElementById('adminMessages').innerHTML='<div class="admin-empty" style="color:var(--muted)">No messages yet.</div>';
+  const badge=document.getElementById('adminCountMessages');
+  if(badge){const n=Math.max(0,(parseInt(badge.textContent)||1)-1);badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
 }
 
 // ── CHARACTER LIBRARY ─────────────────────────────────────────────────────────
