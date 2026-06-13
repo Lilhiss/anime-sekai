@@ -9399,17 +9399,17 @@ async function fetchAdminSuggestions(){
             <span style="font-size:13px;font-weight:800;color:var(--text)">${(s.suggested_by||'anonymous').replace(/</g,'&lt;')}</span>
             <span style="font-size:11px;color:var(--muted)">${s.created_at?new Date(s.created_at).toLocaleDateString():''}</span>
             ${statusBadge}
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select id="sugg-type-${s.id}" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
+                <option value="anime">Anime</option>
+                <option value="genre">Genre</option>
+              </select>
+              <button onclick="actionAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--accent);border:none;color:#fff;white-space:nowrap">Add to Topics</button>
+              <button onclick="dismissAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--bg3);border:1px solid var(--border2);color:var(--muted)">Dismiss</button>
+            </div>
           </div>
           <input id="sugg-topic-${s.id}" class="form-input" style="font-size:14px;font-weight:800;padding:8px 12px;width:100%" value="${(s.topic||'').replace(/"/g,'&quot;')}">
           ${s.note?`<div style="font-size:12px;color:var(--muted);font-style:italic;padding:0 2px">"${s.note.replace(/</g,'&lt;')}"</div>`:''}
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select id="sugg-type-${s.id}" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
-              <option value="anime">Anime</option>
-              <option value="genre">Genre</option>
-            </select>
-            <button onclick="actionAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--accent);border:none;color:#fff;white-space:nowrap">Add to Topics</button>
-            <button onclick="dismissAdminSuggestion('${s.id}')" style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;background:var(--bg3);border:1px solid var(--border2);color:var(--muted)">Dismiss</button>
-          </div>
           ${replySection}
         </div>`;
       }).join('');
