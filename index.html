@@ -424,6 +424,16 @@ h1 .hi{color:var(--accent)}
 
 .confetti-piece{position:fixed;top:0;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+/* ── Initial load entrance animation ── */
+.nav-content-hidden #navRight,
+.nav-content-hidden .logo,
+.nav-content-hidden .nav-hamburger{opacity:0}
+#entryLogoMark,#entryWrap,#landingFloats{opacity:0}
+@keyframes navFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes landingFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.landing-fadein-nav{animation:navFadeIn .4s ease both}
+.landing-fadein{animation:landingFadeUp .45s ease both}
+
 .slide-in{animation:slideIn .35s ease both}
 @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}
@@ -996,7 +1006,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
   <div class="dots-bg"></div>
 
-  <nav>
+  <nav id="mainNav" class="nav-content-hidden">
     <div class="logo" onclick="logoNav()">
       <div class="logo-mark" id="logoMark">AS</div>
       <span class="logo-name">Anime <span>Sekai</span></span>
@@ -1076,7 +1086,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- LANDING -->
   <div class="page active" id="page-landing">
-    <div class="fun-floats" aria-hidden="true">
+    <div class="fun-floats" id="landingFloats" aria-hidden="true">
       <span style="left:7%;top:20%;animation-delay:0s">⚔️</span>
       <span style="left:85%;top:23%;animation-delay:1.1s">✨</span>
       <span style="left:13%;top:72%;animation-delay:.5s">🔥</span>
@@ -1085,7 +1095,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <span style="left:91%;top:50%;animation-delay:2.2s">💫</span>
       <span style="left:4%;top:46%;animation-delay:1.4s">🎌</span>
     </div>
-    <div class="entry-wrap slide-in">
+    <div class="entry-wrap" id="entryWrap">
       <div style="text-align:center">
         <!-- Placeholder logo. To use your own later: replace this div with <img src="your-logo.png" class="entry-logo-mark entry-logo-pop" alt="Anime Sekai"> -->
         <div class="entry-logo-mark entry-logo-pop" id="entryLogoMark">AS</div>
@@ -3076,12 +3086,50 @@ sb.auth.onAuthStateChange(async (event, session) => {
       }
       updateNav();
       checkAdminRole();
+      _appReady();
       // Arrived via an invite link while already signed in — join now that the
       // session has restored (the boot router ran before currentUser was set).
       if(typeof pendingInviteCode!=='undefined'&&pendingInviteCode)afterAuth();
     }
   }
 });
+
+// ── LANDING ENTRANCE ANIMATION ────────────────────────────────
+let _landingAnimated=false;
+function _appReady(){
+  if(_landingAnimated)return;
+  _landingAnimated=true;
+
+  const nav=document.getElementById('mainNav');
+  const logo=document.getElementById('entryLogoMark');
+  const wrap=document.getElementById('entryWrap');
+  const floats=document.getElementById('landingFloats');
+
+  // Step 1 — logo pops in
+  if(logo){
+    logo.style.opacity='1';
+    // Re-trigger the logoPop animation by removing and re-adding the class
+    logo.classList.remove('entry-logo-pop');
+    void logo.offsetWidth;
+    logo.classList.add('entry-logo-pop');
+  }
+
+  // Step 2 — after 180ms, nav + cards + floats fade in together
+  setTimeout(()=>{
+    if(nav){
+      nav.classList.remove('nav-content-hidden');
+      nav.querySelectorAll('.logo,.nav-right,.nav-hamburger').forEach(el=>{
+        el.classList.add('landing-fadein-nav');
+      });
+    }
+    if(wrap){wrap.style.opacity='1';wrap.classList.add('landing-fadein');}
+    if(floats){floats.style.opacity='1';floats.classList.add('landing-fadein');}
+  },180);
+}
+
+// Fallback: if no registered session exists, fire after a short delay so
+// users with no account don't sit on an invisible page.
+setTimeout(()=>_appReady(),600);
 </script>
 
 <script>
@@ -4088,6 +4136,15 @@ function goStep(name){
   const pg=document.getElementById('page-'+name);
   pg.classList.add('active');
   pg.querySelectorAll('.slide-in').forEach(el=>{el.style.animation='none';void el.offsetHeight;el.style.animation=''});
+  if(name==='landing'){
+    // Ensure landing content is fully visible on return (animation already ran once)
+    const wrap=document.getElementById('entryWrap');
+    const floats=document.getElementById('landingFloats');
+    const logo=document.getElementById('entryLogoMark');
+    if(wrap){wrap.style.opacity='1';wrap.classList.remove('landing-fadein');}
+    if(floats){floats.style.opacity='1';floats.classList.remove('landing-fadein');}
+    if(logo)logo.style.opacity='1';
+  }
   if(name==='profile')renderProfile();
   if(name==='topic'){
     selectedTopics=[];isGeneralSelected=false;selectedDifficulty='easy';
