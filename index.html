@@ -803,6 +803,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-badge.format{color:var(--accent);border-color:var(--border2);background:var(--accent-soft)}
 .admin-badge.reported{color:#f87171;border-color:#f87171;background:rgba(248,113,113,.1)}
 .admin-badge.submitted{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
+.admin-badge.linked{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);text-transform:none;letter-spacing:0;cursor:pointer;transition:opacity .15s}
+.admin-badge.linked:hover{opacity:.8}
 .admin-report-counter{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:13px;color:#f87171;background:rgba(248,113,113,.1);border:1.5px solid #f87171;border-radius:99px;padding:3px 10px}
 .admin-report-details{display:none;flex-direction:column;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-top:2px}
 .admin-report-details.open{display:flex}
@@ -9166,7 +9168,7 @@ async function loadAdminData(){
   try{
     // Fetch lightweight rows for badges/coverage (capped at 5000 to match PostgREST max rows setting)
     const {data}=await sb.from('questions')
-      .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
+      .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value,source_id')
       .limit(5000);
     adminLite=data||[];
     // Seed canonical topic lists from the topics table so zero-question topics appear in coverage
@@ -9219,7 +9221,7 @@ async function loadAdminData(){
   }catch(e){}
 }
 
-const ADMIN_FULL_COLS='id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at';
+const ADMIN_FULL_COLS='id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at,source_id';
 
 function toggleReviewDateSort(){
   adminReviewDateAsc=!adminReviewDateAsc;
@@ -9421,8 +9423,11 @@ function renderAdminStats(){
   const approvedMC=approvedSrc.filter(q=>q.format==='mc').length;
   const approvedType=approvedSrc.filter(q=>q.format==='type').length;
   const approvedChar=approvedSrc.filter(q=>q.format==='char').length;
+  const linkedPairs=approvedSrc.filter(q=>q.format==='type'&&q.source_id).length;
+  const uniqueFacts=approved-linkedPairs;
   const fmtBreakdown=' (MC '+approvedMC.toLocaleString()+'· Type '+approvedType.toLocaleString()+'· Char '+approvedChar.toLocaleString()+')';
-  const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved'+fmtBreakdown+' · '+plays.toLocaleString()+' plays';
+  const uniqueBreakdown=linkedPairs>0?' · '+uniqueFacts.toLocaleString()+' unique facts ('+linkedPairs.toLocaleString()+' linked MC/Type pair'+(linkedPairs===1?'':'s')+')':'';
+  const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved'+fmtBreakdown+uniqueBreakdown+' · '+plays.toLocaleString()+' plays';
 }
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
@@ -9441,6 +9446,21 @@ async function coverageJumpToBrowse(topic){
   toggleAdminTopicClear();
   adminBrowsePage=0;
   fetchAdminBrowse();
+}
+
+// Jump from a "Linked" badge on a converted Type question to its source MC question in Browse
+async function jumpToSourceQuestion(sourceId){
+  let src=null;
+  try{const {data}=await sb.from('questions').select('question,topic_value').eq('id',sourceId).single();src=data;}catch(e){}
+  if(!src){alert('Could not find the linked MC question (it may have been deleted).');return;}
+  await switchAdminSection('browse');
+  const topicInp=document.getElementById('adminTopicFilter');
+  if(topicInp){topicInp.value=src.topic_value||'';toggleAdminTopicClear();}
+  const searchInp=document.getElementById('adminSearchInput');
+  if(searchInp){searchInp.value=src.question;toggleAdminSearchClear();}
+  adminBrowsePage=0;
+  await fetchAdminBrowse();
+  document.getElementById('adminCard_'+sourceId)?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 // Jump from a Coverage row straight into the Character Library, pre-filtered by that topic
@@ -10579,7 +10599,7 @@ async function adminImportConfirm(){
         _importParsed=[];
       },2500);
       const {data}=await sb.from('questions')
-        .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
+        .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value,source_id')
         .limit(10000);
       if(data)adminLite=data;
       renderAdminStats();renderAdminBadges();
@@ -10638,6 +10658,9 @@ function buildAdminCard(q){
   const suspectBadge=showStats
     ?`<span class="admin-report-counter"><i class="ti ti-chart-bar" style="font-size:12px"></i> ${Math.round(100*q.correct_count/q.answer_count)}% correct (${q.correct_count}/${q.answer_count})</span>`
     :'';
+  const linkedBadge=q.source_id
+    ?`<span class="admin-badge linked" onclick="jumpToSourceQuestion('${q.source_id}')" title="Jump to the MC question this was converted from"><i class="ti ti-link" style="font-size:10px"></i> Linked</span>`
+    :'';
 
   const editBtn=`<button class="admin-btn edit" onclick="openAdminEdit('${q.id}')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button><button class="admin-btn edit" onclick="openAdminPreview('${q.id}')" title="Preview how this question looks in-game"><i class="ti ti-eye" style="font-size:12px"></i> Preview</button>`;
   const actionsHtml=editBtn+(isSuspect
@@ -10670,7 +10693,7 @@ function buildAdminCard(q){
       ${diffDropdown}
       ${q.submitted_by?`<span class="admin-badge submitted"><i class="ti ti-user" style="font-size:10px"></i> ${q.submitted_by}</span>`:'<span class="admin-badge">🤖 AI</span>'}
       ${dateStr?`<span class="admin-badge"><i class="ti ti-calendar" style="font-size:10px"></i> ${dateStr}</span>`:''}
-      ${reportBadge}${suspectBadge}
+      ${reportBadge}${suspectBadge}${linkedBadge}
     </div>
     <div class="admin-actions">${actionsHtml}</div>
     ${isReported?`<div class="admin-report-details" id="adminReportDetails_${q.id}"><div style="font-size:11px;color:var(--muted)">Loading reports…</div></div>`:''}`;
