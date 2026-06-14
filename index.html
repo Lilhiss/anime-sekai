@@ -9424,10 +9424,8 @@ function renderAdminStats(){
   const approvedType=approvedSrc.filter(q=>q.format==='type').length;
   const approvedChar=approvedSrc.filter(q=>q.format==='char').length;
   const linkedPairs=approvedSrc.filter(q=>q.format==='type'&&q.source_id).length;
-  const uniqueFacts=approved-linkedPairs;
-  const fmtBreakdown=' (MC '+approvedMC.toLocaleString()+'· Type '+approvedType.toLocaleString()+'· Char '+approvedChar.toLocaleString()+')';
-  const uniqueBreakdown=linkedPairs>0?' · '+uniqueFacts.toLocaleString()+' unique facts ('+linkedPairs.toLocaleString()+' linked MC/Type pair'+(linkedPairs===1?'':'s')+')':'';
-  const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved'+fmtBreakdown+uniqueBreakdown+' · '+plays.toLocaleString()+' plays';
+  const fmtBreakdown=' (MC '+approvedMC.toLocaleString()+' · Type '+approvedType.toLocaleString()+(linkedPairs>0?' ('+linkedPairs.toLocaleString()+' 🔗)':'')+' · Char '+approvedChar.toLocaleString()+')';
+  const sumEl=document.getElementById('adminSummary');if(sumEl)sumEl.textContent=total.toLocaleString()+' questions · '+approved.toLocaleString()+' approved'+fmtBreakdown+' · '+plays.toLocaleString()+' plays';
 }
 function renderAdminBadges(){
   const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=n>0?n:'';};
