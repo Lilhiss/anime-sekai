@@ -178,6 +178,7 @@ h1 .hi{color:var(--accent)}
 .fmt-card-arrow{position:absolute;top:18px;right:18px;font-size:16px;color:var(--border2);transition:color .2s,transform .2s}
 .fmt-card:hover .fmt-card-arrow{color:var(--accent);transform:translateX(3px)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
+.solo-mode-grid{grid-template-columns:repeat(3,1fr);max-width:860px}
 .mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:12px}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
@@ -696,7 +697,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   h1{font-size:26px}
 
   /* Grids → single column */
-  .entry-cards,.fmt-grid,.mode-grid,.answers,.action-row{grid-template-columns:1fr}
+  .entry-cards,.fmt-grid,.mode-grid,.solo-mode-grid,.answers,.action-row{grid-template-columns:1fr}
   .entry-card{padding:24px 20px}
   .entry-wrap{max-width:100%}
 
@@ -1409,8 +1410,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <h1>How do you want to <span class="hi">play</span>?</h1>
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
-    <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('race')"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to 100 as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
+    <div class="mode-grid solo-mode-grid slide-in">
+      <div class="mode-card" onclick="selectSoloMode('classic')"><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div><div class="mode-tag"><i class="ti ti-list-numbers" style="font-size:11px"></i> 1 pt per correct answer</div></div>
+      <div class="mode-card" onclick="selectSoloMode('race')"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
       <div class="mode-card" onclick="selectSoloMode('survival')"><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
     </div>
   </div>
@@ -4723,8 +4725,8 @@ function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
-  document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':'Survival');
-  document.getElementById('qBadge').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':'Survival');
+  document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':mode==='classic'?'Classic':'Survival');
+  document.getElementById('qBadge').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':mode==='classic'?'Classic':'Survival');
   goStep('quiz');renderHUD();loadQuestion();
 }
 function renderHUD(){
@@ -5268,7 +5270,7 @@ function endQuiz(){
   if(correct===total&&total>0)currentStreak++;else currentStreak=0;
   // Add to history
   const rank=getRank(score);
-  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives});
+  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives});
   // Save to Supabase if logged in
   if(currentUserId){
     sbSaveGame(currentUserId,{
