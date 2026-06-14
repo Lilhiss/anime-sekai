@@ -917,6 +917,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-more-item.active{background:var(--accent-soft);color:var(--accent)}
 .admin-section-btn#adminSecMore.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .admin-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bg3);color:var(--muted);font-size:11px;font-weight:800;margin-left:3px}
+.admin-pending-topics{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.admin-topic-pill{display:inline-flex;align-items:center;gap:6px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 13px;border-radius:99px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;transition:all .15s}
+.admin-topic-pill:hover{border-color:var(--accent);color:var(--accent)}
+.admin-topic-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.admin-topic-pill .admin-tab-count{background:var(--bg3);color:var(--muted)}
+.admin-topic-pill.active .admin-tab-count{background:rgba(255,255,255,.25);color:#fff}
 .admin-more-item .admin-tab-count{height:auto;line-height:1.2}
 .admin-tab.active .admin-tab-count{background:rgba(255,255,255,.25);color:#fff}
 .admin-browse-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:relative;z-index:1}
@@ -2138,6 +2144,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button class="admin-tab" id="adminTabSuspect" onclick="switchAdminTab('suspect')">🚩 Suspect <span class="admin-tab-count" id="adminCountSuspect"></span></button>
         <button id="adminReviewDateToggle" onclick="toggleReviewDateSort()" title="Toggle date order" style="margin-left:auto;background:var(--bg2);border:1px solid var(--border2);color:var(--muted);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:5px 10px;border-radius:8px;cursor:pointer;display:none;align-items:center;gap:5px;transition:color .2s,border-color .2s"><i class="ti ti-arrow-down" style="font-size:13px" id="adminReviewDateIcon"></i> Newest</button>
       </div>
+      <div class="admin-pending-topics slide-in" id="adminPendingTopics" style="display:none"></div>
       <div class="admin-browse-bar slide-in" id="adminBrowseBar" style="display:none">
         <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear()"><button id="adminSearchClear" onclick="document.getElementById('adminSearchInput').value='';adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear();document.getElementById('adminSearchInput').focus()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear search"><i class="ti ti-x" style="font-size:15px"></i></button></div>
         <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
@@ -9126,6 +9133,8 @@ let adminTrueTotal=0;     // server-reported total question count (unaffected by
 let adminTrueApproved=0; // server-reported approved question count
 let adminTruePending=0;  // server-reported pending question count
 let adminReviewDateAsc=false; // false = newest first (default)
+let adminPendingTopicFilter=null; // active topic filter on the Submitted (pending) tab
+let adminPendingAllRows=[]; // unfiltered Submitted rows, used to derive topic pills
 let ADMIN_PAGE_SIZE=50;
 let aeEditId=null,aeOrig=null,adminHL='';
 let ADMIN_ANIME_TOPICS=[];
@@ -9246,13 +9255,48 @@ async function fetchReviewTab(){
     if(adminTab==='suspect'){
       rows=rows.filter(_adminIsSuspect).sort((a,b)=>(a.correct_count/a.answer_count)-(b.correct_count/b.answer_count));
     }
+    if(adminTab==='submitted'){
+      adminPendingAllRows=rows;
+      renderAdminPendingTopics();
+      if(adminPendingTopicFilter)rows=rows.filter(r=>(r.topic_value||'Untagged')===adminPendingTopicFilter);
+    } else {
+      const topicsEl=document.getElementById('adminPendingTopics');
+      if(topicsEl)topicsEl.style.display='none';
+    }
     adminReviewRows=rows;
-    renderAdminList(rows,empty);
+    renderAdminList(rows,adminPendingTopicFilter&&adminTab==='submitted'?'No pending questions for this topic.':empty);
   }catch(e){
     adminReviewRows=[];
     const list=document.getElementById('adminQuestionList');
     if(list)list.innerHTML='<div class="admin-empty">Could not load questions.</div>';
   }
+}
+// Renders the topic pill list above the Submitted queue, with per-topic counts.
+// Clicking a pill filters adminReviewRows to that topic; clicking the active pill clears the filter.
+function renderAdminPendingTopics(){
+  const topicsEl=document.getElementById('adminPendingTopics');
+  if(!topicsEl)return;
+  const counts=new Map();
+  adminPendingAllRows.forEach(r=>{
+    const t=r.topic_value||'Untagged';
+    counts.set(t,(counts.get(t)||0)+1);
+  });
+  if(!counts.size){topicsEl.style.display='none';topicsEl.innerHTML='';return;}
+  // Reset a filter that no longer matches any pending question
+  if(adminPendingTopicFilter&&!counts.has(adminPendingTopicFilter))adminPendingTopicFilter=null;
+  const topics=[...counts.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  topicsEl.style.display='flex';
+  topicsEl.innerHTML=topics.map(([topic,count])=>
+    `<button class="admin-topic-pill${topic===adminPendingTopicFilter?' active':''}" onclick="togglePendingTopicFilter('${topic.replace(/'/g,"\\'")}')">${topic} <span class="admin-tab-count">${count}</span></button>`
+  ).join('');
+}
+function togglePendingTopicFilter(topic){
+  adminPendingTopicFilter=(adminPendingTopicFilter===topic)?null:topic;
+  renderAdminPendingTopics();
+  let rows=adminPendingAllRows;
+  if(adminPendingTopicFilter)rows=rows.filter(r=>(r.topic_value||'Untagged')===adminPendingTopicFilter);
+  adminReviewRows=rows;
+  renderAdminList(rows,adminPendingTopicFilter?'No pending questions for this topic.':'No submitted questions — all clear! 🎉');
 }
 
 let _adminTopicSuggestIdx=-1;
@@ -9460,6 +9504,7 @@ async function switchAdminSection(section){
   document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='messages');
   document.getElementById('adminMoreMenu').classList.remove('open');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
+  if(section!=='review'){const pt=document.getElementById('adminPendingTopics');if(pt)pt.style.display='none';}
   document.getElementById('adminBrowseBar').style.display=section==='browse'?'flex':'none';
   document.getElementById('adminCoverage').style.display=section==='coverage'?'block':'none';
   document.getElementById('adminImport').style.display=section==='import'?'flex':'none';
@@ -9473,6 +9518,7 @@ async function switchAdminSection(section){
 }
 async function switchAdminTab(tab){
   adminTab=tab;
+  if(tab!=='submitted')adminPendingTopicFilter=null;
   document.getElementById('adminTabSubmitted').classList.toggle('active',tab==='submitted');
   document.getElementById('adminTabReported').classList.toggle('active',tab==='reported');
   document.getElementById('adminTabSuspect').classList.toggle('active',tab==='suspect');
