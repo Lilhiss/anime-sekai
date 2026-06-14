@@ -6170,6 +6170,7 @@ let rtChannel=null;
 let isHost=false;
 let mpAutoNextInterval=null;
 let mpAutoNextPaused=false;
+let mpWrongAttempts={}; // {playerName: lastWrongAttemptString} — cleared each question
 
 async function rtGetOrCreateAnonSession(){
   if(currentUserId)return currentUserId;
@@ -6503,6 +6504,7 @@ function rtSubscribe(lobbyId){
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
+    mpWrongAttempts={};
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
@@ -6516,9 +6518,19 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQLoading').style.display='none';
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
+  rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
+    // Only show wrong attempts for typing formats; skip if that player already answered correctly
+    const p=lobbyPlayers.find(lp=>lp.name===payload.name);
+    if(p&&!p.roundAnswered){
+      mpWrongAttempts[payload.name]=payload.attempt;
+      renderMPScoreboard();
+    }
+  });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
     if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||(selectedMode==='survival'&&payload.lives<=0)||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
+    // Clear wrong attempt display once they've locked in a final answer
+    if(mpWrongAttempts[payload.name])delete mpWrongAttempts[payload.name];
     renderMPScoreboard();
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
@@ -6553,6 +6565,7 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
+    mpWrongAttempts={}; // clear wrong attempts for new question
     document.getElementById('mpQCardFeedback').style.display='none';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
@@ -8335,6 +8348,7 @@ function renderMPScoreboard(){
   const sb=document.getElementById('mpScoreboard');sb.innerHTML='';
   const isHP=lobbyMode==='potato';
   const isSurvival=selectedMode==='survival';
+  const isTyping=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc';
   const sorted=isHP
     ?[...lobbyPlayers]
     :isSurvival
@@ -8352,10 +8366,14 @@ function renderMPScoreboard(){
     // Only show +pts round meta in race mode
     const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
+    // Wrong attempt shown below name in typing modes, only while not yet answered
+    const wrongAttempt=isTyping&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
+      ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
+      :'';
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}">${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
@@ -8437,6 +8455,13 @@ function mpCheckTypeAnswer(){
   const isHP=lobbyMode==='potato';
   if(!correct&&!isHP){
     sfxWrongAttempt();
+    // Broadcast this wrong attempt so other players can see it in the scoreboard
+    if(rtChannel){
+      rtChannel.send({type:'broadcast',event:'wrong_attempt',payload:{name:currentUser,attempt:userAns}});
+    }
+    // Also update locally so the broadcaster sees their own attempt reflected
+    mpWrongAttempts[currentUser]=userAns;
+    renderMPScoreboard();
     // Wrong — shake, flash red, clear and allow retry (same as solo)
     const card=document.querySelector('#page-mp-quiz .q-card');
     input.classList.add('wrong-attempt');
@@ -8572,6 +8597,7 @@ function mpNextQuestion(){
 async function mpLoadQuestion(){
   answered=false;
   lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
+  mpWrongAttempts={}; // clear wrong attempts for new question
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   document.getElementById('mpAnswersGrid').innerHTML='';
