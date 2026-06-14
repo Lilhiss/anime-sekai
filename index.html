@@ -10522,7 +10522,15 @@ async function adminImportConfirm(){
       const result=document.getElementById('adminImportResult');
       result.style.display='block';
       result.textContent='✅ '+newQs.length+' question'+(newQs.length===1?'':'s')+' imported successfully!';
-      btn.style.display='none';
+      // Reset the import UI so another batch can be pasted without a page refresh
+      setTimeout(()=>{
+        document.getElementById('adminImportInput').value='';
+        document.getElementById('adminImportSummary').style.display='none';
+        document.getElementById('adminImportPreview').style.display='none';
+        document.getElementById('adminImportActions').style.display='none';
+        result.style.display='none';
+        _importParsed=[];
+      },2500);
       const {data}=await sb.from('questions')
         .select('id,question,status,report_count,answer_count,correct_count,format,topic_type,topic_value')
         .limit(10000);
