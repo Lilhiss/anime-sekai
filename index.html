@@ -2249,7 +2249,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <!-- Tabs -->
       <div style="display:grid;grid-template-columns:1fr 1fr;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:4px;gap:4px">
         <button id="gsTabQuestions" onclick="switchGameSettingsTab('questions')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff">
-          <i class="ti ti-list-numbers" style="font-size:13px"></i> Questions
+          <i class="ti ti-list-numbers" style="font-size:13px" id="gsTabQIcon"></i> <span id="gsTabQLabel">Questions</span>
         </button>
         <button id="gsTabTimer" onclick="switchGameSettingsTab('timer')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:none;color:var(--muted)">
           <i class="ti ti-clock" style="font-size:13px"></i> Timer
@@ -2258,8 +2258,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
       <!-- Summary strip -->
       <div style="display:flex;align-items:center;justify-content:center;gap:12px">
-        <div style="display:flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--accent)">
-          <i class="ti ti-list-numbers" style="font-size:12px"></i>
+        <div style="display:flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--accent)" id="gsSummaryQWrap">
+          <i class="ti ti-list-numbers" style="font-size:12px" id="gsSummaryQIcon"></i>
           <span id="gsSummaryQuestions">10 Questions</span>
         </div>
         <div style="display:flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--accent)">
@@ -2268,15 +2268,30 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
 
-      <!-- Questions panel -->
+      <!-- Questions panel (question count for Classic/Survival; target score for Score Race) -->
       <div id="gsQuestionPanel">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="questionCountGrid">
-          <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(15,this)" data-qval="15"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">Short</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
-          <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
+        <!-- Classic / Survival: pick number of questions -->
+        <div id="gsQCountWrap">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="questionCountGrid">
+            <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
+            <div class="q-count-opt" onclick="selectQuestionCount(15,this)" data-qval="15"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">Short</div></div>
+            <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
+            <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
+          </div>
+          <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom — type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
         </div>
-        <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom — type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
+        <!-- Score Race: pick target score -->
+        <div id="gsTargetWrap" style="display:none">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Target Score</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="soloTargetGrid">
+            <div class="q-count-opt" onclick="selectSoloRaceTarget(50,this)" data-tval="50"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">50</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+            <div class="q-count-opt" onclick="selectSoloRaceTarget(75,this)" data-tval="75"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">75</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+            <div class="q-count-opt selected" onclick="selectSoloRaceTarget(100,this)" data-tval="100"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">100</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+            <div class="q-count-opt" onclick="selectSoloRaceTarget(150,this)" data-tval="150"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">150</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
+          </div>
+          <input class="q-count-custom-input" id="soloTargetCustom" type="number" min="1" max="500" placeholder="Custom target score…" oninput="onCustomSoloTarget(this)" onfocus="onCustomSoloTargetFocus(this)" style="width:100%">
+          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely until you hit the target. Speed bonuses still apply — faster answers earn more points.</div>
+        </div>
       </div>
 
       <!-- Timer panel -->
@@ -3153,6 +3168,7 @@ let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
 let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
 let selectedQuestionLimit=10;
+let soloRaceTarget=100; // solo Score Race target score (50/75/100/150/custom)
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let reportedQuestionIds=new Set(); // tracks IDs flagged in-game or via recap
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
@@ -4723,7 +4739,12 @@ function proceedFromTopic(){
 
 function startQuiz(mode){
   selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
-  if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
+  if(mode==='race'){
+    // Solo Score Race: unlimited questions until target score is reached
+    selectedQuestionLimit=99999;
+  } else {
+    if(!selectedQuestionLimit||selectedQuestionLimit<1)selectedQuestionLimit=10;
+  }
   const topicLabel=(isGeneralSelected||selectedTopics.length===0)?fmtLabels[selectedFormat]:selectedTopics.map(t=>t.name).join(', ')+' · '+fmtLabels[selectedFormat];
   document.getElementById('hudLabel').textContent=topicLabel+' · '+(mode==='race'?'Score Race':mode==='classic'?'Classic':'Survival');
   document.getElementById('qBadge').textContent=fmtLabels[selectedFormat]+' · '+(mode==='race'?'Score Race':mode==='classic'?'Classic':'Survival');
@@ -4731,12 +4752,18 @@ function startQuiz(mode){
 }
 function renderHUD(){
   const isSurvival=selectedMode==='survival';
+  const isSoloRace=selectedMode==='race';
   const scoreEl=document.getElementById('scoreDisplay');
   // In survival, replace the pts counter with a correct-answer count
   scoreEl.textContent=isSurvival
     ? quizHistory.filter(h=>h.correct).length+' correct'
     : score+' pts';
-  document.getElementById('qCount').textContent='Q'+(qIndex+1)+'/'+selectedQuestionLimit;
+  // For solo Score Race, show progress toward target instead of Q count
+  if(isSoloRace){
+    document.getElementById('qCount').textContent=score+' / '+soloRaceTarget+' pts';
+  } else {
+    document.getElementById('qCount').textContent='Q'+(qIndex+1)+'/'+selectedQuestionLimit;
+  }
   const ld=document.getElementById('livesDisplay');ld.innerHTML='';
   if(isSurvival){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
 }
@@ -5254,7 +5281,10 @@ function nextQuestion(){
   clearInterval(soloAutoNextInterval);
   qIndex++;
   if(selectedMode==='survival'&&lives<=0){endQuiz();return}
-  if(qIndex>=selectedQuestionLimit){endQuiz();return}
+  // Solo Score Race: end when target score is reached
+  if(selectedMode==='race'&&score>=soloRaceTarget){endQuiz();return}
+  // Classic/Survival: end after N questions
+  if(selectedMode!=='race'&&qIndex>=selectedQuestionLimit){endQuiz();return}
   loadQuestion();
 }
 
@@ -5270,7 +5300,7 @@ function endQuiz(){
   if(correct===total&&total>0)currentStreak++;else currentStreak=0;
   // Add to history
   const rank=getRank(score);
-  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives});
+  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
   // Save to Supabase if logged in
   if(currentUserId){
     sbSaveGame(currentUserId,{
@@ -5282,12 +5312,17 @@ function endQuiz(){
 function getRank(s){return ranks.find(r=>s>=r.min&&s<=r.max)||ranks[0]}
 function renderResults(){
   const isSurvival=selectedMode==='survival';
+  const isRace=selectedMode==='race';
   const correct=quizHistory.filter(h=>h.correct).length,total=quizHistory.length;
   const rank=getRank(score);
   document.getElementById('rankBadge').textContent=rank.emoji;
   const words=rank.title.split(' ');const last=words.pop();
   document.getElementById('rankTitle').innerHTML=words.join(' ')+(words.length?' ':'')+' <span>'+last+'</span>';
-  document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated — better luck next time!'):(rank.sub);
+  if(isRace){
+    document.getElementById('rankSub').textContent='Target reached in '+total+' questions! 🏁';
+  } else {
+    document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated — better luck next time!'):(rank.sub);
+  }
   // Survival: headline shows correct count, not pts
   document.getElementById('scoreBig').textContent=isSurvival?correct:score;
   const unitEl=document.querySelector('.score-display .score-unit');
@@ -5894,9 +5929,19 @@ function switchGameSettingsTab(tab){
   tBtn.style.color=isQ?'var(--muted)':'#fff';
 }
 function updateGsSummary(){
+  const isSoloRace=pendingMode==='race'&&!pendingLobbyAfterTimeLimit;
   const qEl=document.getElementById('gsSummaryQuestions');
   const tEl=document.getElementById('gsSummaryTimer');
-  if(qEl)qEl.textContent=selectedQuestionLimit+' Questions';
+  const qIcon=document.getElementById('gsSummaryQIcon');
+  if(qEl){
+    if(isSoloRace){
+      qEl.textContent='Target: '+soloRaceTarget+' pts';
+      if(qIcon)qIcon.className='ti ti-flag ';
+    } else {
+      qEl.textContent=selectedQuestionLimit+' Questions';
+      if(qIcon)qIcon.className='ti ti-list-numbers ';
+    }
+  }
   if(tEl)tEl.textContent=raceTimeLimit+'s / question';
 }
 
@@ -5904,34 +5949,62 @@ function updateGsSummary(){
 function showTimeLimitPicker(mode,fromLobby){
   pendingMode=mode;
   const isRace=mode==='race';
+  const isSoloRace=isRace&&!fromLobby;
   document.getElementById('timeLimitDesc').textContent=isRace
     ? 'Full points for the first 5s, then drops to a minimum of 3 pts.'
-    : 'Run out of time and you lose a life.';
-  document.getElementById('timeLimitStartLabel').textContent=fromLobby?'Confirm':isRace?'Start Race':'Start Survival';
+    : mode==='classic'
+      ? 'Run out of time and the question is skipped — no penalty.'
+      : 'Run out of time and you lose a life.';
+  document.getElementById('timeLimitStartLabel').textContent=fromLobby?'Confirm':isRace?'Start Race':'Start '+(mode==='classic'?'Classic':'Survival');
   // Sync time limit selection
   const grid=document.getElementById('timeLimitGrid');
   grid.querySelectorAll('.time-limit-opt').forEach(el=>{
     el.classList.toggle('selected',parseInt(el.dataset.val)===raceTimeLimit);
   });
-  // Sync question count selection
-  const qCountGrid=document.getElementById('questionCountGrid');
-  const presets=[10,15,20,30];
-  const customInput=document.getElementById('questionCountCustom');
-  if(presets.includes(selectedQuestionLimit)){
-    qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>{
-      el.classList.toggle('selected',parseInt(el.dataset.qval)===selectedQuestionLimit);
+  // Show target score or question count in the Questions panel
+  const qCountWrap=document.getElementById('gsQCountWrap');
+  const targetWrap=document.getElementById('gsTargetWrap');
+  if(qCountWrap)qCountWrap.style.display=isSoloRace?'none':'block';
+  if(targetWrap)targetWrap.style.display=isSoloRace?'block':'none';
+  // Update tab label
+  const tabQLabel=document.getElementById('gsTabQLabel');
+  const tabQIcon=document.getElementById('gsTabQIcon');
+  if(tabQLabel)tabQLabel.textContent=isSoloRace?'Target':'Questions';
+  if(tabQIcon)tabQIcon.className='ti '+(isSoloRace?'ti-flag':'ti-list-numbers')+' ';
+  if(isSoloRace){
+    // Sync solo target selection
+    document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(el=>{
+      el.classList.toggle('selected',parseInt(el.dataset.tval)===soloRaceTarget);
     });
-    customInput.value='';
-    customInput.classList.remove('selected');
+    const presets=[50,75,100,150];
+    const customInput=document.getElementById('soloTargetCustom');
+    if(presets.includes(soloRaceTarget)){
+      if(customInput){customInput.value='';customInput.classList.remove('selected');}
+    } else {
+      document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(el=>el.classList.remove('selected'));
+      if(customInput){customInput.value=soloRaceTarget;customInput.classList.add('selected');}
+    }
   } else {
-    qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>el.classList.remove('selected'));
-    customInput.value=selectedQuestionLimit;
-    customInput.classList.add('selected');
+    // Sync question count selection
+    const qCountGrid=document.getElementById('questionCountGrid');
+    const presets=[10,15,20,30];
+    const customInput=document.getElementById('questionCountCustom');
+    if(presets.includes(selectedQuestionLimit)){
+      qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>{
+        el.classList.toggle('selected',parseInt(el.dataset.qval)===selectedQuestionLimit);
+      });
+      customInput.value='';
+      customInput.classList.remove('selected');
+    } else {
+      qCountGrid.querySelectorAll('.q-count-opt').forEach(el=>el.classList.remove('selected'));
+      customInput.value=selectedQuestionLimit;
+      customInput.classList.add('selected');
+    }
+    // Set max depending on context
+    const isLobby=!!fromLobby;
+    customInput.max=isLobby?100:50;
+    customInput.placeholder=isLobby?'Custom — type any number (max 100)':'Custom — type any number (max 50)';
   }
-  // Set max depending on context
-  const isLobby=!!fromLobby;
-  customInput.max=isLobby?100:50;
-  customInput.placeholder=isLobby?'Custom — type any number (max 100)':'Custom — type any number (max 50)';
   // Always start on Questions tab
   switchGameSettingsTab('questions');
   updateGsSummary();
@@ -5968,6 +6041,28 @@ function selectTimeLimit(val){
     el.classList.toggle('selected',parseInt(el.dataset.val)===val);
   });
   updateGsSummary();
+}
+function selectSoloRaceTarget(val,el){
+  soloRaceTarget=val;
+  document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  if(el)el.classList.add('selected');
+  const customInput=document.getElementById('soloTargetCustom');
+  if(customInput){customInput.value='';customInput.classList.remove('selected');}
+  updateGsSummary();
+}
+function onCustomSoloTarget(input){
+  const raw=parseInt(input.value);
+  if(isNaN(raw)||input.value==='')return;
+  const val=Math.max(1,Math.min(500,raw));
+  soloRaceTarget=val;
+  document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+  if(raw>500)input.value=500;
+  updateGsSummary();
+}
+function onCustomSoloTargetFocus(input){
+  document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
 }
 function confirmTimeLimit(){
   document.getElementById('timeLimitModal').style.display='none';
