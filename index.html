@@ -9530,6 +9530,7 @@ async function renderAdminSection(){
   if(adminSection==='suggestions')return fetchAdminSuggestions();
   if(adminSection==='charlib')return fetchCharLibrary();
   if(adminSection==='messages')return fetchAdminMessages();
+  if(adminSection==='import'||adminSection==='romanize')return;
   return fetchReviewTab();
 }
 // Pure render — called after fetchAdminBrowse() populates adminBrowseRows/adminBrowseTotal
