@@ -542,7 +542,7 @@ h1 .hi{color:var(--accent)}
 /* ── Consolidated lobby Game Settings panel ── */
 .gs-label{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
 .gs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-#gsQGrid,#gsTimeGrid,#gsTargetGrid{grid-template-columns:repeat(4,1fr)}
+#gsQGrid,#gsTimeGrid,#gsTargetGrid,#gsRaceTargetGrid{grid-template-columns:repeat(4,1fr)}
 .gs-opt{display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bg3);border:1.5px solid var(--border);border-radius:11px;padding:11px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:all .15s;text-align:center}
 .gs-opt:hover{border-color:var(--accent)}
 .gs-opt.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
@@ -1615,6 +1615,15 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                   <button class="gs-opt" data-sr="10" onclick="gsSetTarget(10)">10</button>
                   <button class="gs-opt" data-sr="15" onclick="gsSetTarget(15)">15</button>
                   <button class="gs-opt" data-sr="20" onclick="gsSetTarget(20)">20</button>
+                </div>
+              </div>
+              <div id="gsRaceTargetSection" style="display:none">
+                <div class="gs-label" style="margin-top:8px">Target score</div>
+                <div class="gs-grid" id="gsRaceTargetGrid">
+                  <button class="gs-opt" data-rt="50" onclick="gsSetRaceTarget(50)">50</button>
+                  <button class="gs-opt selected" data-rt="100" onclick="gsSetRaceTarget(100)">100</button>
+                  <button class="gs-opt" data-rt="150" onclick="gsSetRaceTarget(150)">150</button>
+                  <input class="gs-opt" type="number" id="gsRaceTargetCustom" min="1" max="9999" placeholder="Custom" style="font-size:13px;font-weight:800;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;text-align:center;padding:0" oninput="gsSetRaceTargetCustom(this)" onfocus="this.select()">
                 </div>
               </div>
             </div>
@@ -6504,9 +6513,9 @@ function rtSubscribe(lobbyId){
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
-    mpWrongAttempts={};
+    mpWrongAttempts={};mpTiebreakerPlayers=[];
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
-    lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
+    if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
@@ -6552,11 +6561,11 @@ function rtSubscribe(lobbyId){
             }
           } else {
             if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-            if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+            if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
           }
           qIndex++;
-          if(qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-          if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
+          if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
         });
       }
@@ -6564,6 +6573,7 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
+    mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
     mpWrongAttempts={}; // clear wrong attempts for new question
     document.getElementById('mpQCardFeedback').style.display='none';
@@ -6685,6 +6695,7 @@ function rtSubscribe(lobbyId){
     if(payload.mode!=='slowreveal'&&payload.questionCount!=null)selectedQuestionLimit=payload.questionCount;
     if(payload.timeLimit!=null)raceTimeLimit=payload.timeLimit;
     if(payload.srTargetScore!=null)srTargetScore=payload.srTargetScore;
+    if(payload.mpRaceTarget!=null)mpRaceTarget=payload.mpRaceTarget;
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
@@ -6695,7 +6706,7 @@ function rtSubscribe(lobbyId){
     const settingsBtn=document.getElementById('lobbySettingsBtn');
     const topicsLabel=document.getElementById('lobbyTopicsLabel');
     const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
-    const qCountLabel=` · ${payload.questionCount||selectedQuestionLimit}Q`;
+    const qCountLabel=payload.mode==='race'?` · First to ${payload.mpRaceTarget||mpRaceTarget} pts`:payload.mode==='slowreveal'?` · First to ${payload.srTargetScore||srTargetScore}`:` · ${payload.questionCount||selectedQuestionLimit}Q`;
 
     if(payload.changing){
       // ── Live update: show real settings as host changes them ──────────
@@ -6741,6 +6752,7 @@ function rtSubscribe(lobbyId){
       // ── Final commit: host confirmed settings ─────────────────────────
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
       if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
+      if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
       if(payload.questionCount&&payload.mode!=='slowreveal')selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
@@ -7311,6 +7323,8 @@ goStep=function(name){
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
 let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
 let srTargetScore=10; // Slow Reveal: first to this many points wins
+let mpRaceTarget=100; // Multiplayer Score Race: first to cross this score wins
+let mpTiebreakerPlayers=[]; // names of players in a tiebreaker round (empty = normal play)
 
 let heartbeatInterval=null;
 function startHeartbeat(){
@@ -7905,18 +7919,21 @@ function openLobbySettings(){
 let gsActiveTab='format',gsTopicSub='general';
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
-  const qc=isSR?srTargetScore:selectedQuestionLimit;
+  const isRace=lobbyMode==='race';
+  const qc=isSR?srTargetScore:isRace?mpRaceTarget:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
   if(rtChannel){
     const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab};
     if(isSR)payload.srTargetScore=srTargetScore;
+    if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
   }
 }
 function gsUpdateHostLabel(){
   const isSR=lobbyMode==='slowreveal';
-  const qLabel=isSR?` · First to ${srTargetScore}`:` · ${selectedQuestionLimit}Q`;
-  const tLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
+  const isRace=lobbyMode==='race';
+  const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:` · ${selectedQuestionLimit}Q`;
+  const tLabel=(isRace||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
   const el=document.getElementById('lobbySettingsLabel');
   if(el)el.textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qLabel+tLabel;
   if(typeof updateLobbyTopicsLabel==='function')updateLobbyTopicsLabel();
@@ -7931,10 +7948,15 @@ function gsSyncUI(){
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
+  document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.rt)===mpRaceTarget));
+  const rtCustom=document.getElementById('gsRaceTargetCustom');
+  if(rtCustom){const presets=[50,100,150];if(presets.includes(mpRaceTarget)){rtCustom.value='';}else{rtCustom.value=mpRaceTarget;}}
   const isSR=lobbyMode==='slowreveal';
-  document.getElementById('gsQuestionsSection').style.display=isSR?'none':'block';
-  document.getElementById('gsTimeSection').style.display=(lobbyMode==='race'||lobbyMode==='survival')?'block':'none';
+  const isRace=lobbyMode==='race';
+  document.getElementById('gsQuestionsSection').style.display=(isSR||isRace)?'none':'block';
+  document.getElementById('gsTimeSection').style.display=(isRace||lobbyMode==='survival')?'block':'none';
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
+  document.getElementById('gsRaceTargetSection').style.display=isRace?'block':'none';
   gsRenderTopic();
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
@@ -7942,7 +7964,7 @@ function gsSyncUI(){
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
-  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
+  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
@@ -7954,6 +7976,8 @@ function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetS
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
+function gsSetRaceTarget(n){mpRaceTarget=n;const c=document.getElementById('gsRaceTargetCustom');if(c)c.value='';gsAfterChange();}
+function gsSetRaceTargetCustom(el){const v=parseInt(el.value);if(v>0){mpRaceTarget=v;document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.remove('selected'));}gsAfterChange();}
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
 function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();}
 function gsRenderTopic(){
@@ -8042,12 +8066,12 @@ function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
   score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
-  hpActiveIdx=0;
+  hpActiveIdx=0;mpTiebreakerPlayers=[];
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget}});
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     if(lobbyMode==='slowreveal'){
@@ -8404,16 +8428,25 @@ function mpShowQuestion(qData,hpFuse){
   const isHP=lobbyMode==='potato';
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
 
+  const isBlocked=mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser);
+
   if(isType||isHP){
     // Hot Potato always uses type input; show disabled input if not your turn
     const wrap=document.createElement('div');wrap.className='type-wrap';
     const placeholder=isMyTurn?'Type your answer...':'Waiting for '+hpActivePlayer().name+'…';
-    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="mpTypeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
+    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="mpTypeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
     grid.appendChild(wrap);applyTheme();
-    if(isMyTurn){
-      document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer()});
+    if(isMyTurn&&!isBlocked){
+      document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer();});
       document.getElementById('mpTypeInput').focus();
     }
+  } else if(isBlocked){
+    // Blocked spectator in tiebreaker — show a waiting message instead of answer buttons
+    const names=mpTiebreakerPlayers.join(' vs ');
+    const msg=document.createElement('div');
+    msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
+    msg.innerHTML=`<div style="font-size:32px">⚔️</div><div style="font-family:\'Lilita One\',cursive;font-size:16px;color:var(--text)">Tiebreaker Round</div><div>${names} are tied — watching them duel it out…</div>`;
+    grid.appendChild(msg);
   } else {
     (qData.options||[]).forEach((opt,i)=>{
       const d=document.createElement('div');d.className='ans';
@@ -8424,6 +8457,18 @@ function mpShowQuestion(qData,hpFuse){
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
   const questionTimeLimit=isHP?(hpFuse||5+Math.random()*5):raceTimeLimit; // use host-broadcast fuse for HP
   clearInterval(timerInterval);
+  if(isBlocked){
+    // Spectating a tiebreaker — show timer bar draining but don't fire mpTimeOut
+    timeLeft=questionTimeLimit;questionStartTime=Date.now();
+    const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+    timerInterval=setInterval(()=>{
+      timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
+      const pct=(timeLeft/questionTimeLimit)*100;
+      mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+      if(timeLeft<=0)clearInterval(timerInterval); // just stop — host handles next step
+    },100);
+    return;
+  }
   timeLeft=questionTimeLimit;
   questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
@@ -8436,7 +8481,9 @@ function mpShowQuestion(qData,hpFuse){
 }
 
 function mpAnswerMC(idx,el,qData){
-  if(answered)return;answered=true;
+  if(answered)return;
+  if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
+  answered=true;
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
   const mpElapsed=(Date.now()-questionStartTime)/1000;
@@ -8448,6 +8495,7 @@ function mpAnswerMC(idx,el,qData){
 
 function mpCheckTypeAnswer(){
   if(answered)return;
+  if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
   const input=document.getElementById('mpTypeInput');
   if(!input||!input.value.trim())return;
   const userAns=input.value.trim();
@@ -8534,11 +8582,11 @@ function mpTimeOut(){
       }
     } else {
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-      if(selectedMode==='race'&&score>=100){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
     }
     qIndex++;
-    if(qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx}});}
+    if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
     else{mpLoadQuestion();}
   });
 }
@@ -8589,7 +8637,7 @@ function mpNextQuestion(){
     if(hpActivePlayers().length<=1){mpEndGame();return;}
   } else {
     if(selectedMode==='survival'&&lives<=0){mpEndGame();return}
-    if(selectedMode==='race'&&score>=100){mpEndGame();return}
+    if(selectedMode==='race'){const w=mpCheckRaceWin();if(w!==null){if(w==='tiebreaker'){mpStartTiebreaker();return;}mpEndGame();return;}}
   }
   mpLoadQuestion();
 }
@@ -8622,6 +8670,29 @@ async function mpLoadQuestion(){
   }
 }
 
+// ── SCORE RACE WIN DETECTION ─────────────────────────────────
+// Returns null if nobody has crossed the target yet (game continues).
+// Returns 'tiebreaker' if 2+ players are tied at the top and all crossed.
+// Returns a player object if there's a clear single winner.
+// Called only by the host after each question resolves.
+function mpCheckRaceWin(){
+  const crossed=lobbyPlayers.filter(lp=>!lp.quit&&lp.score>=mpRaceTarget);
+  if(crossed.length===0)return null; // nobody hit the target yet
+  const topScore=Math.max(...crossed.map(lp=>lp.score));
+  const leaders=crossed.filter(lp=>lp.score===topScore);
+  if(leaders.length===1)return leaders[0]; // clear winner
+  // Multiple players tied at the top — start a tiebreaker
+  return 'tiebreaker';
+}
+function mpStartTiebreaker(){
+  // Only the players tied at the top score play the tiebreaker
+  const topScore=Math.max(...lobbyPlayers.filter(lp=>!lp.quit).map(lp=>lp.score));
+  mpTiebreakerPlayers=lobbyPlayers.filter(lp=>!lp.quit&&lp.score===topScore).map(lp=>lp.name);
+  qIndex++;
+  if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+  else{mpLoadQuestion();}
+}
+
 function mpEndGame(){
   srClearReveal();
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
@@ -8652,7 +8723,7 @@ function mpEndGame(){
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
   document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span> — So close!';
   document.getElementById('mpWinnerSub').textContent=iWon
-    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':isSR?'First to '+srTargetScore+' — you buzzed in like a pro!':'You outscored everyone — legendary run!')
+    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':isSR?'First to '+srTargetScore+' — you buzzed in like a pro!':'First to '+mpRaceTarget+' pts — legendary run!')
     :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
   sorted.forEach((p,i)=>{
