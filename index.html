@@ -169,7 +169,7 @@ h1 .hi{color:var(--accent)}
 
 /* FORMAT & MODE */
 .fmt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
-.fmt-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:24px 20px;cursor:pointer;transition:all .22s;position:relative;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:10px}
+.fmt-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:24px 20px;cursor:pointer;transition:all .22s;position:relative;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
 .fmt-card:hover{border-color:var(--accent);transform:translateY(-5px) scale(1.02);box-shadow:0 14px 32px #0006,0 0 0 2px var(--accent)}
 .fmt-card-icon{width:48px;height:48px;border-radius:13px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:27px;color:var(--accent);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
 .fmt-card:hover .fmt-card-icon{transform:scale(1.15) rotate(-7deg)}
@@ -179,7 +179,7 @@ h1 .hi{color:var(--accent)}
 .fmt-card:hover .fmt-card-arrow{color:var(--accent);transform:translateX(3px)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
 .solo-mode-grid{grid-template-columns:repeat(3,1fr);max-width:860px}
-.mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:left;display:flex;flex-direction:column;gap:12px}
+.mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
 .time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
