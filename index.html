@@ -4803,14 +4803,14 @@ async function loadDailyQuestions(){
         const ids=_dailyShuffle(pool.map(p=>p.id),rng).slice(0,DAILY_COUNT);
         const r2=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=*&id=in.(${ids.join(',')})`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
         const rows=await r2.json();const byId={};(rows||[]).forEach(row=>byId[row.id]=row);
-        const out=ids.map(id=>byId[id]).filter(Boolean).map(row=>({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]}));
+        const out=ids.map(id=>byId[id]).filter(Boolean).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]},rng));
         if(out.length>=DAILY_COUNT)return out;
       }
     }catch(e){}
   }
   // Fallback: deterministic pick from the local multiple-choice fallback set
   const fb=getFallback().filter(q=>Array.isArray(q.options));
-  return _dailyShuffle(fb.slice(),rng).slice(0,DAILY_COUNT);
+  return _dailyShuffle(fb.slice(),rng).slice(0,DAILY_COUNT).map(q=>shuffleOptions(q,rng));
 }
 async function openDailyQuiz(){
   const key=dailyDateKey();
@@ -4906,6 +4906,21 @@ function shareDaily(ev){
   const btn=ev&&ev.currentTarget,sp=btn&&btn.querySelector('span');
   if(sp){const o=sp.textContent;sp.textContent='Copied!';setTimeout(()=>{sp.textContent=o;},2000);}
 }
+// Re-orders qData.options into a random shuffle and remaps qData.answer so it
+// still points at the correct option by index. Leaves type-answer questions
+// (no options array) untouched. Returns a new object — does not mutate qData.
+function shuffleOptions(qData,rng){
+  if(!qData||!Array.isArray(qData.options)||typeof qData.answer!=='number')return qData;
+  const rand=rng||Math.random;
+  const correctOpt=qData.options[qData.answer];
+  const opts=[...qData.options];
+  // Fisher-Yates shuffle
+  for(let i=opts.length-1;i>0;i--){
+    const j=Math.floor(rand()*(i+1));
+    [opts[i],opts[j]]=[opts[j],opts[i]];
+  }
+  return {...qData, options:opts, answer:opts.indexOf(correctOpt)};
+}
 async function fetchQuestion(){
   const _t=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
   const bankTopic=_t?{type:_t.type,value:_t.name}:{type:'all',value:''};
@@ -4915,9 +4930,9 @@ async function fetchQuestion(){
   if(banked){
     /*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/
     if(selectedFormat==='char-mc') return buildCharMcQuestion(banked);
-    return banked;
+    return shuffleOptions(banked);
   }
-  return getFallback();
+  return shuffleOptions(getFallback());
 }
 
 function buildCharMcQuestion(q){
@@ -4952,7 +4967,6 @@ function getFallback(){
     {question:"What is the name of the organization L works for in Death Note?",options:["Interpol","The Task Force","The SPK","Wammy's House"],answer:1,aliases:[]},
     {question:"In Sword Art Online, what is the name of the first virtual reality game?",options:["ALfheim Online","Gun Gale Online","Sword Art Online","Ordinal Scale"],answer:2,aliases:["SAO"]},
     {question:"Which anime features the Phantom Troupe?",options:["Naruto","One Piece","Hunter x Hunter","Fairy Tail"],answer:2,aliases:["HxH"]},
-    {question:"What is the name of Naruto's signature technique?",options:["Rasengan","Shadow Clone Jutsu","Chidori","Amaterasu"],answer:1,aliases:[]},
     {question:"In Fairy Tail, who is the most powerful dragon slayer?",options:["Natsu","Gajeel","Wendy","Sting"],answer:0,aliases:[]},
     {question:"Which anime takes place in Ouran High School?",options:["Clannad","Ouran High School Host Club","Toradora","Fruits Basket"],answer:1,aliases:["OHSHC"]},
     {question:"What is the name of the main antagonist in My Hero Academia?",options:["Stain","Shigaraki","All For One","Overhaul"],answer:2,aliases:["MHA","BNHA"]},
@@ -5004,10 +5018,7 @@ function getFallback(){
     {question:"This character writes names in a supernatural notebook to kill people, believing he is a god. Who are they?",answer:"Light Yagami",aliases:["Kira","Light"]},
     {question:"This character is a half-demon with white hair and dog ears who wields the Tessaiga. Who are they?",answer:"Inuyasha",aliases:[]},
     {question:"This pro hero has a muscular form, uses One For All, and was Izuku's greatest inspiration. Who are they?",answer:"All Might",aliases:["Toshinori Yagi"]},
-    {question:"This character lost her parents to a vampire, has red eyes, and leads the Ame-no-Habakiri squad. Who are they?",answer:"Yuno",aliases:[]},
-    {question:"This character is a failed clone of the greatest shinobi, has white hair and purple eyes, and can copy any jutsu. Who are they?",answer:"Kakashi Hatake",aliases:["Kakashi","Copy Ninja Kakashi"]},
     {question:"This character has heterochromia, uses both fire and ice powers, and is the son of a villainous hero. Who are they?",answer:"Shoto Todoroki",aliases:["Todoroki","Shoto"]},
-    {question:"This character is a water hashira with a gentle demeanor who trained Tanjiro. Who are they?",answer:"Sakonji Urokodaki",aliases:["Urokodaki"]},
     {question:"This character is a royal guard in the Chimera Ant arc and is considered one of the strongest in Hunter x Hunter. Who are they?",answer:"Neferpitou",aliases:["Pitou"]},
     {question:"This character has a scar on the left side of his face, wears glasses, and uses alchemy involving fire. Who are they?",answer:"Roy Mustang",aliases:["Flame Alchemist","Mustang"]},
     {question:"This character is a spirit detective with slicked-back hair who uses his spirit gun attack. Who are they?",answer:"Yusuke Urameshi",aliases:["Yusuke"]},
@@ -5018,11 +5029,8 @@ function getFallback(){
     {question:"This character is a spy who adopts a child and marries a woman, all for a secret mission. Who are they?",answer:"Loid Forger",aliases:["Twilight","Loid"]},
     {question:"This silver-haired character serves as a half-elf candidate for the Witch of Envy and is kind but powerful. Who are they?",answer:"Emilia",aliases:[]},
     {question:"This villain has a hand covering his face, leads a group of villains, and craves chaos. Who are they?",answer:"Tomura Shigaraki",aliases:["Shigaraki","Tenko Shimura"]},
-    {question:"This character is a former adventurer turned shopkeeper who has golden eyes and uses wild magic. Who are they?",answer:"Rimuru Tempest",aliases:["Rimuru"]},
-    {question:"This character has green hair, is the number one hero, and can stop time with his Quirk. Who are they?",answer:"Satoru Gojo",aliases:["Gojo"]},
-    {question:"This character is an elf with a cursed mark, uses black magic, and is fiercely loyal to his captain Yami. Who are they?",answer:"Asta",aliases:[]},
     {question:"This survey corps soldier has short black hair, a cold demeanor, and is humanity's strongest soldier. Who are they?",answer:"Levi Ackerman",aliases:["Levi","Captain Levi"]},
-    {question:"This demon slayer has yellow and red hair, uses thunder breathing, and calls Tanjiro his best friend. Who are they?",answer:"Zenitsu Agatsuma",aliases:["Zenitsu"]},
+    {question:"This demon slayer has yellow hair, uses thunder breathing, and calls Tanjiro his best friend. Who are they?",answer:"Zenitsu Agatsuma",aliases:["Zenitsu"]},
     {question:"This character is a chainsaw devil hybrid who just wants to eat good food and be with women. Who are they?",answer:"Denji",aliases:["Chainsaw Man"]},
   ];
   // Filter to match current format where possible
