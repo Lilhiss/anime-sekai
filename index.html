@@ -1615,6 +1615,26 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                   <button class="gs-opt" data-l="5" onclick="gsSetLives(5)">5</button>
                 </div>
               </div>
+              <div id="gsHPSection" style="display:none">
+                <div class="gs-label">Lives (Hot Potato)</div>
+                <div class="gs-grid" id="gsHPLivesGrid">
+                  <button class="gs-opt" data-hl="1" onclick="gsSetHPLives(1)">1</button>
+                  <button class="gs-opt selected" data-hl="3" onclick="gsSetHPLives(3)">3</button>
+                  <button class="gs-opt" data-hl="5" onclick="gsSetHPLives(5)">5</button>
+                </div>
+                <div class="gs-label" style="margin-top:8px">Fuse timer (seconds)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+                  <div>
+                    <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MIN</div>
+                    <input type="number" id="gsHPFuseMin" class="gs-opt" min="1" max="59" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsSetHPFuse()" onfocus="this.select()">
+                  </div>
+                  <div>
+                    <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MAX</div>
+                    <input type="number" id="gsHPFuseMax" class="gs-opt" min="2" max="60" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsSetHPFuse()" onfocus="this.select()">
+                  </div>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">Bomb explodes at a random time between min and max seconds.</div>
+              </div>
               <div id="gsTimeSection">
                 <div class="gs-label" style="margin-top:8px">Time per question</div>
                 <div class="gs-grid" id="gsTimeGrid">
@@ -6600,7 +6620,10 @@ function rtSubscribe(lobbyId){
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
     if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
-    lives=payload.mode==='survival'?selectedLives:3;
+    if(payload.hpLives!=null)hpLives=payload.hpLives;
+    if(payload.hpFuseMin!=null)hpFuseMin=payload.hpFuseMin;
+    if(payload.hpFuseMax!=null)hpFuseMax=payload.hpFuseMax;
+    lives=payload.mode==='survival'?selectedLives:payload.mode==='potato'?hpLives:3;
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
@@ -6782,6 +6805,9 @@ function rtSubscribe(lobbyId){
     if(payload.srTargetScore!=null)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget!=null)mpRaceTarget=payload.mpRaceTarget;
     if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
+    if(payload.hpLives!=null)hpLives=payload.hpLives;
+    if(payload.hpFuseMin!=null)hpFuseMin=payload.hpFuseMin;
+    if(payload.hpFuseMax!=null)hpFuseMax=payload.hpFuseMax;
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
@@ -6840,6 +6866,9 @@ function rtSubscribe(lobbyId){
       if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
       if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
       if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
+      if(payload.hpLives!=null)hpLives=payload.hpLives;
+      if(payload.hpFuseMin!=null)hpFuseMin=payload.hpFuseMin;
+      if(payload.hpFuseMax!=null)hpFuseMax=payload.hpFuseMax;
       if(payload.questionCount&&payload.mode!=='slowreveal')selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
@@ -7165,7 +7194,7 @@ async function mpHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
   const qData=await fetchQuestion();
   currentQData=qData;
-  const hpFuse=lobbyMode==='potato'?(5+Math.random()*5):null; // host generates fuse so all clients sync
+  const hpFuse=lobbyMode==='potato'?(hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):null; // host generates fuse so all clients sync
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
   // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
@@ -8010,7 +8039,7 @@ function broadcastLobbySettings(changing){
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
   if(rtChannel){
-    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives};
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax};
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -8020,7 +8049,8 @@ function gsUpdateHostLabel(){
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
   const isSurvivalMP=lobbyMode==='survival';
-  const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:isSurvivalMP?` · ${selectedLives}❤️`:` · ${selectedQuestionLimit}Q`;
+  const isHP=lobbyMode==='potato';
+  const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:isSurvivalMP?` · ${selectedLives}❤️`:isHP?` · ${hpLives}❤️ · ${hpFuseMin}–${hpFuseMax}s`:` · ${selectedQuestionLimit}Q`;
   const tLabel=(isRace||isSurvivalMP)?` · ${raceTimeLimit}s`:'';
   const el=document.getElementById('lobbySettingsLabel');
   if(el)el.textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qLabel+tLabel;
@@ -8038,13 +8068,18 @@ function gsSyncUI(){
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
   document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.rt)===mpRaceTarget));
   document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.l)===selectedLives));
+  document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.hl)===hpLives));
+  const hpMinEl=document.getElementById('gsHPFuseMin');const hpMaxEl=document.getElementById('gsHPFuseMax');
+  if(hpMinEl)hpMinEl.value=hpFuseMin;if(hpMaxEl)hpMaxEl.value=hpFuseMax;
   const rtCustom=document.getElementById('gsRaceTargetCustom');
   if(rtCustom){const presets=[50,100,150];if(presets.includes(mpRaceTarget)){rtCustom.value='';}else{rtCustom.value=mpRaceTarget;}}
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
   const isSurvivalMP=lobbyMode==='survival';
-  document.getElementById('gsQuestionsSection').style.display=(isSR||isRace||isSurvivalMP)?'none':'block';
+  const isHP=lobbyMode==='potato';
+  document.getElementById('gsQuestionsSection').style.display=(isSR||isRace||isSurvivalMP||isHP)?'none':'block';
   document.getElementById('gsLivesSection').style.display=isSurvivalMP?'block':'none';
+  document.getElementById('gsHPSection').style.display=isHP?'block':'none';
   document.getElementById('gsTimeSection').style.display=(isRace||isSurvivalMP)?'block':'none';
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
   document.getElementById('gsRaceTargetSection').style.display=isRace?'block':'none';
@@ -8055,7 +8090,7 @@ function gsSyncUI(){
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
-  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):isSurvivalMP?('❤️ '+selectedLives+(selectedLives===1?' Life':' Lives')+' · '+raceTimeLimit+'s'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
+  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):isSurvivalMP?('❤️ '+selectedLives+(selectedLives===1?' Life':' Lives')+' · '+raceTimeLimit+'s'):isHP?('🥔 '+hpLives+(hpLives===1?' Life':' Lives')+' · '+hpFuseMin+'–'+hpFuseMax+'s fuse'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
@@ -8067,6 +8102,24 @@ function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetS
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){selectedLives=n;gsAfterChange();}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
+// ── Hot Potato settings ───────────────────────────────────────
+let hpLives=3,hpFuseMin=5,hpFuseMax=10;
+function gsSetHPLives(n){
+  hpLives=n;
+  document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.hl)===n));
+  gsAfterChange();
+}
+function gsSetHPFuse(){
+  const minEl=document.getElementById('gsHPFuseMin');
+  const maxEl=document.getElementById('gsHPFuseMax');
+  if(!minEl||!maxEl)return;
+  let mn=Math.max(1,Math.min(59,parseInt(minEl.value)||5));
+  let mx=Math.max(2,Math.min(60,parseInt(maxEl.value)||10));
+  if(mx<=mn)mx=mn+1; // ensure max > min
+  hpFuseMin=mn;hpFuseMax=mx;
+  minEl.value=mn;maxEl.value=mx;
+  gsAfterChange();
+}
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetRaceTarget(n){mpRaceTarget=n;const c=document.getElementById('gsRaceTargetCustom');if(c)c.value='';gsAfterChange();}
 function gsSetRaceTargetCustom(el){const v=parseInt(el.value);if(v>0){mpRaceTarget=v;document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.remove('selected'));}gsAfterChange();}
@@ -8156,14 +8209,14 @@ function startLobbyGame(){
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
-  lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
+  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax}});
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     if(lobbyMode==='slowreveal'){
@@ -8454,7 +8507,7 @@ function renderMPHUD(){
   document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
   const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
   if(selectedMode==='survival'||selectedMode==='potato'){
-    const maxHearts=selectedMode==='survival'?selectedLives:3;
+    const maxHearts=selectedMode==='survival'?selectedLives:hpLives;
     const displayLives=isHP?active.lives:lives;
     for(let i=0;i<maxHearts;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
   }
@@ -8488,7 +8541,7 @@ function renderMPScoreboard(){
       ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
       :'';
     const rightCol=isHP||isSurvival
-      ?`<div style="display:flex;gap:3px">${[0,1,2].map(j=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
+      ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
     row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
@@ -8548,7 +8601,7 @@ function mpShowQuestion(qData,hpFuse){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
-  const questionTimeLimit=isHP?(hpFuse||5+Math.random()*5):raceTimeLimit; // use host-broadcast fuse for HP
+  const questionTimeLimit=isHP?(hpFuse!=null?hpFuse:hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):raceTimeLimit; // use host-broadcast fuse for HP
   clearInterval(timerInterval);
   if(isBlocked){
     // Spectating a tiebreaker — show timer bar draining but don't fire mpTimeOut
