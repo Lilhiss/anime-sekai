@@ -2269,6 +2269,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <button id="gsTabQuestions" onclick="switchGameSettingsTab('questions')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff">
           <i class="ti ti-list-numbers" style="font-size:13px" id="gsTabQIcon"></i> <span id="gsTabQLabel">Questions</span>
         </button>
+
         <button id="gsTabTimer" onclick="switchGameSettingsTab('timer')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:none;color:var(--muted)">
           <i class="ti ti-clock" style="font-size:13px"></i> Timer
         </button>
@@ -2286,9 +2287,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
 
-      <!-- Questions panel (question count for Classic/Survival; target score for Score Race) -->
+      <!-- Questions panel (question count for Classic; lives for Survival; target score for Score Race) -->
       <div id="gsQuestionPanel">
-        <!-- Classic / Survival: pick number of questions -->
+        <!-- Classic: pick number of questions -->
         <div id="gsQCountWrap">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="questionCountGrid">
             <div class="q-count-opt selected" onclick="selectQuestionCount(10,this)" data-qval="10"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">Quick</div></div>
@@ -2297,6 +2298,16 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
           </div>
           <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom — type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
+        </div>
+        <!-- Survival: pick number of lives -->
+        <div id="gsLivesWrap" style="display:none">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px" id="livesCountGrid">
+            <div class="q-count-opt" onclick="selectSoloLives(1,this)" data-lval="1"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">1</div><div style="font-size:10px;color:var(--muted)">Hardcore</div></div>
+            <div class="q-count-opt selected" onclick="selectSoloLives(3,this)" data-lval="3"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">3</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
+            <div class="q-count-opt" onclick="selectSoloLives(5,this)" data-lval="5"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">5</div><div style="font-size:10px;color:var(--muted)">Chill</div></div>
+          </div>
+          <input class="q-count-custom-input" id="livesCountCustom" type="number" min="1" max="20" placeholder="Custom lives (max 20)" oninput="onCustomSoloLives(this)" onfocus="onCustomSoloLivesFocus(this)" style="width:100%">
+          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely — every wrong answer or timeout costs one life. Survive as long as you can!</div>
         </div>
         <!-- Score Race: pick target score -->
         <div id="gsTargetWrap" style="display:none">
@@ -4756,7 +4767,7 @@ function proceedFromTopic(){
 
 
 function startQuiz(mode){
-  selectedMode=mode;score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  selectedMode=mode;score=0;lives=mode==='survival'?selectedLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   if(mode==='race'){
     // Solo Score Race: unlimited questions until target score is reached
     selectedQuestionLimit=99999;
@@ -4783,7 +4794,7 @@ function renderHUD(){
     document.getElementById('qCount').textContent='Q'+(qIndex+1)+'/'+selectedQuestionLimit;
   }
   const ld=document.getElementById('livesDisplay');ld.innerHTML='';
-  if(isSurvival){for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
+  if(isSurvival){const maxLives=selectedLives||3;for(let i=0;i<maxLives;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}}
 }
 
 // ── DAILY QUIZ ───────────────────────────────────────────────
@@ -5956,6 +5967,7 @@ function switchGameSettingsTab(tab){
 }
 function updateGsSummary(){
   const isSoloRace=pendingMode==='race'&&!pendingLobbyAfterTimeLimit;
+  const isSoloSurvival=pendingMode==='survival'&&!pendingLobbyAfterTimeLimit;
   const qEl=document.getElementById('gsSummaryQuestions');
   const tEl=document.getElementById('gsSummaryTimer');
   const qIcon=document.getElementById('gsSummaryQIcon');
@@ -5963,6 +5975,9 @@ function updateGsSummary(){
     if(isSoloRace){
       qEl.textContent='Target: '+soloRaceTarget+' pts';
       if(qIcon)qIcon.className='ti ti-flag ';
+    } else if(isSoloSurvival){
+      qEl.textContent=selectedLives+' '+(selectedLives===1?'Life':'Lives');
+      if(qIcon)qIcon.className='ti ti-heart ';
     } else {
       qEl.textContent=selectedQuestionLimit+' Questions';
       if(qIcon)qIcon.className='ti ti-list-numbers ';
@@ -5987,16 +6002,19 @@ function showTimeLimitPicker(mode,fromLobby){
   grid.querySelectorAll('.time-limit-opt').forEach(el=>{
     el.classList.toggle('selected',parseInt(el.dataset.val)===raceTimeLimit);
   });
-  // Show target score or question count in the Questions panel
+  // Show target score, lives, or question count in the Questions panel
   const qCountWrap=document.getElementById('gsQCountWrap');
   const targetWrap=document.getElementById('gsTargetWrap');
-  if(qCountWrap)qCountWrap.style.display=isSoloRace?'none':'block';
+  const livesWrap=document.getElementById('gsLivesWrap');
+  const isSoloSurvival=mode==='survival'&&!fromLobby;
+  if(qCountWrap)qCountWrap.style.display=(isSoloRace||isSoloSurvival)?'none':'block';
   if(targetWrap)targetWrap.style.display=isSoloRace?'block':'none';
+  if(livesWrap)livesWrap.style.display=isSoloSurvival?'block':'none';
   // Update tab label
   const tabQLabel=document.getElementById('gsTabQLabel');
   const tabQIcon=document.getElementById('gsTabQIcon');
-  if(tabQLabel)tabQLabel.textContent=isSoloRace?'Target':'Questions';
-  if(tabQIcon)tabQIcon.className='ti '+(isSoloRace?'ti-flag':'ti-list-numbers')+' ';
+  if(tabQLabel)tabQLabel.textContent=isSoloRace?'Target':isSoloSurvival?'Lives':'Questions';
+  if(tabQIcon)tabQIcon.className='ti '+(isSoloRace?'ti-flag':isSoloSurvival?'ti-heart':'ti-list-numbers')+' ';
   if(isSoloRace){
     // Sync solo target selection
     document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(el=>{
@@ -6009,6 +6027,22 @@ function showTimeLimitPicker(mode,fromLobby){
     } else {
       document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(el=>el.classList.remove('selected'));
       if(customInput){customInput.value=soloRaceTarget;customInput.classList.add('selected');}
+    }
+  } else if(isSoloSurvival){
+    // Sync lives selection
+    const livesGrid=document.getElementById('livesCountGrid');
+    const livesPresets=[1,3,5];
+    const livesCustom=document.getElementById('livesCountCustom');
+    if(livesGrid){
+      livesGrid.querySelectorAll('.q-count-opt').forEach(el=>{
+        el.classList.toggle('selected',parseInt(el.dataset.lval)===selectedLives);
+      });
+    }
+    if(livesPresets.includes(selectedLives)){
+      if(livesCustom){livesCustom.value='';livesCustom.classList.remove('selected');}
+    } else {
+      if(livesGrid)livesGrid.querySelectorAll('.q-count-opt').forEach(el=>el.classList.remove('selected'));
+      if(livesCustom){livesCustom.value=selectedLives;livesCustom.classList.add('selected');}
     }
   } else {
     // Sync question count selection
@@ -6088,6 +6122,30 @@ function onCustomSoloTarget(input){
 }
 function onCustomSoloTargetFocus(input){
   document.querySelectorAll('#soloTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+}
+// ── SOLO SURVIVAL LIVES ───────────────────────────────────────
+let selectedLives=3; // default lives for solo Survival
+function selectSoloLives(val,el){
+  selectedLives=val;
+  document.querySelectorAll('#livesCountGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  if(el)el.classList.add('selected');
+  const customInput=document.getElementById('livesCountCustom');
+  if(customInput){customInput.value='';customInput.classList.remove('selected');}
+  updateGsSummary();
+}
+function onCustomSoloLives(input){
+  const raw=parseInt(input.value);
+  if(isNaN(raw)||input.value==='')return;
+  const val=Math.max(1,Math.min(20,raw));
+  selectedLives=val;
+  document.querySelectorAll('#livesCountGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
+  input.classList.add('selected');
+  if(raw>20)input.value=20;
+  updateGsSummary();
+}
+function onCustomSoloLivesFocus(input){
+  document.querySelectorAll('#livesCountGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
   input.classList.add('selected');
 }
 function confirmTimeLimit(){
