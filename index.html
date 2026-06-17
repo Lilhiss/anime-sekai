@@ -1607,6 +1607,14 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                   <button class="gs-opt" data-q="30" onclick="gsSetQuestions(30)">30</button>
                 </div>
               </div>
+              <div id="gsLivesSection" style="display:none">
+                <div class="gs-label">Lives</div>
+                <div class="gs-grid" id="gsLivesGrid">
+                  <button class="gs-opt" data-l="1" onclick="gsSetLives(1)">1</button>
+                  <button class="gs-opt selected" data-l="3" onclick="gsSetLives(3)">3</button>
+                  <button class="gs-opt" data-l="5" onclick="gsSetLives(5)">5</button>
+                </div>
+              </div>
               <div id="gsTimeSection">
                 <div class="gs-label" style="margin-top:8px">Time per question</div>
                 <div class="gs-grid" id="gsTimeGrid">
@@ -6591,6 +6599,8 @@ function rtSubscribe(lobbyId){
     mpWrongAttempts={};mpTiebreakerPlayers=[];
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
+    if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
+    lives=payload.mode==='survival'?selectedLives:3;
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
@@ -6771,6 +6781,7 @@ function rtSubscribe(lobbyId){
     if(payload.timeLimit!=null)raceTimeLimit=payload.timeLimit;
     if(payload.srTargetScore!=null)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget!=null)mpRaceTarget=payload.mpRaceTarget;
+    if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
@@ -6828,6 +6839,7 @@ function rtSubscribe(lobbyId){
       lobbyFormat=payload.format;lobbyMode=payload.mode;raceTimeLimit=payload.timeLimit;
       if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
       if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
+      if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
       if(payload.questionCount&&payload.mode!=='slowreveal')selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
@@ -7998,7 +8010,7 @@ function broadcastLobbySettings(changing){
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
   if(rtChannel){
-    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab};
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives};
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -8007,8 +8019,9 @@ function broadcastLobbySettings(changing){
 function gsUpdateHostLabel(){
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
-  const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:` · ${selectedQuestionLimit}Q`;
-  const tLabel=(isRace||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
+  const isSurvivalMP=lobbyMode==='survival';
+  const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:isSurvivalMP?` · ${selectedLives}❤️`:` · ${selectedQuestionLimit}Q`;
+  const tLabel=(isRace||isSurvivalMP)?` · ${raceTimeLimit}s`:'';
   const el=document.getElementById('lobbySettingsLabel');
   if(el)el.textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qLabel+tLabel;
   if(typeof updateLobbyTopicsLabel==='function')updateLobbyTopicsLabel();
@@ -8024,12 +8037,15 @@ function gsSyncUI(){
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
   document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.rt)===mpRaceTarget));
+  document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.l)===selectedLives));
   const rtCustom=document.getElementById('gsRaceTargetCustom');
   if(rtCustom){const presets=[50,100,150];if(presets.includes(mpRaceTarget)){rtCustom.value='';}else{rtCustom.value=mpRaceTarget;}}
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
-  document.getElementById('gsQuestionsSection').style.display=(isSR||isRace)?'none':'block';
-  document.getElementById('gsTimeSection').style.display=(isRace||lobbyMode==='survival')?'block':'none';
+  const isSurvivalMP=lobbyMode==='survival';
+  document.getElementById('gsQuestionsSection').style.display=(isSR||isRace||isSurvivalMP)?'none':'block';
+  document.getElementById('gsLivesSection').style.display=isSurvivalMP?'block':'none';
+  document.getElementById('gsTimeSection').style.display=(isRace||isSurvivalMP)?'block':'none';
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
   document.getElementById('gsRaceTargetSection').style.display=isRace?'block':'none';
   gsRenderTopic();
@@ -8039,7 +8055,7 @@ function gsSyncUI(){
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
-  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
+  setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):isSurvivalMP?('❤️ '+selectedLives+(selectedLives===1?' Life':' Lives')+' · '+raceTimeLimit+'s'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
 function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
@@ -8049,6 +8065,7 @@ function gsSetFormat(f){
 }
 function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
+function gsSetLives(n){selectedLives=n;gsAfterChange();}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetRaceTarget(n){mpRaceTarget=n;const c=document.getElementById('gsRaceTargetCustom');if(c)c.value='';gsAfterChange();}
@@ -8139,14 +8156,14 @@ function startLobbyGame(){
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
-  lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:3;p.eliminated=false;});
+  score=0;lives=lobbyMode==='survival'?selectedLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives}});
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     if(lobbyMode==='slowreveal'){
@@ -8437,8 +8454,9 @@ function renderMPHUD(){
   document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
   const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
   if(selectedMode==='survival'||selectedMode==='potato'){
+    const maxHearts=selectedMode==='survival'?selectedLives:3;
     const displayLives=isHP?active.lives:lives;
-    for(let i=0;i<3;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
+    for(let i=0;i<maxHearts;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
   }
   renderMPScoreboard();
 }
