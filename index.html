@@ -85,6 +85,10 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 3
 .primary-btn{background:var(--accent);border:1px solid var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .2s}
 .primary-btn:hover{opacity:.85}
 .ctrl-wrap{position:relative}
+.theme-swatch-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,border-color .15s,box-shadow .15s;padding:0;box-shadow:0 0 0 0 transparent}
+.theme-swatch-btn:hover{transform:scale(1.08);border-color:var(--accent);box-shadow:0 0 14px 2px color-mix(in srgb,var(--accent) 55%,transparent)}
+.theme-swatch-tip{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(-4px);background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:401}
+.ctrl-wrap:hover .theme-swatch-tip{opacity:1;transform:translateX(-50%) translateY(0)}
 .drop{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:13px;padding:8px;min-width:215px;z-index:400;box-shadow:0 8px 32px #0009}
 .drop.open{display:block}
 .drop-section{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:8px 12px 4px}
@@ -1023,11 +1027,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div class="nav-right" id="navRight">
       <button class="ghost-btn" id="soundBtn" onclick="toggleSound()" title="Toggle sound" style="padding:7px 11px"><i class="ti ti-volume" id="soundBtnIcon" style="font-size:16px"></i></button>
       <div class="ctrl-wrap" id="themeWrap">
-        <button class="ghost-btn" onclick="toggleDrop()">
-          <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
-          <span id="tlabel">Ethereal</span>
-          <i class="ti ti-chevron-down" style="font-size:13px"></i>
-        </button>
+        <button class="theme-swatch-btn" id="cdot" onclick="toggleDrop()" style="background:linear-gradient(135deg,#a78bfa,#7c5cbf)"></button>
+        <span class="theme-swatch-tip" id="tlabel">Ethereal</span>
         <div class="drop" id="drop">
           <div class="drop-section" style="display:none">Mode</div>
           <div class="toggle-row" style="display:none"><span class="toggle-label"><i class="ti ti-sun" style="font-size:15px"></i> Light mode</span><button class="tog" id="modeToggle" onclick="toggleMode()"></button></div>
@@ -3234,6 +3235,8 @@ let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
 
 const accentHex={midnight:'#a78bfa',blossom:'#f472b6',abyss:'#38bdf8',inferno:'#fb923c',jade:'#4ade80',arcane:'#e879f9'};
+const g1=accentHex;
+const g2={midnight:'#7c5cbf',blossom:'#be185d',abyss:'#1d4ed8',inferno:'#c2410c',jade:'#166534',arcane:'#9d174d'};
 const colorNames={midnight:'Ethereal',blossom:'Blossom',abyss:'Abyss',inferno:'Inferno',jade:'Jade',arcane:'Arcane'};
 const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character','char-mc':'Name the Character (MC)'};
 const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
@@ -3271,7 +3274,7 @@ function applyTheme(){
   document.getElementById('modeToggle').classList.toggle('on',!isDark);
   const modeTogDrawer=document.getElementById('modeToggleDrawer');
   if(modeTogDrawer)modeTogDrawer.classList.toggle('on',!isDark);
-  document.getElementById('cdot').style.background=accentHex[currentColor];
+  document.getElementById('cdot').style.background=`linear-gradient(135deg,${g1[currentColor]},${g2[currentColor]})`;
   document.getElementById('tlabel').textContent=colorNames[currentColor];
   const light=!isDark;
   document.getElementById('logoMark').style.color='';
@@ -3310,11 +3313,8 @@ function updateNav(){
       <button class="ghost-btn" id="inboxBtn" onclick="openInboxModal()" title="Inbox" style="display:none;position:relative;padding:7px 11px"><i class="ti ti-mail" style="font-size:16px"></i><span id="inboxDot" style="display:none;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#f87171;box-shadow:0 0 0 2px var(--bg2)"></span></button>
       <button class="ghost-btn" id="soundBtn" onclick="toggleSound()" title="Toggle sound" style="padding:7px 11px"><i class="ti ti-volume" id="soundBtnIcon" style="font-size:16px"></i></button>
       <div class="ctrl-wrap" id="themeWrap">
-        <button class="ghost-btn" onclick="toggleDrop()">
-          <span id="cdot" style="width:9px;height:9px;border-radius:50%;background:${accentHex[currentColor]};flex-shrink:0"></span>
-          <span id="tlabel">${colorNames[currentColor]}</span>
-          <i class="ti ti-chevron-down" style="font-size:13px"></i>
-        </button>
+        <button class="theme-swatch-btn" id="cdot" onclick="toggleDrop()" style="background:linear-gradient(135deg,${g1[currentColor]},${g2[currentColor]})"></button>
+        <span class="theme-swatch-tip" id="tlabel">${colorNames[currentColor]}</span>
         <div class="drop" id="drop">${buildThemeDropHTML()}</div>
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
