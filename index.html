@@ -1613,6 +1613,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                   <button class="gs-opt" data-l="1" onclick="gsSetLives(1)">1</button>
                   <button class="gs-opt selected" data-l="3" onclick="gsSetLives(3)">3</button>
                   <button class="gs-opt" data-l="5" onclick="gsSetLives(5)">5</button>
+                  <input class="gs-opt" type="number" id="gsLivesCustom" min="1" max="20" placeholder="Custom" style="font-size:13px;font-weight:800;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;text-align:center;padding:0" oninput="gsSetLivesCustom(this)" onfocus="this.select()">
                 </div>
               </div>
               <div id="gsHPSection" style="display:none">
@@ -1621,6 +1622,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                   <button class="gs-opt" data-hl="1" onclick="gsSetHPLives(1)">1</button>
                   <button class="gs-opt selected" data-hl="3" onclick="gsSetHPLives(3)">3</button>
                   <button class="gs-opt" data-hl="5" onclick="gsSetHPLives(5)">5</button>
+                  <input class="gs-opt" type="number" id="gsHPLivesCustom" min="1" max="20" placeholder="Custom" style="font-size:13px;font-weight:800;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;text-align:center;padding:0" oninput="gsSetHPLivesCustom(this)" onfocus="this.select()">
                 </div>
                 <div class="gs-label" style="margin-top:8px">Fuse timer (seconds)</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
@@ -8067,8 +8069,13 @@ function gsSyncUI(){
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
   document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.rt)===mpRaceTarget));
+  const livesPresets=[1,3,5];
   document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.l)===selectedLives));
+  const gsLivesCustomEl=document.getElementById('gsLivesCustom');
+  if(gsLivesCustomEl){if(livesPresets.includes(selectedLives)){gsLivesCustomEl.value='';gsLivesCustomEl.classList.remove('selected');}else{gsLivesCustomEl.value=selectedLives;gsLivesCustomEl.classList.add('selected');document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.remove('selected'));}}
   document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.hl)===hpLives));
+  const gsHPLivesCustomEl=document.getElementById('gsHPLivesCustom');
+  if(gsHPLivesCustomEl){if(livesPresets.includes(hpLives)){gsHPLivesCustomEl.value='';gsHPLivesCustomEl.classList.remove('selected');}else{gsHPLivesCustomEl.value=hpLives;gsHPLivesCustomEl.classList.add('selected');document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.remove('selected'));}}
   const hpMinEl=document.getElementById('gsHPFuseMin');const hpMaxEl=document.getElementById('gsHPFuseMax');
   if(hpMinEl)hpMinEl.value=hpFuseMin;if(hpMaxEl)hpMaxEl.value=hpFuseMax;
   const rtCustom=document.getElementById('gsRaceTargetCustom');
@@ -8100,13 +8107,35 @@ function gsSetFormat(f){
 }
 function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
-function gsSetLives(n){selectedLives=n;gsAfterChange();}
+function gsSetLives(n){
+  selectedLives=n;
+  document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.l)===n));
+  const c=document.getElementById('gsLivesCustom');if(c){c.value='';c.classList.remove('selected');}
+  gsAfterChange();
+}
+function gsSetLivesCustom(el){
+  const v=Math.max(1,Math.min(20,parseInt(el.value)||1));
+  selectedLives=v;
+  if(el.value!==''&&parseInt(el.value)>20)el.value=20;
+  document.querySelectorAll('#gsLivesGrid [data-l]').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  gsAfterChange();
+}
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
 // ── Hot Potato settings ───────────────────────────────────────
 let hpLives=3,hpFuseMin=5,hpFuseMax=10;
 function gsSetHPLives(n){
   hpLives=n;
   document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.hl)===n));
+  const c=document.getElementById('gsHPLivesCustom');if(c){c.value='';c.classList.remove('selected');}
+  gsAfterChange();
+}
+function gsSetHPLivesCustom(el){
+  const v=Math.max(1,Math.min(20,parseInt(el.value)||1));
+  hpLives=v;
+  if(el.value!==''&&parseInt(el.value)>20)el.value=20;
+  document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
   gsAfterChange();
 }
 function gsSetHPFuse(){
