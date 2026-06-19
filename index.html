@@ -1820,6 +1820,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div class="answers" id="mpAnswersGrid"></div>
         <div id="mpReportWrap" style="display:none;text-align:right;margin-top:4px">
           <button class="report-link" id="mpReportFlagBtn" onclick="flagMpQuestion()"><i class="ti ti-flag" style="font-size:13px"></i> Flag this question</button>
+          <span id="mpFlagCount" style="font-size:11px;color:var(--muted);margin-left:6px;display:none"></span>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px">
@@ -6619,6 +6620,8 @@ function rtSubscribe(lobbyId){
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
     mpWrongAttempts={};mpTiebreakerPlayers=[];
+    mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
+    mpSnapshotScores();
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget)mpRaceTarget=payload.mpRaceTarget;
     if(payload.survivalLives!=null)selectedLives=payload.survivalLives;
@@ -6661,8 +6664,9 @@ function rtSubscribe(lobbyId){
       if(allAnswered){
         clearInterval(timerInterval); // stop the question timer early
         mpStartAutoNext(()=>{
-          if(isHP){
-            hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+          if(!isHost)return;
+          // Record rolling window — question resolved normally (not voided)
+          lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
             while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
             const remaining=hpActivePlayers();
             if(remaining.length<=1){
@@ -6685,7 +6689,11 @@ function rtSubscribe(lobbyId){
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-    mpWrongAttempts={}; // clear wrong attempts for new question
+    mpWrongAttempts={};
+    // Reset flag state for new question
+    mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
+    clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
+    mpSnapshotScores();
     document.getElementById('mpQCardFeedback').style.display='none';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
@@ -6710,6 +6718,50 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'game_ended'},({payload})=>{
     lobbyPlayers=payload.players;mpEndGame();
+  });
+  rtChannel.on('broadcast',{event:'question_flagged'},({payload})=>{
+    if(!isHost)return;
+    if(!mpFlagWindowOpen)return; // window closed, ignore late flags
+    if(mpFlagsThisQuestion.has(payload.name))return; // duplicate
+    mpFlagsThisQuestion.add(payload.name);
+    mpUpdateFlagCountUI();
+    const threshold=mpGetVoidThreshold();
+    if(mpFlagsThisQuestion.size>=threshold){
+      // Threshold met — void the question
+      mpFlagWindowOpen=false;clearTimeout(mpFlagWindowTimer);
+      clearInterval(mpAutoNextInterval); // cancel auto-next
+      mpVoidQuestion();
+      // Broadcast void to all clients
+      rtChannel.send({type:'broadcast',event:'question_voided',payload:{
+        players:lobbyPlayers,questionId:currentQData?.id,flaggers:Array.from(mpFlagsThisQuestion)
+      }});
+      // Record non-void slot for non-flaggers and proceed to next question after brief pause
+      setTimeout(()=>{
+        lobbyPlayers.forEach(p=>{if(!mpFlagsThisQuestion.has(p.name))mpRollingWindowRecord(p.name,'null');});
+        qIndex++;
+        if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){
+          rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});return;
+        }
+        rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});
+      },3000);
+    }
+  });
+  rtChannel.on('broadcast',{event:'question_voided'},({payload})=>{
+    if(isHost)return; // host already handled it
+    lobbyPlayers=payload.players;
+    // Revert local score/lives from snapshot
+    const mySnap=mpPreVoidSnapshot[currentUser];
+    if(mySnap){score=mySnap.score;lives=mySnap.lives;}
+    renderMPHUD();renderMPScoreboard();
+    // Mark flaggers' windows as null (exempted), others also null (question didn't count)
+    const flaggers=new Set(payload.flaggers||[]);
+    lobbyPlayers.forEach(p=>mpRollingWindowRecord(p.name,'null'));
+    // Show void banner
+    const el=document.getElementById('mpAutoNext');
+    if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided — flagged by multiple players. No points awarded.</span>';
+    // Close flag button
+    const rb=document.getElementById('mpReportFlagBtn');
+    if(rb){rb.disabled=true;rb.style.opacity='.4';rb.style.pointerEvents='none';}
   });
   // ── Slow Reveal broadcasts ──────────────────────────────────────
   rtChannel.on('broadcast',{event:'sr_question'},({payload})=>{
@@ -7261,23 +7313,29 @@ function mpStartAutoNext(onDone){
 async function flagMpQuestion(){
   const btn=document.getElementById('mpReportFlagBtn');
   if(!btn||btn.disabled)return;
+  if(!mpFlagWindowOpen)return;
+  if(mpFlagsThisQuestion.has(currentUser))return;
   btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged 🚩';
+  const isCapped=mpPlayerIsCapped(currentUser);
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
     });
     await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason:'other',detail:null,reported_by:currentUser||null
+      question_id:currentQData.id,
+      reason:isCapped?'flag_capped':'other',
+      detail:isCapped?'Flagged while over rolling cap — not counted toward void tally':null,
+      reported_by:currentUser||null
     }).catch(()=>{});
   }
-  const _ft=document.createElement('div');
-  _ft.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
-  _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
-  document.body.appendChild(_ft);
-  setTimeout(()=>_ft.remove(),3000);
   if(currentQData?.id)reportedQuestionIds.add(currentQData.id);
-  btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged';
+  if(isCapped){mpRollingWindowRecord(currentUser,'flagged');return;}
+  if(rtChannel){
+    rtChannel.send({type:'broadcast',event:'question_flagged',payload:{name:currentUser,questionId:currentQData?.id}});
+  }
+}
 }
 
 let mpRecapOpen=true;
@@ -7443,6 +7501,11 @@ let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',
 let srTargetScore=10; // Slow Reveal: first to this many points wins
 let mpRaceTarget=100; // Multiplayer Score Race: first to cross this score wins
 let mpTiebreakerPlayers=[]; // names of players in a tiebreaker round (empty = normal play)
+let mpFlagsThisQuestion=new Set(); // distinct players who flagged current question
+let mpFlagWindowOpen=false;        // true during the 4s window after reveal
+let mpFlagWindowTimer=null;        // setTimeout that closes the flag window
+let mpPreVoidSnapshot={};          // {name:{score,lives}} snapshot before question resolved
+let mpPlayerFlagWindows={};        // rolling 3-slot flag history per player
 
 let heartbeatInterval=null;
 function startHeartbeat(){
@@ -8241,6 +8304,8 @@ function startLobbyGame(){
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
   score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];
+  mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
+  mpSnapshotScores();
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
@@ -8747,6 +8812,8 @@ function mpTimeOut(){
   // Auto-advance starts only once the question timer has expired for everyone
   mpStartAutoNext(()=>{
     if(!isHost)return;
+    // Record rolling window — question resolved normally (not voided)
+    lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
     if(isHP){
       hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
       while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
@@ -8769,10 +8836,17 @@ function mpTimeOut(){
 function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
-  // Show report button, reset any previously open dropdown
+  // Show report button, reset flag state for this question
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
-  const rb=document.getElementById('mpReportFlagBtn');if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;}
+  const rb=document.getElementById('mpReportFlagBtn');if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;rb.style.opacity='1';}
+  // Open 4-second flag window — closes 1s before auto-next fires
+  mpFlagWindowOpen=true;
+  clearTimeout(mpFlagWindowTimer);
+  mpFlagWindowTimer=setTimeout(()=>{
+    mpFlagWindowOpen=false;
+    if(rb&&!rb.disabled){rb.style.opacity='.4';rb.style.pointerEvents='none';}
+  },4000);
   document.getElementById('mpFbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const title=override||(playerName?(playerName+(correct?' got it!':' missed!')):correct?'Correct!':'Wrong!');
   document.getElementById('mpFbTitle').textContent=title;
@@ -8842,6 +8916,66 @@ async function mpLoadQuestion(){
     const offlineFuse=lobbyMode==='potato'?(5+Math.random()*5):null;
     mpShowQuestion(qData,offlineFuse);
     fetchQuestion().then(q=>{prefetchedQuestion=q});
+  }
+}
+
+// ── QUESTION VOIDING ─────────────────────────────────────────
+function mpGetVoidThreshold(){
+  const active=lobbyPlayers.filter(lp=>!lp.quit).length;
+  if(active<=4)return 2;
+  if(active<=8)return 3;
+  return 4;
+}
+function mpSnapshotScores(){
+  mpPreVoidSnapshot={};
+  lobbyPlayers.forEach(p=>{mpPreVoidSnapshot[p.name]={score:p.score,lives:p.lives,eliminated:p.eliminated};});
+}
+function mpGetPlayerWindow(name){
+  if(!mpPlayerFlagWindows[name])mpPlayerFlagWindows[name]=['null','null','null'];
+  return mpPlayerFlagWindows[name];
+}
+function mpPlayerIsCapped(name){
+  const w=mpGetPlayerWindow(name);
+  return w.filter(s=>s==='flagged').length>=1;
+}
+function mpRollingWindowRecord(name,outcome){
+  // outcome: 'flagged' | 'null'
+  const w=mpGetPlayerWindow(name);
+  w.shift();w.push(outcome);
+  mpPlayerFlagWindows[name]=w;
+}
+function mpUpdateFlagCountUI(){
+  const el=document.getElementById('mpFlagCount');
+  if(!el)return;
+  const threshold=mpGetVoidThreshold();
+  const count=mpFlagsThisQuestion.size;
+  if(count>0){el.textContent=`${count}/${threshold} flagged`;el.style.display='inline';}
+  else{el.style.display='none';}
+}
+function mpVoidQuestion(){
+  // Revert all players to pre-question scores
+  lobbyPlayers.forEach(p=>{
+    const snap=mpPreVoidSnapshot[p.name];
+    if(snap){p.score=snap.score;p.lives=snap.lives;p.eliminated=snap.eliminated;}
+  });
+  // Revert local player's own score/lives
+  const mySnap=mpPreVoidSnapshot[currentUser];
+  if(mySnap){score=mySnap.score;lives=mySnap.lives;}
+  renderMPHUD();renderMPScoreboard();
+  // Mark contributing flaggers' window slots as null (exempted)
+  mpFlagsThisQuestion.forEach(name=>mpRollingWindowRecord(name,'null'));
+  // Record non-flaggers and capped flaggers as null for this question too (question didn't count)
+  lobbyPlayers.forEach(p=>{if(!mpFlagsThisQuestion.has(p.name))mpRollingWindowRecord(p.name,'null');});
+  // Show void banner in place of auto-next text
+  const el=document.getElementById('mpAutoNext');
+  if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided — flagged by multiple players. No points awarded.</span>';
+  // Log to question_reports
+  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    sb.from('question_reports').insert({
+      question_id:currentQData.id,reason:'auto_voided_multi_flag',
+      detail:`Voided in lobby — ${mpFlagsThisQuestion.size} flags`,
+      reported_by:currentUser||null
+    }).catch(()=>{});
   }
 }
 
