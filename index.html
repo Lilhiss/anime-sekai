@@ -6667,6 +6667,7 @@ function rtSubscribe(lobbyId){
           if(!isHost)return;
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
+          if(isHP){
             while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
             const remaining=hpActivePlayers();
             if(remaining.length<=1){
@@ -7335,7 +7336,6 @@ async function flagMpQuestion(){
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'question_flagged',payload:{name:currentUser,questionId:currentQData?.id}});
   }
-}
 }
 
 let mpRecapOpen=true;
