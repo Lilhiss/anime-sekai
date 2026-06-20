@@ -188,6 +188,10 @@ h1 .hi{color:var(--accent)}
 .mode-info-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .mode-info-tip{position:absolute;top:38px;right:10px;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:11px;font-weight:700;padding:4px 10px;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:3;box-shadow:0 6px 18px #0006}
 .mode-info-btn:hover+.mode-info-tip{opacity:1;transform:translateY(0)}
+@media (hover:hover) and (pointer:fine){
+.mode-info-btn{opacity:0;transition:opacity .18s,border-color .15s,color .15s,background .15s}
+.mode-card:hover .mode-info-btn,.mode-info-btn:focus-visible{opacity:1}
+}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
 .time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
@@ -1409,10 +1413,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <h1>Test your <span class="hi">anime</span> knowledge</h1>
     </div>
     <div class="fmt-grid slide-in">
-      <div class="fmt-card" onclick="selectFormat('mc')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
-      <div class="fmt-card" onclick="selectFormat('type')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
-      <div class="fmt-card" onclick="selectFormat('img')"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
-      <div class="fmt-card" onclick="openCharFmtModal()"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
+      <div class="fmt-card" onclick="selectFormat('mc')"><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
+      <div class="fmt-card" onclick="selectFormat('type')"><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
+      <div class="fmt-card" onclick="selectFormat('img')"><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
+      <div class="fmt-card" onclick="openCharFmtModal()"><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
     </div>
   </div>
 
@@ -1424,9 +1428,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid solo-mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
-      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
-      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
+      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
     </div>
   </div>
 
