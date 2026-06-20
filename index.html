@@ -185,9 +185,9 @@ h1 .hi{color:var(--accent)}
 .solo-mode-grid{grid-template-columns:repeat(3,1fr);max-width:860px}
 .mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;position:relative}
 .mode-info-btn{position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);background:var(--bg3);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-style:normal;cursor:pointer;transition:border-color .15s,color .15s,background .15s;z-index:2}
-.mode-info-btn:hover,.mode-info-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
-.mode-info-tip{position:absolute;top:38px;right:10px;left:10px;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:11.5px;font-weight:600;line-height:1.5;padding:10px 12px;border-radius:10px;text-align:left;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:3;box-shadow:0 8px 24px #0007}
-.mode-info-tip.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.mode-info-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.mode-info-tip{position:absolute;top:38px;right:10px;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:11px;font-weight:700;padding:4px 10px;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:3;box-shadow:0 6px 18px #0006}
+.mode-info-btn:hover+.mode-info-tip{opacity:1;transform:translateY(0)}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
 .time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
@@ -1424,9 +1424,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid solo-mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">Every correct answer is worth 1 point, no matter how fast you answer. Game ends after the set number of questions.</div><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
-      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">Answers earn 3–10 points depending on speed — faster answers score more. First to reach the target score wins.</div><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
-      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">You start with 3 lives. Every wrong answer or timeout costs a life. The game ends when you run out.</div><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
+      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-info-circle" style="font-size:13px"></i></button><span class="mode-info-tip">How to Play</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
     </div>
   </div>
 
@@ -2880,6 +2880,21 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         </div>
       </div>
       <button class="action-btn primary" onclick="document.getElementById('howToPlayModal').style.display='none'">Got it!</button>
+    </div>
+  </div>
+
+  <div id="soloModeInfoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px;text-align:center">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)">How to Play</div>
+        <button onclick="closeSoloModeInfo()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div id="smiEmoji" style="font-size:38px"></div>
+        <div id="smiName" style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text)"></div>
+        <div id="smiDesc" style="font-size:13px;color:var(--muted);line-height:1.6;text-align:left"></div>
+      </div>
+      <button class="action-btn primary" onclick="closeSoloModeInfo()">Got it!</button>
     </div>
   </div>
 
@@ -4627,19 +4642,22 @@ function selectCharFormat(fmt){
     goStep('mode');
   }
 }
-function toggleModeInfo(btn){
-  const tip=btn.nextElementSibling;
-  const wasOpen=tip.classList.contains('open');
-  // Close any other open tooltips first
-  document.querySelectorAll('.mode-info-tip.open').forEach(t=>t.classList.remove('open'));
-  document.querySelectorAll('.mode-info-btn.active').forEach(b=>b.classList.remove('active'));
-  if(!wasOpen){tip.classList.add('open');btn.classList.add('active');}
+function openSoloModeInfo(mode){
+  const info={
+    classic:{emoji:'🎮',name:'Classic',desc:'Every correct answer is worth exactly 1 point, no matter how fast you answer. There\'s no pressure and no penalty for taking your time — the game ends after the set number of questions, and your final score is just how many you got right.'},
+    race:{emoji:'🏁',name:'Score Race',desc:'Each correct answer earns between 3 and 10 points. Answer within the first 5 seconds for the full 10 — the longer you take after that, the lower the score, down to a minimum of 3. The game ends as soon as you reach the target score.'},
+    survival:{emoji:'❤️',name:'Survival',desc:'You start with 3 lives. Every wrong answer or timeout costs one life. Answer correctly to keep going — lose all 3 lives and the run ends. See how many questions you can survive.'}
+  }[mode];
+  if(!info)return;
+  document.getElementById('smiEmoji').textContent=info.emoji;
+  document.getElementById('smiName').textContent=info.name;
+  document.getElementById('smiDesc').textContent=info.desc;
+  document.getElementById('soloModeInfoModal').style.display='flex';
+  applyTheme();
 }
-document.addEventListener('click',e=>{
-  if(e.target.closest('.mode-info-btn'))return;
-  document.querySelectorAll('.mode-info-tip.open').forEach(t=>t.classList.remove('open'));
-  document.querySelectorAll('.mode-info-btn.active').forEach(b=>b.classList.remove('active'));
-});
+function closeSoloModeInfo(){
+  document.getElementById('soloModeInfoModal').style.display='none';
+}
 function selectSoloMode(mode){
   pendingMode=mode;
   selectedTopics=[];isGeneralSelected=false;
