@@ -183,7 +183,11 @@ h1 .hi{color:var(--accent)}
 .fmt-card:hover .fmt-card-arrow{color:var(--accent);transform:translateX(3px)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:600px}
 .solo-mode-grid{grid-template-columns:repeat(3,1fr);max-width:860px}
-.mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.mode-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:16px;padding:28px 22px;cursor:pointer;transition:all .22s;backdrop-filter:blur(10px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;position:relative}
+.mode-info-btn{position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);background:var(--bg3);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-style:normal;cursor:pointer;transition:border-color .15s,color .15s,background .15s;z-index:2}
+.mode-info-btn:hover,.mode-info-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.mode-info-tip{position:absolute;top:38px;right:10px;left:10px;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:11.5px;font-weight:600;line-height:1.5;padding:10px 12px;border-radius:10px;text-align:left;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:3;box-shadow:0 8px 24px #0007}
+.mode-info-tip.open{opacity:1;pointer-events:auto;transform:translateY(0)}
 .time-limit-opt{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center}
 .time-limit-opt:hover{border-color:var(--accent);background:var(--card-bg)}
 .time-limit-opt.selected{border-color:var(--accent);background:var(--card-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
@@ -1420,9 +1424,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid solo-mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('classic')"><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
-      <div class="mode-card" onclick="selectSoloMode('race')"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
-      <div class="mode-card" onclick="selectSoloMode('survival')"><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">Every correct answer is worth 1 point, no matter how fast you answer. Game ends after the set number of questions.</div><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
+      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">Answers earn 3–10 points depending on speed — faster answers score more. First to reach the target score wins.</div><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
+      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();toggleModeInfo(this)" aria-label="More info"><i class="ti ti-info-circle" style="font-size:13px"></i></button><div class="mode-info-tip">You start with 3 lives. Every wrong answer or timeout costs a life. The game ends when you run out.</div><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
     </div>
   </div>
 
@@ -4623,6 +4627,19 @@ function selectCharFormat(fmt){
     goStep('mode');
   }
 }
+function toggleModeInfo(btn){
+  const tip=btn.nextElementSibling;
+  const wasOpen=tip.classList.contains('open');
+  // Close any other open tooltips first
+  document.querySelectorAll('.mode-info-tip.open').forEach(t=>t.classList.remove('open'));
+  document.querySelectorAll('.mode-info-btn.active').forEach(b=>b.classList.remove('active'));
+  if(!wasOpen){tip.classList.add('open');btn.classList.add('active');}
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('.mode-info-btn'))return;
+  document.querySelectorAll('.mode-info-tip.open').forEach(t=>t.classList.remove('open'));
+  document.querySelectorAll('.mode-info-btn.active').forEach(b=>b.classList.remove('active'));
+});
 function selectSoloMode(mode){
   pendingMode=mode;
   selectedTopics=[];isGeneralSelected=false;
