@@ -2813,12 +2813,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
       <div style="font-size:40px">🎮</div>
       <div>
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Still in a lobby!</div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px" id="lobbyNavModalTitle">Still in a lobby!</div>
         <div style="font-size:13px;color:var(--muted)" id="lobbyNavModalSub">Do you want to stay in the lobby or leave it?</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="action-btn primary" onclick="closeLobbyNavModal()"><i class="ti ti-arrow-left" style="font-size:15px"></i> Stay in Lobby</button>
-        <button class="action-btn secondary" onclick="closeLobbyNavModal();leaveLobbyRoom()"><i class="ti ti-x" style="font-size:15px"></i> Leave Lobby</button>
+        <button class="action-btn primary" onclick="closeLobbyNavModal()"><i class="ti ti-arrow-left" style="font-size:15px"></i> <span id="lobbyNavModalStayLabel">Stay in Lobby</span></button>
+        <button class="action-btn secondary" onclick="confirmLobbyNavLeave()"><i class="ti ti-x" style="font-size:15px"></i> <span id="lobbyNavModalLeaveLabel">Leave Lobby</span></button>
       </div>
     </div>
   </div>
@@ -4221,6 +4221,9 @@ async function uploadGuestPfp(blob){
 
 function goStep(name){
   clearInterval(timerInterval);clearInterval(dailyTimerInterval);
+  clearInterval(soloAutoNextInterval);clearInterval(mpAutoNextInterval);
+  clearInterval(srRevealInterval);clearTimeout(srPostRevealTimer);
+  clearTimeout(mpFlagWindowTimer);mpFlagWindowOpen=false;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   pg.classList.add('active');
@@ -5205,6 +5208,8 @@ async function loadQuestion(){
   if(qCard){qCard.classList.remove('type-mode','shake','answered');}
   renderHUD();
   const qData=prefetchedQuestion||await fetchQuestion();
+  // Bail if the player navigated away from the solo quiz page while this was loading
+  if(!document.getElementById('page-quiz')?.classList.contains('active'))return;
   prefetchedQuestion=null;currentQData=qData;
   showQuestion(qData);
   fetchQuestion().then(q=>{prefetchedQuestion=q});
@@ -6668,6 +6673,7 @@ function rtSubscribe(lobbyId){
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
           if(isHP){
+            hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
             while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
             const remaining=hpActivePlayers();
             if(remaining.length<=1){
@@ -7339,6 +7345,7 @@ async function flagMpQuestion(){
 }
 
 let mpRecapOpen=true;
+let lobbyNavModalContext='mp'; // 'solo' or 'mp' — determines what the nav modal's Leave button does
 function toggleMpRecap(){
   mpRecapOpen=!mpRecapOpen;
   document.getElementById('mpRecapList').style.display=mpRecapOpen?'flex':'none';
@@ -8912,6 +8919,8 @@ async function mpLoadQuestion(){
   // Only fetch if offline — realtime uses mpHostFetchAndBroadcast
   if(!rtChannel){
     const qData=prefetchedQuestion||await fetchQuestion();
+    // Bail if the player navigated away from the mp quiz page while this was loading
+    if(!document.getElementById('page-mp-quiz')?.classList.contains('active'))return;
     prefetchedQuestion=null;currentQData=qData;
     const offlineFuse=lobbyMode==='potato'?(5+Math.random()*5):null;
     mpShowQuestion(qData,offlineFuse);
@@ -11550,14 +11559,41 @@ function logoNav(){
   lm.classList.remove('logo-bounce');void lm.offsetWidth;lm.classList.add('logo-bounce');
   const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
   const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
-  if(inLobby||inMpQuiz){
+  const inSoloQuiz=document.getElementById('page-quiz').classList.contains('active');
+  if(inLobby||inMpQuiz||inSoloQuiz){
+    const title=document.getElementById('lobbyNavModalTitle');
     const sub=document.getElementById('lobbyNavModalSub');
-    if(sub)sub.textContent=inMpQuiz?'Do you want to stay in the game or quit?':'Do you want to stay in the lobby or leave it?';
+    const stayLabel=document.getElementById('lobbyNavModalStayLabel');
+    const leaveLabel=document.getElementById('lobbyNavModalLeaveLabel');
+    if(inSoloQuiz){
+      lobbyNavModalContext='solo';
+      if(title)title.textContent='Still in a game!';
+      if(sub)sub.textContent='Do you want to stay in the game or quit?';
+      if(stayLabel)stayLabel.textContent='Stay in Game';
+      if(leaveLabel)leaveLabel.textContent='Quit Game';
+    } else if(inMpQuiz){
+      lobbyNavModalContext='mp';
+      if(title)title.textContent='Still in a game!';
+      if(sub)sub.textContent='Do you want to stay in the game or quit?';
+      if(stayLabel)stayLabel.textContent='Stay in Game';
+      if(leaveLabel)leaveLabel.textContent='Quit Game';
+    } else {
+      lobbyNavModalContext='mp';
+      if(title)title.textContent='Still in a lobby!';
+      if(sub)sub.textContent='Do you want to stay in the lobby or leave it?';
+      if(stayLabel)stayLabel.textContent='Stay in Lobby';
+      if(leaveLabel)leaveLabel.textContent='Leave Lobby';
+    }
     document.getElementById('lobbyNavModal').style.display='flex';
     applyTheme();
     return;
   }
   goStep('landing');
+}
+function confirmLobbyNavLeave(){
+  closeLobbyNavModal();
+  if(lobbyNavModalContext==='solo'){goStep('landing');return;}
+  leaveLobbyRoom();
 }
 function closeLobbyNavModal(){
   document.getElementById('lobbyNavModal').style.display='none';
