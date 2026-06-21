@@ -8923,7 +8923,7 @@ function mpTimeOut(){
     renderMPHUD();
     const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
 
-    // ── HP miss: vignette flash + card shake, no answer reveal ───
+    // ── HP miss: vignette flash + card shake, then answer reveal ───
     sfxWrong();
     // Red vignette flash
     const vig=document.getElementById('hpMissVignette');
@@ -8940,17 +8940,10 @@ function mpTimeOut(){
       setTimeout(()=>mpQCardTO.classList.remove('shake'),420);
     }
 
-    // Broadcast the miss (life update) so all clients update their scoreboards,
-    // but do NOT call mpShowFeedback — we skip the feedback bar and answer reveal.
-    const me=lobbyPlayers.find(p=>p.name===currentUser);
-    if(me&&rtChannel){
-      rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{
-        name:currentUser,score:me?.score??score,
-        lives:active.lives,eliminated:active.eliminated,
-        roundAnswered:true,roundCorrect:false,roundPts:0,roundElapsed:0,
-        hpNextPlayer:hpPeekNextPlayer()?.name||null
-      }});
-    }
+    // Reveal the answer and show feedback bar, matching non-HP timeout behaviour.
+    // Pass currentUser as playerName so mpShowFeedback skips its own sfxWrong —
+    // we already fired it above for the vignette/shake sequence.
+    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",currentUser);
 
     // Host decides: advance turn and fetch a fresh question
     mpStartAutoNext(()=>{
