@@ -7948,10 +7948,10 @@ function gsSyncUI(){
   }
   const hpCard=document.querySelector('#gsModeGrid [data-mode="potato"]');
   if(hpCard){
-    const hpLocked=lobbyFormat!=='type';
+    const hpLocked=!HP_ALLOWED_FORMATS.includes(lobbyFormat);
     hpCard.classList.toggle('locked',hpLocked);
     const hpDescEl=hpCard.querySelector('.gs-bc-desc');
-    if(hpDescEl)hpDescEl.textContent=hpLocked?'🔒 Type the Answer only':'Pass it or lose a life';
+    if(hpDescEl)hpDescEl.textContent=hpLocked?'🔒 No Multiple Choice':'Pass it or lose a life';
   }
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
@@ -7989,14 +7989,15 @@ function gsSyncUI(){
   gsRenderAcc();
 }
 function gsAfterChange(){
-  if((lobbyMode==='slowreveal'||lobbyMode==='potato')&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
+  if(lobbyMode==='slowreveal'&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
+  if(lobbyMode==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat)){lobbyMode='race';selectedMode='race';}
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
 function gsSetFormat(f){
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;gsAfterChange();
 }
-function gsSetMode(m){if((m==='slowreveal'||m==='potato')&&lobbyFormat!=='type')return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetMode(m){if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){
   selectedLives=n;
@@ -8014,6 +8015,7 @@ function gsSetLivesCustom(el){
 }
 function gsSetTime(s){raceTimeLimit=s;gsAfterChange();}
 // ── Hot Potato settings ───────────────────────────────────────
+const HP_ALLOWED_FORMATS=['type','char','img']; // any format whose answering mechanism is typing — not mc/char-mc
 let hpLives=3,hpFuseMin=5,hpFuseMax=10;
 function gsSetHPLives(n){
   hpLives=n;
