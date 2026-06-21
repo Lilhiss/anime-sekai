@@ -6344,7 +6344,7 @@ async function rtCreateLobby(){
         'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=representation'
       },
-      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName,expires_at:new Date(Date.now()+10*60*1000).toISOString(),is_private:lobbyIsPrivate,question_count:selectedQuestionLimit})
+      body:JSON.stringify({code:lobbyCode,host_id:uid,format:lobbyFormat,mode:lobbyMode,status:'waiting',host_username:currentUser,lobby_name:lobbyName,expires_at:new Date(Date.now()+10*60*1000).toISOString(),is_private:lobbyIsPrivate,question_count:(lobbyMode==='race'?mpRaceTarget:lobbyMode==='slowreveal'?srTargetScore:lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:selectedQuestionLimit)})
     });
     if(!lobbyRes.ok){console.error('Create lobby error:',lobbyRes.status);return;}
     const lobbyRows=await lobbyRes.json();
@@ -6611,7 +6611,7 @@ function rtSubscribe(lobbyId){
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
-    mpWrongAttempts={};mpTiebreakerPlayers=[];hpPendingRepeat=null;
+    mpWrongAttempts={};mpTiebreakerPlayers=[];
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
     mpSnapshotScores();
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
@@ -6692,7 +6692,11 @@ function rtSubscribe(lobbyId){
         ?[hpActivePlayer()]  // HP: only the active player needs to answer
         :lobbyPlayers.filter(lp=>!lp.eliminated);
       const allAnswered=activePlayers.length>0&&activePlayers.every(lp=>lp.roundAnswered);
-      if(allAnswered){
+      // For HP misses, mpTimeOut already owns the advance path (it set roundAnswered via the
+      // answer_submitted broadcast but handles auto-next itself). Only trigger the early-advance
+      // here for HP on a CORRECT answer — misses must not fire a second mpStartAutoNext.
+      const isHPMiss=isHP&&payload.name===hpActivePlayer().name&&!payload.roundCorrect;
+      if(allAnswered&&!isHPMiss){
         clearInterval(timerInterval); // stop the question timer early
         mpStartAutoNext(()=>{
           if(!isHost)return;
@@ -6706,7 +6710,6 @@ function rtSubscribe(lobbyId){
               if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
               else mpEndGame();return;
             }
-            hpPendingRepeat=null; // correct answer always clears any pending repeat
           } else {
             if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
             if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
@@ -6736,22 +6739,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQLoading').style.display='flex';
     const mpQCard=document.querySelector('#page-mp-quiz .q-card');
     if(mpQCard)mpQCard.classList.remove('answered');
-    if(payload.hpRepeatQData){
-      // Same question for next player — host already fetched it, just re-show with fresh fuse
-      // Non-hosts: track that this turn is a repeat so if they miss, host knows to fetch fresh next
-      hpPendingRepeat=null; // non-hosts don't need to set this; host manages it authoritatively
-      currentQData=payload.hpRepeatQData;
-      if(!isHost){
-        document.getElementById('mpQLoading').style.display='none';
-        mpShowQuestion(payload.hpRepeatQData,payload.hpRepeatFuse);renderMPHUD();
-      } else {
-        // Host: show locally and set pending repeat to null (already cleared in mpTimeOut)
-        document.getElementById('mpQLoading').style.display='none';
-        mpShowQuestion(payload.hpRepeatQData,payload.hpRepeatFuse);renderMPHUD();
-      }
-    } else {
-      if(isHost)mpHostFetchAndBroadcast();
-    }
+    if(isHost)mpHostFetchAndBroadcast();
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
     if(isHost)return; // host already runs its own countdown
@@ -8340,7 +8328,7 @@ function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
   score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
-  hpActiveIdx=0;mpTiebreakerPlayers=[];hpPendingRepeat=null;hpTurnOrder=[];
+  hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
   if(lobbyMode==='potato'&&lobbyPlayers.length>0){
@@ -8641,7 +8629,6 @@ async function kickPlayer(name){
 
 let hpActiveIdx=0;
 let hpTurnOrder=[]; // shuffled array of player names, set at game start and used for the whole game
-let hpPendingRepeat=null; // {qData} when the current question should repeat for the next player; null otherwise
 function hpActivePlayers(){return hpTurnOrder.map(n=>lobbyPlayers.find(p=>p.name===n)).filter(p=>p&&!p.eliminated)}
 function hpActivePlayer(){
   const order=hpTurnOrder.length?hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -8933,13 +8920,6 @@ function mpTimeOut(){
 
     // ── HP miss: vignette flash + card shake, no answer reveal ───
     sfxWrong();
-    // Capture current question for potential repeat BEFORE clearing — only on first miss
-    // hpPendingRepeat is already null if this is a second consecutive miss (cleared in prior turn)
-    const missedQData=currentQData;
-    const shouldRepeat=isHost&&(hpPendingRepeat===null); // first miss on this question → will repeat
-    if(isHost){
-      hpPendingRepeat=shouldRepeat?missedQData:null;
-    }
     // Red vignette flash
     const vig=document.getElementById('hpMissVignette');
     if(vig){
@@ -8967,7 +8947,7 @@ function mpTimeOut(){
       }});
     }
 
-    // Host decides: repeat or new question
+    // Host decides: advance turn and fetch a fresh question
     mpStartAutoNext(()=>{
       if(!isHost)return;
       lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
@@ -8976,34 +8956,16 @@ function mpTimeOut(){
       hpActiveIdx=(hpActiveIdx+1)%_hpTotalTO;
       const remaining=hpActivePlayers();
       if(remaining.length<=1){
-        hpPendingRepeat=null;
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
-      // Decide whether to repeat the same question for the next player
-      const repeatQData=hpPendingRepeat;
-      hpPendingRepeat=null; // always clear — repeat is one-time only
       qIndex++;
       if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
-      if(repeatQData){
-        // Serve the same question with a fresh fuse — host re-fetches nothing
-        const freshFuse=hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin);
-        if(rtChannel){
-          rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers,hpRepeatQData:repeatQData,hpRepeatFuse:freshFuse}});
-        } else {
-          // Offline fallback
-          lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-          mpWrongAttempts={};hpTypingText={};
-          currentQData=repeatQData;
-          mpShowQuestion(repeatQData,freshFuse);renderMPHUD();
-        }
-      } else {
-        if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
-        else{mpLoadQuestion();}
-      }
+      if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+      else{mpLoadQuestion();}
     });
   } else {
     lives--;renderMPHUD();
