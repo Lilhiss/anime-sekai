@@ -7832,6 +7832,7 @@ async function loadPublicLobbies(silent=false){
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
       const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
+      const goalBadge=mode==='race'?`🏁 ${qCount} Pts`:mode==='survival'?`❤️ ${qCount} Lives`:mode==='potato'?`❤️ ${qCount} Lives`:mode==='slowreveal'?`🎯 ${qCount} Pts`:`📋 ${qCount}Q`;
 
       const card=document.createElement('div');
       card.className='lobby-list-card'+(full?' lobby-guest-lock':'');
@@ -7841,7 +7842,7 @@ async function loadPublicLobbies(silent=false){
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-            <span class="lobby-list-badge">📋 ${qCount}Q</span>
+            <span class="lobby-list-badge">${goalBadge}</span>
             ${timeBadge}
           </div>
         </div>
@@ -8429,12 +8430,13 @@ function patchLobbyListCard(lobby) {
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
   const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
+  const goalBadge = mode==='race'?`🏁 ${qCount} Pts`:mode==='survival'?`❤️ ${qCount} Lives`:mode==='potato'?`❤️ ${qCount} Lives`:mode==='slowreveal'?`🎯 ${qCount} Pts`:`📋 ${qCount}Q`;
   const metaEl = card.querySelector('.lobby-list-meta');
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
       <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-      <span class="lobby-list-badge">📋 ${qCount}Q</span>
+      <span class="lobby-list-badge">${goalBadge}</span>
       ${timeBadge}`;
   }
   // Also refresh the player count from the DB so it doesn't go stale
