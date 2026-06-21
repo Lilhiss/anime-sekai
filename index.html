@@ -531,7 +531,8 @@ h1 .hi{color:var(--accent)}
 .lb-score{font-family:'Lilita One',cursive;font-size:20px;color:var(--accent);flex-shrink:0}
 .lb-empty{text-align:center;padding:48px 24px;color:var(--muted)}
 /* LOBBY */
-.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px}
+.lobby-player{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px 16px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.lobby-player:has(.lobby-kebab-menu.open){z-index:20}
 .lobby-player-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;flex-shrink:0}
 .lobby-player-name{font-size:14px;font-weight:800;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lobby-player-badge{font-size:11px;font-weight:800;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:2px 10px;color:var(--accent)}
@@ -543,8 +544,8 @@ h1 .hi{color:var(--accent)}
 /* Kebab menu for host actions — replaces inline buttons at narrow widths */
 .lobby-kebab-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0;transition:background .15s,border-color .15s,color .15s;padding:0;font-family:inherit}
 .lobby-kebab-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
-.lobby-kebab-wrap{position:relative;flex-shrink:0}
-.lobby-kebab-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:11px;padding:5px;z-index:500;min-width:140px;box-shadow:0 8px 24px #0008;flex-direction:column;gap:3px}
+.lobby-kebab-wrap{position:relative;flex-shrink:0;z-index:10}
+.lobby-kebab-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:11px;padding:5px;z-index:600;min-width:140px;box-shadow:0 8px 24px #0008;flex-direction:column;gap:3px}
 .lobby-kebab-menu.open{display:flex}
 .lobby-kebab-item{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 12px;border-radius:7px;border:none;background:none;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;width:100%;transition:background .12s,color .12s}
 .lobby-kebab-item:hover{background:var(--bg3);color:var(--accent)}
@@ -1666,11 +1667,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MIN</div>
-                    <input type="number" id="gsHPFuseMin" class="gs-opt" min="1" max="59" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsSetHPFuse()" onfocus="this.select()">
+                    <input type="number" id="gsHPFuseMin" class="gs-opt" min="1" max="30" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'min')" onblur="gsHPFuseCommit()" onfocus="this.select()">
                   </div>
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MAX</div>
-                    <input type="number" id="gsHPFuseMax" class="gs-opt" min="2" max="60" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsSetHPFuse()" onfocus="this.select()">
+                    <input type="number" id="gsHPFuseMax" class="gs-opt" min="1" max="30" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'max')" onblur="gsHPFuseCommit()" onfocus="this.select()">
                   </div>
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">Bomb explodes at a random time between min and max seconds.</div>
@@ -8077,17 +8078,51 @@ function gsSetHPLivesCustom(el){
   el.classList.add('selected');
   gsAfterChange();
 }
-function gsSetHPFuse(){
+function gsHPFuseInput(el,which){
+  // Soft cap only: silently clamp if the typed number already exceeds 30.
+  // Don't write back while the field is empty or the user is mid-edit.
+  const v=parseInt(el.value);
+  if(!isNaN(v)&&v>30)el.value=30;
+  // Update internal state immediately so the summary label stays in sync,
+  // but only if the field has a usable value.
+  const minEl=document.getElementById('gsHPFuseMin');
+  const maxEl=document.getElementById('gsHPFuseMax');
+  const mn=parseInt(minEl.value);
+  const mx=parseInt(maxEl.value);
+  if(!isNaN(mn))hpFuseMin=Math.max(1,Math.min(30,mn));
+  if(!isNaN(mx))hpFuseMax=Math.max(1,Math.min(30,mx));
+  gsAfterChange();
+}
+function gsHPFuseCommit(){
+  // Full validation runs when either field loses focus.
   const minEl=document.getElementById('gsHPFuseMin');
   const maxEl=document.getElementById('gsHPFuseMax');
   if(!minEl||!maxEl)return;
-  let mn=Math.max(1,Math.min(59,parseInt(minEl.value)||5));
-  let mx=Math.max(2,Math.min(60,parseInt(maxEl.value)||10));
-  if(mx<=mn)mx=mn+1; // ensure max > min
+  // Fall back to last valid value if field was left empty
+  let mn=parseInt(minEl.value);
+  let mx=parseInt(maxEl.value);
+  if(isNaN(mn))mn=hpFuseMin;
+  if(isNaN(mx))mx=hpFuseMax;
+  // Clamp both to [1, 30]
+  mn=Math.max(1,Math.min(30,mn));
+  mx=Math.max(1,Math.min(30,mx));
+  // Enforce at least 3-second gap between min and max
+  if(mx-mn<3){
+    // Adjust min downward to preserve max where possible; min floor is 1
+    mn=Math.max(1,mx-3);
+    // If min hit the floor and gap is still too small, push max up
+    if(mx-mn<3)mx=mn+3;
+    // Final safety clamp after adjustment
+    mx=Math.min(30,mx);
+    mn=Math.max(1,mx-3);
+  }
   hpFuseMin=mn;hpFuseMax=mx;
   minEl.value=mn;maxEl.value=mx;
   gsAfterChange();
 }
+// Keep gsSetHPFuse as an alias so any other internal callers still work
+function gsSetHPFuse(){gsHPFuseCommit();}
+
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetRaceTarget(n){mpRaceTarget=n;const c=document.getElementById('gsRaceTargetCustom');if(c)c.value='';gsAfterChange();}
 function gsSetRaceTargetCustom(el){const v=parseInt(el.value);if(v>0){mpRaceTarget=v;document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.remove('selected'));}gsAfterChange();}
