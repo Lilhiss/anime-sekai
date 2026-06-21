@@ -7828,7 +7828,7 @@ async function loadPublicLobbies(silent=false){
       const color=colors[i%colors.length];
       const fmt=lobby.format||'mc';
       const mode=lobby.mode||'race';
-      const qCount=lobby.question_count||10;
+      const qCount=lobby.question_count||(mode==='survival'||mode==='potato'?3:10);
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
       const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
@@ -8035,7 +8035,9 @@ let gsActiveTab='format',gsTopicSub='general';
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
-  const qc=isSR?srTargetScore:isRace?mpRaceTarget:selectedQuestionLimit;
+  const isHP=lobbyMode==='potato';
+  const isSurvival=lobbyMode==='survival';
+  const qc=isSR?srTargetScore:isRace?mpRaceTarget:isHP?hpLives:isSurvival?selectedLives:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
   if(rtChannel){
     const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax};
@@ -8426,7 +8428,7 @@ function patchLobbyListCard(lobby) {
   if (!card) { loadPublicLobbies(); return; } // card not visible — do a full reload
   const fmt = lobby.format || 'mc';
   const mode = lobby.mode || 'race';
-  const qCount = lobby.question_count || 10;
+  const qCount = lobby.question_count||(mode==='survival'||mode==='potato'?3:10);
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
   const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
