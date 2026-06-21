@@ -1099,7 +1099,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         </div>
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-      <button class="ghost-btn" onclick="isGuest||currentUser?goStep('profile'):(pendingDestination='profile',goStep('auth'))"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+      <button class="ghost-btn" onclick="goProfile()"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
       <button class="primary-btn" id="signinBtn" onclick="choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
     </div>
 
@@ -1119,7 +1119,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div id="navDrawerUsername" style="font-family:'Lilita One',cursive;font-size:16px;color:var(--accent)"></div>
     </div>
     <button class="ghost-btn" style="display:none" onclick="closeNavDrawer();goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
-    <button class="ghost-btn" onclick="closeNavDrawer();isGuest||currentUser?goStep('profile'):(pendingDestination='profile',goStep('auth'))"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
+    <button class="ghost-btn" onclick="closeNavDrawer();goProfile()"><i class="ti ti-user" style="font-size:15px"></i> Profile</button>
     <div class="nav-drawer-sep"></div>
     <button class="ghost-btn" id="navDrawerSignin" onclick="closeNavDrawer();choosePath('landing')"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
     <button class="ghost-btn" id="navDrawerSignout" style="display:none" onclick="closeNavDrawer();signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign Out</button>
@@ -1823,7 +1823,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       </div>
       <div class="action-row slide-in d3">
         <button class="action-btn primary" onclick="mpReturnToLobby()"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
-        <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
+        <button class="action-btn secondary" onclick="goHome()"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
       </div>
       <div class="slide-in d4">
         <div class="recap-header"><div class="recap-title">Answer Recap</div><button class="recap-toggle" onclick="toggleMpRecap()" id="mpRecapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
@@ -2069,8 +2069,8 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
     <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;text-align:center">
       <div style="font-size:40px">👋</div>
       <div>
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px">Sign out?</div>
-        <div style="font-size:13px;color:var(--muted)">You'll need to sign back in to access your profile and saved stats.</div>
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);margin-bottom:6px" id="signOutModalTitle">Sign out?</div>
+        <div style="font-size:13px;color:var(--muted)" id="signOutModalSub">You'll need to sign back in to access your profile and saved stats.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="closeSignOutModal()">Cancel</button>
@@ -3305,7 +3305,7 @@ function updateNav(){
       </div>
       <button class="ghost-btn" style="display:none" onclick="goStep('leaderboard')"><i class="ti ti-trophy" style="font-size:15px"></i> Leaderboard</button>
       <button class="ghost-btn" id="adminNavLink" onclick="goAdmin()" style="display:none;opacity:0;pointer-events:none;transition:opacity .3s ease"><i class="ti ti-shield" style="font-size:15px"></i> Admin</button>
-      <div class="user-pill" onclick="goStep('profile')" style="cursor:pointer">
+      <div class="user-pill" onclick="goProfile()" style="cursor:pointer">
         ${getNavAvatarHTML(currentUser[0].toUpperCase())}${currentUser}${isGuest?' <span style="font-size:10px;opacity:.6">(guest)</span>':''}
       </div>
       <button class="ghost-btn" onclick="signOut()"><i class="ti ti-logout" style="font-size:15px"></i> Sign out</button>`;
@@ -3452,7 +3452,18 @@ async function closeInboxModal(){
 }
 
 function signOut(){
-  // Show confirmation modal instead of signing out immediately
+  const state=isInActiveGameOrLobby();
+  const title=document.getElementById('signOutModalTitle');
+  const sub=document.getElementById('signOutModalSub');
+  if(state.any){
+    if(title)title.textContent=state.inSoloQuiz||state.inMpQuiz?'Quit & sign out?':'Leave lobby & sign out?';
+    if(sub)sub.textContent=state.inSoloQuiz||state.inMpQuiz
+      ?'You\'re still in a game — signing out will end it for you. You\'ll need to sign back in to access your profile and saved stats.'
+      :'You\'re still in a lobby — signing out will remove you from it. You\'ll need to sign back in to access your profile and saved stats.';
+  } else {
+    if(title)title.textContent='Sign out?';
+    if(sub)sub.textContent='You\'ll need to sign back in to access your profile and saved stats.';
+  }
   document.getElementById('signOutModal').style.display='flex';
   applyTheme();
 }
@@ -3461,6 +3472,11 @@ function closeSignOutModal(){
 }
 async function confirmSignOut(){
   closeSignOutModal();
+  // Leave any active lobby/game cleanly before tearing down auth state —
+  // leaveLobbyRoom() needs currentUserId, which confirmSignOut() clears below.
+  if(isInActiveGameOrLobby().any){
+    try{ await leaveLobbyRoom(); }catch(e){}
+  }
   await sbSignOut().catch(()=>{});
   currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
   totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
@@ -8497,6 +8513,22 @@ function unsubscribeFromLobbyList() {
   if (lobbyListChannel) { lobbyListChannel.unsubscribe(); lobbyListChannel = null; }
 }
 
+// Safe "Home" navigation — if the player is still attached to a lobby (e.g. they
+// just finished a multiplayer game and the lobby room/channel are still live),
+// show the stay/leave confirmation modal instead of leaving silently. Only
+// truly outside a lobby/game does this go straight to landing.
+function goHome(){
+  requestLobbyNav(()=>goStep('landing'));
+}
+
+// Safe "Profile" navigation — same lobby/game guard as goHome(), since the
+// Profile button in the nav (desktop pill, mobile drawer) is reachable while
+// a player is sitting in a lobby room or mid multiplayer game.
+function goProfile(){
+  if(!isGuest&&!currentUser){pendingDestination='profile';goStep('auth');return;}
+  requestLobbyNav(()=>goStep('profile'));
+}
+
 async function leaveLobbyRoom(){
   stopHeartbeat();
   clearLobbyTimer();
@@ -11692,49 +11724,81 @@ function closeAdminPreview(){
 
 applyTheme();
 
+// ── LOBBY / GAME NAV GUARD ──────────────────────────────────────
+// Any navigation away from an active lobby or game should be a deliberate
+// choice, not silent. requestLobbyNav(afterLeave) checks whether the player
+// is currently in the lobby room, a multiplayer quiz, or a solo quiz. If so,
+// it shows a confirmation modal ("Stay" vs "Leave") instead of navigating
+// immediately. If not, afterLeave() runs right away. afterLeave is whatever
+// the caller actually wanted to do (go home, open Profile, sign out, etc.) —
+// it always runs after the lobby is cleanly left via leaveLobbyRoom(), never
+// before, so a player row is never abandoned mid-navigation.
+let lobbyNavAfterLeave=null;
+function isInActiveGameOrLobby(){
+  const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
+  const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
+  const inMpResults=document.getElementById('page-mp-results').classList.contains('active');
+  const inSoloQuiz=document.getElementById('page-quiz').classList.contains('active');
+  return {inLobby,inMpQuiz,inMpResults,inSoloQuiz,any:inLobby||inMpQuiz||inMpResults||inSoloQuiz};
+}
+function requestLobbyNav(afterLeave){
+  const state=isInActiveGameOrLobby();
+  if(!state.any){
+    if(afterLeave)afterLeave();else goStep('landing');
+    return;
+  }
+  const title=document.getElementById('lobbyNavModalTitle');
+  const sub=document.getElementById('lobbyNavModalSub');
+  const stayLabel=document.getElementById('lobbyNavModalStayLabel');
+  const leaveLabel=document.getElementById('lobbyNavModalLeaveLabel');
+  if(state.inSoloQuiz){
+    lobbyNavModalContext='solo';
+    if(title)title.textContent='Still in a game!';
+    if(sub)sub.textContent='Do you want to stay in the game or quit?';
+    if(stayLabel)stayLabel.textContent='Stay in Game';
+    if(leaveLabel)leaveLabel.textContent='Quit Game';
+  } else if(state.inMpQuiz){
+    lobbyNavModalContext='mp';
+    if(title)title.textContent='Still in a game!';
+    if(sub)sub.textContent='Do you want to stay in the game or quit?';
+    if(stayLabel)stayLabel.textContent='Stay in Game';
+    if(leaveLabel)leaveLabel.textContent='Quit Game';
+  } else if(state.inMpResults){
+    lobbyNavModalContext='mp';
+    if(title)title.textContent='Still in the lobby!';
+    if(sub)sub.textContent='The lobby is still open for another round. Leave it, or stay and play again?';
+    if(stayLabel)stayLabel.textContent='Stay in Lobby';
+    if(leaveLabel)leaveLabel.textContent='Leave Lobby';
+  } else {
+    lobbyNavModalContext='mp';
+    if(title)title.textContent='Still in a lobby!';
+    if(sub)sub.textContent='Do you want to stay in the lobby or leave it?';
+    if(stayLabel)stayLabel.textContent='Stay in Lobby';
+    if(leaveLabel)leaveLabel.textContent='Leave Lobby';
+  }
+  lobbyNavAfterLeave=afterLeave||null;
+  document.getElementById('lobbyNavModal').style.display='flex';
+  applyTheme();
+}
+
 // ── LOGO NAVIGATION INTERCEPT ─────────────────────────────────
 function logoNav(){
   const lm=document.getElementById('logoMark');
   lm.classList.remove('logo-bounce');void lm.offsetWidth;lm.classList.add('logo-bounce');
-  const inLobby=document.getElementById('page-lobby-room').classList.contains('active');
-  const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
-  const inSoloQuiz=document.getElementById('page-quiz').classList.contains('active');
-  if(inLobby||inMpQuiz||inSoloQuiz){
-    const title=document.getElementById('lobbyNavModalTitle');
-    const sub=document.getElementById('lobbyNavModalSub');
-    const stayLabel=document.getElementById('lobbyNavModalStayLabel');
-    const leaveLabel=document.getElementById('lobbyNavModalLeaveLabel');
-    if(inSoloQuiz){
-      lobbyNavModalContext='solo';
-      if(title)title.textContent='Still in a game!';
-      if(sub)sub.textContent='Do you want to stay in the game or quit?';
-      if(stayLabel)stayLabel.textContent='Stay in Game';
-      if(leaveLabel)leaveLabel.textContent='Quit Game';
-    } else if(inMpQuiz){
-      lobbyNavModalContext='mp';
-      if(title)title.textContent='Still in a game!';
-      if(sub)sub.textContent='Do you want to stay in the game or quit?';
-      if(stayLabel)stayLabel.textContent='Stay in Game';
-      if(leaveLabel)leaveLabel.textContent='Quit Game';
-    } else {
-      lobbyNavModalContext='mp';
-      if(title)title.textContent='Still in a lobby!';
-      if(sub)sub.textContent='Do you want to stay in the lobby or leave it?';
-      if(stayLabel)stayLabel.textContent='Stay in Lobby';
-      if(leaveLabel)leaveLabel.textContent='Leave Lobby';
-    }
-    document.getElementById('lobbyNavModal').style.display='flex';
-    applyTheme();
-    return;
-  }
-  goStep('landing');
+  requestLobbyNav(()=>goStep('landing'));
 }
 function confirmLobbyNavLeave(){
   closeLobbyNavModal();
-  if(lobbyNavModalContext==='solo'){goStep('landing');return;}
-  leaveLobbyRoom();
+  const after=lobbyNavAfterLeave;
+  lobbyNavAfterLeave=null;
+  if(lobbyNavModalContext==='solo'){
+    if(after)after();else goStep('landing');
+    return;
+  }
+  leaveLobbyRoom().then(()=>{ if(after)after(); });
 }
 function closeLobbyNavModal(){
+  lobbyNavAfterLeave=null;
   document.getElementById('lobbyNavModal').style.display='none';
 }
 
