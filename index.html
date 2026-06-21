@@ -452,10 +452,15 @@ h1 .hi{color:var(--accent)}
 .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}
 
 /* MP COUNTDOWN */
-.mp-countdown-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+.mp-countdown-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;transition:background .4s ease}
+.mp-countdown-overlay.hp-holder{background:linear-gradient(135deg,#c2410c,#f97316,#fbbf24)}
+.mp-countdown-overlay.hp-holder .mp-countdown-num{color:#fff;text-shadow:0 0 40px rgba(255,255,255,.5)}
 .mp-countdown-num{font-family:'Lilita One',cursive;font-size:120px;color:var(--accent);line-height:1;animation:countPop .9s ease-out forwards}
 .mp-countdown-label{font-size:16px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.mp-countdown-overlay.hp-holder .mp-countdown-label{color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)}
 @keyframes countPop{0%{transform:scale(1.4);opacity:0}30%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.8)}}
+@keyframes hpPotatoShake{0%,100%{transform:rotate(-8deg) scale(1.1)}25%{transform:rotate(8deg) scale(1.2)}50%{transform:rotate(-6deg) scale(1.15)}75%{transform:rotate(6deg) scale(1.1)}}
+#hpHolderPotato{display:none;font-size:80px;animation:hpPotatoShake .4s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(249,115,22,.8))}
 .fb-auto-next{font-family:'Lilita One',cursive;font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;min-width:80px;text-align:center}
 /* ── TOPIC PICKER ── */
 .topic-picker-wrap{width:100%;max-width:580px;display:flex;flex-direction:column;gap:14px}
@@ -1788,6 +1793,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 
   <!-- MP COUNTDOWN OVERLAY -->
   <div class="mp-countdown-overlay" id="mpCountdownOverlay" style="display:none">
+    <div id="hpHolderPotato">🥔</div>
     <div class="mp-countdown-num" id="mpCountdownNum">3</div>
     <div class="mp-countdown-label" id="mpCountdownLabel">Get ready!</div>
     <button id="mpCountdownCancelBtn" onclick="mpCancelCountdown()" style="display:none;margin-top:18px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:99px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 22px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">Cancel <i class="ti ti-arrow-back-up" style="font-size:14px"></i></button>
@@ -7274,28 +7280,46 @@ async function mpHostFetchAndBroadcast(){
 
 let _countdownTick=null;
 function mpShowCountdown(onDone,hpFirstHolder){
-  closePfpPicker(); // close if a player was changing their pfp when host started
+  closePfpPicker();
   const overlay=document.getElementById('mpCountdownOverlay');
   const numEl=document.getElementById('mpCountdownNum');
   const lblEl=document.getElementById('mpCountdownLabel');
   const cancelBtn=document.getElementById('mpCountdownCancelBtn');
+  const potatoEl=document.getElementById('hpHolderPotato');
+  const isHP=!!hpFirstHolder;
+  const isHolder=isHP&&hpFirstHolder===currentUser;
+  // Reset overlay to neutral state
+  overlay.classList.remove('hp-holder');
+  if(potatoEl)potatoEl.style.display='none';
   overlay.style.display='flex';
   if(cancelBtn)cancelBtn.style.display=isHost?'inline-flex':'none';
-  let count=3;
+  // HP gets 5 seconds, everyone else gets 3
+  let count=isHP?5:3;
   numEl.textContent=count;lblEl.textContent='Get ready!';
   numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='';
   clearInterval(_countdownTick);
   _countdownTick=setInterval(()=>{
     count--;
-    if(count<=0){clearInterval(_countdownTick);_countdownTick=null;overlay.style.display='none';if(cancelBtn)cancelBtn.style.display='none';onDone();return;}
+    if(count<=0){
+      clearInterval(_countdownTick);_countdownTick=null;
+      overlay.classList.remove('hp-holder');
+      if(potatoEl)potatoEl.style.display='none';
+      overlay.style.display='none';
+      if(cancelBtn)cancelBtn.style.display='none';
+      onDone();return;
+    }
     numEl.textContent=count;
     numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
-    // On the "1" beat in HP mode, reveal who starts with the potato
-    if(count===1&&hpFirstHolder){
-      const isMe=hpFirstHolder===currentUser;
-      lblEl.innerHTML=isMe
-        ?'<span style="color:var(--accent);font-weight:900">🥔 You\'re holding the potato first!</span>'
-        :`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
+    // HP: reveal holder on beat 4 (4 seconds to absorb it before launch)
+    if(isHP&&count===4){
+      if(isHolder){
+        // Holder sees the whole screen go orange
+        overlay.classList.add('hp-holder');
+        if(potatoEl)potatoEl.style.display='block';
+        lblEl.innerHTML='<span style="font-size:20px;font-weight:900;letter-spacing:.02em">YOU\'RE HOLDING IT FIRST!</span>';
+      } else {
+        lblEl.innerHTML=`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
+      }
     }
   },1000);
 }
