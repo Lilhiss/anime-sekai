@@ -540,6 +540,15 @@ h1 .hi{color:var(--accent)}
 .lobby-action-btn{font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s;white-space:nowrap}
 .lobby-action-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .lobby-action-btn.kick:hover{background:#f87171;border-color:#f87171;color:#fff}
+/* Kebab menu for host actions — replaces inline buttons at narrow widths */
+.lobby-kebab-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0;transition:background .15s,border-color .15s,color .15s;padding:0;font-family:inherit}
+.lobby-kebab-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.lobby-kebab-wrap{position:relative;flex-shrink:0}
+.lobby-kebab-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:11px;padding:5px;z-index:500;min-width:140px;box-shadow:0 8px 24px #0008;flex-direction:column;gap:3px}
+.lobby-kebab-menu.open{display:flex}
+.lobby-kebab-item{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 12px;border-radius:7px;border:none;background:none;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;width:100%;transition:background .12s,color .12s}
+.lobby-kebab-item:hover{background:var(--bg3);color:var(--accent)}
+.lobby-kebab-item.danger:hover{background:#f8717115;color:#f87171}
 /* ── Lobby liveliness ── */
 .lobby-player.is-new{animation:lobbyPlayerIn .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes lobbyPlayerIn{0%{opacity:0;transform:translateY(-8px) scale(.92)}60%{transform:translateY(0) scale(1.03)}100%{opacity:1;transform:scale(1)}}
@@ -863,8 +872,22 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-expiry-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
 @keyframes hpLifeLost{0%{transform:scale(1.5);opacity:1}60%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
 .hp-life-lost{animation:hpLifeLost .45s cubic-bezier(.36,.07,.19,.97) both}
-@keyframes hpTypingPulse{0%,100%{opacity:.7}50%{opacity:1}}
-.hp-typing-hint{font-size:10px;color:var(--accent);font-weight:800;margin-top:2px;animation:hpTypingPulse .9s ease-in-out infinite;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
+/* Hot Potato turn banner */
+@keyframes hpPotatoBob{0%,100%{transform:translateY(0) rotate(-6deg) scale(1)}50%{transform:translateY(-5px) rotate(6deg) scale(1.12)}}
+@keyframes hpBannerPop{0%{opacity:0;transform:translateY(-8px) scale(.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.hp-turn-banner{border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;animation:hpBannerPop .3s cubic-bezier(.34,1.56,.64,1) both}
+.hp-turn-banner.my-turn{background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 18%,transparent),color-mix(in srgb,var(--accent) 10%,transparent));border:2px solid var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent),0 8px 24px color-mix(in srgb,var(--accent) 22%,transparent)}
+.hp-turn-banner.their-turn{background:var(--card-bg);border:1.5px solid var(--border2)}
+.hp-turn-potato{font-size:36px;line-height:1;flex-shrink:0;animation:hpPotatoBob 1.6s ease-in-out infinite}
+.hp-turn-potato.still{animation:none}
+.hp-turn-body{flex:1;min-width:0}
+.hp-turn-eyebrow{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.hp-turn-banner.my-turn .hp-turn-eyebrow{color:var(--accent)}
+.hp-turn-banner.their-turn .hp-turn-eyebrow{color:var(--muted)}
+.hp-turn-name{font-family:'Lilita One',cursive;font-size:clamp(18px,2.5vw,24px);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-turn-banner.my-turn .hp-turn-name{color:var(--accent)}
+.hp-turn-sub{font-size:12px;color:var(--muted);margin-top:2px;font-weight:700}
+.hp-turn-hearts{display:flex;gap:4px;flex-shrink:0;align-items:center}
 
 /* MULTIPLAYER HUB */
 .mp-hub-layout{width:100%;max-width:900px;display:grid;grid-template-columns:280px auto 1fr;gap:0;align-items:start}
@@ -1715,6 +1738,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
           </div>
         </div>
         <div class="timer-wrap" id="mpTimerWrap"><div class="timer-bar" id="mpTimerBar"></div></div>
+        <!-- Hot Potato turn banner — only visible in potato mode -->
+        <div id="hpTurnBanner" style="display:none"></div>
         <div class="q-card">
           <div class="q-card-top-meta">
             <span class="q-card-meta-pill" id="mpQBadge"></span>
@@ -6596,14 +6621,20 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'hp_typing'},({payload})=>{
     if(payload.name===currentUser)return; // ignore own echo
     hpTypingText[payload.name]=payload.text;
-    renderMPScoreboard();
+    // Show the live draft directly in the disabled answer input that spectators see
+    const inp=document.getElementById('mpTypeInput');
+    if(inp&&inp.disabled){inp.value=payload.text;}
   });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
     if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||(selectedMode==='survival'&&payload.lives<=0)||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
     // Clear wrong attempt and typing preview once they've locked in a final answer
     if(mpWrongAttempts[payload.name])delete mpWrongAttempts[payload.name];
-    if(hpTypingText[payload.name])delete hpTypingText[payload.name];
+    if(hpTypingText[payload.name]){
+      delete hpTypingText[payload.name];
+      const inp=document.getElementById('mpTypeInput');
+      if(inp&&inp.disabled)inp.value='';
+    }
     renderMPScoreboard();
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
@@ -7810,7 +7841,10 @@ function renderLobbyRoom(){
     const row=document.createElement('div');row.className='lobby-player'+(_prevNames.has(p.name)?'':' is-new');
     const isMe=p.name===currentUser;
     if(isMe)row.classList.add('lobby-player-me');
-    const hostActions=isHost&&!isMe?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-crown" style="font-size:11px"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${p.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-minus" style="font-size:11px"></i> Kick</button></div>`:'';
+    const escapedName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const hostActions=isHost&&!isMe
+      ?`<div class="lobby-kebab-wrap"><button class="lobby-kebab-btn" onclick="toggleLobbyKebab(this)" title="Player options">⋯</button><div class="lobby-kebab-menu"><button class="lobby-kebab-item" onclick="closeLobbyKebabs();promptTransferHost('${escapedName}')"><i class="ti ti-crown" style="font-size:13px;color:#fbbf24"></i> Make Host</button><button class="lobby-kebab-item danger" onclick="closeLobbyKebabs();kickPlayer('${escapedName}')"><i class="ti ti-user-minus" style="font-size:13px"></i> Kick</button></div></div>`
+      :'';
     const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
     const avatarWrap=isMe
       ?`<div style="position:relative;cursor:pointer;flex-shrink:0" onclick="openPfpPicker()" title="Change profile picture">${avatarHtml}<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"><i class="ti ti-pencil" style="font-size:13px;color:#fff"></i></div></div>`
@@ -8337,6 +8371,19 @@ async function leaveLobbyRoom(){
   lobbyIsPrivate=false;
   goStep('landing');
 }
+function toggleLobbyKebab(btn){
+  const menu=btn.nextElementSibling;
+  const isOpen=menu.classList.contains('open');
+  closeLobbyKebabs();
+  if(!isOpen)menu.classList.add('open');
+}
+function closeLobbyKebabs(){
+  document.querySelectorAll('.lobby-kebab-menu.open').forEach(m=>m.classList.remove('open'));
+}
+// Close kebab menus when clicking outside
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.lobby-kebab-wrap'))closeLobbyKebabs();
+});
 let _transferTarget=null;
 function promptTransferHost(name){
   if(!isHost)return;
@@ -8431,8 +8478,30 @@ function renderMPHUD(){
   const isSurvival=selectedMode==='survival';
   const isSR=lobbyMode==='slowreveal';
   const active=isHP?hpActivePlayer():null;
+  const isMyTurn=isHP&&active.name===currentUser;
+
+  // ── HP turn banner ────────────────────────────────────────────
+  const banner=document.getElementById('hpTurnBanner');
+  if(banner){
+    if(isHP&&active){
+      const heartsHTML=Array.from({length:hpLives},(_,j)=>{
+        const lost=j>=active.lives;
+        const prevL=hpPrevLives[active.name];
+        const justLost=prevL!=null&&active.lives<prevL&&j===active.lives;
+        return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:14px;color:${lost?'var(--border2)':'#f87171'};${active.eliminated?'opacity:.3':''}"></i>`;
+      }).join('');
+      const eyebrow=isMyTurn?'🔥 Your turn — type your answer!':'👀 Watching…';
+      const sub=isMyTurn?'The potato is in your hands — answer before it explodes!':'Waiting for '+active.name+' to answer…';
+      banner.innerHTML=`<div class="hp-turn-banner ${isMyTurn?'my-turn':'their-turn'}"><div class="hp-turn-potato${isMyTurn?'':' still'}">🥔</div><div class="hp-turn-body"><div class="hp-turn-eyebrow">${eyebrow}</div><div class="hp-turn-name">${active.name}</div><div class="hp-turn-sub">${sub}</div></div><div class="hp-turn-hearts">${heartsHTML}</div></div>`;
+      banner.style.display='block';
+    } else {
+      banner.style.display='none';
+    }
+  }
+
+  // ── Standard HUD ─────────────────────────────────────────────
   const displayScore=isHP
-    ?'🥔 '+active.name+"'s turn"
+    ?'🥔 Hot Potato'
     :isSurvival
       ? quizHistory.filter(h=>h.correct).length+' correct'
       :isSR
@@ -8440,11 +8509,11 @@ function renderMPHUD(){
         : score+' pts';
   document.getElementById('mpScoreDisplay').textContent=displayScore;
   document.getElementById('mpQCount').textContent='Q'+(qIndex+1);
+  // Hearts move to the banner in HP mode
   const ld=document.getElementById('mpLivesDisplay');ld.innerHTML='';
-  if(selectedMode==='survival'||selectedMode==='potato'){
-    const maxHearts=selectedMode==='survival'?selectedLives:hpLives;
-    const displayLives=isHP?active.lives:lives;
-    for(let i=0;i<maxHearts;i++){const h=document.createElement('span');h.className='life'+(i>=displayLives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
+  if(!isHP&&(selectedMode==='survival')){
+    const maxHearts=selectedLives;
+    for(let i=0;i<maxHearts;i++){const h=document.createElement('span');h.className='life'+(i>=lives?' lost':'');h.innerHTML='<i class="ti ti-heart"></i>';ld.appendChild(h)}
   }
   renderMPScoreboard();
 }
@@ -8475,10 +8544,6 @@ function renderMPScoreboard(){
     const wrongAttempt=(isTyping||isHP)&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
       ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
       :'';
-    // Live typing preview for the active HP holder (visible to all other players)
-    const typingHint=isHP&&isActive&&!p.roundAnswered&&!hasQuit&&hpTypingText[p.name]&&!isMe
-      ?`<div class="hp-typing-hint">✍️ ${hpTypingText[p.name]}</div>`
-      :'';
     // Detect life-loss this render cycle to trigger animation
     const prevLives=hpPrevLives[p.name];
     const lifeLost=isHP&&prevLives!=null&&p.lives<prevLives;
@@ -8486,7 +8551,7 @@ function renderMPScoreboard(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}${typingHint}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
@@ -8756,6 +8821,7 @@ async function mpLoadQuestion(){
   lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
   mpWrongAttempts={}; // clear wrong attempts for new question
   hpTypingText={};
+  const hpBannerEl=document.getElementById('hpTurnBanner');if(hpBannerEl)hpBannerEl.style.display='none';
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   document.getElementById('mpAnswersGrid').innerHTML='';
