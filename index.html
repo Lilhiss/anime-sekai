@@ -861,6 +861,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-expiry-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .lobby-expiry-timer{font-family:'Lilita One',cursive;font-size:28px;color:#fb923c;flex-shrink:0;letter-spacing:.02em;min-width:52px;text-align:right;line-height:1}
 .lobby-expiry-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
+@keyframes hpLifeLost{0%{transform:scale(1.5);opacity:1}60%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
+.hp-life-lost{animation:hpLifeLost .45s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes hpTypingPulse{0%,100%{opacity:.7}50%{opacity:1}}
+.hp-typing-hint{font-size:10px;color:var(--accent);font-weight:800;margin-top:2px;animation:hpTypingPulse .9s ease-in-out infinite;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
 
 /* MULTIPLAYER HUB */
 .mp-hub-layout{width:100%;max-width:900px;display:grid;grid-template-columns:280px auto 1fr;gap:0;align-items:start}
@@ -1710,7 +1714,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
             <button class="ghost-btn" onclick="mpQuitGame()"><i class="ti ti-x" style="font-size:13px"></i> Quit</button>
           </div>
         </div>
-        <div class="timer-wrap"><div class="timer-bar" id="mpTimerBar"></div></div>
+        <div class="timer-wrap" id="mpTimerWrap"><div class="timer-bar" id="mpTimerBar"></div></div>
         <div class="q-card">
           <div class="q-card-top-meta">
             <span class="q-card-meta-pill" id="mpQBadge"></span>
@@ -6225,6 +6229,8 @@ let isHost=false;
 let mpAutoNextInterval=null;
 let mpAutoNextPaused=false;
 let mpWrongAttempts={}; // {playerName: lastWrongAttemptString} — cleared each question
+let hpPrevLives={}; // {playerName: livesCount} — used to detect life-loss for animation
+let hpTypingText={}; // {playerName: currentDraftString} — live keystrokes from potato holder
 
 async function rtGetOrCreateAnonSession(){
   if(currentUserId)return currentUserId;
@@ -6587,11 +6593,17 @@ function rtSubscribe(lobbyId){
       renderMPScoreboard();
     }
   });
+  rtChannel.on('broadcast',{event:'hp_typing'},({payload})=>{
+    if(payload.name===currentUser)return; // ignore own echo
+    hpTypingText[payload.name]=payload.text;
+    renderMPScoreboard();
+  });
   rtChannel.on('broadcast',{event:'answer_submitted'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.name===payload.name);
     if(p){p.score=payload.score;p.lives=payload.lives;p.eliminated=payload.eliminated||(selectedMode==='survival'&&payload.lives<=0)||false;p.roundAnswered=true;p.roundCorrect=payload.roundCorrect;p.roundPts=payload.roundPts||0;p.roundElapsed=payload.roundElapsed||0;}
-    // Clear wrong attempt display once they've locked in a final answer
+    // Clear wrong attempt and typing preview once they've locked in a final answer
     if(mpWrongAttempts[payload.name])delete mpWrongAttempts[payload.name];
+    if(hpTypingText[payload.name])delete hpTypingText[payload.name];
     renderMPScoreboard();
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
@@ -6630,7 +6642,7 @@ function rtSubscribe(lobbyId){
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-    mpWrongAttempts={};
+    mpWrongAttempts={};hpTypingText={};
     // Reset flag state for new question
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
@@ -8459,14 +8471,22 @@ function renderMPScoreboard(){
     // Only show +pts round meta in race mode
     const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
-    // Wrong attempt shown below name in typing modes, only while not yet answered
-    const wrongAttempt=isTyping&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
-      ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
+    // Wrong attempt shown below name in typing modes (including HP), only while not yet answered
+    const wrongAttempt=(isTyping||isHP)&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
+      ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
       :'';
+    // Live typing preview for the active HP holder (visible to all other players)
+    const typingHint=isHP&&isActive&&!p.roundAnswered&&!hasQuit&&hpTypingText[p.name]&&!isMe
+      ?`<div class="hp-typing-hint">✍️ ${hpTypingText[p.name]}</div>`
+      :'';
+    // Detect life-loss this render cycle to trigger animation
+    const prevLives=hpPrevLives[p.name];
+    const lifeLost=isHP&&prevLives!=null&&p.lives<prevLives;
+    if(isHP)hpPrevLives[p.name]=p.lives;
     const rightCol=isHP||isSurvival
-      ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>`<i class="ti ti-heart" style="font-size:11px;color:${j<p.lives?'#f87171':'var(--border2)'};${p.eliminated?'opacity:.3':''}"></i>`).join('')}</div>`
+      ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}${typingHint}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
@@ -8508,6 +8528,13 @@ function mpShowQuestion(qData,hpFuse){
     if(isMyTurn&&!isBlocked){
       document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer();});
       document.getElementById('mpTypeInput').focus();
+      if(isHP&&rtChannel){
+        document.getElementById('mpTypeInput').addEventListener('input',e=>{
+          const draft=e.target.value;
+          hpTypingText[currentUser]=draft;
+          rtChannel.send({type:'broadcast',event:'hp_typing',payload:{name:currentUser,text:draft}});
+        });
+      }
     }
   } else if(isBlocked){
     // Blocked spectator in tiebreaker — show a waiting message instead of answer buttons
@@ -8525,6 +8552,9 @@ function mpShowQuestion(qData,hpFuse){
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
   const questionTimeLimit=isHP?(hpFuse!=null?hpFuse:hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):raceTimeLimit; // use host-broadcast fuse for HP
+  // Hide the timer bar in Hot Potato — the fuse is intentionally secret
+  const mpTimerWrapEl=document.getElementById('mpTimerWrap');
+  if(mpTimerWrapEl)mpTimerWrapEl.style.display=isHP?'none':'';
   clearInterval(timerInterval);
   if(isBlocked){
     // Spectating a tiebreaker — show timer bar draining but don't fire mpTimeOut
@@ -8724,6 +8754,7 @@ async function mpLoadQuestion(){
   answered=false;
   lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
   mpWrongAttempts={}; // clear wrong attempts for new question
+  hpTypingText={};
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   document.getElementById('mpAnswersGrid').innerHTML='';
