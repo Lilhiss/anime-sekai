@@ -1697,98 +1697,6 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
     </div>
   </div>
 
-  <!-- LOBBY SETTINGS: FORMAT -->
-  <div class="page" id="page-lobby-settings">
-    <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-room')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
-      <h1>Pick a <span class="hi">Format</span></h1>
-    </div>
-    <div class="fmt-grid slide-in">
-      <div class="fmt-card" onclick="setLobbyFormat('mc',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('type',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('img',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a scene.</div></div>
-      <div class="fmt-card" onclick="setLobbyFormat('char',this)"><i class="ti ti-arrow-right fmt-card-arrow"></i><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Identify the character described.</div></div>
-    </div>
-  </div>
-
-  <!-- LOBBY SETTINGS: TOPIC -->
-  <div class="page" id="page-lobby-topic">
-    <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-mode')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
-      <h1>Pick a <span class="hi">Topic</span></h1>
-    </div>
-    <div class="topic-page-grid slide-in">
-      <div class="topic-chips-row">
-        <div class="topic-general-opt" id="lobbyTopicGeneralOpt" onclick="toggleLobbyGeneral()" style="flex:1;padding:28px 24px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;min-height:220px">
-          <span style="font-size:52px">🌐</span>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-            <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text)">General Anime</div>
-            <div style="font-size:13px;color:var(--muted);line-height:1.6">Questions from across the entire anime universe</div>
-          </div>
-          <i class="ti ti-check" id="lobbyGeneralCheck" style="font-size:20px;color:var(--accent);opacity:0;transition:opacity .2s"></i>
-        </div>
-        <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:220px">
-          <div style="display:flex;border-bottom:1px solid var(--border2)">
-            <button class="topic-tab active" id="lobbyTabAnime" onclick="switchLobbyTopicTab('anime')" style="flex:1;border-radius:0;padding:10px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
-            <button class="topic-tab" id="lobbyTabGenre" onclick="switchLobbyTopicTab('genre')" style="flex:1;border-radius:0;padding:10px 0">📚 Genre</button>
-          </div>
-          <div style="padding:12px 14px;border-bottom:1px solid var(--border2)">
-            <div class="topic-search-input-wrap" style="padding:9px 12px">
-              <i class="ti ti-search"></i>
-              <input class="topic-search-input" id="lobbyTopicSearchInput" type="text" placeholder="Search..." oninput="filterLobbyTopics()" autocomplete="off">
-            </div>
-          </div>
-          <div class="topic-results" id="lobbyTopicResultsList" style="padding:6px 8px;max-height:200px"></div>
-        </div>
-      </div>
-      <div id="lobbyTopicSelectedWrap" style="display:none;flex-direction:column;gap:6px;width:100%">
-        <div class="topic-section-label">Selected</div>
-        <div class="topic-selected-tags" id="lobbyTopicSelectedTags"></div>
-      </div>
-      <button class="topic-proceed-btn" id="lobbyTopicProceedBtn" onclick="proceedFromLobbyTopic()" style="min-height:56px;font-size:18px;width:100%">
-        <i class="ti ti-arrow-right" style="font-size:18px"></i> Continue
-      </button>
-    </div>
-  </div>
-
-  <!-- LOBBY SETTINGS: MODE -->
-  <div class="page" id="page-lobby-mode">
-    <div style="text-align:center" class="slide-in">
-      <div class="step-eyebrow"><button class="back-btn" onclick="goStep('lobby-settings')"><i class="ti ti-arrow-left" style="font-size:12px"></i> Back</button> Lobby Settings</div>
-      <h1>Pick a <span class="hi">Mode</span></h1>
-    </div>
-    <div class="mode-grid slide-in">
-      <div class="mode-card" onclick="setLobbyMode('race',this)"><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Everyone answers the same questions. Highest score wins.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> Speed bonus · up to +10 pts</div></div>
-      <div class="mode-card" onclick="setLobbyMode('survival',this)"><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">Last player with lives remaining wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · one shot</div></div>
-      <div class="mode-card" onclick="setLobbyMode('potato',this)"><div class="mode-icon">🥔</div><div class="mode-title">Hot Potato</div><div class="mode-desc">One player at a time answers. Wrong answer = lose a life, potato passes. Last one standing wins.</div><div class="mode-tag"><i class="ti ti-heart" style="font-size:11px"></i> 3 lives · elimination</div></div>
-      <div class="mode-card" onclick="setLobbyMode('slowreveal',this)"><div class="mode-icon"><i class="ti ti-eye" style="font-size:26px;color:var(--accent)"></i></div><div class="mode-title">Slow Reveal</div><div class="mode-desc">The question fades in word by word. Buzz in when you think you know — but if you're wrong, you're locked out for the round.</div><div class="mode-tag"><i class="ti ti-bolt" style="font-size:11px"></i> First to answer · buzz to lock in</div></div>
-    </div>
-  </div>
-
-  <!-- SLOW REVEAL TARGET SCORE MODAL -->
-  <div id="srTargetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:20px">
-      <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);text-align:center">👁️ Slow Reveal</div>
-      <div style="font-size:13px;color:var(--muted);text-align:center;margin-top:-8px">First player to reach the target score wins.</div>
-      <div>
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Target Score</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="srTargetGrid">
-          <div class="q-count-opt" data-sr="5" onclick="selectSrTarget(5,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">5</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
-          <div class="q-count-opt selected" data-sr="10" onclick="selectSrTarget(10,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">10</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
-          <div class="q-count-opt" data-sr="15" onclick="selectSrTarget(15,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">15</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
-          <div class="q-count-opt" data-sr="20" onclick="selectSrTarget(20,this)"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
-          <input class="q-count-custom-input" id="srTargetCustom" type="number" min="1" max="50" placeholder="Custom…" oninput="onCustomSrTarget(this)" onfocus="onCustomSrTargetFocus(this)" style="flex:1">
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button class="action-btn secondary" onclick="closeSrTargetModal()">Cancel</button>
-        <button class="action-btn primary" onclick="confirmSrTarget()"><i class="ti ti-check" style="font-size:15px"></i> Confirm</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MULTIPLAYER QUIZ -->
   <div class="page" id="page-mp-quiz">
     <div style="width:100%;max-width:900px;display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start">
@@ -7521,7 +7429,7 @@ goStep=function(name){
   // so the CLOSED status doesn't trigger the disconnect modal on the next page
   const leavingGame=document.getElementById('page-mp-quiz').classList.contains('active');
   const leavingLobby=document.getElementById('page-lobby-room').classList.contains('active');
-  if((leavingGame||leavingLobby)&&name!=='mp-quiz'&&name!=='lobby-room'&&name!=='lobby-settings'&&name!=='lobby-mode'){
+  if((leavingGame||leavingLobby)&&name!=='mp-quiz'&&name!=='lobby-room'){
     intentionalLeave=true;
   }
   _origGoStep(name);
@@ -7971,115 +7879,6 @@ async function patchLobby(fields){
     });
   }catch(e){}
 }
-function setLobbyFormat(fmt,el){
-  lobbyFormat=fmt;selectedFormat=fmt;
-  document.querySelectorAll('#page-lobby-settings .fmt-card').forEach(c=>c.style.borderColor='');
-  el.style.borderColor='var(--accent)';
-  // Write format to DB immediately so joining players see correct info
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
-  // Re-render topic list so question counts reflect the new format
-  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput')?document.getElementById('lobbyTopicSearchInput').value:'');
-  setTimeout(()=>goStep('lobby-mode'),300);
-}
-function openLobbyTopicPage(){
-  lobbyTopics=[];lobbyIsGeneral=true;
-  updateLobbyGeneralUI();renderLobbySelectedTags();
-  switchLobbyTopicTab('anime');
-  loadLobbyTopics();
-  goStep('lobby-topic');
-}
-let lobbyCurrentTopicTab='anime';
-async function loadLobbyTopics(){
-  const list=document.getElementById('lobbyTopicResultsList');
-  if(list)list.innerHTML='<div class="topic-empty"><div class="spinner" style="margin:0 auto 8px"></div>Loading…</div>';
-  try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const data=await res.json();
-    const animeSet=new Map(),genreSet=new Map();
-    data.forEach(row=>{
-      if(!row.topic_value)return;
-      const name=row.topic_value;
-      const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'){
-        if(!animeSet.has(key)){animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime',counts:{}});}
-        const t=animeSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
-      } else if(row.topic_type==='genre'){
-        if(!genreSet.has(key)){genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre',counts:{}});}
-        const t=genreSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
-      }
-    });
-    animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    renderLobbyTopicList();
-  }catch(e){
-    if(list)list.innerHTML='<div class="topic-empty" style="color:var(--muted)">⚠️ Couldn\'t load topics.</div>';
-  }
-}
-function renderLobbyTopicList(filter=''){
-  const list=document.getElementById('lobbyTopicResultsList');
-  if(!list)return;
-  const all=lobbyCurrentTopicTab==='anime'?animeTopics:genreTopics;
-  const items=all.filter(t=>t.name.toLowerCase().includes((filter||'').toLowerCase()));
-  if(!items.length){list.innerHTML='<div class="topic-empty">No results</div>';return;}
-  list.innerHTML=items.map(t=>{
-    const sel=lobbyTopics.some(s=>s.key===t.key);
-    const cnt=t.counts?t.counts[lobbyFormat]||0:null;
-    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
-    return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
-      <div class="topic-result-left"><span>${t.name}</span></div>
-      ${badge}<i class="ti ti-check topic-result-check"></i>
-    </div>`;
-  }).join('');
-}
-function filterLobbyTopics(){
-  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput').value);
-}
-function switchLobbyTopicTab(tab){
-  lobbyCurrentTopicTab=tab;
-  document.getElementById('lobbyTabAnime').classList.toggle('active',tab==='anime');
-  document.getElementById('lobbyTabGenre').classList.toggle('active',tab==='genre');
-  document.getElementById('lobbyTopicSearchInput').value='';
-  renderLobbyTopicList();
-}
-function toggleLobbyTopic(key,emoji,name,type){
-  lobbyIsGeneral=false;updateLobbyGeneralUI();
-  const idx=lobbyTopics.findIndex(t=>t.key===key);
-  if(idx>=0){lobbyTopics.splice(idx,1);}else{lobbyTopics.push({key,emoji,name,type});}
-  renderLobbyTopicList(document.getElementById('lobbyTopicSearchInput').value);
-  renderLobbySelectedTags();
-}
-function toggleLobbyGeneral(){
-  lobbyIsGeneral=!lobbyIsGeneral;
-  if(lobbyIsGeneral)lobbyTopics=[];
-  updateLobbyGeneralUI();renderLobbyTopicList();renderLobbySelectedTags();
-}
-function updateLobbyGeneralUI(){
-  document.getElementById('lobbyGeneralCheck').style.opacity=lobbyIsGeneral?'1':'0';
-  document.getElementById('lobbyTopicGeneralOpt').classList.toggle('selected',lobbyIsGeneral);
-}
-function renderLobbySelectedTags(){
-  const wrap=document.getElementById('lobbyTopicSelectedWrap');
-  const tags=document.getElementById('lobbyTopicSelectedTags');
-  if(lobbyTopics.length===0){wrap.style.display='none';return;}
-  wrap.style.display='flex';
-  tags.innerHTML=lobbyTopics.map(t=>`<div class="topic-tag">${t.emoji} ${t.name}<button class="topic-tag-remove" onclick="toggleLobbyTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"><i class="ti ti-x"></i></button></div>`).join('');
-}
-function proceedFromLobbyTopic(){
-  selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
-  updateLobbyTopicsLabel();
-  if(lobbyMode==='race'||lobbyMode==='survival'){
-    pendingLobbyAfterTimeLimit=true;
-    showTimeLimitPicker(lobbyMode,true);
-  } else {
-    patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false}});}
-    goStep('lobby-room');
-  }
-}
 function updateLobbyTopicsLabel(){
   const el=document.getElementById('lobbyTopicsLabel');
   if(!el)return;
@@ -8123,27 +7922,6 @@ function openHowToPlay(){
   modal.style.display='flex';
   applyTheme();
 }
-function setLobbyMode(mode,el){
-  lobbyMode=mode;selectedMode=mode;
-  document.querySelectorAll('#page-lobby-mode .mode-card').forEach(c=>c.style.borderColor='');
-  el.style.borderColor='var(--accent)';
-  document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+` · ${selectedQuestionLimit}Q`;
-  // Write mode+format to DB immediately so joining players see correct info
-  // even if host is still mid-flow on topic/settings pages
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:selectedQuestionLimit});
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:selectedQuestionLimit,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:true}});}
-  // Always go to topic picker next — final settings modal fires after topic is confirmed
-  setTimeout(()=>openLobbyTopicPage(),300);
-}
-function openLobbySettings(){
-  if(!isHost)return;
-  goStep('lobby-settings');
-  // Highlight currently selected format
-  const fmtCards=document.querySelectorAll('#page-lobby-settings .fmt-card');
-  const fmtIdx={mc:0,type:1,img:2,char:3}[lobbyFormat]??0;
-  fmtCards.forEach((c,i)=>c.style.borderColor=i===fmtIdx?'var(--accent)':'');
-}
-
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
 let gsActiveTab='format',gsTopicSub='general';
 function broadcastLobbySettings(changing){
@@ -8340,7 +8118,6 @@ async function gsEnsureTopics(){
     genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
   }catch(e){}
 }
-function gsPickTopics(){openLobbyTopicPage();}
 function gsRenderAcc(){
   const t=gsActiveTab||'format';
   document.querySelectorAll('#lobbyOptionsPanel .gs-tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
@@ -9122,47 +8899,6 @@ let srBuzzCountdown=null;
 let srBuzzTimeLeft=0;
 let srPostRevealTimer=null;
 const SR_CHAR_INTERVAL=60;
-
-function openSrTargetModal(){
-  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(el=>{
-    el.classList.toggle('selected',parseInt(el.dataset.sr)===srTargetScore);
-  });
-  const custom=document.getElementById('srTargetCustom');
-  const presets=[5,10,15,20];
-  if(presets.includes(srTargetScore)){custom.value='';}
-  else{custom.value=srTargetScore;}
-  document.getElementById('srTargetModal').style.display='flex';
-  applyTheme();
-}
-function closeSrTargetModal(){
-  document.getElementById('srTargetModal').style.display='none';
-}
-function selectSrTarget(val,el){
-  srTargetScore=val;
-  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
-  if(el)el.classList.add('selected');
-  document.getElementById('srTargetCustom').value='';
-  document.getElementById('srTargetCustom').classList.remove('selected');
-}
-function onCustomSrTarget(input){
-  const raw=parseInt(input.value);
-  if(isNaN(raw)||input.value==='')return;
-  const val=Math.max(1,Math.min(50,raw));
-  srTargetScore=val;
-  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
-  input.classList.add('selected');
-  if(raw>50)input.value=50;
-}
-function onCustomSrTargetFocus(input){
-  document.querySelectorAll('#srTargetGrid .q-count-opt').forEach(e=>e.classList.remove('selected'));
-  input.classList.add('selected');
-}
-function confirmSrTarget(){
-  closeSrTargetModal();
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:srTargetScore});
-  if(rtChannel){rtChannel.send({type:'broadcast',event:'settings_changed',payload:{format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:srTargetScore,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:false,srTargetScore:srTargetScore}});}
-  goStep('lobby-room');
-}
 
 async function srHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
