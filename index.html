@@ -452,15 +452,15 @@ h1 .hi{color:var(--accent)}
 .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}
 
 /* MP COUNTDOWN */
-.mp-countdown-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;transition:background .4s ease}
-.mp-countdown-overlay.hp-holder{background:linear-gradient(135deg,#c2410c,#f97316,#fbbf24)}
-.mp-countdown-overlay.hp-holder .mp-countdown-num{color:#fff;text-shadow:0 0 40px rgba(255,255,255,.5)}
+.mp-countdown-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;transition:box-shadow .4s ease,border .4s ease}
+.mp-countdown-overlay.hp-holder{box-shadow:inset 0 0 80px rgba(249,115,22,.35);border:2px solid rgba(249,115,22,.5)}
+.mp-countdown-overlay.hp-holder .mp-countdown-num{color:#fb923c;text-shadow:0 0 30px rgba(249,115,22,.6)}
 .mp-countdown-num{font-family:'Lilita One',cursive;font-size:120px;color:var(--accent);line-height:1;animation:countPop .9s ease-out forwards}
 .mp-countdown-label{font-size:16px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-.mp-countdown-overlay.hp-holder .mp-countdown-label{color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+.mp-countdown-overlay.hp-holder .mp-countdown-label{color:#fed7aa}
 @keyframes countPop{0%{transform:scale(1.4);opacity:0}30%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.8)}}
 @keyframes hpPotatoShake{0%,100%{transform:rotate(-8deg) scale(1.1)}25%{transform:rotate(8deg) scale(1.2)}50%{transform:rotate(-6deg) scale(1.15)}75%{transform:rotate(6deg) scale(1.1)}}
-#hpHolderPotato{display:none;font-size:80px;animation:hpPotatoShake .4s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(249,115,22,.8))}
+#hpHolderPotato{display:none;font-size:72px;animation:hpPotatoShake .4s ease-in-out infinite;filter:drop-shadow(0 0 12px rgba(249,115,22,.7))}
 .fb-auto-next{font-family:'Lilita One',cursive;font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;min-width:80px;text-align:center}
 /* ── TOPIC PICKER ── */
 .topic-picker-wrap{width:100%;max-width:580px;display:flex;flex-direction:column;gap:14px}
@@ -8938,9 +8938,15 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   if(remote)return; // just displaying someone else's already-resolved answer — nothing of ours to sync or broadcast
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
-  if(me){me.score=score;me.lives=lives;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
+  // In HP the authoritative lives count is on the lobbyPlayers entry (active.lives was
+  // decremented there directly); the local `lives` scalar is never touched for HP and
+  // would broadcast the wrong (starting) value if used.
+  const broadcastLives=isHP?(me?.lives??lives):lives;
+  const broadcastElim=isHP?(me?.eliminated||false):(me?.eliminated||false);
+  if(me){me.score=score;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
+  if(!isHP&&me){me.lives=lives;}
   if(me&&rtChannel){
-    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null}});
+    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:broadcastLives,eliminated:broadcastElim,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null}});
   }
 }
 
