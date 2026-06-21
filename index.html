@@ -1673,11 +1673,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MIN</div>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMin" class="gs-opt" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'min')" onblur="gsHPFuseCommit()" onfocus="this.select()">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMin" class="gs-opt" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'min')" onblur="gsHPFuseCommit('min')" onfocus="this.select()">
                   </div>
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MAX</div>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMax" class="gs-opt" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'max')" onblur="gsHPFuseCommit()" onfocus="this.select()">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMax" class="gs-opt" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'max')" onblur="gsHPFuseCommit('max')" onfocus="this.select()">
                   </div>
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">Bomb explodes at a random time between min and max seconds.</div>
@@ -8118,7 +8118,7 @@ function gsHPFuseInput(el,which){
   if(!isNaN(mx))hpFuseMax=Math.max(1,Math.min(30,mx));
   gsAfterChange();
 }
-function gsHPFuseCommit(){
+function gsHPFuseCommit(which){
   // Full validation runs when either field loses focus.
   const minEl=document.getElementById('gsHPFuseMin');
   const maxEl=document.getElementById('gsHPFuseMax');
@@ -8132,15 +8132,22 @@ function gsHPFuseCommit(){
   // Clamp both to [1, 30]
   mn=Math.max(1,Math.min(30,mn));
   mx=Math.max(1,Math.min(30,mx));
-  // Enforce at least 3-second gap between min and max
+  // Enforce at least 3-second gap between min and max — but the field the player just
+  // edited is authoritative, and the OTHER field is the one that moves to follow it.
+  // Only when following it would push past the 1–30 limits do we instead pull the
+  // edited field back (e.g. typing Min=29 can't push Max past 30, so Min snaps to 27).
   if(mx-mn<3){
-    // Adjust min downward to preserve max where possible; min floor is 1
-    mn=Math.max(1,mx-3);
-    // If min hit the floor and gap is still too small, push max up
-    if(mx-mn<3)mx=mn+3;
-    // Final safety clamp after adjustment
-    mx=Math.min(30,mx);
-    mn=Math.max(1,mx-3);
+    if(which==='max'){
+      const followMn=mx-3;
+      if(followMn>=1){mn=followMn;}
+      else{mn=1;mx=mn+3;}
+    } else {
+      // Default to treating Min as authoritative (covers which==='min' and any legacy
+      // callers that don't pass a field, preserving the old fallback behavior).
+      const followMx=mn+3;
+      if(followMx<=30){mx=followMx;}
+      else{mx=30;mn=mx-3;}
+    }
   }
   hpFuseMin=mn;hpFuseMax=mx;
   minEl.value=mn;maxEl.value=mx;
