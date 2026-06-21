@@ -8012,7 +8012,11 @@ function gsSyncUI(){
   const gsHPLivesCustomEl=document.getElementById('gsHPLivesCustom');
   if(gsHPLivesCustomEl){if(livesPresets.includes(hpLives)){gsHPLivesCustomEl.value='';gsHPLivesCustomEl.classList.remove('selected');}else{gsHPLivesCustomEl.value=hpLives;gsHPLivesCustomEl.classList.add('selected');document.querySelectorAll('#gsHPLivesGrid [data-hl]').forEach(b=>b.classList.remove('selected'));}}
   const hpMinEl=document.getElementById('gsHPFuseMin');const hpMaxEl=document.getElementById('gsHPFuseMax');
-  if(hpMinEl)hpMinEl.value=hpFuseMin;if(hpMaxEl)hpMaxEl.value=hpFuseMax;
+  // Don't stamp the stored value back into the field while it's focused — that's what was
+  // making backspace look broken: every keystroke re-ran this render and overwrote the
+  // box back to the old number before the user could see it was cleared.
+  if(hpMinEl&&document.activeElement!==hpMinEl)hpMinEl.value=hpFuseMin;
+  if(hpMaxEl&&document.activeElement!==hpMaxEl)hpMaxEl.value=hpFuseMax;
   const rtCustom=document.getElementById('gsRaceTargetCustom');
   if(rtCustom){const presets=[50,100,150];if(presets.includes(mpRaceTarget)){rtCustom.value='';}else{rtCustom.value=mpRaceTarget;}}
   const isSR=lobbyMode==='slowreveal';
