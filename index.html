@@ -7946,6 +7946,13 @@ function gsSyncUI(){
     const srDescEl=srCard.querySelector('.gs-bc-desc');
     if(srDescEl)srDescEl.textContent=srLocked?'🔒 Type the Answer only':'Buzz in to answer';
   }
+  const hpCard=document.querySelector('#gsModeGrid [data-mode="potato"]');
+  if(hpCard){
+    const hpLocked=lobbyFormat!=='type';
+    hpCard.classList.toggle('locked',hpLocked);
+    const hpDescEl=hpCard.querySelector('.gs-bc-desc');
+    if(hpDescEl)hpDescEl.textContent=hpLocked?'🔒 Type the Answer only':'Pass it or lose a life';
+  }
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
@@ -7982,14 +7989,14 @@ function gsSyncUI(){
   gsRenderAcc();
 }
 function gsAfterChange(){
-  if(lobbyMode==='slowreveal'&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
+  if((lobbyMode==='slowreveal'||lobbyMode==='potato')&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
 function gsSetFormat(f){
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;gsAfterChange();
 }
-function gsSetMode(m){if(m==='slowreveal'&&lobbyFormat!=='type')return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetMode(m){if((m==='slowreveal'||m==='potato')&&lobbyFormat!=='type')return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){
   selectedLives=n;
