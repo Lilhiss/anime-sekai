@@ -1667,11 +1667,11 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MIN</div>
-                    <input type="number" id="gsHPFuseMin" class="gs-opt" min="1" max="30" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'min')" onblur="gsHPFuseCommit()" onfocus="this.select()">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMin" class="gs-opt" value="5" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'min')" onblur="gsHPFuseCommit()" onfocus="this.select()">
                   </div>
                   <div>
                     <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px">MAX</div>
-                    <input type="number" id="gsHPFuseMax" class="gs-opt" min="1" max="30" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'max')" onblur="gsHPFuseCommit()" onfocus="this.select()">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="gsHPFuseMax" class="gs-opt" value="10" style="width:100%;font-size:15px;font-weight:800;text-align:center;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;padding:8px 0;cursor:text" oninput="gsHPFuseInput(this,'max')" onblur="gsHPFuseCommit()" onfocus="this.select()">
                   </div>
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">Bomb explodes at a random time between min and max seconds.</div>
@@ -8079,10 +8079,13 @@ function gsSetHPLivesCustom(el){
   gsAfterChange();
 }
 function gsHPFuseInput(el,which){
+  // Field is now type="text" so backspace can empty it fully; strip anything non-numeric
+  // that could get typed/pasted in (letters, decimals, minus signs, etc).
+  el.value=el.value.replace(/[^0-9]/g,'');
   // Soft cap only: silently clamp if the typed number already exceeds 30.
   // Don't write back while the field is empty or the user is mid-edit.
   const v=parseInt(el.value);
-  if(!isNaN(v)&&v>30)el.value=30;
+  if(!isNaN(v)&&v>30)el.value='30';
   // Update internal state immediately so the summary label stays in sync,
   // but only if the field has a usable value.
   const minEl=document.getElementById('gsHPFuseMin');
@@ -8098,11 +8101,12 @@ function gsHPFuseCommit(){
   const minEl=document.getElementById('gsHPFuseMin');
   const maxEl=document.getElementById('gsHPFuseMax');
   if(!minEl||!maxEl)return;
-  // Fall back to last valid value if field was left empty
+  // Fall back to the field's own default (not the last committed value) when left blank,
+  // so clearing the Min box and clicking away always lands back on 5, not whatever it was before.
   let mn=parseInt(minEl.value);
   let mx=parseInt(maxEl.value);
-  if(isNaN(mn))mn=hpFuseMin;
-  if(isNaN(mx))mx=hpFuseMax;
+  if(isNaN(mn))mn=5;
+  if(isNaN(mx))mx=10;
   // Clamp both to [1, 30]
   mn=Math.max(1,Math.min(30,mn));
   mx=Math.max(1,Math.min(30,mx));
