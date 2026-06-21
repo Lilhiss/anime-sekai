@@ -544,12 +544,18 @@ h1 .hi{color:var(--accent)}
 /* Kebab menu for host actions — replaces inline buttons at narrow widths */
 .lobby-kebab-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0;transition:background .15s,border-color .15s,color .15s;padding:0;font-family:inherit}
 .lobby-kebab-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
-.lobby-kebab-wrap{position:relative;flex-shrink:0;z-index:10}
+.lobby-kebab-wrap{display:none;position:relative;flex-shrink:0;z-index:10}
 .lobby-kebab-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:11px;padding:5px;z-index:600;min-width:140px;box-shadow:0 8px 24px #0008;flex-direction:column;gap:3px}
 .lobby-kebab-menu.open{display:flex}
 .lobby-kebab-item{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 12px;border-radius:7px;border:none;background:none;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;width:100%;transition:background .12s,color .12s}
 .lobby-kebab-item:hover{background:var(--bg3);color:var(--accent)}
 .lobby-kebab-item.danger:hover{background:#f8717115;color:#f87171}
+/* Below ~half the desktop lobby width, swap the full buttons for the compact kebab
+   so the host always has room to act without the row wrapping or overflowing. */
+@media(max-width:760px){
+  .lobby-player-actions{display:none}
+  .lobby-kebab-wrap{display:flex;align-items:center}
+}
 /* ── Lobby liveliness ── */
 .lobby-player.is-new{animation:lobbyPlayerIn .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes lobbyPlayerIn{0%{opacity:0;transform:translateY(-8px) scale(.92)}60%{transform:translateY(0) scale(1.03)}100%{opacity:1;transform:scale(1)}}
@@ -7836,15 +7842,22 @@ function renderLobbyRoom(){
   const qCountLabel=lobbyMode==='slowreveal'?` · First to ${srTargetScore}`:` · ${selectedQuestionLimit}Q`;
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qCountLabel+timeLimitLabel;
   updateLobbyTopicsLabel();
-  const list=document.getElementById('lobbyPlayerList');list.innerHTML='';
+  const list=document.getElementById('lobbyPlayerList');
+  // A re-render can be triggered mid-click by something unrelated to the host's action —
+  // e.g. another player's 5-second heartbeat updating lobby_players.last_seen, which fires
+  // the postgres_changes subscription and rebuilds this whole list from scratch. Remember
+  // which player's kebab menu was open beforehand so we can restore it after rebuilding,
+  // instead of it just vanishing out from under the host.
+  const openKebabName=list.querySelector('.lobby-kebab-menu.open')?.closest('.lobby-player')?.dataset.playerName||null;
+  list.innerHTML='';
   const _prevNames=window._prevLobbyNames||new Set();
   lobbyPlayers.forEach(p=>{
-    const row=document.createElement('div');row.className='lobby-player'+(_prevNames.has(p.name)?'':' is-new');
+    const row=document.createElement('div');row.className='lobby-player'+(_prevNames.has(p.name)?'':' is-new');row.dataset.playerName=p.name;
     const isMe=p.name===currentUser;
     if(isMe)row.classList.add('lobby-player-me');
     const escapedName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const hostActions=isHost&&!isMe
-      ?`<div class="lobby-kebab-wrap"><button class="lobby-kebab-btn" onclick="toggleLobbyKebab(this)" title="Player options">⋯</button><div class="lobby-kebab-menu"><button class="lobby-kebab-item" onclick="closeLobbyKebabs();promptTransferHost('${escapedName}')"><i class="ti ti-crown" style="font-size:13px;color:#fbbf24"></i> Make Host</button><button class="lobby-kebab-item danger" onclick="closeLobbyKebabs();kickPlayer('${escapedName}')"><i class="ti ti-user-minus" style="font-size:13px"></i> Kick</button></div></div>`
+      ?`<div class="lobby-player-actions"><button class="lobby-action-btn" onclick="promptTransferHost('${escapedName}')" title="Make host"><i class="ti ti-crown" style="font-size:12px;color:#fbbf24"></i> Make Host</button><button class="lobby-action-btn kick" onclick="kickPlayer('${escapedName}')" title="Kick player"><i class="ti ti-user-minus" style="font-size:12px"></i> Kick</button></div><div class="lobby-kebab-wrap"><button class="lobby-kebab-btn" onclick="toggleLobbyKebab(this)" title="Player options">⋯</button><div class="lobby-kebab-menu"><button class="lobby-kebab-item" onclick="closeLobbyKebabs();promptTransferHost('${escapedName}')"><i class="ti ti-crown" style="font-size:13px;color:#fbbf24"></i> Make Host</button><button class="lobby-kebab-item danger" onclick="closeLobbyKebabs();kickPlayer('${escapedName}')"><i class="ti ti-user-minus" style="font-size:13px"></i> Kick</button></div></div>`
       :'';
     const avatarHtml=getLobbyAvatarHTML(p.avatar,p.color,p.name[0].toUpperCase(),36,!isMe&&p.hasPfp===true&&p.avatar===null);
     const avatarWrap=isMe
@@ -7861,6 +7874,11 @@ function renderLobbyRoom(){
     list.appendChild(g);
   }
   window._prevLobbyNames=new Set(lobbyPlayers.map(p=>p.name));
+  // Reopen the kebab menu that was open before this rebuild, if that player is still here.
+  if(openKebabName){
+    const reopenMenu=list.querySelector(`.lobby-player[data-player-name="${CSS.escape(openKebabName)}"] .lobby-kebab-menu`);
+    if(reopenMenu)reopenMenu.classList.add('open');
+  }
   // Lock controls for non-host players
   const startBtn=document.getElementById('startLobbyBtn');
   const settingsBtn=document.getElementById('lobbySettingsBtn');
