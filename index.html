@@ -577,6 +577,8 @@ h1 .hi{color:var(--accent)}
 .gs-bigcard{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;padding:15px 10px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 .gs-bigcard:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 22px #0005}
 .gs-bigcard.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+.gs-bigcard.locked{opacity:.45;filter:grayscale(.7);cursor:not-allowed;pointer-events:none}
+.gs-bigcard.locked .gs-bc-desc{color:var(--accent)}
 .gs-bc-emoji{font-size:30px;line-height:1;transition:transform .2s}
 .gs-bigcard:hover .gs-bc-emoji{transform:scale(1.15) rotate(-6deg)}
 .gs-bc-title{font-family:'Lilita One',cursive;font-size:13.5px;color:var(--text);line-height:1.1}
@@ -8174,6 +8176,13 @@ function gsSyncUI(){
     b.classList.toggle('selected',fmt===lobbyFormat||(fmt==='char'&&lobbyFormat==='char-mc'));
   });
   document.querySelectorAll('#gsModeGrid [data-mode]').forEach(b=>b.classList.toggle('selected',b.dataset.mode===lobbyMode));
+  const srCard=document.querySelector('#gsModeGrid [data-mode="slowreveal"]');
+  if(srCard){
+    const srLocked=lobbyFormat!=='type';
+    srCard.classList.toggle('locked',srLocked);
+    const srDescEl=srCard.querySelector('.gs-bc-desc');
+    if(srDescEl)srDescEl.textContent=srLocked?'🔒 Type the Answer only':'Buzz in to answer';
+  }
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
   document.querySelectorAll('#gsTargetGrid [data-sr]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sr)===srTargetScore));
@@ -8209,12 +8218,15 @@ function gsSyncUI(){
   setTxt('gsValSettings',isSR?('🎯 First to '+srTargetScore):isRace?('🏁 First to '+mpRaceTarget+' pts · '+raceTimeLimit+'s'):isSurvivalMP?('❤️ '+selectedLives+(selectedLives===1?' Life':' Lives')+' · '+raceTimeLimit+'s'):isHP?('🥔 '+hpLives+(hpLives===1?' Life':' Lives')+' · '+hpFuseMin+'–'+hpFuseMax+'s fuse'):('⚙️ '+selectedQuestionLimit+' Qs · '+raceTimeLimit+'s'));
   gsRenderAcc();
 }
-function gsAfterChange(){gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);}
+function gsAfterChange(){
+  if(lobbyMode==='slowreveal'&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
+  gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
+}
 function gsSetFormat(f){
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;gsAfterChange();
 }
-function gsSetMode(m){lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetMode(m){if(m==='slowreveal'&&lobbyFormat!=='type')return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){
   selectedLives=n;
