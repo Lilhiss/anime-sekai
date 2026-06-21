@@ -7862,7 +7862,7 @@ async function loadPublicLobbies(silent=false){
       const color=colors[i%colors.length];
       const fmt=lobby.format||'mc';
       const mode=lobby.mode||'race';
-      const qCount=lobby.question_count||(mode==='survival'||mode==='potato'?3:10);
+      const qCount=lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
       const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
@@ -8465,7 +8465,7 @@ function patchLobbyListCard(lobby) {
   if (!card) { loadPublicLobbies(); return; } // card not visible — do a full reload
   const fmt = lobby.format || 'mc';
   const mode = lobby.mode || 'race';
-  const qCount = lobby.question_count||(mode==='survival'||mode==='potato'?3:10);
+  const qCount = lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
   const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
