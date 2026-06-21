@@ -1790,7 +1790,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
   <div class="mp-countdown-overlay" id="mpCountdownOverlay" style="display:none">
     <div class="mp-countdown-num" id="mpCountdownNum">3</div>
     <div class="mp-countdown-label" id="mpCountdownLabel">Get ready!</div>
-    <button id="mpCountdownCancelBtn" onclick="mpCancelCountdown()" style="display:none;margin-top:18px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:99px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 22px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'"><i class="ti ti-arrow-back-up" style="font-size:14px"></i> Cancel</button>
+    <button id="mpCountdownCancelBtn" onclick="mpCancelCountdown()" style="display:none;margin-top:18px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:99px;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 22px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">Cancel <i class="ti ti-arrow-back-up" style="font-size:14px"></i></button>
   </div>
 
   <!-- MULTIPLAYER RESULTS -->
@@ -1806,7 +1806,7 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
         <div style="display:flex;flex-direction:column;gap:10px" id="mpFinalStandings"></div>
       </div>
       <div class="action-row slide-in d3">
-        <button class="action-btn primary" onclick="goStep('lobby-room')"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
+        <button class="action-btn primary" onclick="mpReturnToLobby()"><i class="ti ti-refresh" style="font-size:17px"></i> Play Again</button>
         <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
       </div>
       <div class="slide-in d4">
@@ -6595,7 +6595,8 @@ function rtSubscribe(lobbyId){
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
-    prefetchedQuestion=null;currentQData=null;hpActiveIdx=0;
+    prefetchedQuestion=null;currentQData=null;
+    hpActiveIdx=payload.hpActiveIdx??0;
     mpWrongAttempts={};mpTiebreakerPlayers=[];
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
     mpSnapshotScores();
@@ -6609,7 +6610,8 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
-    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();});
+    const hpFirstHolder=payload.mode==='potato'?lobbyPlayers[hpActiveIdx]?.name:null;
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
@@ -6815,6 +6817,14 @@ function rtSubscribe(lobbyId){
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+    goStep('lobby-room');
+  });
+  rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
+    if(isHost)return; // host navigated itself in mpReturnToLobby
+    lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
+    score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
+    qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+    stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'host_transferred'},({payload})=>{
@@ -7263,7 +7273,7 @@ async function mpHostFetchAndBroadcast(){
 }
 
 let _countdownTick=null;
-function mpShowCountdown(onDone){
+function mpShowCountdown(onDone,hpFirstHolder){
   closePfpPicker(); // close if a player was changing their pfp when host started
   const overlay=document.getElementById('mpCountdownOverlay');
   const numEl=document.getElementById('mpCountdownNum');
@@ -7280,6 +7290,13 @@ function mpShowCountdown(onDone){
     if(count<=0){clearInterval(_countdownTick);_countdownTick=null;overlay.style.display='none';if(cancelBtn)cancelBtn.style.display='none';onDone();return;}
     numEl.textContent=count;
     numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
+    // On the "1" beat in HP mode, reveal who starts with the potato
+    if(count===1&&hpFirstHolder){
+      const isMe=hpFirstHolder===currentUser;
+      lblEl.innerHTML=isMe
+        ?'<span style="color:var(--accent);font-weight:900">🥔 You\'re holding the potato first!</span>'
+        :`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
+    }
   },1000);
 }
 
@@ -8263,19 +8280,24 @@ function startLobbyGame(){
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
   score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];
+  // In Hot Potato, pick a random starting holder instead of always defaulting to index 0
+  if(lobbyMode==='potato'&&lobbyPlayers.length>0){
+    hpActiveIdx=Math.floor(Math.random()*lobbyPlayers.length);
+  }
   mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
   mpSnapshotScores();
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx}});
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
+    const hpFirstHolder=lobbyMode==='potato'?lobbyPlayers[hpActiveIdx]?.name:null;
     if(lobbyMode==='slowreveal'){
-      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();srHostFetchAndBroadcast();});
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();srHostFetchAndBroadcast();},hpFirstHolder);
     } else {
-      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpHostFetchAndBroadcast();});
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpHostFetchAndBroadcast();},hpFirstHolder);
     }
   } else {
     mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();});
@@ -9028,6 +9050,19 @@ function mpStartTiebreaker(){
   else{mpLoadQuestion();}
 }
 
+function mpReturnToLobby(){
+  // Reset player state for a fresh game
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
+  score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
+  qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  // Host broadcasts so all clients navigate back together
+  if(isHost&&rtChannel){
+    rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
+  }
+  stopHeartbeat();startHeartbeat();
+  goStep('lobby-room');
+}
+
 function mpEndGame(){
   srClearReveal();
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
@@ -9038,13 +9073,14 @@ function mpEndGame(){
     fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
       method:'PATCH',
       headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({expires_at:lobbyExpiresAt})
+      body:JSON.stringify({expires_at:lobbyExpiresAt,status:'waiting'})
     }).catch(()=>{});
   }
   clearLobbyTimer();
-  intentionalLeave=true;
-  stopHeartbeat();
-  if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
+  // Do NOT unsubscribe rtChannel here — keeping it alive lets the host broadcast
+  // game_started again and all clients receive it when playing again from results.
+  // The channel is only torn down when someone explicitly leaves the lobby.
+  intentionalLeave=false;
   const isHP=lobbyMode==='potato';
   const isSurvival=selectedMode==='survival';
   const isSR=lobbyMode==='slowreveal';
