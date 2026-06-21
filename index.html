@@ -884,6 +884,8 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-expiry-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
 @keyframes hpLifeLost{0%{transform:scale(1.5);opacity:1}60%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
 .hp-life-lost{animation:hpLifeLost .45s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes hpMissFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+#hpMissVignette.active{display:block;animation:hpMissFlash .45s ease-out forwards}
 /* Hot Potato turn banner */
 @keyframes hpPotatoBob{0%,100%{transform:translateY(0) rotate(-6deg) scale(1)}50%{transform:translateY(-5px) rotate(6deg) scale(1.12)}}
 @keyframes hpBannerPop{0%{opacity:0;transform:translateY(-8px) scale(.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
@@ -1135,6 +1137,9 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
       <button onclick="setColor('arcane','#e879f9','Arcane',null);closeNavDrawer()" style="background:#e879f9;width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer" title="Arcane"></button>
     </div>
   </div>
+
+  <!-- HP MISS VIGNETTE — red flash on fuse expiry, z-index above quiz UI but below modals -->
+  <div id="hpMissVignette" style="display:none;position:fixed;inset:0;z-index:900;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(239,68,68,.55) 100%)"></div>
 
   <!-- JOINING LOBBY OVERLAY -->
   <div id="joiningOverlay" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:16px">
@@ -6603,7 +6608,7 @@ function rtSubscribe(lobbyId){
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
-    mpWrongAttempts={};mpTiebreakerPlayers=[];
+    mpWrongAttempts={};mpTiebreakerPlayers=[];hpPendingRepeat=null;
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
     mpSnapshotScores();
     if(payload.srTargetScore)srTargetScore=payload.srTargetScore;
@@ -6664,7 +6669,17 @@ function rtSubscribe(lobbyId){
       clearInterval(timerInterval);
       if(payload.name!==currentUser){
         const correctAns=currentQData?(currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer):'?';
-        mpShowFeedback(payload.roundCorrect,correctAns,null,null,payload.name,true,payload.hpNextPlayer||null);
+        // Only show feedback reveal for a correct answer — misses use the vignette/shake path instead
+        if(payload.roundCorrect){
+          mpShowFeedback(payload.roundCorrect,correctAns,null,null,payload.name,true,payload.hpNextPlayer||null);
+        } else {
+          // HP miss on a spectating client: vignette flash + shake, no answer reveal
+          sfxWrong();
+          const vigR=document.getElementById('hpMissVignette');
+          if(vigR){vigR.classList.remove('active');void vigR.offsetWidth;vigR.classList.add('active');setTimeout(()=>vigR.classList.remove('active'),460);}
+          const mpQCardR=document.querySelector('#page-mp-quiz .q-card');
+          if(mpQCardR){mpQCardR.classList.add('shake');setTimeout(()=>mpQCardR.classList.remove('shake'),420);}
+        }
       }
     }
     // Host checks if all active players have answered — if so, advance early
@@ -6688,6 +6703,7 @@ function rtSubscribe(lobbyId){
               if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
               else mpEndGame();return;
             }
+            hpPendingRepeat=null; // correct answer always clears any pending repeat
           } else {
             if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
             if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
@@ -6717,7 +6733,22 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQLoading').style.display='flex';
     const mpQCard=document.querySelector('#page-mp-quiz .q-card');
     if(mpQCard)mpQCard.classList.remove('answered');
-    if(isHost)mpHostFetchAndBroadcast();
+    if(payload.hpRepeatQData){
+      // Same question for next player — host already fetched it, just re-show with fresh fuse
+      // Non-hosts: track that this turn is a repeat so if they miss, host knows to fetch fresh next
+      hpPendingRepeat=null; // non-hosts don't need to set this; host manages it authoritatively
+      currentQData=payload.hpRepeatQData;
+      if(!isHost){
+        document.getElementById('mpQLoading').style.display='none';
+        mpShowQuestion(payload.hpRepeatQData,payload.hpRepeatFuse);renderMPHUD();
+      } else {
+        // Host: show locally and set pending repeat to null (already cleared in mpTimeOut)
+        document.getElementById('mpQLoading').style.display='none';
+        mpShowQuestion(payload.hpRepeatQData,payload.hpRepeatFuse);renderMPHUD();
+      }
+    } else {
+      if(isHost)mpHostFetchAndBroadcast();
+    }
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
     if(isHost)return; // host already runs its own countdown
@@ -8306,7 +8337,7 @@ function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
   score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
-  hpActiveIdx=0;mpTiebreakerPlayers=[];
+  hpActiveIdx=0;mpTiebreakerPlayers=[];hpPendingRepeat=null;
   // In Hot Potato, pick a random starting holder instead of always defaulting to index 0
   if(lobbyMode==='potato'&&lobbyPlayers.length>0){
     hpActiveIdx=Math.floor(Math.random()*lobbyPlayers.length);
@@ -8603,6 +8634,7 @@ async function kickPlayer(name){
 }
 
 let hpActiveIdx=0;
+let hpPendingRepeat=null; // {qData} when the current question should repeat for the next player; null otherwise
 function hpActivePlayers(){return lobbyPlayers.filter(p=>!p.eliminated)}
 function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.length]}
 function hpPeekNextPlayer(){
@@ -8872,35 +8904,99 @@ function mpTimeOut(){
     active.lives--;if(active.lives<=0)active.eliminated=true;
     renderMPHUD();
     const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
-    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",active.name,false,hpPeekNextPlayer()?.name);
+
+    // ── HP miss: vignette flash + card shake, no answer reveal ───
+    sfxWrong();
+    // Capture current question for potential repeat BEFORE clearing — only on first miss
+    // hpPendingRepeat is already null if this is a second consecutive miss (cleared in prior turn)
+    const missedQData=currentQData;
+    const shouldRepeat=isHost&&(hpPendingRepeat===null); // first miss on this question → will repeat
+    if(isHost){
+      hpPendingRepeat=shouldRepeat?missedQData:null;
+    }
+    // Red vignette flash
+    const vig=document.getElementById('hpMissVignette');
+    if(vig){
+      vig.classList.remove('active');
+      void vig.offsetWidth; // force reflow to restart animation
+      vig.classList.add('active');
+      setTimeout(()=>vig.classList.remove('active'),460);
+    }
+    // Shake the q-card
+    const mpQCardTO=document.querySelector('#page-mp-quiz .q-card');
+    if(mpQCardTO){
+      mpQCardTO.classList.add('shake');
+      setTimeout(()=>mpQCardTO.classList.remove('shake'),420);
+    }
+
+    // Broadcast the miss (life update) so all clients update their scoreboards,
+    // but do NOT call mpShowFeedback — we skip the feedback bar and answer reveal.
+    const me=lobbyPlayers.find(p=>p.name===currentUser);
+    if(me&&rtChannel){
+      rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{
+        name:currentUser,score:me?.score??score,
+        lives:active.lives,eliminated:active.eliminated,
+        roundAnswered:true,roundCorrect:false,roundPts:0,roundElapsed:0,
+        hpNextPlayer:hpPeekNextPlayer()?.name||null
+      }});
+    }
+
+    // Host decides: repeat or new question
+    mpStartAutoNext(()=>{
+      if(!isHost)return;
+      lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
+      // Advance turn index
+      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
+      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+      const remaining=hpActivePlayers();
+      if(remaining.length<=1){
+        hpPendingRepeat=null;
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        else mpEndGame();return;
+      }
+      // Decide whether to repeat the same question for the next player
+      const repeatQData=hpPendingRepeat;
+      hpPendingRepeat=null; // always clear — repeat is one-time only
+      qIndex++;
+      if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        else mpEndGame();return;
+      }
+      if(repeatQData){
+        // Serve the same question with a fresh fuse — host re-fetches nothing
+        const freshFuse=hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin);
+        if(rtChannel){
+          rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers,hpRepeatQData:repeatQData,hpRepeatFuse:freshFuse}});
+        } else {
+          // Offline fallback
+          lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
+          mpWrongAttempts={};hpTypingText={};
+          currentQData=repeatQData;
+          mpShowQuestion(repeatQData,freshFuse);renderMPHUD();
+        }
+      } else {
+        if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+        else{mpLoadQuestion();}
+      }
+    });
   } else {
     lives--;renderMPHUD();
     const last=quizHistory[quizHistory.length-1];
     if(last){last.userAns='(timed out)';last.correct=false;}
     mpShowFeedback(false,correctAns,'(timed out)',"Time's up!");
-  }
-  // Auto-advance starts only once the question timer has expired for everyone
-  mpStartAutoNext(()=>{
-    if(!isHost)return;
-    // Record rolling window — question resolved normally (not voided)
-    lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
-    if(isHP){
-      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
-      const remaining=hpActivePlayers();
-      if(remaining.length<=1){
-        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
-        else mpEndGame();return;
-      }
-    } else {
+    // Auto-advance starts only once the question timer has expired for everyone
+    mpStartAutoNext(()=>{
+      if(!isHost)return;
+      // Record rolling window — question resolved normally (not voided)
+      lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
-    }
-    qIndex++;
-    if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
-    if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
-    else{mpLoadQuestion();}
-  });
+      qIndex++;
+      if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+      else{mpLoadQuestion();}
+    });
+  }
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
