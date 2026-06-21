@@ -6643,6 +6643,22 @@ function rtSubscribe(lobbyId){
       if(inp&&inp.disabled)inp.value='';
     }
     renderMPScoreboard();
+    // Hot Potato: only the active player can ever answer a given round, so everyone
+    // else is purely a spectator. Previously they only got a quiet checkmark icon in
+    // the side scoreboard — give them the same prominent "X got it!" reveal the active
+    // player sees locally. Also stop everyone's own fuse countdown here: each client
+    // runs its own local timer that independently calls mpTimeOut() when it hits zero
+    // (that's how the wrong/timeout case already stays in sync across clients), but if
+    // we don't clear it now, a spectator whose own timer hasn't reached zero yet could
+    // fire a stale timeout — and a duplicate life loss — a moment after the correct
+    // answer already resolved the round.
+    if(lobbyMode==='potato'){
+      clearInterval(timerInterval);
+      if(payload.name!==currentUser){
+        const correctAns=currentQData?(currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer):'?';
+        mpShowFeedback(payload.roundCorrect,correctAns,null,null,payload.name,true);
+      }
+    }
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
       const isHP=lobbyMode==='potato';
@@ -8826,7 +8842,7 @@ function mpTimeOut(){
   });
 }
 
-function mpShowFeedback(correct,correctAns,userAns,override,playerName){
+function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote){
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset flag state for this question
@@ -8861,6 +8877,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName){
   if(mpQCard)mpQCard.classList.add('answered');
   if(mpSubEl)mpSubEl.style.display='none';
   applyTheme();
+  if(remote)return; // just displaying someone else's already-resolved answer — nothing of ours to sync or broadcast
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
   if(me){me.score=score;me.lives=lives;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
