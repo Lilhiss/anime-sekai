@@ -6656,7 +6656,7 @@ function rtSubscribe(lobbyId){
       clearInterval(timerInterval);
       if(payload.name!==currentUser){
         const correctAns=currentQData?(currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer):'?';
-        mpShowFeedback(payload.roundCorrect,correctAns,null,null,payload.name,true);
+        mpShowFeedback(payload.roundCorrect,correctAns,null,null,payload.name,true,payload.hpNextPlayer||null);
       }
     }
     // Host checks if all active players have answered — if so, advance early
@@ -8555,6 +8555,17 @@ async function kickPlayer(name){
 let hpActiveIdx=0;
 function hpActivePlayers(){return lobbyPlayers.filter(p=>!p.eliminated)}
 function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.length]}
+function hpPeekNextPlayer(){
+  // Returns who will hold the potato next, without advancing hpActiveIdx.
+  const players=lobbyPlayers;
+  const total=players.length;
+  if(total===0)return null;
+  let next=(hpActiveIdx+1)%total;
+  // Skip eliminated players (same logic as the advance in mpStartAutoNext)
+  let guard=0;
+  while(players[next].eliminated&&guard<total){next=(next+1)%total;guard++;}
+  return players[next]||null;
+}
 function hpIsMyTurn(){return lobbyMode==='potato'&&hpActivePlayer().name===currentUser}
 
 function renderMPHUD(){
@@ -8783,7 +8794,7 @@ function mpCheckTypeAnswer(){
     // Only a correct answer reaches here; life-loss on wrong answers happens in mpTimeOut
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
-    mpShowFeedback(true,correctAns,userAns,null,active.name);
+    mpShowFeedback(true,correctAns,userAns,null,active.name,false,hpPeekNextPlayer()?.name);
     renderMPHUD();
   } else {
     // Non-HP: only reaches here on a correct answer (wrong answers return early above)
@@ -8811,7 +8822,7 @@ function mpTimeOut(){
     active.lives--;if(active.lives<=0)active.eliminated=true;
     renderMPHUD();
     const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
-    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",active.name);
+    mpShowFeedback(false,correctAns,'(timed out)',"Time's up!",active.name,false,hpPeekNextPlayer()?.name);
   } else {
     lives--;renderMPHUD();
     const last=quizHistory[quizHistory.length-1];
@@ -8842,7 +8853,7 @@ function mpTimeOut(){
   });
 }
 
-function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote){
+function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset flag state for this question
@@ -8863,9 +8874,10 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote){
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
   const mpPtsLabel=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
+  const nextLabel=nextPlayerName?` Next up: ${nextPlayerName} 🥔`:'';
   document.getElementById('mpFbPts').textContent=
-    isHP&&correct?'Potato passes to the next player!':
-    isHP?'Lost a life — potato passes':
+    isHP&&correct?`Potato passes!${nextLabel}`:
+    isHP?`Lost a life — potato passes!${nextLabel}`:
     correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:
     '';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
@@ -8882,7 +8894,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote){
   const me=lobbyPlayers.find(p=>p.name===currentUser);
   if(me){me.score=score;me.lives=lives;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
   if(me&&rtChannel){
-    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed}});
+    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:me.lives,eliminated:me.eliminated||false,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null}});
   }
 }
 
