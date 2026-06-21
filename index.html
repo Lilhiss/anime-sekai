@@ -8600,7 +8600,7 @@ function mpCheckTypeAnswer(){
   const userAns=input.value.trim();
   const correct=checkAnswer(userAns,currentQData);
   const isHP=lobbyMode==='potato';
-  if(!correct&&!isHP){
+  if(!correct){
     sfxWrongAttempt();
     // Broadcast this wrong attempt so other players can see it in the scoreboard
     if(rtChannel){
@@ -8609,7 +8609,8 @@ function mpCheckTypeAnswer(){
     // Also update locally so the broadcaster sees their own attempt reflected
     mpWrongAttempts[currentUser]=userAns;
     renderMPScoreboard();
-    // Wrong — shake, flash red, clear and allow retry (same as solo)
+    // Wrong — shake, flash red, clear and allow retry
+    // In Hot Potato the life is only lost when the fuse expires (mpTimeOut), not on each wrong guess
     const card=document.querySelector('#page-mp-quiz .q-card');
     input.classList.add('wrong-attempt');
     if(card)card.classList.add('shake');
@@ -8623,17 +8624,17 @@ function mpCheckTypeAnswer(){
     },400);
     return;
   }
-  // Correct (or Hot Potato where a single wrong attempt costs a life) — lock and finalise
+  // Correct answer — lock and finalise
   answered=true;
-  input.disabled=true;input.classList.add(correct?'correct-input':'wrong-input');
+  input.disabled=true;input.classList.add('correct-input');
   document.getElementById('mpTypeSubmitBtn').disabled=true;
   const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
   if(isHP){
     const active=hpActivePlayer();
-    if(!correct){active.lives--;if(active.lives<=0)active.eliminated=true;}
-    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=correct;
+    // Only a correct answer reaches here; life-loss on wrong answers happens in mpTimeOut
+    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
-    mpShowFeedback(correct,correctAns,userAns,null,active.name);
+    mpShowFeedback(true,correctAns,userAns,null,active.name);
     renderMPHUD();
   } else {
     // Non-HP: only reaches here on a correct answer (wrong answers return early above)
