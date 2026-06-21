@@ -665,6 +665,8 @@ h1 .hi{color:var(--accent)}
 .mp-score-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .2s}
 .mp-score-row.me{background:var(--accent-soft);border:1px solid var(--border2)}
 .mp-score-row.pulse{animation:scorePulse .6s ease-out forwards}
+@keyframes hpActiveGlow{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 55%,transparent),0 4px 16px color-mix(in srgb,var(--accent) 25%,transparent)}}
+.mp-score-row.hp-active{animation:hpActiveGlow 1.8s ease-in-out infinite}
 .mp-score-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:12px;flex-shrink:0}
 .mp-score-name{font-size:12px;font-weight:800;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mp-score-pts{font-family:'Lilita One',cursive;font-size:14px;color:var(--accent)}
@@ -6608,6 +6610,7 @@ function rtSubscribe(lobbyId){
     score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
+    hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
     mpWrongAttempts={};mpTiebreakerPlayers=[];hpPendingRepeat=null;
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
     mpSnapshotScores();
@@ -6621,7 +6624,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
-    const hpFirstHolder=payload.mode==='potato'?lobbyPlayers[hpActiveIdx]?.name:null;
+    const hpFirstHolder=payload.mode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
     mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
@@ -6696,8 +6699,8 @@ function rtSubscribe(lobbyId){
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
           if(isHP){
-            hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-            while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+            const _hpTotal=hpTurnOrder.length||lobbyPlayers.length;
+            hpActiveIdx=(hpActiveIdx+1)%_hpTotal;
             const remaining=hpActivePlayers();
             if(remaining.length<=1){
               if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
@@ -8337,10 +8340,13 @@ function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
   score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
-  hpActiveIdx=0;mpTiebreakerPlayers=[];hpPendingRepeat=null;
-  // In Hot Potato, pick a random starting holder instead of always defaulting to index 0
+  hpActiveIdx=0;mpTiebreakerPlayers=[];hpPendingRepeat=null;hpTurnOrder=[];
+  // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
+  // turn sequence is consistent across all clients and isn't just lobby join order
   if(lobbyMode==='potato'&&lobbyPlayers.length>0){
-    hpActiveIdx=Math.floor(Math.random()*lobbyPlayers.length);
+    const names=lobbyPlayers.map(p=>p.name);
+    for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
+    hpTurnOrder=names;
   }
   mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
   mpSnapshotScores();
@@ -8348,10 +8354,10 @@ function startLobbyGame(){
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx}});
+    rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx,hpTurnOrder}});
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
-    const hpFirstHolder=lobbyMode==='potato'?lobbyPlayers[hpActiveIdx]?.name:null;
+    const hpFirstHolder=lobbyMode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
     if(lobbyMode==='slowreveal'){
       mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();srHostFetchAndBroadcast();},hpFirstHolder);
     } else {
@@ -8634,19 +8640,36 @@ async function kickPlayer(name){
 }
 
 let hpActiveIdx=0;
+let hpTurnOrder=[]; // shuffled array of player names, set at game start and used for the whole game
 let hpPendingRepeat=null; // {qData} when the current question should repeat for the next player; null otherwise
-function hpActivePlayers(){return lobbyPlayers.filter(p=>!p.eliminated)}
-function hpActivePlayer(){const ap=hpActivePlayers();return ap[hpActiveIdx%ap.length]}
+function hpActivePlayers(){return hpTurnOrder.map(n=>lobbyPlayers.find(p=>p.name===n)).filter(p=>p&&!p.eliminated)}
+function hpActivePlayer(){
+  const order=hpTurnOrder.length?hpTurnOrder:lobbyPlayers.map(p=>p.name);
+  const total=order.length;
+  if(!total)return lobbyPlayers[0]||{name:'?',color:'#888',lives:0,eliminated:false};
+  let idx=hpActiveIdx%total;
+  // Skip eliminated players — walk forward until we find a live one
+  let guard=0;
+  while(guard<total){
+    const p=lobbyPlayers.find(lp=>lp.name===order[idx]);
+    if(p&&!p.eliminated)return p;
+    idx=(idx+1)%total;guard++;
+  }
+  return lobbyPlayers.find(p=>!p.eliminated)||lobbyPlayers[0];
+}
 function hpPeekNextPlayer(){
-  // Returns who will hold the potato next, without advancing hpActiveIdx.
-  const players=lobbyPlayers;
-  const total=players.length;
+  // Returns the player who will hold the potato after the current holder, without advancing hpActiveIdx.
+  const order=hpTurnOrder.length?hpTurnOrder:lobbyPlayers.map(p=>p.name);
+  const total=order.length;
   if(total===0)return null;
   let next=(hpActiveIdx+1)%total;
-  // Skip eliminated players (same logic as the advance in mpStartAutoNext)
   let guard=0;
-  while(players[next].eliminated&&guard<total){next=(next+1)%total;guard++;}
-  return players[next]||null;
+  while(guard<total){
+    const p=lobbyPlayers.find(lp=>lp.name===order[next]);
+    if(p&&!p.eliminated)return p;
+    next=(next+1)%total;guard++;
+  }
+  return null;
 }
 function hpIsMyTurn(){return lobbyMode==='potato'&&hpActivePlayer().name===currentUser}
 
@@ -8701,9 +8724,9 @@ function renderMPScoreboard(){
   const isSurvival=selectedMode==='survival';
   const isTyping=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc';
   const sorted=isHP
-    ?[...lobbyPlayers]
+    // HP: render in shuffled turn order so Live Scores matches the hand-off sequence
+    ?(hpTurnOrder.length?hpTurnOrder.map(n=>lobbyPlayers.find(p=>p.name===n)).filter(Boolean):[...lobbyPlayers])
     :isSurvival
-      // Survival: alive first, then by lives remaining, then by correct answers
       ?[...lobbyPlayers].sort((a,b)=>(a.eliminated===b.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives||(b.roundPts||0)-(a.roundPts||0))
       :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   sorted.forEach((p,i)=>{
@@ -8712,7 +8735,10 @@ function renderMPScoreboard(){
     const hasQuit=!!p.quit;
     const row=document.createElement('div');row.className='mp-score-row'+(isMe?' me':'');
     if(hasQuit)row.style.opacity='.4';
-    if(isActive)row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
+    if(isActive){
+      row.classList.add('hp-active');
+      row.style.cssText='background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 10px';
+    }
     const ansIcon=p.roundAnswered&&!hasQuit?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
     // Only show +pts round meta in race mode
     const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
@@ -8946,8 +8972,8 @@ function mpTimeOut(){
       if(!isHost)return;
       lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
       // Advance turn index
-      hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-      while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+      const _hpTotalTO=hpTurnOrder.length||lobbyPlayers.length;
+      hpActiveIdx=(hpActiveIdx+1)%_hpTotalTO;
       const remaining=hpActivePlayers();
       if(remaining.length<=1){
         hpPendingRepeat=null;
@@ -9055,8 +9081,8 @@ function mpNextQuestion(){
   qIndex++;
   const isHP=lobbyMode==='potato';
   if(isHP){
-    hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;
-    while(lobbyPlayers[hpActiveIdx].eliminated){hpActiveIdx=(hpActiveIdx+1)%lobbyPlayers.length;}
+    const _hpTotalNQ=hpTurnOrder.length||lobbyPlayers.length;
+    hpActiveIdx=(hpActiveIdx+1)%_hpTotalNQ;
     if(hpActivePlayers().length<=1){mpEndGame();return;}
   } else {
     if(selectedMode==='survival'&&lives<=0){mpEndGame();return}
