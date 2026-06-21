@@ -7764,7 +7764,7 @@ function showLobbyToast(msg,type='warning'){
   setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},(type==='danger'?4000:6000));
 }
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
-const modeEmoji={race:'⚡',survival:'❤️',hp:'🥔',slowreveal:'👁️'};
+const modeEmoji={race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
 
 function refreshLobbyList(){
   const refreshIcon=document.getElementById('lobbyRefreshIcon');
@@ -7830,7 +7830,7 @@ async function loadPublicLobbies(silent=false){
       const mode=lobby.mode||'race';
       const qCount=lobby.question_count||10;
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
-      const modeName={race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔'}[mode]||mode;
+      const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
 
       const card=document.createElement('div');
@@ -8427,7 +8427,7 @@ function patchLobbyListCard(lobby) {
   const mode = lobby.mode || 'race';
   const qCount = lobby.question_count || 10;
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
-  const modeName = {race:'Score Race',survival:'Survival',hp:'Hot Potato 🥔',slowreveal:'Slow Reveal 👁️'}[mode] || mode;
+  const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
   const metaEl = card.querySelector('.lobby-list-meta');
   if (metaEl) {
