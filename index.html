@@ -6628,7 +6628,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
     const hpFirstHolder=payload.mode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
-    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();},hpFirstHolder);
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
@@ -7290,6 +7290,16 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       renderLobbyRoom();
     }catch(e){}
   },300); // 300 ms debounce gives the DB DELETE time to commit
+}
+
+function mpResetQuestionCard(){
+  document.getElementById('mpQuestionText').style.display='none';
+  document.getElementById('mpQuestionText').innerHTML='';
+  document.getElementById('mpAnswersGrid').innerHTML='';
+  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpQLoading').style.display='flex';
+  const mpQCard=document.querySelector('#page-mp-quiz .q-card');
+  if(mpQCard)mpQCard.classList.remove('answered');
 }
 
 async function mpHostFetchAndBroadcast(){
@@ -8350,12 +8360,12 @@ function startLobbyGame(){
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     const hpFirstHolder=lobbyMode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
     if(lobbyMode==='slowreveal'){
-      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();srHostFetchAndBroadcast();},hpFirstHolder);
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();srHostFetchAndBroadcast();},hpFirstHolder);
     } else {
-      mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpHostFetchAndBroadcast();},hpFirstHolder);
+      mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();mpHostFetchAndBroadcast();},hpFirstHolder);
     }
   } else {
-    mpShowCountdown(()=>{_origGoStep('mp-quiz');renderMPHUD();mpLoadQuestion();});
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();mpLoadQuestion();});
   }
 }
 
@@ -8746,7 +8756,7 @@ function renderMPScoreboard(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
