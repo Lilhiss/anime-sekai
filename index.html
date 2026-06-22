@@ -7007,6 +7007,15 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=lobbyPlayers.filter(p=>p.name!==payload.name);
     renderLobbyRoom();
   });
+  rtChannel.on('broadcast',{event:'player_disconnected'},({payload})=>{
+    // Mid-game connection drop — keep the player's row/score/lives, just grey them
+    // out on the scoreboard. Distinct from player_quit (permanent) and player_left
+    // (pre-game only) — this player may still rejoin (see the rejoin flow, which
+    // sends player_reconnected to clear this flag).
+    const p=lobbyPlayers.find(p=>p.userId===payload.userId||p.name===payload.name);
+    if(p)p.connected=false;
+    renderMPScoreboard();
+  });
   rtChannel.on('broadcast',{event:'player_quit'},({payload})=>{
     // Mid-game quit — keep the player visible but mark them as quit
     const p=lobbyPlayers.find(p=>p.name===payload.name);
@@ -7082,15 +7091,55 @@ function rtSubscribe(lobbyId){
       const token=await rtGetAuthToken();
       const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
 
-      // 1. Resolve lobby id
-      let lid=null;
+      // 1. Resolve lobby id + status — status decides whether a disconnect is a soft
+      //    "offline" flag (mid-game) or the original hard delete (pre-game waiting room).
+      let lid=null,lobbyStatus=null;
       try{
-        const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,{headers});
+        const lRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?select=id,status&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,{headers});
         const lData=await lRes.json();
         lid=Array.isArray(lData)?lData[0]?.id:null;
+        lobbyStatus=Array.isArray(lData)?lData[0]?.status:null;
       }catch(e){}
       if(!lid) continue;
 
+      // ── MID-GAME DISCONNECT (status==='active') ───────────────────────────────
+      // A connection drop during an active game must NOT delete the player's row —
+      // score/lives are durable progress, not throwaway lobby-room state. Flag them
+      // offline instead so other clients can grey them out on the scoreboard, and
+      // leave host reassignment entirely to the active-game grace-period logic that
+      // owns that decision (not handled here).
+      if(lobbyStatus==='active'){
+        try{
+          const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
+          const chkData=await chkRes.json();
+          if(!Array.isArray(chkData)||!chkData.length){console.log('[presence:leave] active — row already gone (explicit quit/leave), skipping');continue;}
+        }catch(e){console.error('[presence:leave] active — error checking row',e);continue;}
+
+        try{
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({connected:false})});
+        }catch(e){console.error('[presence:leave] active — error marking offline',e);}
+
+        const offlinePlayer=lobbyPlayers.find(p=>p.userId===goneUserId);
+        if(offlinePlayer)offlinePlayer.connected=false;
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'player_disconnected',payload:{name:goneUsername,userId:goneUserId}});
+
+        // Empty-lobby cleanup mid-game is row-based, not presence-based — everyone
+        // being briefly offline must not delete the lobby out from under them. This
+        // only fires once every lobby_players row is actually gone (e.g. the last
+        // remaining player used an explicit Leave/Quit action).
+        try{
+          const remRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}`,{headers});
+          const remData=await remRes.json();
+          if(!Array.isArray(remData)||!remData.length){
+            await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'DELETE',headers});
+          }
+        }catch(e){}
+
+        renderMPScoreboard();
+        continue;
+      }
+
+      // ── PRE-GAME DISCONNECT (status==='waiting') — unchanged existing behavior ──
       // 2. Check if the player is still in DB (they may have already cleaned up themselves
       //    e.g. via leaveLobbyRoom in another tab, or a duplicate presence leave).
       let wasThisPlayerHost=false;
@@ -7276,7 +7325,7 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(Array.isArray(data)&&data.length){
-        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
+        lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null,connected:p.connected!==false}));
         // If we locally know we're host, correct any stale DB read that may not reflect it yet
         if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
         applyPresenceAvatars();
@@ -7297,7 +7346,7 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
       );
       const data=await res.json();
       if(!Array.isArray(data)||!data.length)return;
-      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null}));
+      lobbyPlayers=data.map(p=>({name:p.username,color:p.color,isHost:p.is_host,score:p.score,lives:p.lives,eliminated:p.eliminated,userId:p.user_id,avatar:p.profiles?.avatar_url||null,connected:p.connected!==false}));
       // If we locally know we're host, correct any stale DB read that may not reflect it yet
       if(isHost) lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
       applyPresenceAvatars();
@@ -8768,8 +8817,10 @@ function renderMPScoreboard(){
     const isMe=p.name===currentUser;
     const isActive=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
     const hasQuit=!!p.quit;
+    const isOffline=!hasQuit&&p.connected===false;
     const row=document.createElement('div');row.className='mp-score-row'+(isMe?' me':'');
     if(hasQuit)row.style.opacity='.4';
+    else if(isOffline)row.style.opacity='.6';
     if(isActive){
       row.classList.add('hp-active');
     }
@@ -8777,6 +8828,8 @@ function renderMPScoreboard(){
     // Only show +pts round meta in race mode
     const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
+    // Draft treatment — offline ≠ quit: no strikethrough, since they may still rejoin.
+    const offlineLabel=isOffline?` <span style="font-size:10px;color:var(--muted)" title="Disconnected — may still rejoin"><i class="ti ti-wifi-off" style="font-size:10px"></i> offline</span>`:'';
     // Wrong attempt shown below name in typing modes (including HP), only while not yet answered
     const wrongAttempt=(isTyping||isHP)&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
       ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
@@ -8788,18 +8841,31 @@ function renderMPScoreboard(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}</div>${wrongAttempt}</div>${rightCol}`;
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}${offlineLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
 
-function mpQuitGame(){
+async function mpQuitGame(){
   intentionalLeave=true;
+  stopHeartbeat();
+  // Explicit quit deletes the row immediately — unlike an accidental disconnect (see
+  // the presence:leave handler), there's no ambiguity about returning. Without this,
+  // the quitter's row would survive and other clients' presence:leave handler would
+  // now mistake it for a connection drop and mark them "offline" instead of gone.
+  // NOTE: if the quitter was host, this does not promote a new host inline — that's
+  // intentionally left to the active-game host-election logic (landing separately)
+  // rather than duplicating a second election mechanism here.
+  if(currentUserId&&currentLobbyId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{
+      const token=await rtGetAuthToken();
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
+    }catch(e){console.error('[mpQuitGame] error deleting row',e);}
+  }
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'player_quit',payload:{name:currentUser}});
   }
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
-  stopHeartbeat();
   goStep('multiplayer');
 }
 
