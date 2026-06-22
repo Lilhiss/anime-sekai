@@ -9805,8 +9805,13 @@ function srStartReveal(qData,startTime){
   srBuzzedPlayer=null;
   srLockedPlayers=[];
   srBuzzTimeLeft=0;
-  // Build flat chars array from all characters in the question
-  srChars=qData.question.split('');
+  // Build flat chars array from only the characters that will have spans —
+  // spaces between words are rendered as text nodes (the ' ' in the join below),
+  // never as spans, so they must NOT appear in srChars.  If srChars included
+  // spaces the interval would call getElementById('src'+N) for a space, get null,
+  // and the while-loop would silently burn through every remaining index in a
+  // single tick, making the entire question appear at once.
+  srChars=[];
   srCharIndex=0;
   answered=false;
   currentQData=qData;
@@ -9818,17 +9823,17 @@ function srStartReveal(qData,startTime){
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(qCard)qCard.classList.remove('answered');
   // Wrap each word in an inline-block span so the browser wraps at word boundaries,
-  // then split chars within each word into individual spans for the fade-in reveal
+  // then split chars within each word into individual spans for the fade-in reveal.
+  // charIdx counts only span-backed characters so it stays in sync with srChars.
   let charIdx=0;
   const words=qData.question.split(' ');
   textEl.innerHTML=words.map(word=>{
     const chars=word.split('').map(ch=>{
+      srChars.push(ch); // only non-space chars go into the array
       const span=`<span class="sr-char" id="src${charIdx}">${ch}</span>`;
       charIdx++;
       return span;
     }).join('');
-    // Account for the space between words in the flat chars array
-    if(charIdx<srChars.length&&srChars[charIdx]===' ')charIdx++;
     return `<span class="sr-word-wrap">${chars}</span>`;
   }).join(' ');
   // Reset timer bar to full at question start; it will drain during the post-reveal window
@@ -9980,6 +9985,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
     if(p)p.score++;
     if(name===currentUser)score++;
     renderMPHUD();
+    renderMPScoreboard(); // update scoreboard immediately so everyone sees the new score
     srShowFeedback(true,name,correctAns,userAns,false,buzzRatio);
     const winner=lobbyPlayers.find(lp=>lp.score>=srTargetScore);
     if(winner){
@@ -10053,12 +10059,16 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
       }
     });
   }
-  // Complete the reveal instantly then show full question + answer
-  srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
-  const mpQText=document.getElementById('mpQuestionText');
-  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
-  mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
-  applyTheme();
+  // Only complete the reveal and show the answer on a correct buzz.
+  // On a wrong answer the char animation resumes (handled in srApplyBuzzResult)
+  // and the answer stays hidden until srRoundEnd fires.
+  if(correct){
+    srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
+    const mpQText=document.getElementById('mpQuestionText');
+    const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+    mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+    applyTheme();
+  }
 }
 
 function srRoundEnd(winner,correctAns){
