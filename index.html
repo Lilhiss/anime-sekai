@@ -946,6 +946,13 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .lobby-count-label{font-size:11px;color:var(--muted);font-weight:700;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:2px 9px;text-transform:none;letter-spacing:0}
 .lobby-refresh-btn{font-size:11px;font-weight:800;color:var(--muted);background:var(--bg2);border:1px solid var(--border2);padding:5px 11px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
 .lobby-refresh-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ── IN-PROGRESS REJOIN CARD ── */
+.rejoin-card{background:linear-gradient(120deg,var(--accent-soft),var(--bg3));border:2px solid var(--accent);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .22s;backdrop-filter:blur(10px)}
+.rejoin-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 25%,transparent)}
+.rejoin-card-pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:rejoinPulse 1.6s ease-in-out infinite}
+@keyframes rejoinPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+.rejoin-btn{font-family:'Lilita One',cursive;font-size:13px;background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:opacity .2s;flex-shrink:0}
+.rejoin-btn:hover{opacity:.85}
 @keyframes spin-once{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .spinning{animation:spin-once .5s linear}
 @keyframes inboxBtnPopIn{0%{opacity:0;transform:scale(.6) rotate(-12deg)}60%{transform:scale(1.12) rotate(4deg)}80%{transform:scale(.96)}100%{opacity:1;transform:scale(1) rotate(0)}}
@@ -1293,6 +1300,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <span style="font-size:11px;color:var(--muted)">Ask the lobby host for their code.</span>
           <div class="form-err" id="lobbyJoinErr" style="margin-top:0"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="lobbyJoinErrMsg"></span></div>
         </div>
+
+        <!-- IN-PROGRESS REJOIN BANNER (shown only when user has a row in an active game) -->
+        <div id="rejoinBanner" style="display:none"></div>
 
         <!-- LIST HEADER -->
         <div class="lobby-list-header">
@@ -3113,10 +3123,16 @@ sb.auth.onAuthStateChange(async (event, session) => {
             {headers:{apikey:SUPABASE_ANON,Authorization:`Bearer ${SUPABASE_ANON}`}}
           );
           const rows = await res.json();
-          if(Array.isArray(rows)&&rows[0]&&rows[0].status==='waiting'){
-            await rtJoinLobby(rows[0].code);
+          if(Array.isArray(rows)&&rows[0]){
+            if(rows[0].status==='waiting'){
+              await rtJoinLobby(rows[0].code);
+            } else if(rows[0].status==='active'){
+              await rtRejoinActiveLobby(rows[0].code);
+            } else {
+              // Lobby gone or finished — clear the stale id
+              try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
+            }
           } else {
-            // Lobby gone or already started — clear the stale id
             try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
           }
         }catch(e){}
@@ -6498,6 +6514,101 @@ async function rtJoinLobby(code){
   return true;
 }
 
+// ── REJOIN AN ACTIVE (MID-GAME) LOBBY ────────────────────────
+// Called by the "Rejoin" card on the multiplayer hub AND by disconnectRejoin()
+// when the saved lobby turns out to be active.  Unlike rtJoinLobby() this path:
+//   • Accepts status='active' lobbies (rtJoinLobby only accepts 'waiting')
+//   • Does NOT reset score/lives — reads existing row values instead
+//   • Sets connected=true on the lobby_players row and broadcasts player_reconnected
+//   • Navigates straight to page-mp-quiz, then requests a game-state snapshot (#4)
+async function rtRejoinActiveLobby(code){
+  const uid=await rtGetOrCreateAnonSession();
+  if(!uid){showLobbyToast('⚠️ Could not connect. Please try again.','danger');return false;}
+  const token=await rtGetAuthToken();
+  // Upsert profile (same as rtJoinLobby — needed for anon users)
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},
+      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
+    });
+  }catch(e){}
+  // Fetch the lobby — must be active
+  let lobby=null;
+  try{
+    const lobbyRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&code=eq.${encodeURIComponent(code)}&status=eq.active&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const rows=await lobbyRes.json();
+    lobby=Array.isArray(rows)?rows[0]:null;
+  }catch(e){}
+  if(!lobby){
+    showLobbyToast('⚠️ Game not found or already finished.','danger');
+    return false;
+  }
+  // Kick check
+  try{
+    const kickedLobbies=JSON.parse(sessionStorage.getItem('kicked_from_lobbies')||'[]');
+    if(kickedLobbies.includes(code)){showLobbyToast('🚫 You\'ve been removed from this lobby and cannot rejoin.','danger');return false;}
+  }catch(e){}
+  if(Array.isArray(lobby.kicked_players)&&lobby.kicked_players.includes(currentUser)){
+    showLobbyToast('🚫 You\'ve been removed from this lobby and cannot rejoin.','danger');
+    return false;
+  }
+  // Confirm this user has a lobby_players row (must have been in this game)
+  let existingRow=null;
+  try{
+    const rowRes=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobby_players?select=score,lives,is_host,eliminated&lobby_id=eq.${lobby.id}&user_id=eq.${encodeURIComponent(uid)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const rowData=await rowRes.json();
+    existingRow=Array.isArray(rowData)?rowData[0]:null;
+  }catch(e){}
+  if(!existingRow){
+    showLobbyToast('⚠️ You weren\'t part of this game — ask for a lobby code to join a new one.','danger');
+    return false;
+  }
+  // Mark connected=true on the existing row (Step 1 set it false on disconnect)
+  try{
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}&user_id=eq.${encodeURIComponent(uid)}`,
+      {method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+       body:JSON.stringify({connected:true})}
+    );
+  }catch(e){console.warn('rtRejoinActiveLobby: could not set connected=true',e);}
+  // Set local game state from lobby row — keep existing score/lives, don't reset
+  isHost=existingRow.is_host||false;
+  lobbyCode=code;
+  lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;
+  lobbyFormat=lobby.format; selectedFormat=lobby.format;
+  lobbyMode=lobby.mode;     selectedMode=lobby.mode;
+  if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
+  if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
+  currentLobbyId=lobby.id;
+  try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
+  // Subscribe to realtime channel before refreshing players
+  rtSubscribe(lobby.id);
+  await rtRefreshPlayers(lobby.id,true);
+  // Broadcast reconnection so other clients clear the offline indicator
+  try{
+    if(rtChannel)rtChannel.send({type:'broadcast',event:'player_reconnected',payload:{name:currentUser,userId:uid}});
+  }catch(e){}
+  // Navigate straight to the quiz page (not the lobby room)
+  lobbyInGame=true;
+  goStep('mp-quiz');
+  renderMPHUD();
+  renderMPScoreboard();
+  showLobbyToast('🔄 Reconnected! Waiting for current question…','info');
+  // Request a game-state snapshot from the host (Step 4 will handle the response;
+  // for now the broadcast is sent so it's ready to be received once Step 4 lands)
+  setTimeout(()=>{
+    if(rtChannel)rtChannel.send({type:'broadcast',event:'request_game_state',payload:{userId:uid,username:currentUser}});
+  },800);
+  return true;
+}
+
 function showDisconnectModal(msg){
   const sub=document.getElementById('disconnectModalSub');
   if(sub)sub.textContent=msg||'Your connection to the lobby was lost. You can try rejoining or head back to multiplayer.';
@@ -6511,8 +6622,24 @@ async function disconnectRejoin(){
   document.getElementById('disconnectModal').classList.remove('open');
   intentionalLeave=false; // reset so the channel error handler works again after rejoin
   if(!lobbyCode){goStep('multiplayer');return;}
-  const ok=await rtJoinLobby(lobbyCode);
-  if(!ok){showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
+  // Check whether the lobby is still waiting or already active — route accordingly
+  let lobbyStatus=null;
+  try{
+    const token=await rtGetAuthToken();
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=status&code=eq.${encodeURIComponent(lobbyCode)}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const rows=await res.json();
+    lobbyStatus=Array.isArray(rows)?rows[0]?.status:null;
+  }catch(e){}
+  if(lobbyStatus==='active'){
+    const ok=await rtRejoinActiveLobby(lobbyCode);
+    if(!ok){showDisconnectModal('Could not rejoin — the game may have ended.');}
+  } else {
+    const ok=await rtJoinLobby(lobbyCode);
+    if(!ok){showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
+  }
 }
 
 let _rtVisibilityAbort=null;
@@ -7629,6 +7756,7 @@ goStep=function(name){
   if(name==='lobby-room')renderLobbyRoom();
   if(name==='multiplayer'){
     loadPublicLobbies();
+    checkForActiveGameRejoin();
     subscribeToLobbyList();
     const input=document.getElementById('lobbyNameInput');
     if(input)input.placeholder=currentUser?`${currentUser}'s Lobby`:"My Lobby";
@@ -7968,6 +8096,60 @@ async function joinLobbyById(lobbyId,code){
   if(!currentUser){choosePath('join');return;}
   const ok=await rtJoinLobby(code);
   if(!ok)return;
+}
+
+// ── IN-PROGRESS REJOIN CHECK ──────────────────────────────────
+// Looks for a lobby_players row owned by the current user in an active lobby.
+// If found, renders a distinct "Rejoin" card above the open-lobbies list.
+// The public open-lobbies list is never modified — strangers cannot browse into
+// someone else's live game; this card is strictly for lobbies the user was in.
+async function checkForActiveGameRejoin(){
+  const banner=document.getElementById('rejoinBanner');
+  if(!banner)return;
+  banner.style.display='none';
+  banner.innerHTML='';
+  if(!currentUserId)return; // signed-out / guest not yet initialised
+  if(SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{
+    const token=await rtGetAuthToken();
+    // Find any lobby_players row for this user where the lobby is active
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id,score,lives,lobbies!inner(id,code,lobby_name,host_username,format,mode,status)&user_id=eq.${encodeURIComponent(currentUserId)}&lobbies.status=eq.active&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    if(!res.ok)return;
+    const rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length)return;
+    const row=rows[0];
+    const lobby=row.lobbies;
+    if(!lobby)return;
+    const fmt=lobby.format||'mc';
+    const mode=lobby.mode||'race';
+    const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character','char-mc':'Name Char (MC)'}[fmt]||fmt;
+    const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
+    const lobbyLabel=lobby.lobby_name||(lobby.host_username?`${lobby.host_username}'s Lobby`:lobby.code);
+    banner.innerHTML=`
+      <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-player-play" style="font-size:12px"></i> Game in progress
+      </div>
+      <div class="rejoin-card">
+        <div class="rejoin-card-pulse"></div>
+        <div class="lobby-list-info">
+          <div class="lobby-list-host">${lobbyLabel}</div>
+          <div class="lobby-list-meta">
+            <span class="lobby-list-badge">${fmtEmoji[fmt]||'🎮'} ${fmtName}</span>
+            <span class="lobby-list-badge">${modeEmoji[mode]||'🏁'} ${modeName}</span>
+            <span class="lobby-list-badge">⚡ Score ${row.score||0}</span>
+          </div>
+        </div>
+        <button class="rejoin-btn" onclick="rtRejoinActiveLobby('${lobby.code}')">
+          <i class="ti ti-refresh" style="font-size:13px"></i> Rejoin
+        </button>
+      </div>`;
+    banner.style.display='block';
+  }catch(e){
+    console.warn('checkForActiveGameRejoin error:',e);
+  }
 }
 
 function renderLobbyRoom(){
