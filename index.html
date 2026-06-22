@@ -9986,6 +9986,9 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
     if(name===currentUser)score++;
     renderMPHUD();
     renderMPScoreboard(); // update scoreboard immediately so everyone sees the new score
+    // Clear the buzz area immediately so no other player can buzz in after the round is won
+    const grid=document.getElementById('mpAnswersGrid');
+    if(grid){grid.innerHTML='';grid.style.cssText='';}
     srShowFeedback(true,name,correctAns,userAns,false,buzzRatio);
     const winner=lobbyPlayers.find(lp=>lp.score>=srTargetScore);
     if(winner){
@@ -10067,6 +10070,16 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
     const mpQText=document.getElementById('mpQuestionText');
     const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
     mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+    // Show the flag button now that the answer is visible — same window as mpShowFeedback
+    const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
+    const rb=document.getElementById('mpReportFlagBtn');
+    if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;rb.style.opacity='1';rb.style.pointerEvents='';}
+    mpFlagWindowOpen=true;
+    clearTimeout(mpFlagWindowTimer);
+    mpFlagWindowTimer=setTimeout(()=>{
+      mpFlagWindowOpen=false;
+      if(rb&&!rb.disabled){rb.style.opacity='.4';rb.style.pointerEvents='none';}
+    },4000);
     applyTheme();
   }
 }
@@ -10084,6 +10097,16 @@ function srRoundEnd(winner,correctAns){
   const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
   mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${ans}</div>${subBy}`;
   document.getElementById('mpAnswersGrid').innerHTML='';
+  // Show the flag button now that the answer is revealed
+  const rwRE=document.getElementById('mpReportWrap');if(rwRE)rwRE.style.display='block';
+  const rbRE=document.getElementById('mpReportFlagBtn');
+  if(rbRE){rbRE.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rbRE.disabled=false;rbRE.style.opacity='1';rbRE.style.pointerEvents='';}
+  mpFlagWindowOpen=true;
+  clearTimeout(mpFlagWindowTimer);
+  mpFlagWindowTimer=setTimeout(()=>{
+    mpFlagWindowOpen=false;
+    if(rbRE&&!rbRE.disabled){rbRE.style.opacity='.4';rbRE.style.pointerEvents='none';}
+  },4000);
   mpStartAutoNext(()=>{
     if(!isHost)return;
     qIndex++;
