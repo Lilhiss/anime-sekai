@@ -946,6 +946,15 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .lobby-count-label{font-size:11px;color:var(--muted);font-weight:700;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:2px 9px;text-transform:none;letter-spacing:0}
 .lobby-refresh-btn{font-size:11px;font-weight:800;color:var(--muted);background:var(--bg2);border:1px solid var(--border2);padding:5px 11px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
 .lobby-refresh-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ── HOST PAUSE BANNER (shown mid-game when host disconnects) ── */
+.host-pause-banner{display:none;align-items:center;gap:12px;background:rgba(251,146,60,.08);border:1.5px solid rgba(251,146,60,.45);border-radius:14px;padding:13px 16px;backdrop-filter:blur(10px)}
+.host-pause-banner.visible{display:flex}
+.host-pause-icon{font-size:20px;flex-shrink:0;animation:pulseIcon 1.2s ease-in-out infinite}
+.host-pause-text{flex:1;min-width:0}
+.host-pause-label{font-size:12px;font-weight:800;color:#fb923c;letter-spacing:.05em;text-transform:uppercase}
+.host-pause-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.host-pause-timer{font-family:'Lilita One',cursive;font-size:28px;color:#fb923c;flex-shrink:0;letter-spacing:.02em;min-width:32px;text-align:right;line-height:1}
+.host-pause-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
 /* ── IN-PROGRESS REJOIN CARD ── */
 .rejoin-card{background:linear-gradient(120deg,var(--accent-soft),var(--bg3));border:2px solid var(--accent);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .22s;backdrop-filter:blur(10px)}
 .rejoin-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 25%,transparent)}
@@ -1772,6 +1781,15 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div class="timer-wrap" id="mpTimerWrap"><div class="timer-bar" id="mpTimerBar"></div></div>
         <!-- Hot Potato turn banner — only visible in potato mode -->
         <div id="hpTurnBanner" style="display:none"></div>
+        <!-- Host-disconnect pause banner — shown mid-game during the 20s grace period -->
+        <div class="host-pause-banner" id="hostPauseBanner">
+          <div class="host-pause-icon">🔌</div>
+          <div class="host-pause-text">
+            <div class="host-pause-label">Host disconnected</div>
+            <div class="host-pause-sub" id="hostPauseSub">Waiting to reconnect…</div>
+          </div>
+          <div class="host-pause-timer" id="hostPauseTimer">20</div>
+        </div>
         <div class="q-card">
           <div class="q-card-top-meta">
             <span class="q-card-meta-pill" id="mpQBadge"></span>
@@ -7003,6 +7021,8 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'host_transferred'},({payload})=>{
     lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
+    // Always hide the pause banner — transfer resolves the grace period regardless of reason
+    hideHostPauseBanner();
     if(currentUser===payload.newHost){
       isHost=true;
       // Resume the timer from wherever the outgoing host was — not a fresh 10 min.
@@ -7021,6 +7041,9 @@ function rtSubscribe(lobbyId){
         showLobbyToast(`👑 Host returned — they've reclaimed the lobby.`,'warning');
       } else if(payload.reason==='left'){
         showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+      } else if(payload.reason==='grace_expired'){
+        showLobbyToast(`👑 You're now the host — requesting game state…`,'warning');
+        // request_game_state was already broadcast in startHostGracePeriod; no duplicate needed
       } else {
         // Manual transfer
         showLobbyToast(`👑 You're now the host!`,'warning');
@@ -7033,6 +7056,8 @@ function rtSubscribe(lobbyId){
       isHost=false;
       if(payload.reason==='left'){
         showLobbyToast(`👑 ${payload.originalHostName||'The host'} left — ${payload.newHost} is now the host.`,'warning');
+      } else if(payload.reason==='grace_expired'){
+        showLobbyToast(`👑 ${payload.originalHostName||'The host'} disconnected — ${payload.newHost} is now the host.`,'warning');
       } else if(payload.reason==='reclaim'){
         showLobbyToast(`👑 ${payload.newHost} has reclaimed host.`,'warning');
       }
@@ -7143,6 +7168,123 @@ function rtSubscribe(lobbyId){
     if(p)p.connected=false;
     renderMPScoreboard();
   });
+  rtChannel.on('broadcast',{event:'player_reconnected'},({payload})=>{
+    // Clear offline indicator on the scoreboard for the returning player.
+    const p=lobbyPlayers.find(p=>p.userId===payload.userId||p.name===payload.name);
+    if(p)p.connected=true;
+    renderMPScoreboard();
+    // If this was the host reconnecting within the grace window, cancel the election.
+    const wasHost=p?.isHost||false;
+    if(wasHost&&(hostGraceTimer||hostGraceCountdown)){
+      cancelHostGracePeriod();
+      showLobbyToast(`🔄 Host reconnected — game continues!`,'warning');
+    }
+  });
+  // ── STATE SNAPSHOT (Step 4) ────────────────────────────────────────────────
+  // A client that just rejoined mid-game (rtRejoinActiveLobby) or was just
+  // elected host (startHostGracePeriod) sends request_game_state to ask for
+  // a full picture of the current question and all mode variables.  Only the
+  // host responds — mirroring the existing if(isHost) pattern throughout.
+  rtChannel.on('broadcast',{event:'request_game_state'},({payload})=>{
+    if(!isHost)return;
+    if(!currentQData)return; // no question showing yet — rejoiner will wait for next_question
+    // Compute how much time is left on the current question so the rejoining
+    // client's timer bar reflects reality rather than resetting to 100 %.
+    const snapRemainingTime=Math.max(0,timeLeft);
+    rtChannel.send({type:'broadcast',event:'game_state_snapshot',payload:{
+      // Question
+      qIndex,
+      currentQData,
+      snapRemainingTime,
+      // Format / mode / topic
+      selectedFormat,
+      selectedMode,
+      lobbyMode,
+      lobbyTopics,
+      lobbyIsGeneral,
+      // Scoring targets
+      srTargetScore,
+      mpRaceTarget,
+      selectedLives,
+      // Hot Potato
+      hpLives,
+      hpFuseMin,
+      hpFuseMax,
+      hpActiveIdx,
+      hpTurnOrder,
+      // Tiebreaker
+      mpTiebreakerPlayers,
+      // Let the receiver know who the snapshot is for (informational only)
+      forUserId:payload.userId||null
+    }});
+  });
+
+  // Receiving end: a game-state snapshot arrived (we are the rejoining client or
+  // newly elected host).  Apply every field then render the live question.
+  // Exception: Slow Reveal mid-reveal state cannot be reconstructed from a
+  // snapshot (character-by-character animation + buzz-in state are ephemeral).
+  // In that case, drop the client into a visible spectator state rather than
+  // half-rendering a broken question.
+  rtChannel.on('broadcast',{event:'game_state_snapshot'},({payload})=>{
+    // Ignore if we are already the host (we sent this ourselves, or became host
+    // between sending the request and receiving the echo).
+    if(isHost)return;
+
+    // Apply all mode/topic/scoring fields
+    if(payload.selectedFormat)  { selectedFormat=payload.selectedFormat;  lobbyFormat=payload.selectedFormat; }
+    if(payload.selectedMode)    { selectedMode=payload.selectedMode;      lobbyMode=payload.lobbyMode||payload.selectedMode; }
+    if(payload.lobbyMode)       lobbyMode=payload.lobbyMode;
+    if(Array.isArray(payload.lobbyTopics))  lobbyTopics=payload.lobbyTopics;
+    if(typeof payload.lobbyIsGeneral==='boolean') lobbyIsGeneral=payload.lobbyIsGeneral;
+    if(payload.srTargetScore!=null)  srTargetScore=payload.srTargetScore;
+    if(payload.mpRaceTarget!=null)   mpRaceTarget=payload.mpRaceTarget;
+    if(payload.selectedLives!=null)  selectedLives=payload.selectedLives;
+    if(payload.hpLives!=null)        hpLives=payload.hpLives;
+    if(payload.hpFuseMin!=null)      hpFuseMin=payload.hpFuseMin;
+    if(payload.hpFuseMax!=null)      hpFuseMax=payload.hpFuseMax;
+    if(payload.hpActiveIdx!=null)    hpActiveIdx=payload.hpActiveIdx;
+    if(Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length) hpTurnOrder=payload.hpTurnOrder;
+    if(Array.isArray(payload.mpTiebreakerPlayers)) mpTiebreakerPlayers=payload.mpTiebreakerPlayers;
+    if(payload.qIndex!=null)         qIndex=payload.qIndex;
+
+    // Slow Reveal: we cannot reconstruct the character-reveal animation or buzz-in
+    // state from a snapshot.  Show a spectator holding message instead and wait for
+    // the host to advance to the next round naturally.
+    if(lobbyMode==='slowreveal'){
+      document.getElementById('mpQLoading').style.display='none';
+      document.getElementById('mpQCardFeedback').style.display='none';
+      document.getElementById('mpAnswersGrid').innerHTML='';
+      const qt=document.getElementById('mpQuestionText');
+      if(qt){
+        qt.style.display='block';
+        qt.innerHTML='<span style="color:var(--muted);font-size:15px;font-weight:700">⏳ Catching up — next round starts soon…</span>';
+      }
+      renderMPHUD();
+      renderMPScoreboard();
+      return;
+    }
+
+    // All other modes: apply the question and start the timer from the remaining
+    // time the host reported, not from the full question duration.
+    if(!payload.currentQData)return; // no question data — nothing to show
+    currentQData=payload.currentQData;
+
+    // Override questionStartTime so the local timer starts mid-flight.
+    // mpShowQuestion() calls questionStartTime=Date.now() internally, which would
+    // reset to 100 %.  We patch it back immediately after so the bar reflects reality.
+    const snapRemaining=typeof payload.snapRemainingTime==='number'?payload.snapRemainingTime:raceTimeLimit;
+    mpShowQuestion(currentQData, lobbyMode==='potato'?snapRemaining:null);
+
+    // Back-calculate questionStartTime so the draining interval sees the right elapsed time.
+    // mpShowQuestion set questionStartTime=Date.now(), so we subtract the already-elapsed portion.
+    const alreadyElapsed=raceTimeLimit-snapRemaining;
+    questionStartTime=Date.now()-alreadyElapsed*1000;
+    timeLeft=snapRemaining;
+
+    renderMPHUD();
+    renderMPScoreboard();
+  });
+
   rtChannel.on('broadcast',{event:'player_quit'},({payload})=>{
     // Mid-game quit — keep the player visible but mark them as quit
     const p=lobbyPlayers.find(p=>p.name===payload.name);
@@ -7249,6 +7391,17 @@ function rtSubscribe(lobbyId){
         const offlinePlayer=lobbyPlayers.find(p=>p.userId===goneUserId);
         if(offlinePlayer)offlinePlayer.connected=false;
         if(rtChannel)rtChannel.send({type:'broadcast',event:'player_disconnected',payload:{name:goneUsername,userId:goneUserId}});
+
+        // If the disconnected player was the host, start the 20s grace period.
+        // The grace period is run on every remaining connected client so that if
+        // the first-in-line client is also gone, the next one can take over.
+        const wasHost=lobbyPlayers.find(p=>p.userId===goneUserId)?.isHost||false;
+        if(wasHost){
+          const inMpQuiz=document.getElementById('page-mp-quiz').classList.contains('active');
+          if(inMpQuiz){
+            startHostGracePeriod(goneUsername,goneUserId,lid);
+          }
+        }
 
         // Empty-lobby cleanup mid-game is row-based, not presence-based — everyone
         // being briefly offline must not delete the lobby out from under them. This
@@ -7783,6 +7936,11 @@ let mpFlagWindowTimer=null;        // setTimeout that closes the flag window
 let mpPreVoidSnapshot={};          // {name:{score,lives}} snapshot before question resolved
 let mpPlayerFlagWindows={};        // rolling 3-slot flag history per player
 
+// Host-disconnect grace period (Step 3)
+// hostGraceTimer   — the 20s setTimeout that fires the election if the host doesn't return
+// hostGraceCountdown — the 1s setInterval that ticks the visible pause banner countdown
+let hostGraceTimer=null,hostGraceCountdown=null;
+
 let heartbeatInterval=null;
 function startHeartbeat(){
   stopHeartbeat();
@@ -7993,6 +8151,104 @@ function showLobbyToast(msg,type='warning'){
 }
 const fmtEmoji={mc:'📋',type:'⌨️',img:'🖼️',char:'👤'};
 const modeEmoji={race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
+
+// ── HOST GRACE PERIOD HELPERS (Step 3) ───────────────────────────────────────
+const HOST_GRACE_SECONDS=20;
+
+function showHostPauseBanner(secondsLeft){
+  const banner=document.getElementById('hostPauseBanner');
+  const timerEl=document.getElementById('hostPauseTimer');
+  const subEl=document.getElementById('hostPauseSub');
+  if(!banner)return;
+  if(timerEl)timerEl.textContent=secondsLeft;
+  if(subEl)subEl.textContent='Waiting to reconnect… If they don\'t return, a new host will be chosen.';
+  banner.classList.add('visible');
+}
+function hideHostPauseBanner(){
+  const banner=document.getElementById('hostPauseBanner');
+  if(banner)banner.classList.remove('visible');
+  clearTimeout(hostGraceTimer);
+  clearInterval(hostGraceCountdown);
+  hostGraceTimer=null;
+  hostGraceCountdown=null;
+}
+
+// Called by the presence:leave active branch when the disconnected player was the host.
+// Starts the 20s visible pause countdown; if the host doesn't return, runs self-election.
+function startHostGracePeriod(goneHostName,goneHostUserId,lid){
+  // Deduplicate — only one grace period runs at a time
+  clearTimeout(hostGraceTimer);
+  clearInterval(hostGraceCountdown);
+
+  let secsLeft=HOST_GRACE_SECONDS;
+  showHostPauseBanner(secsLeft);
+
+  hostGraceCountdown=setInterval(()=>{
+    secsLeft--;
+    const timerEl=document.getElementById('hostPauseTimer');
+    if(timerEl){
+      timerEl.textContent=secsLeft;
+      // Turn red for the last 5 seconds
+      timerEl.classList.toggle('urgent',secsLeft<=5);
+    }
+    if(secsLeft<=0)clearInterval(hostGraceCountdown);
+  },1000);
+
+  hostGraceTimer=setTimeout(async()=>{
+    clearInterval(hostGraceCountdown);
+    hideHostPauseBanner();
+    // Grace period expired — run self-election (same stable-order pattern as pre-game)
+    if(!currentLobbyId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+    try{
+      const token=await rtGetAuthToken();
+      const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`};
+      // Fetch remaining connected rows ordered by joined_at (stable election order)
+      const pRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${currentLobbyId}&connected=eq.true&order=joined_at.asc`,
+        {headers}
+      );
+      const pData=await pRes.json();
+      const remaining=(Array.isArray(pData)?pData:[]).filter(p=>p.user_id!==goneHostUserId);
+      if(!remaining.length)return; // nobody left to elect
+      const next=remaining[0];
+      if(next.user_id!==currentUserId)return; // not our turn — the right client will claim it
+      // Claim host: update both lobby_players and lobbies (host_id must be correct for the
+      // reclaim-check in rtJoinLobby to work if the original host rejoins later as a player)
+      const patchHeaders={...headers,'Content-Type':'application/json','Prefer':'return=minimal'};
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}`,
+        {method:'PATCH',headers:patchHeaders,body:JSON.stringify({is_host:false})});
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`,
+        {method:'PATCH',headers:patchHeaders,body:JSON.stringify({is_host:true})});
+      await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${currentLobbyId}`,
+        {method:'PATCH',headers:patchHeaders,body:JSON.stringify({host_id:currentUserId,host_username:currentUser})});
+      isHost=true;
+      lobbyPlayers.forEach(p=>{p.isHost=(p.userId===currentUserId);});
+      // Broadcast so every remaining client updates their UI and knows who to watch for next_question
+      if(rtChannel){
+        rtChannel.send({type:'broadcast',event:'host_transferred',payload:{
+          newHost:currentUser,
+          reason:'grace_expired',
+          originalHostName:goneHostName||'The host'
+        }});
+      }
+      showLobbyToast(`👑 You're now the host!`,'warning');
+      // The new host needs a game-state snapshot before driving — Step 4 will handle this
+      // by responding to request_game_state. For now, request our own state from peers.
+      setTimeout(()=>{
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'request_game_state',payload:{userId:currentUserId,username:currentUser}});
+      },400);
+    }catch(e){console.error('[hostGrace] election error',e);}
+  },HOST_GRACE_SECONDS*1000);
+}
+
+// Cancels a running grace period when the host reconnects within the window.
+function cancelHostGracePeriod(){
+  clearTimeout(hostGraceTimer);
+  clearInterval(hostGraceCountdown);
+  hostGraceTimer=null;
+  hostGraceCountdown=null;
+  hideHostPauseBanner();
+}
 
 function refreshLobbyList(){
   const refreshIcon=document.getElementById('lobbyRefreshIcon');
@@ -8763,6 +9019,7 @@ function goProfile(){
 async function leaveLobbyRoom(){
   stopHeartbeat();
   clearLobbyTimer();
+  cancelHostGracePeriod(); // tidy up any running grace period on explicit leave
   intentionalLeave=true;
   currentLobbyId=null;
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
@@ -9031,6 +9288,7 @@ function renderMPScoreboard(){
 async function mpQuitGame(){
   intentionalLeave=true;
   stopHeartbeat();
+  cancelHostGracePeriod(); // tidy up any running grace period on explicit quit
   // Explicit quit deletes the row immediately — unlike an accidental disconnect (see
   // the presence:leave handler), there's no ambiguity about returning. Without this,
   // the quitter's row would survive and other clients' presence:leave handler would
