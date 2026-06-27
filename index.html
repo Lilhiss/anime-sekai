@@ -6993,12 +6993,21 @@ function rtSubscribe(lobbyId){
     if(isHost)return;
     qIndex=payload.qIndex;
     srClearReveal();
+    // Snapshot scores at the start of each new SR round so that a void can roll
+    // back to exactly here, not to a stale snapshot from a previous round.
+    // Also reset flag state so a window from the previous round can't carry over.
+    mpSnapshotScores();
+    mpFlagsThisQuestion=new Set();
+    mpFlagWindowOpen=false;
+    clearTimeout(mpFlagWindowTimer);
     document.getElementById('mpQCardFeedback').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpQLoading').style.display='flex';
     const qCard=document.querySelector('#page-mp-quiz .q-card');
     if(qCard)qCard.classList.remove('answered');
+    // Also hide the flag button between rounds
+    const rwNR=document.getElementById('mpReportWrap');if(rwNR)rwNR.style.display='none';
     renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'game_cancelled'},()=>{
@@ -9791,6 +9800,12 @@ let srPostRevealTimer=null;
 const SR_CHAR_INTERVAL=60;
 
 async function srHostFetchAndBroadcast(){
+  // Snapshot scores at the start of each SR round so a void rolls back to here,
+  // not to a stale snapshot from a previous round. Reset flag state too.
+  mpSnapshotScores();
+  mpFlagsThisQuestion=new Set();
+  mpFlagWindowOpen=false;
+  clearTimeout(mpFlagWindowTimer);
   document.getElementById('mpQLoading').style.display='flex';
   document.getElementById('mpQuestionText').style.display='none';
   const qData=await fetchQuestion();
@@ -10065,21 +10080,15 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   // Only complete the reveal and show the answer on a correct buzz.
   // On a wrong answer the char animation resumes (handled in srApplyBuzzResult)
   // and the answer stays hidden until srRoundEnd fires.
+  // NOTE: the flag window is intentionally NOT opened here. A correct buzz proves
+  // the question was answerable — losers flagging at this moment would be abusing
+  // void to erase a legitimate win. Flagging is only available in srRoundEnd (the
+  // "no one got it" path) where all players see the reveal together with no stakes.
   if(correct){
     srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
     const mpQText=document.getElementById('mpQuestionText');
     const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
     mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
-    // Show the flag button now that the answer is visible — same window as mpShowFeedback
-    const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
-    const rb=document.getElementById('mpReportFlagBtn');
-    if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;rb.style.opacity='1';rb.style.pointerEvents='';}
-    mpFlagWindowOpen=true;
-    clearTimeout(mpFlagWindowTimer);
-    mpFlagWindowTimer=setTimeout(()=>{
-      mpFlagWindowOpen=false;
-      if(rb&&!rb.disabled){rb.style.opacity='.4';rb.style.pointerEvents='none';}
-    },4000);
     applyTheme();
   }
 }
