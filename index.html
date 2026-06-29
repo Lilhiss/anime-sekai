@@ -1744,10 +1744,10 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
                 </div>
               </div>
               <div id="gsVoidingSection" style="margin-top:14px">
-                <div class="gs-label">Question Voiding</div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-                  <button id="gsVoidingToggle" class="gs-opt" onclick="gsToggleVoiding()" style="min-width:52px;padding:6px 14px;font-size:13px" aria-pressed="false">Off</button>
-                  <span style="font-size:12px;color:var(--muted);line-height:1.4">Allow players to flag and void bad questions during the game.</span>
+                <hr style="border:none;border-top:1px solid var(--border2);margin-bottom:14px">
+                <div class="toggle-row" style="padding:0">
+                  <span class="toggle-label" style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding <span style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-top:2px">Allow players to flag and void bad questions.</span></span>
+                  <button id="gsVoidingToggle" class="tog" onclick="gsToggleVoiding()" aria-pressed="false"></button>
                 </div>
               </div>
             </div>
@@ -7105,7 +7105,7 @@ function rtSubscribe(lobbyId){
     if(payload.voidingEnabled!=null){
       voidingEnabled=payload.voidingEnabled;
       const btn=document.getElementById('gsVoidingToggle');
-      if(btn){btn.textContent=voidingEnabled?'On':'Off';btn.classList.toggle('selected',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
+      if(btn){btn.classList.toggle('on',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
     }
     if(typeof gsSyncUI==='function')gsSyncUI();
     const label=document.getElementById('lobbySettingsLabel');
@@ -8787,7 +8787,7 @@ function gsSetRaceTargetCustom(el){const v=parseInt(el.value);if(v>0){mpRaceTarg
 function gsToggleVoiding(){
   voidingEnabled=!voidingEnabled;
   const btn=document.getElementById('gsVoidingToggle');
-  if(btn){btn.textContent=voidingEnabled?'On':'Off';btn.classList.toggle('selected',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
+  if(btn){btn.classList.toggle('on',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
   gsAfterChange();
 }
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
