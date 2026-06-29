@@ -7758,8 +7758,22 @@ function mpShowCountdown(onDone,hpFirstHolder){
   if(cancelBtn)cancelBtn.style.display=isHost?'inline-flex':'none';
   // HP gets 5 seconds, everyone else gets 3
   let count=isHP?5:3;
-  numEl.textContent=count;lblEl.textContent='Get ready!';
+  numEl.textContent=count;
   numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='';
+  // HP: show holder info immediately with fade-in
+  if(isHP){
+    lblEl.style.transition='none';lblEl.style.opacity='0';
+    if(isHolder){
+      overlay.classList.add('hp-holder');
+      if(potatoEl)potatoEl.style.display='block';
+      lblEl.innerHTML='<span style="font-size:20px;font-weight:900;letter-spacing:.02em">YOU\'RE HOLDING IT FIRST!</span>';
+    } else {
+      lblEl.innerHTML=`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
+    }
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{lblEl.style.transition='opacity .5s ease';lblEl.style.opacity='1';}));
+  } else {
+    lblEl.textContent='Get ready!';
+  }
   clearInterval(_countdownTick);
   _countdownTick=setInterval(()=>{
     count--;
@@ -7773,19 +7787,6 @@ function mpShowCountdown(onDone,hpFirstHolder){
     }
     numEl.textContent=count;
     numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
-    // HP: reveal holder on beat 4 (4 seconds to absorb it before launch)
-    if(isHP&&count===4){
-      lblEl.style.transition='opacity .5s ease';lblEl.style.opacity='0';
-      if(isHolder){
-        // Holder sees the whole screen go orange
-        overlay.classList.add('hp-holder');
-        if(potatoEl)potatoEl.style.display='block';
-        lblEl.innerHTML='<span style="font-size:20px;font-weight:900;letter-spacing:.02em">YOU\'RE HOLDING IT FIRST!</span>';
-      } else {
-        lblEl.innerHTML=`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
-      }
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{lblEl.style.opacity='1';}));
-    }
   },1000);
 }
 
@@ -9396,7 +9397,9 @@ function renderMPScoreboard(){
     const rightCol=isHP||isSurvival
       ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
-    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}<div class="mp-score-avatar" style="background:${p.color};color:#fff;${p.eliminated||hasQuit?'opacity:.4':''}">${p.name[0].toUpperCase()}</div><div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}${offlineLabel}</div>${wrongAttempt}</div>${rightCol}`;
+    const scoreboardAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),28);
+    const scoreboardAvatarStyled=scoreboardAvatarEl.replace('class="lobby-player-avatar"',`class="mp-score-avatar" style="${p.eliminated||hasQuit?'opacity:.4':''}"`);
+    row.innerHTML=`${isActive?'<div style="font-size:13px">🥔</div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}${scoreboardAvatarStyled}<div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}${offlineLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
 }
@@ -9886,7 +9889,9 @@ function mpEndGame(){
       ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
       :`<div class="lb-score">${p.score} pts</div>`;
     const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):(getRank(p.score).emoji+' '+getRank(p.score).title);
-    row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${p.color};color:#fff;width:36px;height:36px;font-size:15px;${p.eliminated?'opacity:.5':''}">${p.name[0].toUpperCase()}</div><div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
+    const recapAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),36);
+    const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar"','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':'')+'"');
+    row.innerHTML=`<div class="standing-pos">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
   if(iWon)launchConfetti();
