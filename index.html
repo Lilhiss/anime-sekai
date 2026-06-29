@@ -7775,6 +7775,7 @@ function mpShowCountdown(onDone,hpFirstHolder){
     numEl.style.animation='none';numEl.offsetHeight;numEl.style.animation='countPop .9s ease-out forwards';
     // HP: reveal holder on beat 4 (4 seconds to absorb it before launch)
     if(isHP&&count===4){
+      lblEl.style.transition='opacity .5s ease';lblEl.style.opacity='0';
       if(isHolder){
         // Holder sees the whole screen go orange
         overlay.classList.add('hp-holder');
@@ -7783,6 +7784,7 @@ function mpShowCountdown(onDone,hpFirstHolder){
       } else {
         lblEl.innerHTML=`<span style="font-weight:900">🥔 <span style="color:var(--accent)">${hpFirstHolder}</span> starts with the potato!</span>`;
       }
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{lblEl.style.opacity='1';}));
     }
   },1000);
 }
@@ -9506,7 +9508,7 @@ function mpAnswerMC(idx,el,qData){
   const correct=idx===qData.answer;
   const mpElapsed=(Date.now()-questionStartTime)/1000;
   const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):10;
-  if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
+  if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
   mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
 }
@@ -9550,6 +9552,7 @@ function mpCheckTypeAnswer(){
   const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
   if(isHP){
     const active=hpActivePlayer();
+    document.body.classList.remove('hp-my-turn');
     // Only a correct answer reaches here; life-loss on wrong answers happens in mpTimeOut
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
