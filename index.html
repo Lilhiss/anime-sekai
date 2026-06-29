@@ -5272,6 +5272,8 @@ async function loadQuestion(){
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
+  const _iw=document.getElementById('qImageWrap');const _ie=document.getElementById('qImage');
+  if(_iw){_iw.style.display='none';}if(_ie){_ie.src='';}
   const qCard=document.querySelector('#page-quiz .q-card');
   if(qCard){qCard.classList.remove('type-mode','shake','answered');}
   renderHUD();
@@ -6935,6 +6937,8 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQLoading').style.display='flex';
+    const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
+    if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.src='';}
     const mpQCard=document.querySelector('#page-mp-quiz .q-card');
     if(mpQCard)mpQCard.classList.remove('answered');
     if(isHost)mpHostFetchAndBroadcast();
@@ -7127,7 +7131,9 @@ function rtSubscribe(lobbyId){
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
+    if(!isHost&&payload.topicScrollTop!=null)gsTopicScrollTarget=payload.topicScrollTop;
     if(payload.topicSub!==undefined&&payload.topicSub!==gsTopicSub){gsTopicSub=payload.topicSub;gsBuildTopicContent();}
+    if(!isHost&&payload.topicScrollTop!=null){const _l=document.getElementById('gsTopicList');if(_l)_l.scrollTop=payload.topicScrollTop;}
     if(payload.voidingEnabled!=null){
       voidingEnabled=payload.voidingEnabled;
       const btn=document.getElementById('gsVoidingToggle');
@@ -7695,6 +7701,8 @@ function mpResetQuestionCard(){
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQCardFeedback').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
+  const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
+  if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.src='';}
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
   if(mpQCard)mpQCard.classList.remove('answered');
 }
@@ -8622,7 +8630,7 @@ function openHowToPlay(){
   applyTheme();
 }
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
-let gsActiveTab='format',gsTopicSub='general';
+let gsActiveTab='format',gsTopicSub='general',gsTopicScrollTarget=0;
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
@@ -8631,7 +8639,8 @@ function broadcastLobbySettings(changing){
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:isHP?hpLives:isSurvival?selectedLives:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled});
   if(rtChannel){
-    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled};
+    const _tsl=document.getElementById('gsTopicList');
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,topicScrollTop:_tsl?_tsl.scrollTop:0,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled};
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -8840,6 +8849,16 @@ function gsBuildTopicContent(){
     const ph=gsTopicSub==='anime'?'Search anime…':'Search genres…';
     content.innerHTML=`<div class="gs-topic-search"><i class="ti ti-search"></i><input id="gsTopicSearch" type="text" placeholder="${ph}" oninput="gsRenderTopicList()"></div><div class="gs-topic-list" id="gsTopicList"><div class="gs-topic-empty">Loading…</div></div>`;
     gsEnsureTopics().then(()=>gsRenderTopicList());
+    if(isHost){
+      const list=document.getElementById('gsTopicList');
+      if(list){
+        let _scrollThrottle=null;
+        list.addEventListener('scroll',()=>{
+          if(_scrollThrottle)return;
+          _scrollThrottle=setTimeout(()=>{_scrollThrottle=null;broadcastLobbySettings(true);},80);
+        });
+      }
+    }
   }
 }
 function gsRenderTopicList(){
@@ -8854,6 +8873,7 @@ function gsRenderTopicList(){
     const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
     return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
   }).join('');
+  if(!isHost&&gsTopicScrollTarget)list.scrollTop=gsTopicScrollTarget;
 }
 function gsTopicToggle(key,emoji,name,type){
   lobbyIsGeneral=false;
@@ -9670,6 +9690,8 @@ async function mpLoadQuestion(){
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
+  const _mpIwLQ=document.getElementById('mpQImageWrap');const _mpIeLQ=document.getElementById('mpQImage');
+  if(_mpIwLQ){_mpIwLQ.style.display='none';}if(_mpIeLQ){_mpIeLQ.src='';}
   const mpQCardLQ=document.querySelector('#page-mp-quiz .q-card');
   if(mpQCardLQ)mpQCardLQ.classList.remove('answered');
   renderMPHUD();
