@@ -6623,7 +6623,7 @@ async function rtRejoinActiveLobby(code){
     showLobbyToast('⚠️ You weren\'t part of this game. Ask for a lobby code to join a new one.','danger');
     return false;
   }
-  // Mark connected=true on the existing row (Step 1 set it false on disconnect)
+  // Mark connected=true on the existing row
   try{
     await fetch(
       `${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}&user_id=eq.${encodeURIComponent(uid)}`,
@@ -6645,9 +6645,12 @@ async function rtRejoinActiveLobby(code){
   // Subscribe to realtime channel before refreshing players
   rtSubscribe(lobby.id);
   await rtRefreshPlayers(lobby.id,true);
-  // Broadcast reconnection so other clients clear the offline indicator
+  // Broadcast reconnection so other clients clear the offline/quit indicator
   try{
-    if(rtChannel)rtChannel.send({type:'broadcast',event:'player_reconnected',payload:{name:currentUser,userId:uid}});
+    if(rtChannel){
+      rtChannel.send({type:'broadcast',event:'player_reconnected',payload:{name:currentUser,userId:uid}});
+      rtChannel.send({type:'broadcast',event:'player_rejoined',payload:{name:currentUser,userId:uid}});
+    }
   }catch(e){}
   // Navigate straight to the quiz page (not the lobby room)
   lobbyInGame=true;
@@ -7238,6 +7241,14 @@ function rtSubscribe(lobbyId){
       showLobbyToast(`🔄 Host reconnected. Game continues!`,'warning');
     }
   });
+  rtChannel.on('broadcast',{event:'player_rejoined'},({payload})=>{
+    // A player who previously quit has rejoined. Clear their quit flag so they
+    // reappear as active on the scoreboard.
+    const p=lobbyPlayers.find(lp=>lp.userId===payload.userId||lp.name===payload.name);
+    if(p){p.quit=false;p.connected=true;}
+    renderMPScoreboard();
+    showLobbyToast(`🔄 ${payload.name} rejoined the game!`,'info');
+  });
   // ── STATE SNAPSHOT (Step 4) ────────────────────────────────────────────────
   // A client that just rejoined mid-game (rtRejoinActiveLobby) or was just
   // elected host (startHostGracePeriod) sends request_game_state to ask for
@@ -7437,9 +7448,10 @@ function rtSubscribe(lobbyId){
       // owns that decision (not handled here).
       if(lobbyStatus==='active'){
         try{
-          const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
+          const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,connected&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
           const chkData=await chkRes.json();
           if(!Array.isArray(chkData)||!chkData.length){console.log('[presence:leave] active — row already gone (explicit quit/leave), skipping');continue;}
+          if(chkData[0].connected===false){console.log('[presence:leave] active — row exists but connected=false (player quit), skipping');continue;}
         }catch(e){console.error('[presence:leave] active — error checking row',e);continue;}
 
         try{
@@ -7463,10 +7475,10 @@ function rtSubscribe(lobbyId){
 
         // Empty-lobby cleanup mid-game is row-based, not presence-based — everyone
         // being briefly offline must not delete the lobby out from under them. This
-        // only fires once every lobby_players row is actually gone (e.g. the last
-        // remaining player used an explicit Leave/Quit action).
+        // only fires once every connected lobby_players row is actually gone (i.e. the
+        // last remaining player disconnected or quit).
         try{
-          const remRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}`,{headers});
+          const remRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id&lobby_id=eq.${lid}&connected=eq.true`,{headers});
           const remData=await remRes.json();
           if(!Array.isArray(remData)||!remData.length){
             await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'DELETE',headers});
@@ -9369,18 +9381,15 @@ async function mpQuitGame(){
   intentionalLeave=true;
   stopHeartbeat();
   cancelHostGracePeriod(); // tidy up any running grace period on explicit quit
-  // Explicit quit deletes the row immediately — unlike an accidental disconnect (see
-  // the presence:leave handler), there's no ambiguity about returning. Without this,
-  // the quitter's row would survive and other clients' presence:leave handler would
-  // now mistake it for a connection drop and mark them "offline" instead of gone.
-  // NOTE: if the quitter was host, this does not promote a new host inline — that's
-  // intentionally left to the active-game host-election logic (landing separately)
-  // rather than duplicating a second election mechanism here.
+  // Mark connected=false rather than deleting the row, so the player can rejoin
+  // from the multiplayer lobby list. Other clients see the player_quit broadcast
+  // and mark them as quit on the scoreboard. The row is retained so
+  // checkForActiveGameRejoin() can surface the rejoin card.
   if(currentUserId&&currentLobbyId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     try{
       const token=await rtGetAuthToken();
-      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'}});
-    }catch(e){console.error('[mpQuitGame] error deleting row',e);}
+      await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({connected:false})});
+    }catch(e){console.error('[mpQuitGame] error patching row',e);}
   }
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'player_quit',payload:{name:currentUser}});
