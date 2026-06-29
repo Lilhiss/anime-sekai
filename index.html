@@ -1743,6 +1743,13 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
                   <input class="gs-opt" type="number" id="gsRaceTargetCustom" min="1" max="9999" placeholder="Custom" style="font-size:13px;font-weight:800;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;outline:none;text-align:center;padding:0" oninput="gsSetRaceTargetCustom(this)" onfocus="this.select()">
                 </div>
               </div>
+              <div id="gsVoidingSection" style="margin-top:14px">
+                <div class="gs-label">Question Voiding</div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                  <button id="gsVoidingToggle" class="gs-opt" onclick="gsToggleVoiding()" style="min-width:52px;padding:6px 14px;font-size:13px" aria-pressed="false">Off</button>
+                  <span style="font-size:12px;color:var(--muted);line-height:1.4">Allow players to flag and void bad questions during the game.</span>
+                </div>
+              </div>
             </div>
           </div>
           <div class="lobby-cs-row">
@@ -6488,6 +6495,7 @@ async function rtJoinLobby(code){
   if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
+  voidingEnabled=lobby.voiding_enabled===true;
   currentLobbyId=lobby.id;
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   rtSubscribe(lobby.id);
@@ -6604,6 +6612,7 @@ async function rtRejoinActiveLobby(code){
   lobbyMode=lobby.mode;     selectedMode=lobby.mode;
   if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
+  voidingEnabled=lobby.voiding_enabled===true;
   currentLobbyId=lobby.id;
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   // Subscribe to realtime channel before refreshing players
@@ -6925,7 +6934,10 @@ function rtSubscribe(lobbyId){
     if(!mpFlagWindowOpen)return; // window closed, ignore late flags
     if(mpFlagsThisQuestion.has(payload.name))return; // duplicate
     mpFlagsThisQuestion.add(payload.name);
-    mpUpdateFlagCountUI();
+    // Always record the flag for the rolling anti-abuse window regardless of voiding setting
+    mpRollingWindowRecord(payload.name,'flag');
+    // If voiding is disabled, the flag is a silent report only — never trigger a void
+    if(!voidingEnabled)return;
     const threshold=mpGetVoidThreshold();
     if(mpFlagsThisQuestion.size>=threshold){
       // Threshold met — void the question
@@ -7090,6 +7102,11 @@ function rtSubscribe(lobbyId){
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
+    if(payload.voidingEnabled!=null){
+      voidingEnabled=payload.voidingEnabled;
+      const btn=document.getElementById('gsVoidingToggle');
+      if(btn){btn.textContent=voidingEnabled?'On':'Off';btn.classList.toggle('selected',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
+    }
     if(typeof gsSyncUI==='function')gsSyncUI();
     const label=document.getElementById('lobbySettingsLabel');
     const hint=document.getElementById('lobbySettingsHint');
@@ -7936,6 +7953,7 @@ goStep=function(name){
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
 let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
+let voidingEnabled=false; // host-controlled toggle; off by default
 let srTargetScore=10; // Slow Reveal: first to this many points wins
 let mpRaceTarget=100; // Multiplayer Score Race: first to cross this score wins
 let mpTiebreakerPlayers=[]; // names of players in a tiebreaker round (empty = normal play)
@@ -8585,9 +8603,9 @@ function broadcastLobbySettings(changing){
   const isHP=lobbyMode==='potato';
   const isSurvival=lobbyMode==='survival';
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:isHP?hpLives:isSurvival?selectedLives:selectedQuestionLimit;
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc});
+  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled});
   if(rtChannel){
-    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax};
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled};
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -8766,6 +8784,12 @@ function gsSetHPFuse(){gsHPFuseCommit();}
 function gsSetTarget(n){srTargetScore=n;gsAfterChange();}
 function gsSetRaceTarget(n){mpRaceTarget=n;const c=document.getElementById('gsRaceTargetCustom');if(c)c.value='';gsAfterChange();}
 function gsSetRaceTargetCustom(el){const v=parseInt(el.value);if(v>0){mpRaceTarget=v;document.querySelectorAll('#gsRaceTargetGrid [data-rt]').forEach(b=>b.classList.remove('selected'));}gsAfterChange();}
+function gsToggleVoiding(){
+  voidingEnabled=!voidingEnabled;
+  const btn=document.getElementById('gsVoidingToggle');
+  if(btn){btn.textContent=voidingEnabled?'On':'Off';btn.classList.toggle('selected',voidingEnabled);btn.setAttribute('aria-pressed',voidingEnabled);}
+  gsAfterChange();
+}
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
 function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();}
 function gsRenderTopic(){
@@ -9030,6 +9054,7 @@ async function leaveLobbyRoom(){
   clearLobbyTimer();
   cancelHostGracePeriod(); // tidy up any running grace period on explicit leave
   intentionalLeave=true;
+  voidingEnabled=false; // reset so next lobby starts with the safe default
   currentLobbyId=null;
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
