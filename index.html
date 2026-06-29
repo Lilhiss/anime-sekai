@@ -9326,7 +9326,10 @@ function renderMPHUD(){
       }).join('');
       const eyebrow=isMyTurn?'🔥 Your turn. Type your answer!':'👀 Watching…';
       const sub=isMyTurn?'The potato is in your hands. Answer before it explodes!':'Waiting for '+active.name+' to answer…';
-      banner.innerHTML=`<div class="hp-turn-banner ${isMyTurn?'my-turn':'their-turn'}"><div class="hp-turn-potato${isMyTurn?'':' still'}">🥔</div><div class="hp-turn-body"><div class="hp-turn-eyebrow">${eyebrow}</div><div class="hp-turn-name">${active.name}</div><div class="hp-turn-sub">${sub}</div></div><div class="hp-turn-hearts">${heartsHTML}</div></div>`;
+      const activeAvatarHTML=active.avatar
+        ?`<img src="${active.avatar}" alt="${active.name}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;${isMyTurn?'animation:hpPotatoBob 1.6s ease-in-out infinite':''}">`
+        :`<div style="width:48px;height:48px;border-radius:50%;background:${active.color||'var(--accent)'};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:20px;flex-shrink:0;border:2px solid var(--accent);${isMyTurn?'animation:hpPotatoBob 1.6s ease-in-out infinite':''}">${active.name[0].toUpperCase()}</div>`;
+      banner.innerHTML=`<div class="hp-turn-banner ${isMyTurn?'my-turn':'their-turn'}">${activeAvatarHTML}<div class="hp-turn-body"><div class="hp-turn-eyebrow">${eyebrow}</div><div class="hp-turn-name">${active.name}</div><div class="hp-turn-sub">${sub}</div></div><div class="hp-turn-hearts">${heartsHTML}</div></div>`;
       banner.style.display='block';
     } else {
       banner.style.display='none';
