@@ -7127,6 +7127,7 @@ function rtSubscribe(lobbyId){
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.topics)lobbyTopics=payload.topics;
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
+    if(payload.topicSub!==undefined&&payload.topicSub!==gsTopicSub){gsTopicSub=payload.topicSub;gsBuildTopicContent();}
     if(payload.voidingEnabled!=null){
       voidingEnabled=payload.voidingEnabled;
       const btn=document.getElementById('gsVoidingToggle');
@@ -8630,7 +8631,7 @@ function broadcastLobbySettings(changing){
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:isHP?hpLives:isSurvival?selectedLives:selectedQuestionLimit;
   patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled});
   if(rtChannel){
-    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled};
+    const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled};
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -8816,7 +8817,7 @@ function gsToggleVoiding(){
   gsAfterChange();
 }
 function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
-function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();}
+function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();if(typeof broadcastLobbySettings==='function')broadcastLobbySettings(true);}
 function gsRenderTopic(){
   const content=document.getElementById('gsTopicContent');
   document.querySelectorAll('#lobbyOptionsPanel .gs-subtab').forEach(el=>el.classList.toggle('active',el.dataset.sub===gsTopicSub));
