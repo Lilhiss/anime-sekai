@@ -6924,7 +6924,7 @@ function rtSubscribe(lobbyId){
             if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
           }
           qIndex++;
-          if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
         });
@@ -6990,7 +6990,7 @@ function rtSubscribe(lobbyId){
       setTimeout(()=>{
         lobbyPlayers.forEach(p=>{if(!mpFlagsThisQuestion.has(p.name))mpRollingWindowRecord(p.name,'null');});
         qIndex++;
-        if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){
+        if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){
           rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});return;
         }
         rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});
@@ -9614,7 +9614,7 @@ function mpTimeOut(){
         else mpEndGame();return;
       }
       qIndex++;
-      if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){
+      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
@@ -9634,7 +9634,7 @@ function mpTimeOut(){
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
       qIndex++;
-      if(lobbyMode!=='race'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
       else{mpLoadQuestion();}
     });
