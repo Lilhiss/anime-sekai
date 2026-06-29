@@ -620,9 +620,13 @@ h1 .hi{color:var(--accent)}
 .gs-pane.active{display:block}
 .gs-pane[data-pane="format"].active,.gs-pane[data-pane="mode"].active,.gs-pane[data-pane="topic"].active{display:flex;flex-direction:column;flex:1}
 .gs-pane[data-pane="format"] .gs-grid,.gs-pane[data-pane="mode"] .gs-grid,.gs-pane[data-pane="topic"] .gs-grid{flex:1;grid-auto-rows:1fr}
-.gs-topic{display:grid;grid-template-columns:150px 1fr;gap:12px;flex:1;min-height:0}
-@media(max-width:620px){.gs-topic{grid-template-columns:1fr}}
-.gs-topic-subs{display:flex;flex-direction:column;gap:6px}
+.gs-topic{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+.gs-topic-subtabs{display:flex;gap:4px;background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;padding:4px}
+.gs-subtab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;background:none;border:none;border-radius:9px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:var(--muted);transition:background .15s,color .15s;white-space:nowrap}
+.gs-subtab:hover{color:var(--text)}
+.gs-subtab.active{background:var(--accent);color:#fff}
+.gs-subtab-badge{font-size:10px;font-weight:800;background:rgba(255,255,255,.25);border-radius:99px;padding:1px 6px;line-height:1.4}
+.gs-subtab:not(.active) .gs-subtab-badge{background:var(--border2);color:var(--accent)}
 .gs-subrow{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:11px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;color:var(--text);transition:all .15s;text-align:left}
 .gs-subrow:hover{border-color:var(--border2)}
 .gs-subrow.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
@@ -1166,7 +1170,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
   <div id="joiningOverlay" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:16px">
     <div class="spinner" style="width:46px;height:46px;border-width:4px"></div>
     <div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--text)">Joining lobby…</div>
-    <div style="font-size:13px;color:var(--muted)">Hang tight — getting you in!</div>
+    <div style="font-size:13px;color:var(--muted)">Hang tight, getting you in!</div>
   </div>
 
   <!-- LANDING -->
@@ -1185,13 +1189,13 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <!-- Placeholder logo. To use your own later: replace this div with <img src="your-logo.png" class="entry-logo-mark entry-logo-pop" alt="Anime Sekai"> -->
         <div class="entry-logo-mark entry-logo-pop" id="entryLogoMark">AS</div>
         <div class="entry-title">Anime <span>Sekai</span></div>
-        <div class="entry-sub">Name the character, guess the anime, climb the ranks — solo or against your friends.<br><b style="color:var(--text)">Jump in free, no sign-up needed!</b> 🎮</div>
+        <div class="entry-sub">Name the character, guess the anime, climb the ranks, solo or against your friends.<br><b style="color:var(--text)">Jump in free, no sign-up needed!</b> 🎮</div>
       </div>
       <div class="entry-cards">
         <div class="entry-card" tabindex="0" role="button" aria-label="Solo quiz" onclick="choosePath('solo')">
           <div class="entry-card-emoji">🧠</div>
           <div class="entry-card-title">Solo Quiz</div>
-          <div class="entry-card-desc">Just you vs. the questions — how far can you go?</div>
+          <div class="entry-card-desc">Just you vs. the questions. How far can you go?</div>
         </div>
         <div class="entry-card" tabindex="0" role="button" aria-label="Play with friends" onclick="choosePath('multiplayer')">
           <div class="entry-card-emoji">⚔️</div>
@@ -1203,7 +1207,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div class="daily-banner-icon">🗓️</div>
         <div class="daily-banner-text">
           <div class="daily-banner-title">Today's Quiz</div>
-          <div class="daily-banner-sub">8 questions, same for everyone today — one tap to play!</div>
+          <div class="daily-banner-sub">8 questions, same for everyone today. One tap to play!</div>
         </div>
         <span class="daily-banner-cta"><i class="ti ti-player-play" style="font-size:15px"></i> Play</span>
       </button>
@@ -1250,7 +1254,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <button class="action-btn primary" onclick="shareDaily(event)"><i class="ti ti-share" style="font-size:17px"></i> <span>Share result</span></button>
         <button class="action-btn secondary" onclick="goStep('landing')"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
       </div>
-      <div class="slide-in d4" style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">🗓️ One quiz a day — come back tomorrow for a fresh set!</div>
+      <div class="slide-in d4" style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">🗓️ One quiz a day. Come back tomorrow for a fresh set!</div>
       <div class="slide-in d4" style="text-align:center;margin-top:8px"><button class="ghost-btn" style="margin:0 auto;display:inline-flex" onclick="choosePath('solo')"><i class="ti ti-player-play" style="font-size:15px"></i> Play the full quiz</button></div>
     </div>
   </div>
@@ -1403,7 +1407,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div><label class="form-label">Password</label><div style="position:relative"><input class="form-input" id="regPass" type="password" autocomplete="new-password" placeholder="Choose a strong password" oninput="clearErr('regErr')" style="padding-right:40px"><button type="button" onclick="const i=document.getElementById('regPass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'<i class=\'ti ti-eye\'></i>':'<i class=\'ti ti-eye-off\'></i>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px"><i class="ti ti-eye"></i></button></div></div>        <div>
           <label class="form-label">Email <span class="optional-tag">Optional</span></label>
           <input class="form-input" id="regEmail" type="email" placeholder="you@example.com" oninput="clearErr('regErr')">
-          <div class="privacy-note" style="margin-top:8px"><i class="ti ti-shield-lock" style="font-size:15px"></i><span>Only used for password recovery. Skip it if you prefer — but lost passwords can't be recovered without one.</span></div>
+          <div class="privacy-note" style="margin-top:8px"><i class="ti ti-shield-lock" style="font-size:15px"></i><span>Only used for password recovery. Skip it if you prefer, but lost passwords can't be recovered without one.</span></div>
         </div>
         <div class="form-err" id="regErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="regErrMsg"></span></div>
         <button class="form-submit" id="regSubmitBtn" onclick="submitRegister()"><i class="ti ti-user-plus" style="font-size:16px"></i> Create Account</button>
@@ -1498,7 +1502,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid solo-mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure — just how many can you get right?</div></div>
+      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure, just how many can you get right?</div></div>
       <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
       <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
     </div>
@@ -1642,7 +1646,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="profile-section-title" style="margin:0"><i class="ti ti-settings"></i> Game Setup</div>
             <button class="ghost-btn" id="lobbyHowToBtn" onclick="openHowToPlay()" style="font-size:12px;padding:6px 11px;gap:5px"><i class="ti ti-info-circle" style="font-size:14px"></i> How to play</button>
           </div>
-          <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these — updating live</div>
+          <div class="lobby-options-readonly-note" id="lobbyOptionsLock"><i class="ti ti-lock" style="font-size:13px"></i> Only the host can change these (updating live)</div>
           <div class="gs-tabs" id="gsTabs">
             <button class="gs-tab" data-tab="format" onclick="gsTab('format')"><span class="gs-tab-name">Format</span><span class="gs-tab-val" id="gsValFormat">—</span></button>
             <button class="gs-tab" data-tab="mode" onclick="gsTab('mode')"><span class="gs-tab-name">Mode</span><span class="gs-tab-val" id="gsValMode">—</span></button>
@@ -1668,10 +1672,10 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             </div>
             <div class="gs-pane" data-pane="topic">
               <div class="gs-topic">
-                <div class="gs-topic-subs">
-                  <button class="gs-subrow" data-sub="general" onclick="gsTopicSubSwitch('general')"><span>General Anime</span><span class="gs-subrow-badge" id="gsSubBadgeGeneral"></span></button>
-                  <button class="gs-subrow" data-sub="anime" onclick="gsTopicSubSwitch('anime')"><span>Specific Anime</span><span class="gs-subrow-badge" id="gsSubBadgeAnime"></span></button>
-                  <button class="gs-subrow" data-sub="genre" onclick="gsTopicSubSwitch('genre')"><span>Genre</span><span class="gs-subrow-badge" id="gsSubBadgeGenre"></span></button>
+                <div class="gs-topic-subtabs">
+                  <button class="gs-subtab" data-sub="general" onclick="gsTopicSubSwitch('general')">🌐 General<span class="gs-subtab-badge" id="gsSubBadgeGeneral" style="display:none"></span></button>
+                  <button class="gs-subtab" data-sub="anime" onclick="gsTopicSubSwitch('anime')">🎬 Anime<span class="gs-subtab-badge" id="gsSubBadgeAnime" style="display:none"></span></button>
+                  <button class="gs-subtab" data-sub="genre" onclick="gsTopicSubSwitch('genre')">📚 Genre<span class="gs-subtab-badge" id="gsSubBadgeGenre" style="display:none"></span></button>
                 </div>
                 <div class="gs-topic-content" id="gsTopicContent"></div>
               </div>
@@ -1746,7 +1750,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               <div id="gsVoidingSection" style="margin-top:14px">
                 <hr style="border:none;border-top:1px solid var(--border2);margin-bottom:14px">
                 <div class="toggle-row" style="padding:0">
-                  <span class="toggle-label" style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding <span style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-top:2px">Allow players to flag and void bad questions.</span></span>
+                  <span class="toggle-label" style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding <button onclick="openVoidingInfoModal()" style="background:none;border:none;padding:0 0 0 3px;cursor:pointer;color:var(--muted);vertical-align:middle;line-height:1" title="How does voiding work?"><i class="ti ti-info-circle" style="font-size:14px"></i></button><span style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-top:2px">Allow players to void bad questions.</span></span>
                   <button id="gsVoidingToggle" class="tog" onclick="gsToggleVoiding()" aria-pressed="false"></button>
                 </div>
               </div>
@@ -2153,7 +2157,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div style="display:flex;justify-content:center" class="slide-in" id="adminUnlockBadgeWrap" style="display:none">
         <div id="adminUnlockBadge" style="display:none;align-items:center;gap:8px;background:color-mix(in srgb,var(--accent) 12%,transparent);border:1.5px solid var(--accent);border-radius:10px;padding:7px 14px;font-size:12px;font-weight:800;color:var(--accent)">
           <i class="ti ti-lock-open" style="font-size:14px"></i>
-          <span>Unlocked — <span id="adminUnlockTimer">10:00</span> remaining</span>
+          <span>Unlocked, <span id="adminUnlockTimer">10:00</span> remaining</span>
           <button onclick="_lockAdmin()" title="Lock now" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;margin-left:4px;display:flex;align-items:center;opacity:.7;transition:opacity .2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'"><i class="ti ti-lock" style="font-size:14px"></i></button>
         </div>
       </div>
@@ -2334,7 +2338,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-count-opt" onclick="selectQuestionCount(20,this)" data-qval="20"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">20</div><div style="font-size:10px;color:var(--muted)">Standard</div></div>
             <div class="q-count-opt" onclick="selectQuestionCount(30,this)" data-qval="30"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">30</div><div style="font-size:10px;color:var(--muted)">Long</div></div>
           </div>
-          <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom — type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
+          <input class="q-count-custom-input" id="questionCountCustom" type="number" min="1" max="50" placeholder="Custom, type any number (max 50)" oninput="onCustomQCount(this)" onfocus="onCustomQCountFocus(this)" style="width:100%">
         </div>
         <!-- Survival: pick number of lives -->
         <div id="gsLivesWrap" style="display:none">
@@ -2344,7 +2348,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-count-opt" onclick="selectSoloLives(5,this)" data-lval="5"><div style="font-family:'Lilita One',cursive;font-size:22px;color:var(--accent)">5</div><div style="font-size:10px;color:var(--muted)">Chill</div></div>
           </div>
           <input class="q-count-custom-input" id="livesCountCustom" type="number" min="1" max="20" placeholder="Custom lives (max 20)" oninput="onCustomSoloLives(this)" onfocus="onCustomSoloLivesFocus(this)" style="width:100%">
-          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely — every wrong answer or timeout costs one life. Survive as long as you can!</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely. Every wrong answer or timeout costs one life. Survive as long as you can!</div>
         </div>
         <!-- Score Race: pick target score -->
         <div id="gsTargetWrap" style="display:none">
@@ -2356,7 +2360,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-count-opt" onclick="selectSoloRaceTarget(150,this)" data-tval="150"><div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--accent)">150</div><div style="font-size:10px;color:var(--muted)">pts</div></div>
           </div>
           <input class="q-count-custom-input" id="soloTargetCustom" type="number" min="1" max="500" placeholder="Custom target score…" oninput="onCustomSoloTarget(this)" onfocus="onCustomSoloTargetFocus(this)" style="width:100%">
-          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely until you hit the target. Speed bonuses still apply — faster answers earn more points.</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5">Answer questions indefinitely until you hit the target. Speed bonuses still apply, faster answers earn more points.</div>
         </div>
       </div>
 
@@ -2455,7 +2459,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div class="privacy-note" style="margin:0"><i class="ti ti-alert-triangle" style="font-size:15px"></i><span><b>Draft template.</b> Fill in the bracketed parts and have a lawyer review this before public launch.</span></div>
       <div style="font-size:13px;color:var(--muted);line-height:1.7">
         <b style="color:var(--text)">Last updated:</b> [DATE]<br><br>
-        <b style="color:var(--text)">What we collect.</b> A username and password (your password is hashed and stored by our authentication provider — we never see it), an <b>optional</b> email address (used only for password recovery), an optional profile picture you upload, your gameplay stats (scores, games played, accuracy), and the content of any questions or reports you submit.<br><br>
+        <b style="color:var(--text)">What we collect.</b> A username and password (your password is hashed and stored by our authentication provider (we never see it)), an <b>optional</b> email address (used only for password recovery), an optional profile picture you upload, your gameplay stats (scores, games played, accuracy), and the content of any questions or reports you submit.<br><br>
         <b style="color:var(--text)">How we use it.</b> To run your account, save your progress, show leaderboards, and let you recover a lost password. We do <b>not</b> sell your personal data.<br><br>
         <b style="color:var(--text)">Where it's stored.</b> Your data is held by our backend provider, Supabase, which processes it on our behalf. See [Supabase's privacy policy / link].<br><br>
         <b style="color:var(--text)">Children.</b> Anime Sekai is not directed to and not intended for use by children under 13 (or the minimum age in your country). We do not knowingly collect data from children under 13. If you believe a child has provided us data, contact us and we'll delete it.<br><br>
@@ -2499,7 +2503,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <button onclick="document.getElementById('submitSignInModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
       <div style="width:60px;height:60px;border-radius:16px;background:var(--accent-soft);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px;color:var(--accent)"><i class="ti ti-pencil-plus"></i></div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.6">You need a registered account to submit questions. Sign in or create an account — it only takes a moment.</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.6">You need a registered account to submit questions. Sign in or create an account, it only takes a moment.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <button class="action-btn secondary" onclick="document.getElementById('submitSignInModal').style.display='none'">Cancel</button>
         <button class="action-btn primary" onclick="openSubmitAuth()"><i class="ti ti-login" style="font-size:15px"></i> Sign In</button>
@@ -2564,7 +2568,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:18px;font-weight:800;outline:none;text-align:center;letter-spacing:.2em;transition:border-color .2s"
         oninput="document.getElementById('adminUnlockErr').style.display='none'"
         onkeydown="if(event.key==='Enter')_submitAdminPin()">
-      <div id="adminUnlockErr" style="display:none;font-size:12px;color:#f87171;font-weight:700;margin-top:-8px">Incorrect PIN — try again.</div>
+      <div id="adminUnlockErr" style="display:none;font-size:12px;color:#f87171;font-weight:700;margin-top:-8px">Incorrect PIN. Try again.</div>
       <div style="display:flex;gap:10px">
         <button class="action-btn primary" style="flex:1" onclick="_submitAdminPin()"><i class="ti ti-lock-open" style="font-size:15px"></i> Unlock</button>
         <button class="ghost-btn" onclick="_cancelAdminPin()">Cancel</button>
@@ -2601,7 +2605,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <!-- Answer area -->
       <div id="previewAnswersWrap"></div>
       <!-- Disclaimer -->
-      <div style="text-align:center;font-size:11px;color:var(--muted);font-style:italic">This is a read-only preview — options are not interactive.</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-style:italic">This is a read-only preview. Options are not interactive.</div>
     </div>
   </div>
 
@@ -2625,7 +2629,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         </select>
       </div>
       <div id="aeOptionsWrap">
-        <label class="form-label">Options <span style="color:var(--muted);font-weight:600">— tap the circle to mark the correct one</span></label>
+        <label class="form-label">Options <span style="color:var(--muted);font-weight:600">(tap the circle to mark the correct one)</span></label>
         <div id="aeOptionRows" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
       <div id="aeAnswerWrap">
@@ -2731,7 +2735,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           </select>
         </div>
         <div id="sqOptionsWrap">
-          <label class="form-label">Options <span style="color:var(--muted);font-weight:600">— tap the circle to mark the correct one</span></label>
+          <label class="form-label">Options <span style="color:var(--muted);font-weight:600">(tap the circle to mark the correct one)</span></label>
           <div id="sqOptionRows" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
         <div id="sqAnswerWrap">
@@ -2896,6 +2900,20 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div id="smiDesc" style="font-size:13px;color:var(--muted);line-height:1.6;text-align:left"></div>
       </div>
       <button class="action-btn primary" onclick="closeSoloModeInfo()">Got it!</button>
+    </div>
+  </div>
+
+  <!-- VOIDING INFO MODAL -->
+  <div id="voidingInfoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeVoidingInfoModal()">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-flag" style="font-size:18px;color:var(--accent)"></i> Question Voiding</div>
+        <button onclick="closeVoidingInfoModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7">
+        If a question seems wrong, players can flag it. Enough flags and the round gets skipped with no points lost.
+      </div>
+      <button class="action-btn primary" onclick="closeVoidingInfoModal()">Got it!</button>
     </div>
   </div>
 
@@ -3499,8 +3517,8 @@ function signOut(){
   if(state.any){
     if(title)title.textContent=state.inSoloQuiz||state.inMpQuiz?'Quit & sign out?':'Leave lobby & sign out?';
     if(sub)sub.textContent=state.inSoloQuiz||state.inMpQuiz
-      ?'You\'re still in a game — signing out will end it for you. You\'ll need to sign back in to access your profile and saved stats.'
-      :'You\'re still in a lobby — signing out will remove you from it. You\'ll need to sign back in to access your profile and saved stats.';
+      ?'You\'re still in a game. Signing out will end it for you. You\'ll need to sign back in to access your profile and saved stats.'
+      :'You\'re still in a lobby. Signing out will remove you from it. You\'ll need to sign back in to access your profile and saved stats.';
   } else {
     if(title)title.textContent='Sign out?';
     if(sub)sub.textContent='You\'ll need to sign back in to access your profile and saved stats.';
@@ -3563,7 +3581,7 @@ async function deleteAccount(){
   try{
     // Re-authenticate to verify the password before deleting
     const{data:{session},error:authErr}=await sb.auth.getSession();
-    if(authErr||!session)throw new Error('Session expired — please sign in again.');
+    if(authErr||!session)throw new Error('Session expired. Please sign in again.');
 
     // Call the Edge Function which handles the actual account deletion server-side
     const res=await fetch(`${SUPABASE_URL}/functions/v1/delete-account`,{
@@ -4096,7 +4114,7 @@ async function savePfp(){
       // Get the user's live auth token — required for RLS on storage uploads
       const{data:{session}}=await sb.auth.getSession();
       if(!session?.access_token){
-        throw new Error('No active session — please sign out and sign back in.');
+        throw new Error('No active session. Please sign out and sign back in.');
       }
       const authToken=session.access_token;
       const filePath=`${currentUserId}/avatar.jpg`;
@@ -4142,7 +4160,7 @@ async function savePfp(){
   }catch(e){
     const errEl=document.getElementById('pfpUploadErr');
     const errMsg=document.getElementById('pfpUploadErrMsg');
-    errMsg.textContent='Upload failed — please try again.';
+    errMsg.textContent='Upload failed. Please try again.';
     errEl.style.display='flex';
     console.error('PFP upload error:',e);
   }finally{
@@ -4652,9 +4670,9 @@ function selectCharFormat(fmt){
 }
 function openSoloModeInfo(mode){
   const info={
-    classic:{emoji:'🎮',name:'Classic',desc:'Every correct answer is worth exactly 1 point, no matter how fast you answer. There\'s no pressure and no penalty for taking your time — the game ends after the set number of questions, and your final score is just how many you got right.'},
-    race:{emoji:'🏁',name:'Score Race',desc:'Each correct answer earns between 3 and 10 points. Answer within the first 5 seconds for the full 10 — the longer you take after that, the lower the score, down to a minimum of 3. The game ends as soon as you reach the target score.'},
-    survival:{emoji:'❤️',name:'Survival',desc:'You start with 3 lives. Every wrong answer or timeout costs one life. Answer correctly to keep going — lose all 3 lives and the run ends. See how many questions you can survive.'}
+    classic:{emoji:'🎮',name:'Classic',desc:'Every correct answer is worth exactly 1 point, no matter how fast you answer. There\'s no pressure and no penalty for taking your time. The game ends after the set number of questions, and your final score is just how many you got right.'},
+    race:{emoji:'🏁',name:'Score Race',desc:'Each correct answer earns between 3 and 10 points. Answer within the first 5 seconds for the full 10. The longer you take after that, the lower the score, down to a minimum of 3. The game ends as soon as you reach the target score.'},
+    survival:{emoji:'❤️',name:'Survival',desc:'You start with 3 lives. Every wrong answer or timeout costs one life. Answer correctly to keep going. Lose all 3 lives and the run ends. See how many questions you can survive.'}
   }[mode];
   if(!info)return;
   document.getElementById('smiEmoji').textContent=info.emoji;
@@ -4665,6 +4683,13 @@ function openSoloModeInfo(mode){
 }
 function closeSoloModeInfo(){
   document.getElementById('soloModeInfoModal').style.display='none';
+}
+function openVoidingInfoModal(){
+  document.getElementById('voidingInfoModal').style.display='flex';
+  applyTheme();
+}
+function closeVoidingInfoModal(){
+  document.getElementById('voidingInfoModal').style.display='none';
 }
 function selectSoloMode(mode){
   pendingMode=mode;
@@ -4980,7 +5005,7 @@ function showDailyResult(correct,total,picks,already){
   document.getElementById('dailyResultScore').textContent=correct;
   const unit=document.querySelector('#page-daily-result .score-unit');if(unit)unit.textContent='/ '+total;
   document.getElementById('dailyRankTitle').innerHTML='<span>'+title+'!</span>';
-  document.getElementById('dailyResultSub').textContent=already?'You already played today — here\'s your result. Come back tomorrow!':'You got '+correct+' out of '+total+' right!';
+  document.getElementById('dailyResultSub').textContent=already?'You already played today. Here\'s your result. Come back tomorrow!':'You got '+correct+' out of '+total+' right!';
   window._dailyShare={correct,total,picks};
   if(pct>=.75)launchConfetti();
   applyTheme();
@@ -4988,7 +5013,7 @@ function showDailyResult(correct,total,picks,already){
 function shareDaily(ev){
   const s=window._dailyShare;if(!s)return;
   const squares=(s.picks||[]).map(c=>c?'🟩':'🟥').join('');
-  const text='Anime Sekai — Daily Quiz 🎌\n'+s.correct+'/'+s.total+'  '+squares+'\n'+location.origin+location.pathname;
+  const text='Anime Sekai: Daily Quiz 🎌\n'+s.correct+'/'+s.total+'  '+squares+'\n'+location.origin+location.pathname;
   if(navigator.share){navigator.share({title:'Anime Sekai Daily',text:text}).catch(()=>{});return;}
   navigator.clipboard.writeText(text).catch(()=>{});
   const btn=ev&&ev.currentTarget,sp=btn&&btn.querySelector('span');
@@ -5270,7 +5295,7 @@ function showQuestion(qData){
   if(isType){
     document.querySelector('.q-card').classList.add('type-mode');
     const wrap=document.createElement('div');wrap.className='type-wrap';
-    wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="typeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
+    wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="typeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite, try again!</div>`;
     grid.appendChild(wrap);applyTheme();
     document.getElementById('typeInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkTypeAnswer()});
     document.getElementById('typeInput').focus();
@@ -5378,7 +5403,7 @@ function showFeedback(correct,correctAns,userAns,override){
   else{ya.style.display='none';}
   if(correct&&selectedMode==='race'){
     const label=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
-    document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${label}`;
+    document.getElementById('fbPts').textContent=`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'}: ${label}`;
   } else {
     document.getElementById('fbPts').textContent='';
   }
@@ -5437,7 +5462,7 @@ function renderResults(){
   if(isRace){
     document.getElementById('rankSub').textContent='Target reached in '+total+' questions! 🏁';
   } else {
-    document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated — better luck next time!'):(rank.sub);
+    document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated. Better luck next time!'):(rank.sub);
   }
   // Survival: headline shows correct count, not pts
   document.getElementById('scoreBig').textContent=isSurvival?correct:score;
@@ -5546,7 +5571,7 @@ async function submitContact(){
   // Show brief confirmation
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-  modal.textContent='Message sent — thanks! 🙏';
+  modal.textContent='Message sent, thanks! 🙏';
   document.body.appendChild(modal);
   setTimeout(()=>modal.remove(),3000);
   applyTheme();
@@ -5627,7 +5652,7 @@ function sqTopicRender(query){
     // No matches — show "new topic" hint
     const hint = document.createElement('div');
     hint.className = 'sq-topic-empty';
-    hint.textContent = 'No existing topics match — a new one will be created.';
+    hint.textContent = 'No existing topics match. A new one will be created.';
     drop.appendChild(hint);
   } else {
     matches.slice(0,8).forEach((t,i)=>{
@@ -5715,7 +5740,7 @@ function sqSuggestTopicRender(query){
   if(matches.length === 0){
     const hint = document.createElement('div');
     hint.className = 'sq-topic-empty';
-    hint.textContent = 'No existing topics match — this will be a new suggestion.';
+    hint.textContent = 'No existing topics match. This will be a new suggestion.';
     drop.appendChild(hint);
   } else {
     matches.slice(0,8).forEach((t,i)=>{
@@ -5854,7 +5879,7 @@ async function submitTopicSuggestion(){
   document.getElementById('sqSuggestNote').value='';
   const toast=document.createElement('div');
   toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-  toast.textContent='Topic suggestion received — thanks! 💡';
+  toast.textContent='Topic suggestion received, thanks! 💡';
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(),3000);
   applyTheme();
@@ -5909,7 +5934,7 @@ async function submitQuestion(){
   document.getElementById('submitQModal').style.display='none';
   const toast=document.createElement('div');
   toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:Lilita One,cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-  toast.textContent='Question submitted — nice one! 🎉';
+  toast.textContent='Question submitted, nice one! 🎉';
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(),3000);
   ['sqQuestion','sqAnswer','sqAliases','sqTopic','sqOptions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -6073,7 +6098,7 @@ function showTimeLimitPicker(mode,fromLobby){
   document.getElementById('timeLimitDesc').textContent=isRace
     ? 'Full points for the first 5s, then drops to a minimum of 3 pts.'
     : mode==='classic'
-      ? 'Run out of time and the question is skipped — no penalty.'
+      ? 'Run out of time and the question is skipped. No penalty.'
       : 'Run out of time and you lose a life.';
   document.getElementById('timeLimitStartLabel').textContent=fromLobby?'Confirm':isRace?'Start Race':'Start '+(mode==='classic'?'Classic':'Survival');
   // Sync time limit selection
@@ -6142,7 +6167,7 @@ function showTimeLimitPicker(mode,fromLobby){
     // Set max depending on context
     const isLobby=!!fromLobby;
     customInput.max=isLobby?100:50;
-    customInput.placeholder=isLobby?'Custom — type any number (max 100)':'Custom — type any number (max 50)';
+    customInput.placeholder=isLobby?'Custom, type any number (max 100)':'Custom, type any number (max 50)';
   }
   // Always start on Questions tab
   switchGameSettingsTab('questions');
@@ -6290,7 +6315,7 @@ function toggleSound(){soundOn=!soundOn;try{localStorage.setItem('sound_off',sou
 function updateSoundUI(){
   document.querySelectorAll('#soundToggle,#soundToggleDrawer').forEach(t=>t.classList.toggle('on',soundOn));
   const ic=document.getElementById('soundBtnIcon');if(ic)ic.className='ti '+(soundOn?'ti-volume':'ti-volume-off');
-  const sb=document.getElementById('soundBtn');if(sb){sb.title=soundOn?'Sound on — click to mute':'Muted — click to unmute';sb.style.color=soundOn?'':'var(--muted)';}
+  const sb=document.getElementById('soundBtn');if(sb){sb.title=soundOn?'Sound on (click to mute)':'Muted (click to unmute)';sb.style.color=soundOn?'':'var(--muted)';}
 }
 
 function recordAnswerStat(id,wasCorrect){
@@ -6593,7 +6618,7 @@ async function rtRejoinActiveLobby(code){
     existingRow=Array.isArray(rowData)?rowData[0]:null;
   }catch(e){}
   if(!existingRow){
-    showLobbyToast('⚠️ You weren\'t part of this game — ask for a lobby code to join a new one.','danger');
+    showLobbyToast('⚠️ You weren\'t part of this game. Ask for a lobby code to join a new one.','danger');
     return false;
   }
   // Mark connected=true on the existing row (Step 1 set it false on disconnect)
@@ -6662,10 +6687,10 @@ async function disconnectRejoin(){
   }catch(e){}
   if(lobbyStatus==='active'){
     const ok=await rtRejoinActiveLobby(lobbyCode);
-    if(!ok){showDisconnectModal('Could not rejoin — the game may have ended.');}
+    if(!ok){showDisconnectModal('Could not rejoin. The game may have ended.');}
   } else {
     const ok=await rtJoinLobby(lobbyCode);
-    if(!ok){showDisconnectModal('Could not rejoin — the lobby may no longer exist.');}
+    if(!ok){showDisconnectModal('Could not rejoin. The lobby may no longer exist.');}
   }
 }
 
@@ -6712,7 +6737,7 @@ function rtSubscribe(lobbyId){
       isHost=true;
       lobbyPlayers.forEach(p=>{p.isHost=(p.name===currentUser);});
       renderLobbyRoom();
-      showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+      showLobbyToast(`👑 The host left. You're now the host!`,'warning');
       if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'left',originalHostName:'The host',remainingSeconds:lobbyTimerSecondsLeft}});
     }catch(e){}
   });
@@ -6971,7 +6996,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers.forEach(p=>mpRollingWindowRecord(p.name,'null'));
     // Show void banner
     const el=document.getElementById('mpAutoNext');
-    if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided — flagged by multiple players. No points awarded.</span>';
+    if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided. Flagged by multiple players, no points awarded.</span>';
     // Close flag button
     const rb=document.getElementById('mpReportFlagBtn');
     if(rb){rb.disabled=true;rb.style.opacity='.4';rb.style.pointerEvents='none';}
@@ -7059,11 +7084,11 @@ function rtSubscribe(lobbyId){
         }).catch(()=>{});
       }
       if(payload.reason==='reclaim'){
-        showLobbyToast(`👑 Host returned — they've reclaimed the lobby.`,'warning');
+        showLobbyToast(`👑 Host returned. They've reclaimed the lobby.`,'warning');
       } else if(payload.reason==='left'){
-        showLobbyToast(`👑 The host left — you're now the host!`,'warning');
+        showLobbyToast(`👑 The host left. You're now the host!`,'warning');
       } else if(payload.reason==='grace_expired'){
-        showLobbyToast(`👑 You're now the host — requesting game state…`,'warning');
+        showLobbyToast(`👑 You're now the host. Requesting game state...`,'warning');
         // request_game_state was already broadcast in startHostGracePeriod; no duplicate needed
       } else {
         // Manual transfer
@@ -7076,9 +7101,9 @@ function rtSubscribe(lobbyId){
     } else {
       isHost=false;
       if(payload.reason==='left'){
-        showLobbyToast(`👑 ${payload.originalHostName||'The host'} left — ${payload.newHost} is now the host.`,'warning');
+        showLobbyToast(`👑 ${payload.originalHostName||'The host'} left. ${payload.newHost} is now the host.`,'warning');
       } else if(payload.reason==='grace_expired'){
-        showLobbyToast(`👑 ${payload.originalHostName||'The host'} disconnected — ${payload.newHost} is now the host.`,'warning');
+        showLobbyToast(`👑 ${payload.originalHostName||'The host'} disconnected. ${payload.newHost} is now the host.`,'warning');
       } else if(payload.reason==='reclaim'){
         showLobbyToast(`👑 ${payload.newHost} has reclaimed host.`,'warning');
       }
@@ -7203,7 +7228,7 @@ function rtSubscribe(lobbyId){
     const wasHost=p?.isHost||false;
     if(wasHost&&(hostGraceTimer||hostGraceCountdown)){
       cancelHostGracePeriod();
-      showLobbyToast(`🔄 Host reconnected — game continues!`,'warning');
+      showLobbyToast(`🔄 Host reconnected. Game continues!`,'warning');
     }
   });
   // ── STATE SNAPSHOT (Step 4) ────────────────────────────────────────────────
@@ -7283,7 +7308,7 @@ function rtSubscribe(lobbyId){
       const qt=document.getElementById('mpQuestionText');
       if(qt){
         qt.style.display='block';
-        qt.innerHTML='<span style="color:var(--muted);font-size:15px;font-weight:700">⏳ Catching up — next round starts soon…</span>';
+        qt.innerHTML='<span style="color:var(--muted);font-size:15px;font-weight:700">⏳ Catching up. Next round starts soon...</span>';
       }
       renderMPHUD();
       renderMPScoreboard();
@@ -7864,7 +7889,7 @@ async function renderLb(){
     row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games · ${getRank(p.best_score).emoji} ${getRank(p.best_score).title}</div></div><div class="lb-score">${p.best_score}</div>`;
     list.appendChild(row);
   });
-  if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';
+  if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet. Be the first!</div>';
   applyTheme();
 }
 async function renderFriendsLb(){
@@ -8516,7 +8541,7 @@ function renderLobbyRoom(){
   const startHint=document.getElementById('startHint');
   if(startBtn)startBtn.classList.toggle('ready-pulse',isHost&&lobbyPlayers.length>=2);
   if(startHint){
-    if(isHost&&lobbyPlayers.length<2){startHint.style.display='block';startHint.textContent='✨ It\'s more fun with friends — share the code to invite them!';}
+    if(isHost&&lobbyPlayers.length<2){startHint.style.display='block';startHint.textContent='✨ It\'s more fun with friends. Share the code to invite them!';}
     else{startHint.style.display='none';}
   }
   // Reflect current settings in the inline options panel + lock it for non-hosts
@@ -8566,16 +8591,16 @@ function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Surviv
 function openHowToPlay(){
   const fmtDescs={
     mc:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',
-    type:'No options are shown — you must type the correct answer from memory. Partial matches and common aliases are accepted.',
+    type:'No options are shown. You must type the correct answer from memory. Partial matches and common aliases are accepted.',
     img:'A screenshot from an anime is shown. Identify which series it\'s from before time runs out.',
     char:'A character description or image is shown. Name the character correctly to score points.'
   };
   const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
   const modeDescs={
-    race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts — the longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
-    survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going — lose all 3 and you\'re out. Last one standing wins.',
+    race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts. The longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
+    survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going. Lose all 3 and you\'re out. Last one standing wins.',
     hp:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',
-    slowreveal:'The question fades in word by word. Hit Buzz In when you think you know the answer — the reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.'
+    slowreveal:'The question fades in word by word. Hit Buzz In when you think you know the answer. The reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.'
   };
   const modeIcons={race:'ti-trophy',survival:'ti-heart',hp:'ti-flame',slowreveal:'ti-eye'};
   const modeEmojis={race:'⚡',survival:'❤️',hp:'🥔',slowreveal:'👁️'};
@@ -8588,7 +8613,7 @@ function openHowToPlay(){
   document.getElementById('htpModeName').textContent=lobbyModeLabel(mode);
   document.getElementById('htpModeDesc').textContent=modeDescs[mode]||'';
   const topicText=(lobbyIsGeneral||lobbyTopics.length===0)
-    ?'General Anime — questions from across the entire anime universe.'
+    ?'General Anime: questions from across the entire anime universe.'
     :lobbyTopics.map(t=>(t.emoji?t.emoji+' ':'')+t.name).join(', ');
   document.getElementById('htpTopic').textContent=topicText;
   const modal=document.getElementById('howToPlayModal');
@@ -8794,9 +8819,9 @@ function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
 function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();}
 function gsRenderTopic(){
   const content=document.getElementById('gsTopicContent');
-  document.querySelectorAll('#lobbyOptionsPanel .gs-subrow').forEach(el=>el.classList.toggle('active',el.dataset.sub===gsTopicSub));
+  document.querySelectorAll('#lobbyOptionsPanel .gs-subtab').forEach(el=>el.classList.toggle('active',el.dataset.sub===gsTopicSub));
   const aC=lobbyTopics.filter(t=>t.type==='anime').length,gC=lobbyTopics.filter(t=>t.type==='genre').length;
-  const setB=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const setB=(id,v)=>{const e=document.getElementById(id);if(e){e.textContent=v;e.style.display=v?'inline':'none';}};
   setB('gsSubBadgeGeneral',lobbyIsGeneral?'✓':'');
   setB('gsSubBadgeAnime',aC?String(aC):'');
   setB('gsSubBadgeGenre',gC?String(gC):'');
@@ -9247,8 +9272,8 @@ function renderMPHUD(){
         const justLost=prevL!=null&&active.lives<prevL&&j===active.lives;
         return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:14px;color:${lost?'var(--border2)':'#f87171'};${active.eliminated?'opacity:.3':''}"></i>`;
       }).join('');
-      const eyebrow=isMyTurn?'🔥 Your turn — type your answer!':'👀 Watching…';
-      const sub=isMyTurn?'The potato is in your hands — answer before it explodes!':'Waiting for '+active.name+' to answer…';
+      const eyebrow=isMyTurn?'🔥 Your turn. Type your answer!':'👀 Watching…';
+      const sub=isMyTurn?'The potato is in your hands. Answer before it explodes!':'Waiting for '+active.name+' to answer…';
       banner.innerHTML=`<div class="hp-turn-banner ${isMyTurn?'my-turn':'their-turn'}"><div class="hp-turn-potato${isMyTurn?'':' still'}">🥔</div><div class="hp-turn-body"><div class="hp-turn-eyebrow">${eyebrow}</div><div class="hp-turn-name">${active.name}</div><div class="hp-turn-sub">${sub}</div></div><div class="hp-turn-hearts">${heartsHTML}</div></div>`;
       banner.style.display='block';
     } else {
@@ -9302,7 +9327,7 @@ function renderMPScoreboard(){
     const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
     // Draft treatment — offline ≠ quit: no strikethrough, since they may still rejoin.
-    const offlineLabel=isOffline?` <span style="font-size:10px;color:var(--muted)" title="Disconnected — may still rejoin"><i class="ti ti-wifi-off" style="font-size:10px"></i> offline</span>`:'';
+    const offlineLabel=isOffline?` <span style="font-size:10px;color:var(--muted)" title="Disconnected (may still rejoin)"><i class="ti ti-wifi-off" style="font-size:10px"></i> offline</span>`:'';
     // Wrong attempt shown below name in typing modes (including HP), only while not yet answered
     const wrongAttempt=(isTyping||isHP)&&!p.roundAnswered&&!hasQuit&&mpWrongAttempts[p.name]
       ?`<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${mpWrongAttempts[p.name]}">✗ ${mpWrongAttempts[p.name]}</div>`
@@ -9365,7 +9390,7 @@ function mpShowQuestion(qData,hpFuse){
     // Hot Potato always uses type input; show disabled input if not your turn
     const wrap=document.createElement('div');wrap.className='type-wrap';
     const placeholder=isMyTurn?'Type your answer...':'Waiting for '+hpActivePlayer().name+'…';
-    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="mpTypeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite — try again!</div>`;
+    wrap.innerHTML=`<div class="type-input-row"><input id="mpTypeInput" class="type-input" type="text" placeholder="${placeholder}" autocomplete="off" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><button class="type-submit" id="mpTypeSubmitBtn" onclick="mpCheckTypeAnswer()" ${isMyTurn&&!isBlocked?'':'disabled style="opacity:.5"'}><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="mpTypeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite, try again!</div>`;
     grid.appendChild(wrap);applyTheme();
     if(isMyTurn&&!isBlocked){
       document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer();});
@@ -9383,7 +9408,7 @@ function mpShowQuestion(qData,hpFuse){
     const names=mpTiebreakerPlayers.join(' vs ');
     const msg=document.createElement('div');
     msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
-    msg.innerHTML=`<div style="font-size:32px">⚔️</div><div style="font-family:\'Lilita One\',cursive;font-size:16px;color:var(--text)">Tiebreaker Round</div><div>${names} are tied — watching them duel it out…</div>`;
+    msg.innerHTML=`<div style="font-size:32px">⚔️</div><div style="font-family:\'Lilita One\',cursive;font-size:16px;color:var(--text)">Tiebreaker Round</div><div>${names} are tied. Watching them duel it out…</div>`;
     grid.appendChild(msg);
   } else {
     (qData.options||[]).forEach((opt,i)=>{
@@ -9591,8 +9616,8 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   const nextLabel=nextPlayerName?` Next up: ${nextPlayerName} 🥔`:'';
   document.getElementById('mpFbPts').textContent=
     isHP&&correct?`Potato passes!${nextLabel}`:
-    isHP?`Lost a life — potato passes!${nextLabel}`:
-    correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'} — ${mpPtsLabel}`:
+    isHP?`Lost a life, potato passes!${nextLabel}`:
+    correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'}: ${mpPtsLabel}`:
     '';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
   // Reveal answer in the question card; submitted_by shown there instead of feedback bar
@@ -9714,7 +9739,7 @@ function mpVoidQuestion(){
   lobbyPlayers.forEach(p=>{if(!mpFlagsThisQuestion.has(p.name))mpRollingWindowRecord(p.name,'null');});
   // Show void banner in place of auto-next text
   const el=document.getElementById('mpAutoNext');
-  if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided — flagged by multiple players. No points awarded.</span>';
+  if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided. Flagged by multiple players, no points awarded.</span>';
   // Log to question_reports
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
     sb.from('question_reports').insert({
@@ -9791,9 +9816,9 @@ function mpEndGame(){
       :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   const winner=sorted[0];const iWon=winner.name===currentUser;
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
-  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span> — So close!';
+  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span>. So close!';
   document.getElementById('mpWinnerSub').textContent=iWon
-    ?(isHP?'Last one standing — you survived the potato!':isSurvival?'Last one standing — undefeated!':isSR?'First to '+srTargetScore+' — you buzzed in like a pro!':'First to '+mpRaceTarget+' pts — legendary run!')
+    ?(isHP?'Last one standing. You survived the potato!':isSurvival?'Last one standing. Undefeated!':isSR?'First to '+srTargetScore+'. You buzzed in like a pro!':'First to '+mpRaceTarget+' pts. Legendary run!')
     :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
   sorted.forEach((p,i)=>{
@@ -10084,8 +10109,8 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   const buzzLabel=correct?(buzzRatio<=0.3?'Lightning read!':buzzRatio<=0.6?'Early buzz!':'Good read!'):'';
   document.getElementById('mpFbTitle').textContent=correct
     ?(isMe?'Correct!':name+' got it!')
-    :timedOut?(isMe?"Time's up — locked out!":name+' ran out of time!')
-    :(isMe?'Wrong — locked out!':name+' missed it!');
+    :timedOut?(isMe?"Time's up. Locked out!":name+' ran out of time!')
+    :(isMe?'Wrong. Locked out!':name+' missed it!');
   document.getElementById('mpFbPts').textContent=correct?buzzLabel:'';
   const ya=document.getElementById('mpFbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'){ya.textContent='Answer given: '+userAns;ya.style.display='block';}
@@ -10294,14 +10319,14 @@ async function fetchReviewTab(){
     let empty='';
     if(adminTab==='submitted'){
       q=q.eq('status','pending').order('created_at',{ascending:adminReviewDateAsc});
-      empty='No submitted questions — all clear! 🎉';
+      empty='No submitted questions. All clear! 🎉';
     } else if(adminTab==='reported'){
       q=q.gt('report_count',0).order('report_count',{ascending:false});
-      empty='No reported questions — all clear! 🎉';
+      empty='No reported questions. All clear! 🎉';
     } else {
       // Suspect: approved + enough plays + low correct rate — ratio filter must be client-side
       q=q.eq('status','approved').gte('answer_count',8);
-      empty='No suspect questions — nothing players keep getting wrong. 🎉';
+      empty='No suspect questions. Nothing players keep getting wrong. 🎉';
     }
     const dateToggle=document.getElementById('adminReviewDateToggle');
     if(dateToggle)dateToggle.style.display=adminTab==='submitted'?'inline-flex':'none';
@@ -10351,7 +10376,7 @@ function togglePendingTopicFilter(topic){
   let rows=adminPendingAllRows;
   if(adminPendingTopicFilter)rows=rows.filter(r=>(r.topic_value||'Untagged')===adminPendingTopicFilter);
   adminReviewRows=rows;
-  renderAdminList(rows,adminPendingTopicFilter?'No pending questions for this topic.':'No submitted questions — all clear! 🎉');
+  renderAdminList(rows,adminPendingTopicFilter?'No pending questions for this topic.':'No submitted questions. All clear! 🎉');
 }
 
 let _adminTopicSuggestIdx=-1;
@@ -10994,7 +11019,7 @@ async function removeCharacter(id,name,topic){
     if(!confirm(`Delete all questions for "${name}"${topic?' ('+topic+')':''}?\n\nThis will permanently delete every question linked to this character. This cannot be undone.`))return;
     // Delete all questions with this character name (same answer) and format=char for this topic
     const{error}=await sb.from('questions').delete().eq('format','char').eq('answer',name).eq('topic_value',topic);
-    if(error){showAdminToast('⚠️ Delete failed — try again.');return;}
+    if(error){showAdminToast('⚠️ Delete failed. Try again.');return;}
     // Remove the card from the DOM
     const card=document.getElementById('charlib-card-'+id);if(card)card.remove();
     // Update count label
@@ -11065,7 +11090,7 @@ async function bulkSetCharGender(gender){
       if(error)failures++;
     }
     showAdminToast(failures
-      ?`⚠️ Updated ${items.length-failures}/${items.length} — ${failures} failed`
+      ?`⚠️ Updated ${items.length-failures}/${items.length} (${failures} failed)`
       :`Gender set to "${gender}" for ${items.length} character${items.length===1?'':'s'} ✏️`);
     fetchCharLibrary();
   });
@@ -11083,7 +11108,7 @@ async function bulkDeleteCharacters(){
       if(error)failures++;
     }
     showAdminToast(failures
-      ?`⚠️ Deleted ${items.length-failures}/${items.length} — ${failures} failed`
+      ?`⚠️ Deleted ${items.length-failures}/${items.length} (${failures} failed)`
       :`${items.length} character${items.length===1?'':'s'} removed 🗑️`);
     _charLibOverviewData=null; // counts/grouping may have changed
     fetchCharLibrary();
