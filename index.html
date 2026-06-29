@@ -5267,9 +5267,12 @@ async function sbMarkSeen(userId,questionId){
 function checkAnswer(userInput,qData){
   const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
   const aliases=qData.aliases||[];
-  const normalize=s=>s.toLowerCase().trim().replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
+  const normalize=s=>s.toLowerCase().trim().replace(/-/g,' ').replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
+  // Collapse common romanization long-vowel variants so ou/uu/oo match o/u bidirectionally
+  const deRomanize=s=>normalize(s).replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u');
   const userN=normalize(userInput);
-  return [canonical,...aliases].some(a=>normalize(a)===userN);
+  const userR=deRomanize(userInput);
+  return [canonical,...aliases].some(a=>normalize(a)===userN||deRomanize(a)===userR);
 }
 async function loadQuestion(){
   answered=false;
