@@ -1077,6 +1077,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .char-lib-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
 .char-lib-name{font-family:'Lilita One',cursive;font-size:14px;color:var(--text);line-height:1.2;word-break:break-word}
 .char-lib-topic{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.char-lib-aliases{display:none;flex-wrap:wrap;gap:4px;margin-top:2px}
+.char-lib-aliases.visible{display:flex}
+.char-lib-alias-tag{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:1px 7px;white-space:nowrap}
 .char-lib-del{width:100%;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:#f87171;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .2s,border-color .2s}
 .char-lib-del:hover{background:#f8717118;border-color:#f87171}
 .char-lib-edit-fab{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:#000a;border:1px solid #fff3;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s;font-size:14px}
@@ -2260,6 +2263,11 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <option value="Non-binary">Non-binary</option>
           </select>
           <span class="char-lib-count" id="charLibCount" style="display:none"></span>
+          <button id="charLibAliasToggle" onclick="toggleCharLibAliases()" title="Toggle aliases"
+            style="display:none;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border2);color:var(--muted);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:7px 13px;border-radius:9px;cursor:pointer;transition:background .2s,color .2s,border-color .2s;white-space:nowrap"
+            onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='var(--bg2)'">
+            <i class="ti ti-tags" style="font-size:13px"></i> Show Aliases
+          </button>
         </div>
         <!-- Bulk action bar (filled in by updateCharLibBulkBar) -->
         <div id="charLibBulkBarWrap"></div>
@@ -2666,7 +2674,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <button onclick="closeCharEdit()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
       <div id="ceImgPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);align-items:center;justify-content:center">
-        <img id="ceImgPreview" src="" alt="Preview" style="width:100%;height:auto;max-height:180px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+        <img id="ceImgPreview" src="" alt="Preview" style="width:100%;max-height:300px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
       </div>
       <div>
         <label class="form-label">Name</label>
@@ -11023,6 +11031,8 @@ async function fetchCharLibrary(){
   }
   grid.innerHTML='<div class="char-lib-loading"><div class="spinner"></div><div>Loading characters…</div></div>';
   clearCharLibSelection();
+  const aliasToggleBtnReset=document.getElementById('charLibAliasToggle');
+  if(aliasToggleBtnReset)aliasToggleBtnReset.style.display='none';
   try{
     let q=sb.from('questions').select('id,answer,aliases,media_url,topic_value,topic_type,gender,distractors').eq('format','char').eq('status','approved');
     if(topic)q=q.eq('topic_value',topic);
@@ -11066,6 +11076,7 @@ async function fetchCharLibrary(){
         <div class="char-lib-body">
           <div class="char-lib-name">${ch.answer||'—'}</div>
           <div class="char-lib-topic">${ch.topic_value||ch.topic_type||'—'}</div>
+          <div class="char-lib-aliases${_charLibShowAliases?' visible':''}">${(ch.aliases||[]).length?ch.aliases.map(a=>`<span class="char-lib-alias-tag">${a}</span>`).join(''):'<span style="font-size:10px;color:var(--muted);font-style:italic">No aliases</span>'}</div>
           <button class="char-lib-del" onclick="removeCharacter('${ch.id}','${(ch.answer||'').replace(/'/g,"\\'")}','${(ch.topic_value||'').replace(/'/g,"\\'")}')">
             <i class="ti ti-trash" style="font-size:12px"></i> Remove
           </button>
@@ -11073,6 +11084,8 @@ async function fetchCharLibrary(){
       gridEl.appendChild(card);
     });
     grid.appendChild(gridEl);
+    const aliasToggleBtn=document.getElementById('charLibAliasToggle');
+    if(aliasToggleBtn)aliasToggleBtn.style.display='inline-flex';
   }catch(e){
     grid.innerHTML='<div class="char-lib-empty">⚠️ Couldn\'t load characters. Check your connection and try again.</div>';
   }
@@ -11108,6 +11121,17 @@ async function removeCharacter(id,name,topic){
 // to every approved char question for that character, same scope as the
 // single-character edit modal.
 let charLibSelected=new Map();
+let _charLibShowAliases=false;
+function toggleCharLibAliases(){
+  _charLibShowAliases=!_charLibShowAliases;
+  document.querySelectorAll('.char-lib-aliases').forEach(el=>el.classList.toggle('visible',_charLibShowAliases));
+  const btn=document.getElementById('charLibAliasToggle');
+  if(btn){
+    btn.innerHTML=`<i class="ti ti-tags" style="font-size:13px"></i> ${_charLibShowAliases?'Hide':'Show'} Aliases`;
+    btn.style.color=_charLibShowAliases?'var(--accent)':'var(--muted)';
+    btn.style.borderColor=_charLibShowAliases?'var(--accent)':'var(--border2)';
+  }
+}
 
 function toggleCharLibSelect(answer,topic,el){
   const key=answer+'|||'+topic;
