@@ -2707,7 +2707,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <input class="form-input" id="ceMediaUrl" type="url" placeholder="https://… (direct image link)" oninput="ceImagePreview()">
       </div>
       <div id="ceImgPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg3)">
-        <img id="ceImgPreview" src="" alt="Preview" style="width:100%;height:auto;display:block" onerror="this.parentElement.style.display='none'">
+        <img id="ceImgPreview" src="" alt="Preview" style="max-width:100%;width:auto;height:auto;display:block;margin:0 auto" onerror="this.parentElement.style.display='none'">
       </div>
       <div class="form-hint" id="ceScopeNote" style="margin-top:-4px"></div>
       <div id="ceErr" style="display:none;font-size:12px;color:#f87171;font-weight:700"></div>
