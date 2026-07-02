@@ -836,6 +836,10 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .sq-scroll-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 .sq-scroll-body::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 .sq-scroll-body{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+#charEditModal > div::-webkit-scrollbar{width:4px}
+#charEditModal > div::-webkit-scrollbar-track{background:transparent}
+#charEditModal > div::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+#charEditModal > div::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 .admin-q-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
 .admin-q-card.reported{border-color:#f87171}
 .admin-q-text{font-size:14px;font-weight:700;color:var(--text);line-height:1.5}
@@ -2668,7 +2672,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 
   <!-- CHARACTER EDIT MODAL (Character Library) -->
   <div id="charEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:1100;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;max-height:90vh;overflow-y:auto">
+    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;max-height:90vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">🎭 Edit Character</div>
         <button onclick="closeCharEdit()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
