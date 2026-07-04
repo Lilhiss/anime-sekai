@@ -9900,7 +9900,7 @@ function mpEndGame(){
     const isMe=p.name===currentUser;
     const row=document.createElement('div');row.className='standing-row';
     if(isMe)row.style.borderColor='var(--accent)';
-    const rightCol=isHP||isSurvival
+    const rightCol=isHP
       ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
       :`<div class="lb-score">${p.score} pts</div>`;
     const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):(getRank(p.score).emoji+' '+getRank(p.score).title);
