@@ -6368,10 +6368,11 @@ async function flagQuestion(){
   if(!btn||btn.disabled)return;
   btn.disabled=true;
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
+    const {error:rpcErr}=await sb.rpc('increment_report_count',{question_id:currentQData.id});
+    if(rpcErr){
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
-    });
+    }
     await sb.from('question_reports').insert({
       question_id:currentQData.id,reason:'other',detail:null,reported_by:currentUser||null
     }).catch(()=>{});
@@ -7884,10 +7885,11 @@ async function flagMpQuestion(){
   btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged 🚩';
   const isCapped=mpPlayerIsCapped(currentUser);
   if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    await sb.rpc('increment_report_count',{question_id:currentQData.id}).catch(async()=>{
+    const {error:rpcErr}=await sb.rpc('increment_report_count',{question_id:currentQData.id});
+    if(rpcErr){
       const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
       if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
-    });
+    }
     await sb.from('question_reports').insert({
       question_id:currentQData.id,
       reason:isCapped?'flag_capped':'other',
