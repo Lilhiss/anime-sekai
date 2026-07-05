@@ -1665,16 +1665,18 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               <div class="gs-grid" id="gsFormatGrid">
                 <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
                 <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
-                <div class="gs-bigcard" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">Guess from a scene</div></div>
+                <div class="gs-bigcard locked" data-fmt="img"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">🔒 Coming soon</div></div>
                 <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
               </div>
             </div>
             <div class="gs-pane" data-pane="mode">
               <div class="gs-grid" id="gsModeGrid">
+                <div class="gs-bigcard" data-mode="classic" onclick="gsSetMode('classic')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎮</div><div class="gs-bc-title">Classic</div><div class="gs-bc-desc">Answer at your own pace</div></div>
                 <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">Highest score wins</div></div>
                 <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">3 lives, last standing</div></div>
                 <div class="gs-bigcard" data-mode="potato" onclick="gsSetMode('potato')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🥔</div><div class="gs-bc-title">Hot Potato</div><div class="gs-bc-desc">Pass it or lose a life</div></div>
                 <div class="gs-bigcard" data-mode="slowreveal" onclick="gsSetMode('slowreveal')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">👁️</div><div class="gs-bc-title">Slow Reveal</div><div class="gs-bc-desc">Buzz in to answer</div></div>
+                <div class="gs-bigcard locked" data-mode="_soon"><div class="gs-bc-emoji">✨</div><div class="gs-bc-title">More Coming Soon</div><div class="gs-bc-desc">🔒 New modes in the works</div></div>
               </div>
             </div>
             <div class="gs-pane" data-pane="topic">
@@ -7207,7 +7209,7 @@ function rtSubscribe(lobbyId){
     const spinner=document.getElementById('lobbyChangingSpinner');
     const settingsBtn=document.getElementById('lobbySettingsBtn');
     const topicsLabel=document.getElementById('lobbyTopicsLabel');
-    const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival')?` · ${payload.timeLimit}s`:'';
+    const timeLimitLabel=(payload.mode==='race'||payload.mode==='survival'||payload.mode==='classic')?` · ${payload.timeLimit}s`:'';
     const qCountLabel=payload.mode==='race'?` · First to ${payload.mpRaceTarget||mpRaceTarget} pts`:payload.mode==='slowreveal'?` · First to ${payload.srTargetScore||srTargetScore}`:` · ${payload.questionCount||selectedQuestionLimit}Q`;
 
     if(payload.changing){
@@ -8459,8 +8461,8 @@ async function loadPublicLobbies(silent=false){
       const qCount=lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
       const livesCount=lobby.lives||(mode==='survival'||mode==='potato'?3:null);
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
-      const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
-      const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
+      const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
+      const timeBadge=(mode==='race'||mode==='survival'||mode==='classic')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
       const goalBadge=mode==='survival'
         ?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span><span class="lobby-list-badge">📋 ${qCount}Q</span>`
         :mode==='race'?`<span class="lobby-list-badge">🏁 ${qCount} Pts</span>`
@@ -8532,7 +8534,7 @@ async function checkForActiveGameRejoin(){
     const fmt=lobby.format||'mc';
     const mode=lobby.mode||'race';
     const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character','char-mc':'Name Char (MC)'}[fmt]||fmt;
-    const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
+    const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
     const lobbyLabel=lobby.lobby_name||(lobby.host_username?`${lobby.host_username}'s Lobby`:lobby.code);
     banner.innerHTML=`
       <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px">
@@ -8584,7 +8586,7 @@ function renderLobbyRoom(){
   document.getElementById('lobbyPlayerCount').textContent=lobbyPlayers.length;
   const lobbyMaxEl=document.getElementById('lobbyPlayerMax');
   if(lobbyMaxEl)lobbyMaxEl.textContent=maxPlayers;
-  const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival')?` · ${raceTimeLimit}s`:'';
+  const timeLimitLabel=(lobbyMode==='race'||lobbyMode==='survival'||lobbyMode==='classic')?` · ${raceTimeLimit}s`:'';
   const qCountLabel=lobbyMode==='slowreveal'?` · First to ${srTargetScore}`:` · ${selectedQuestionLimit}Q`;
   document.getElementById('lobbySettingsLabel').textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qCountLabel+timeLimitLabel;
   updateLobbyTopicsLabel();
@@ -8685,7 +8687,7 @@ function updateLobbyTopicsLabel(){
   }
   el.style.display='block';
 }
-function lobbyModeLabel(m){return m==='race'?'Score Race':m==='survival'?'Survival':m==='slowreveal'?'Slow Reveal 👁️':'Hot Potato 🥔'}
+function lobbyModeLabel(m){return m==='classic'?'Classic':m==='race'?'Score Race':m==='survival'?'Survival':m==='slowreveal'?'Slow Reveal 👁️':m==='potato'?'Hot Potato 🥔':m}
 function openHowToPlay(){
   const fmtDescs={
     mc:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',
@@ -8695,13 +8697,14 @@ function openHowToPlay(){
   };
   const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
   const modeDescs={
+    classic:'Answer at your own pace — every correct answer is worth a flat 10 points, no speed bonus. There are no lives to lose and no target to race to. The game simply runs through the set number of questions, and whoever has the most points at the end wins.',
     race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts. The longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
     survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going. Lose all 3 and you\'re out. Last one standing wins.',
-    hp:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',
+    potato:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',
     slowreveal:'The question fades in word by word. Hit Buzz In when you think you know the answer. The reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.'
   };
-  const modeIcons={race:'ti-trophy',survival:'ti-heart',hp:'ti-flame',slowreveal:'ti-eye'};
-  const modeEmojis={race:'⚡',survival:'❤️',hp:'🥔',slowreveal:'👁️'};
+  const modeIcons={classic:'ti-device-gamepad-2',race:'ti-trophy',survival:'ti-heart',potato:'ti-flame',slowreveal:'ti-eye'};
+  const modeEmojis={classic:'🎮',race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
   const fmt=lobbyFormat||'mc';
   const mode=lobbyMode||'race';
   document.getElementById('htpFormatIcon').innerHTML='<i class="ti '+fmtIcons[fmt]+'" style="font-size:20px"></i>';
@@ -8741,7 +8744,7 @@ function gsUpdateHostLabel(){
   const isSurvivalMP=lobbyMode==='survival';
   const isHP=lobbyMode==='potato';
   const qLabel=isSR?` · First to ${srTargetScore}`:isRace?` · First to ${mpRaceTarget} pts`:isSurvivalMP?` · ${selectedLives}❤️ · ${survivalQuestionLimit}Q`:isHP?` · ${hpLives}❤️ · ${hpFuseMin}–${hpFuseMax}s`:` · ${selectedQuestionLimit}Q`;
-  const tLabel=(isRace||isSurvivalMP)?` · ${raceTimeLimit}s`:'';
+  const tLabel=(isRace||isSurvivalMP||lobbyMode==='classic')?` · ${raceTimeLimit}s`:'';
   const el=document.getElementById('lobbySettingsLabel');
   if(el)el.textContent=fmtLabels[lobbyFormat]+' · '+lobbyModeLabel(lobbyMode)+qLabel+tLabel;
   if(typeof updateLobbyTopicsLabel==='function')updateLobbyTopicsLabel();
@@ -8794,14 +8797,14 @@ function gsSyncUI(){
   document.getElementById('gsLivesSection').style.display=isSurvivalMP?'block':'none';
   document.getElementById('gsSurvivalQSection').style.display=isSurvivalMP?'block':'none';
   document.getElementById('gsHPSection').style.display=isHP?'block':'none';
-  document.getElementById('gsTimeSection').style.display=(isRace||isSurvivalMP)?'block':'none';
+  document.getElementById('gsTimeSection').style.display=(isRace||isSurvivalMP||lobbyMode==='classic')?'block':'none';
   document.querySelectorAll('#gsSurvivalQGrid [data-sq]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.sq)===survivalQuestionLimit));
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
   document.getElementById('gsRaceTargetSection').style.display=isRace?'block':'none';
   gsRenderTopic();
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭','char-mc':'🎭'},modeRowE={race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭','char-mc':'🎭'},modeRowE={classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
@@ -8814,6 +8817,7 @@ function gsAfterChange(){
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
 function gsSetFormat(f){
+  if(f==='img')return; // Image Round isn't ready yet — coming soon
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;gsAfterChange();
 }
@@ -9164,8 +9168,8 @@ function patchLobbyListCard(lobby) {
   const qCount = lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
   const livesCount = lobby.lives||(mode==='survival'||mode==='potato'?3:null);
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
-  const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
-  const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
+  const modeName = {classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
+  const timeBadge = (mode==='race'||mode==='survival'||mode==='classic')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
   const goalBadge = mode==='survival'
     ?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span><span class="lobby-list-badge">📋 ${qCount}Q</span>`
     :mode==='race'?`<span class="lobby-list-badge">🏁 ${qCount} Pts</span>`
@@ -9989,8 +9993,9 @@ function mpEndGame(){
   const winner=sorted[0];const iWon=winner.name===currentUser;
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
   document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span>. So close!';
+  const isClassic=selectedMode==='classic';
   document.getElementById('mpWinnerSub').textContent=iWon
-    ?(isHP?'Last one standing. You survived the potato!':isSurvival?'Last one standing. Undefeated!':isSR?'First to '+srTargetScore+'. You buzzed in like a pro!':'First to '+mpRaceTarget+' pts. Legendary run!')
+    ?(isHP?'Last one standing. You survived the potato!':isSurvival?'Last one standing. Undefeated!':isSR?'First to '+srTargetScore+'. You buzzed in like a pro!':isClassic?'Most points at the end. Nice work!':'First to '+mpRaceTarget+' pts. Legendary run!')
     :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
   sorted.forEach((p,i)=>{
