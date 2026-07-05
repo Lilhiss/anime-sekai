@@ -6922,11 +6922,10 @@ function rtSubscribe(lobbyId){
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
       const isHP=lobbyMode==='potato';
-      // If all non-quit survival players are eliminated, end immediately regardless of answers
-      if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
-        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
-        else mpEndGame();return;
-      }
+      // Note: even if this answer wipes out the last surviving player, we don't end the
+      // game right here — the answer still needs to be revealed and the normal 5s
+      // "Wrapping up…" pause needs to play first. The actual end-game broadcast happens
+      // inside the mpStartAutoNext onDone callback below, once that pause completes.
       const activePlayers=isHP
         ?[hpActivePlayer()]  // HP: only the active player needs to answer
         :lobbyPlayers.filter(lp=>!lp.eliminated&&!lp.quit);
@@ -6935,14 +6934,23 @@ function rtSubscribe(lobbyId){
       // answer_submitted broadcast but handles auto-next itself). Only trigger the early-advance
       // here for HP on a CORRECT answer — misses must not fire a second mpStartAutoNext.
       const isHPMiss=isHP&&payload.name===hpActivePlayer().name&&!payload.roundCorrect;
-      if(allAnswered&&!isHPMiss){
+      // If this was the last life of the last surviving player, treat it like the final
+      // question so the auto-next label reads "Wrapping up…" instead of a numeric countdown.
+      const _survivalWipedAN=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
+      if((allAnswered||_survivalWipedAN)&&!isHPMiss){
         clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
         const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-        const _isLastQ=!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN;
+        const _isLastQ=_survivalWipedAN||(!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN);
         mpStartAutoNext(()=>{
           if(!isHost)return;
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
+          // Now that the reveal + wrap-up pause has played, actually end the game if every
+          // non-quit survival player is eliminated.
+          if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
+            if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+            else mpEndGame();return;
+          }
           if(isHP){
             const _hpTotal=hpTurnOrder.length||lobbyPlayers.length;
             hpActiveIdx=(hpActiveIdx+1)%_hpTotal;
@@ -9734,7 +9742,8 @@ function mpTimeOut(){
     mpShowFeedback(false,correctAns,'(timed out)',"Time's up!");
     // Auto-advance starts only once the question timer has expired for everyone
     const _capTO=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-    const _isLastQTO=lobbyMode!=='race'&&lobbyMode!=='potato'&&(qIndex+1)>=_capTO;
+    const _survivalWipedTO=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
+    const _isLastQTO=_survivalWipedTO||(lobbyMode!=='race'&&lobbyMode!=='potato'&&(qIndex+1)>=_capTO);
     mpStartAutoNext(()=>{
       if(!isHost)return;
       // Record rolling window — question resolved normally (not voided)
