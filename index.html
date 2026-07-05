@@ -6937,6 +6937,9 @@ function rtSubscribe(lobbyId){
       const isHPMiss=isHP&&payload.name===hpActivePlayer().name&&!payload.roundCorrect;
       if(allAnswered&&!isHPMiss){
         clearInterval(timerInterval); // stop the question timer early
+        const mpBarAA=document.getElementById('mpTimerBar');if(mpBarAA)mpBarAA.style.width='0%';
+        const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
+        const _isLastQ=!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN;
         mpStartAutoNext(()=>{
           if(!isHost)return;
           // Record rolling window — question resolved normally (not voided)
@@ -6957,7 +6960,7 @@ function rtSubscribe(lobbyId){
           if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
-        });
+        },_isLastQ);
       }
     }
   });
@@ -6984,10 +6987,15 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
     if(isHost)return; // host already runs its own countdown
+    // Stop the local question timer bar — all players have answered
+    clearInterval(timerInterval);
+    const mpBarAN=document.getElementById('mpTimerBar');
+    if(mpBarAN){mpBarAN.style.width='0%';}
     let t=payload.seconds||5;
     const el=document.getElementById('mpAutoNext');
-    if(el)el.textContent=`Next in ${t}s`;
+    if(el)el.textContent=payload.isLastQuestion?'Wrapping up…':`Next in ${t}s`;
     clearInterval(mpAutoNextInterval);
+    if(payload.isLastQuestion)return; // host handles navigation, clients just show the label
     mpAutoNextInterval=setInterval(()=>{
       t--;
       if(el)el.textContent=t>0?`Next in ${t}s`:'';
@@ -7840,14 +7848,19 @@ function mpCancelCountdown(){
   goStep('lobby-room');
 }
 
-function mpStartAutoNext(onDone){
+function mpStartAutoNext(onDone,isLastQuestion){
   clearInterval(mpAutoNextInterval);
   mpAutoNextPaused=false;
   let t=5;
   const el=document.getElementById('mpAutoNext');
-  if(el)el.textContent=`Next in ${t}s`;
+  if(el)el.textContent=isLastQuestion?'Wrapping up…':`Next in ${t}s`;
   if(rtChannel&&isHost){
-    rtChannel.send({type:'broadcast',event:'show_auto_next',payload:{seconds:t}});
+    rtChannel.send({type:'broadcast',event:'show_auto_next',payload:{seconds:t,isLastQuestion:!!isLastQuestion}});
+  }
+  if(isLastQuestion){
+    // Short delay then fire — no countdown needed
+    setTimeout(()=>onDone(),1500);
+    return;
   }
   mpAutoNextInterval=setInterval(()=>{
     if(mpAutoNextPaused)return;
@@ -9597,7 +9610,7 @@ function mpAnswerMC(idx,el,qData){
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
   const mpElapsed=(Date.now()-questionStartTime)/1000;
-  const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):10;
+  const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
   if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
   mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
@@ -9651,7 +9664,7 @@ function mpCheckTypeAnswer(){
   } else {
     // Non-HP: only reaches here on a correct answer (wrong answers return early above)
     const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-    const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):10;
+    const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
@@ -9723,6 +9736,8 @@ function mpTimeOut(){
     if(last){last.userAns='(timed out)';last.correct=false;}
     mpShowFeedback(false,correctAns,'(timed out)',"Time's up!");
     // Auto-advance starts only once the question timer has expired for everyone
+    const _capTO=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
+    const _isLastQTO=lobbyMode!=='race'&&lobbyMode!=='potato'&&(qIndex+1)>=_capTO;
     mpStartAutoNext(()=>{
       if(!isHost)return;
       // Record rolling window — question resolved normally (not voided)
@@ -9733,7 +9748,7 @@ function mpTimeOut(){
       if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
       else{mpLoadQuestion();}
-    });
+    },_isLastQTO);
   }
 }
 
