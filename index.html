@@ -6922,9 +6922,14 @@ function rtSubscribe(lobbyId){
     // Host checks if all active players have answered — if so, advance early
     if(isHost){
       const isHP=lobbyMode==='potato';
+      // If all non-quit survival players are eliminated, end immediately regardless of answers
+      if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        else mpEndGame();return;
+      }
       const activePlayers=isHP
         ?[hpActivePlayer()]  // HP: only the active player needs to answer
-        :lobbyPlayers.filter(lp=>!lp.eliminated);
+        :lobbyPlayers.filter(lp=>!lp.eliminated&&!lp.quit);
       const allAnswered=activePlayers.length>0&&activePlayers.every(lp=>lp.roundAnswered);
       // For HP misses, mpTimeOut already owns the advance path (it set roundAnswered via the
       // answer_submitted broadcast but handles auto-next itself). Only trigger the early-advance
@@ -6945,7 +6950,6 @@ function rtSubscribe(lobbyId){
               else mpEndGame();return;
             }
           } else {
-            if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
             if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
           }
           qIndex++;
@@ -9501,8 +9505,15 @@ function mpShowQuestion(qData,hpFuse){
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
 
   const isBlocked=mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser);
+  const isSurvivalElim=lobbyMode==='survival'&&(lobbyPlayers.find(p=>p.name===currentUser)?.eliminated||false);
 
-  if(isType||isHP){
+  if(isSurvivalElim){
+    // Show a spectator message — eliminated players can't answer
+    const msg=document.createElement('div');
+    msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
+    msg.innerHTML=`<div style="font-size:32px">💀</div><div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text)">You've been eliminated</div><div>Spectating the remaining players…</div>`;
+    grid.appendChild(msg);
+  } else if(isType||isHP){
     // Hot Potato always uses type input; show disabled input if not your turn
     const wrap=document.createElement('div');wrap.className='type-wrap';
     const placeholder=isMyTurn?'Type your answer...':'Waiting for '+hpActivePlayer().name+'…';
@@ -9551,7 +9562,24 @@ function mpShowQuestion(qData,hpFuse){
     },100);
     return;
   }
-  timeLeft=questionTimeLimit;
+  // Eliminated players in survival sit out the round — immediately mark answered
+  // so the host's allAnswered check never waits on them
+  if(isSurvivalElim){
+    answered=true;
+    const me=lobbyPlayers.find(p=>p.name===currentUser);
+    if(me){me.roundAnswered=true;me.roundCorrect=false;me.roundPts=0;}
+    if(rtChannel)rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:score,lives:lives,eliminated:true,roundAnswered:true,roundCorrect:false,roundPts:0,roundElapsed:0}});
+    // Still drain the timer bar visually so the UI doesn't look frozen
+    timeLeft=questionTimeLimit;questionStartTime=Date.now();
+    const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+    timerInterval=setInterval(()=>{
+      timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
+      const pct=(timeLeft/questionTimeLimit)*100;
+      mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+      if(timeLeft<=0)clearInterval(timerInterval);
+    },100);
+    return;
+  }
   questionStartTime=Date.now();
   const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
   timerInterval=setInterval(()=>{
