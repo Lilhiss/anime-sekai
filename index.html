@@ -9527,6 +9527,7 @@ function mpShowQuestion(qData,hpFuse){
 
   if(isSurvivalElim){
     // Show a spectator message — eliminated players can't answer
+    grid.style.cssText='display:flex;justify-content:center'; // override the 2-col answers grid so this centers across the full card width
     const msg=document.createElement('div');
     msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
     msg.innerHTML=`<div style="font-size:32px">💀</div><div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text)">You've been eliminated</div><div>Spectating the remaining players…</div>`;
