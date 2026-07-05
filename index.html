@@ -6936,8 +6936,7 @@ function rtSubscribe(lobbyId){
       // here for HP on a CORRECT answer — misses must not fire a second mpStartAutoNext.
       const isHPMiss=isHP&&payload.name===hpActivePlayer().name&&!payload.roundCorrect;
       if(allAnswered&&!isHPMiss){
-        clearInterval(timerInterval); // stop the question timer early
-        const mpBarAA=document.getElementById('mpTimerBar');if(mpBarAA)mpBarAA.style.width='0%';
+        clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
         const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
         const _isLastQ=!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN;
         mpStartAutoNext(()=>{
@@ -6987,10 +6986,8 @@ function rtSubscribe(lobbyId){
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
     if(isHost)return; // host already runs its own countdown
-    // Stop the local question timer bar — all players have answered
+    // Stop the local question timer bar — all players have answered — but leave it frozen wherever it stopped
     clearInterval(timerInterval);
-    const mpBarAN=document.getElementById('mpTimerBar');
-    if(mpBarAN){mpBarAN.style.width='0%';}
     let t=payload.seconds||5;
     const el=document.getElementById('mpAutoNext');
     if(el)el.textContent=payload.isLastQuestion?'Wrapping up…':`Next in ${t}s`;
@@ -7859,7 +7856,7 @@ function mpStartAutoNext(onDone,isLastQuestion){
   }
   if(isLastQuestion){
     // Short delay then fire — no countdown needed
-    setTimeout(()=>onDone(),1500);
+    setTimeout(()=>onDone(),5000);
     return;
   }
   mpAutoNextInterval=setInterval(()=>{
