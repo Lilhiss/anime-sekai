@@ -5291,9 +5291,12 @@ function checkAnswer(userInput,qData){
   const normalize=s=>s.toLowerCase().trim().replace(/-/g,' ').replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
   // Collapse common romanization long-vowel variants so ou/uu/oo match o/u bidirectionally
   const deRomanize=s=>normalize(s).replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u');
+  // For two-word names, sort the words alphabetically so "first last" and "last first" compare equal
+  const nameOrderKey=s=>{const w=normalize(s).split(' ').filter(Boolean);return w.length===2?[...w].sort().join(' '):normalize(s);};
   const userN=normalize(userInput);
   const userR=deRomanize(userInput);
-  return [canonical,...aliases].some(a=>normalize(a)===userN||deRomanize(a)===userR);
+  const userO=nameOrderKey(userInput);
+  return [canonical,...aliases].some(a=>normalize(a)===userN||deRomanize(a)===userR||nameOrderKey(a)===userO);
 }
 async function loadQuestion(){
   answered=false;
