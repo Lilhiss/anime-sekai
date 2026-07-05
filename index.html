@@ -8434,7 +8434,12 @@ async function loadPublicLobbies(silent=false){
       const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
       const modeName={race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
-      const goalBadge=mode==='race'?`🏁 ${qCount} Pts`:mode==='survival'?`❤️ ${livesCount} Lives · ${qCount}Q`:mode==='potato'?`❤️ ${livesCount} Lives`:mode==='slowreveal'?`🎯 ${qCount} Pts`:`📋 ${qCount}Q`;
+      const goalBadge=mode==='survival'
+        ?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span><span class="lobby-list-badge">📋 ${qCount}Q</span>`
+        :mode==='race'?`<span class="lobby-list-badge">🏁 ${qCount} Pts</span>`
+        :mode==='potato'?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span>`
+        :mode==='slowreveal'?`<span class="lobby-list-badge">🎯 ${qCount} Pts</span>`
+        :`<span class="lobby-list-badge">📋 ${qCount}Q</span>`;
 
       const card=document.createElement('div');
       card.className='lobby-list-card'+(full?' lobby-guest-lock':'');
@@ -8444,7 +8449,7 @@ async function loadPublicLobbies(silent=false){
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-            <span class="lobby-list-badge">${goalBadge}</span>
+            ${goalBadge}
             ${timeBadge}
           </div>
         </div>
@@ -9134,13 +9139,18 @@ function patchLobbyListCard(lobby) {
   const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
   const modeName = {race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
-  const goalBadge = mode==='race'?`🏁 ${qCount} Pts`:mode==='survival'?`❤️ ${livesCount} Lives · ${qCount}Q`:mode==='potato'?`❤️ ${livesCount} Lives`:mode==='slowreveal'?`🎯 ${qCount} Pts`:`📋 ${qCount}Q`;
+  const goalBadge = mode==='survival'
+    ?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span><span class="lobby-list-badge">📋 ${qCount}Q</span>`
+    :mode==='race'?`<span class="lobby-list-badge">🏁 ${qCount} Pts</span>`
+    :mode==='potato'?`<span class="lobby-list-badge">❤️ ${livesCount} Lives</span>`
+    :mode==='slowreveal'?`<span class="lobby-list-badge">🎯 ${qCount} Pts</span>`
+    :`<span class="lobby-list-badge">📋 ${qCount}Q</span>`;
   const metaEl = card.querySelector('.lobby-list-meta');
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]} ${fmtName}</span>
       <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
-      <span class="lobby-list-badge">${goalBadge}</span>
+      ${goalBadge}
       ${timeBadge}`;
   }
   // Also refresh the player count from the DB so it doesn't go stale
