@@ -9979,9 +9979,7 @@ function mpEndGame(){
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
   const sorted=isHP
     ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
-    :isSurvival
-      ?[...lobbyPlayers].sort((a,b)=>(a.eliminated===b.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
-      :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+    :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   const winner=sorted[0];const iWon=winner.name===currentUser;
   document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
   document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span>. So close!';
