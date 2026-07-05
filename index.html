@@ -9765,8 +9765,8 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   // Show report button, reset flag state for this question
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
-  const rb=document.getElementById('mpReportFlagBtn');if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;rb.style.opacity='1';}
-  // Open 4-second flag window — closes 1s before auto-next fires
+  const rb=document.getElementById('mpReportFlagBtn');if(rb){rb.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flag this question';rb.disabled=false;rb.style.opacity='1';rb.style.pointerEvents='';}
+  // Open flag window — generous length so players have real time to read the reveal and react
   mpFlagWindowOpen=true;
   clearTimeout(mpFlagWindowTimer);
   mpFlagWindowTimer=setTimeout(()=>{
