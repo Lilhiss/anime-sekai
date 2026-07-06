@@ -7106,6 +7106,14 @@ function rtSubscribe(lobbyId){
     if(isHost)return;
     srRunPostRevealTimer(payload.seconds||10);
   });
+  rtChannel.on('broadcast',{event:'sr_round_end'},({payload})=>{
+    if(isHost)return;
+    clearInterval(srRevealInterval);srRevealInterval=null;
+    clearInterval(srPostRevealTimer);srPostRevealTimer=null;
+    clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+    srRoundActive=false;
+    srRoundEnd(null,payload.correctAns||null);
+  });
   rtChannel.on('broadcast',{event:'sr_next_round'},({payload})=>{
     if(isHost)return;
     qIndex=payload.qIndex;
@@ -8399,7 +8407,21 @@ function startHostGracePeriod(goneHostName,goneHostUserId,lid){
       // The new host needs a game-state snapshot before driving — Step 4 will handle this
       // by responding to request_game_state. For now, request our own state from peers.
       setTimeout(()=>{
-        if(rtChannel)rtChannel.send({type:'broadcast',event:'request_game_state',payload:{userId:currentUserId,username:currentUser}});
+        if(lobbyMode==='slowreveal'){
+          // Slow Reveal's mid-reveal state (the character-by-character animation and
+          // any in-progress buzz-in) can't be reconstructed from a snapshot — and since
+          // we're now the only host, nobody would ever answer a request_game_state
+          // broadcast anyway. Other clients are already sitting in the "Catching up...
+          // next round starts soon" spectator screen (see the game_state_snapshot
+          // handler), so honor that by just starting a fresh round immediately instead
+          // of waiting forever for a response that will never come.
+          qIndex++;
+          renderMPHUD();
+          if(rtChannel)rtChannel.send({type:'broadcast',event:'sr_next_round',payload:{qIndex}});
+          srHostFetchAndBroadcast();
+        } else if(rtChannel){
+          rtChannel.send({type:'broadcast',event:'request_game_state',payload:{userId:currentUserId,username:currentUser}});
+        }
       },400);
     }catch(e){console.error('[hostGrace] election error',e);}
   },HOST_GRACE_SECONDS*1000);
@@ -10071,6 +10093,11 @@ let srLockedPlayers=[];
 let srBuzzCountdown=null;
 let srBuzzTimeLeft=0;
 let srPostRevealTimer=null;
+// True from the moment a round's question is shown until it's won, timed out, or
+// every player is locked out. Used to reject buzz-ins that arrive after a round
+// has already ended (e.g. a client that hasn't yet processed the round-end
+// broadcast) instead of letting them race against the next round's state.
+let srRoundActive=false;
 const SR_CHAR_INTERVAL=60;
 
 async function srHostFetchAndBroadcast(){
@@ -10094,6 +10121,7 @@ function srStartReveal(qData,startTime){
   srBuzzedPlayer=null;
   srLockedPlayers=[];
   srBuzzTimeLeft=0;
+  srRoundActive=true;
   // Build flat chars array from only the characters that will have spans —
   // spaces between words are rendered as text nodes (the ' ' in the join below),
   // never as spans, so they must NOT appear in srChars.  If srChars included
@@ -10156,16 +10184,32 @@ function srRunPostRevealTimer(seconds){
   clearInterval(srPostRevealTimer);
   const mpBar=document.getElementById('mpTimerBar');
   if(mpBar){mpBar.style.width='100%';mpBar.className='timer-bar';}
-  let elapsed=0;
   const total=seconds*1000;
+  // Wall-clock based instead of tick-counted (elapsed+=100 per fire) — a
+  // backgrounded tab gets its setInterval throttled by the browser, so a
+  // tick-counted timer silently freezes instead of catching up. Using
+  // Date.now() means whenever this next fires, it correctly reflects how
+  // much real time has actually passed.
+  let startTs=Date.now();
+  let pausedSince=null;
   srPostRevealTimer=setInterval(()=>{
-    if(srBuzzedPlayer)return; // pause visually while someone is answering
-    elapsed+=100;
+    if(srBuzzedPlayer){
+      // Pause visually while someone is answering — remember when the pause
+      // began so we can shift startTs forward once it ends, rather than
+      // losing track of how much of the pause was "free" time.
+      if(pausedSince===null)pausedSince=Date.now();
+      return;
+    }
+    if(pausedSince!==null){
+      startTs+=(Date.now()-pausedSince);
+      pausedSince=null;
+    }
+    const elapsed=Date.now()-startTs;
     const pct=Math.max(0,100-(elapsed/total)*100);
     if(mpBar){mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');}
     if(elapsed>=total){
       clearInterval(srPostRevealTimer);srPostRevealTimer=null;
-      if(isHost)srRoundEnd(null,null);
+      if(isHost)srBroadcastRoundEnd(null);
     }
   },100);
 }
@@ -10213,13 +10257,14 @@ function srRenderBuzzArea(){
 }
 
 function srBuzzIn(){
-  if(srBuzzedPlayer||srLockedPlayers.includes(currentUser))return;
+  if(!srRoundActive||srBuzzedPlayer||srLockedPlayers.includes(currentUser))return;
   if(rtChannel){rtChannel.send({type:'broadcast',event:'sr_buzz',payload:{name:currentUser,charIndex:srCharIndex}});}
   if(isHost)srHandleBuzz(currentUser,srCharIndex);
 }
 
 function srHandleBuzz(name,wordIndex){
   if(!isHost)return;
+  if(!srRoundActive)return; // round already ended (timed out / won / all locked) — reject late buzzes
   if(srBuzzedPlayer)return;
   if(srLockedPlayers.includes(name))return;
   rtChannel.send({type:'broadcast',event:'sr_buzz_granted',payload:{name,charIndex:wordIndex}});
@@ -10239,17 +10284,25 @@ function srApplyBuzzGranted(name,wordIndex){
   srBuzzTimeLeft=5;
   const countEl=()=>document.getElementById('srCountdownDisplay');
   if(countEl())countEl().textContent=srBuzzTimeLeft;
+  // Wall-clock based (see srRunPostRevealTimer) so a backgrounded tab catches
+  // up to the correct remaining time instead of freezing at whatever count
+  // it was on when the tab lost focus.
+  const buzzStart=Date.now();
+  const buzzTotal=5000;
   srBuzzCountdown=setInterval(()=>{
-    srBuzzTimeLeft--;
-    if(countEl())countEl().textContent=srBuzzTimeLeft;
-    if(srBuzzTimeLeft<=0){
+    const remaining=Math.max(0,Math.ceil((buzzTotal-(Date.now()-buzzStart))/1000));
+    if(remaining!==srBuzzTimeLeft){
+      srBuzzTimeLeft=remaining;
+      if(countEl())countEl().textContent=srBuzzTimeLeft;
+    }
+    if(Date.now()-buzzStart>=buzzTotal){
       clearInterval(srBuzzCountdown);srBuzzCountdown=null;
       if(isHost){
         rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:srBuzzedPlayer,correct:false,timedOut:true,answer:'(timed out)',buzzRatio:srBuzzRatio}});
         srApplyBuzzResult(srBuzzedPlayer,false,true,'(timed out)',srBuzzRatio);
       }
     }
-  },1000);
+  },200);
 }
 
 let srBuzzRatio=0; // fraction of chars revealed when player buzzed in (0-1)
@@ -10270,6 +10323,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
   const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
   if(correct){
+    srRoundActive=false;
     const p=lobbyPlayers.find(lp=>lp.name===name);
     if(p)p.score++;
     if(name===currentUser)score++;
@@ -10300,7 +10354,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
     if(isHost&&activePlayers.length>0&&activePlayers.every(lp=>srLockedPlayers.includes(lp.name))){
       clearInterval(srPostRevealTimer);srPostRevealTimer=null;
       clearInterval(srRevealInterval);srRevealInterval=null;
-      srRoundEnd(null,correctAns);
+      srBroadcastRoundEnd(correctAns);
       return;
     }
     const startTime=Date.now()-(srCharIndex*SR_CHAR_INTERVAL);
@@ -10367,6 +10421,19 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   }
 }
 
+// Ends the round for everyone, not just the host. Previously srRoundEnd() was
+// only ever called locally by the host on timeout/all-locked-out, so no other
+// client ever learned the round was over — their Buzz In button stayed live
+// indefinitely and the answer reveal never appeared on their screen. This
+// wraps every host-triggered round-end in a broadcast so all clients reveal
+// together and stop accepting buzz-ins at the same moment.
+function srBroadcastRoundEnd(correctAns){
+  if(!isHost)return;
+  srRoundActive=false;
+  if(rtChannel)rtChannel.send({type:'broadcast',event:'sr_round_end',payload:{correctAns:correctAns||null}});
+  srRoundEnd(null,correctAns);
+}
+
 function srRoundEnd(winner,correctAns){
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   document.getElementById('mpFbIcon').innerHTML='<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
@@ -10405,6 +10472,7 @@ function srClearReveal(){
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
   clearInterval(srPostRevealTimer);srPostRevealTimer=null;
   clearInterval(mpAutoNextInterval);mpAutoNextInterval=null;
+  srRoundActive=false;
   srBuzzedPlayer=null;
   srLockedPlayers=[];
   srBuzzTimeLeft=0;
