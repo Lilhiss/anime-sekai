@@ -1672,8 +1672,8 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="gs-pane" data-pane="mode">
               <div class="gs-grid" id="gsModeGrid">
                 <div class="gs-bigcard" data-mode="classic" onclick="gsSetMode('classic')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎮</div><div class="gs-bc-title">Classic</div><div class="gs-bc-desc">Answer at your own pace</div></div>
-                <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">Highest score wins</div></div>
-                <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">3 lives, last standing</div></div>
+                <div class="gs-bigcard" data-mode="race" onclick="gsSetMode('race')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🏁</div><div class="gs-bc-title">Score Race</div><div class="gs-bc-desc">First to reach the target score wins!</div></div>
+                <div class="gs-bigcard" data-mode="survival" onclick="gsSetMode('survival')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">❤️</div><div class="gs-bc-title">Survival</div><div class="gs-bc-desc">Can you make it to the end?</div></div>
                 <div class="gs-bigcard" data-mode="potato" onclick="gsSetMode('potato')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🥔</div><div class="gs-bc-title">Hot Potato</div><div class="gs-bc-desc">Pass it or lose a life</div></div>
                 <div class="gs-bigcard" data-mode="slowreveal" onclick="gsSetMode('slowreveal')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">👁️</div><div class="gs-bc-title">Slow Reveal</div><div class="gs-bc-desc">Buzz in to answer</div></div>
                 <div class="gs-bigcard locked" data-mode="_soon"><div class="gs-bc-emoji">✨</div><div class="gs-bc-title">More Coming Soon</div><div class="gs-bc-desc">🔒 New modes in the works</div></div>
@@ -5308,7 +5308,7 @@ async function loadQuestion(){
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
   const _iw=document.getElementById('qImageWrap');const _ie=document.getElementById('qImage');
-  if(_iw){_iw.style.display='none';}if(_ie){_ie.src='';}
+  if(_iw){_iw.style.display='none';}if(_ie){_ie.onload=null;_ie.onerror=null;_ie.src='';}
   const qCard=document.querySelector('#page-quiz .q-card');
   if(qCard){qCard.classList.remove('type-mode','shake','answered');}
   renderHUD();
@@ -5325,8 +5325,6 @@ function showQuestion(qData){
   document.getElementById('questionText').textContent=qData.question||'Question unavailable';
   const imgWrap=document.getElementById('qImageWrap');
   const imgEl=document.getElementById('qImage');
-  if(qData.media_url){imgEl.src=qData.media_url;imgWrap.style.display='flex';}
-  else{imgWrap.style.display='none';imgEl.src='';}
   const grid=document.getElementById('answersGrid');grid.innerHTML='';
   const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   if(isType){
@@ -5344,7 +5342,19 @@ function showQuestion(qData){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
-  startTimer();
+  // Don't start the timer until the image (if any) has actually loaded — otherwise Image
+  // Round / Name the Character questions burn timer time on a blank image while it downloads.
+  if(qData.media_url){
+    imgEl.onload=null;imgEl.onerror=null;
+    imgWrap.style.display='flex';imgEl.style.visibility='hidden';
+    imgEl.onload=()=>{imgEl.style.visibility='visible';startTimer();};
+    imgEl.onerror=()=>{imgWrap.style.display='none';startTimer();};
+    imgEl.src=qData.media_url;
+    if(imgEl.complete&&imgEl.naturalWidth>0){imgEl.onload=null;imgEl.onerror=null;imgEl.style.visibility='visible';startTimer();}
+  } else {
+    imgWrap.style.display='none';imgEl.src='';
+    startTimer();
+  }
 }
 function answerMC(idx,el,qData){
   if(answered)return;answered=true;clearInterval(timerInterval);
@@ -6993,7 +7003,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQLoading').style.display='flex';
     const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
-    if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.src='';}
+    if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
     const mpQCard=document.querySelector('#page-mp-quiz .q-card');
     if(mpQCard)mpQCard.classList.remove('answered');
     if(isHost)mpHostFetchAndBroadcast();
@@ -7777,7 +7787,7 @@ function mpResetQuestionCard(){
   document.getElementById('mpQCardFeedback').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
   const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
-  if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.src='';}
+  if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
   if(mpQCard)mpQCard.classList.remove('answered');
 }
@@ -9524,8 +9534,6 @@ function mpShowQuestion(qData,hpFuse){
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
   const mpImgWrap=document.getElementById('mpQImageWrap');
   const mpImgEl=document.getElementById('mpQImage');
-  if(qData.media_url){mpImgEl.src=qData.media_url;mpImgWrap.style.display='flex';}
-  else{mpImgWrap.style.display='none';mpImgEl.src='';}
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
   const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   const isHP=lobbyMode==='potato';
@@ -9573,49 +9581,67 @@ function mpShowQuestion(qData,hpFuse){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
-  const questionTimeLimit=isHP?(hpFuse!=null?hpFuse:hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):raceTimeLimit; // use host-broadcast fuse for HP
-  // Hide the timer bar in Hot Potato — the fuse is intentionally secret
-  const mpTimerWrapEl=document.getElementById('mpTimerWrap');
-  if(mpTimerWrapEl)mpTimerWrapEl.style.display=isHP?'none':'';
-  clearInterval(timerInterval);
-  if(isBlocked){
-    // Spectating a tiebreaker — show timer bar draining but don't fire mpTimeOut
-    timeLeft=questionTimeLimit;questionStartTime=Date.now();
+
+  // Don't start any of the timers below until the image (if any) has actually loaded —
+  // otherwise Image Round / Name the Character questions burn timer time on a blank image
+  // while it downloads.
+  const beginMpTimers=()=>{
+    const questionTimeLimit=isHP?(hpFuse!=null?hpFuse:hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):raceTimeLimit; // use host-broadcast fuse for HP
+    // Hide the timer bar in Hot Potato — the fuse is intentionally secret
+    const mpTimerWrapEl=document.getElementById('mpTimerWrap');
+    if(mpTimerWrapEl)mpTimerWrapEl.style.display=isHP?'none':'';
+    clearInterval(timerInterval);
+    if(isBlocked){
+      // Spectating a tiebreaker — show timer bar draining but don't fire mpTimeOut
+      timeLeft=questionTimeLimit;questionStartTime=Date.now();
+      const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+      timerInterval=setInterval(()=>{
+        timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
+        const pct=(timeLeft/questionTimeLimit)*100;
+        mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+        if(timeLeft<=0)clearInterval(timerInterval); // just stop — host handles next step
+      },100);
+      return;
+    }
+    // Eliminated players in survival sit out the round — immediately mark answered
+    // so the host's allAnswered check never waits on them
+    if(isSurvivalElim){
+      answered=true;
+      const me=lobbyPlayers.find(p=>p.name===currentUser);
+      if(me){me.roundAnswered=true;me.roundCorrect=false;me.roundPts=0;}
+      if(rtChannel)rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:score,lives:lives,eliminated:true,roundAnswered:true,roundCorrect:false,roundPts:0,roundElapsed:0}});
+      // Still drain the timer bar visually so the UI doesn't look frozen
+      timeLeft=questionTimeLimit;questionStartTime=Date.now();
+      const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+      timerInterval=setInterval(()=>{
+        timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
+        const pct=(timeLeft/questionTimeLimit)*100;
+        mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
+        if(timeLeft<=0)clearInterval(timerInterval);
+      },100);
+      return;
+    }
+    questionStartTime=Date.now();
     const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
     timerInterval=setInterval(()=>{
       timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
       const pct=(timeLeft/questionTimeLimit)*100;
       mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
-      if(timeLeft<=0)clearInterval(timerInterval); // just stop — host handles next step
+      if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
     },100);
-    return;
+  };
+
+  if(qData.media_url){
+    mpImgEl.onload=null;mpImgEl.onerror=null;
+    mpImgWrap.style.display='flex';mpImgEl.style.visibility='hidden';
+    mpImgEl.onload=()=>{mpImgEl.style.visibility='visible';beginMpTimers();};
+    mpImgEl.onerror=()=>{mpImgWrap.style.display='none';beginMpTimers();};
+    mpImgEl.src=qData.media_url;
+    if(mpImgEl.complete&&mpImgEl.naturalWidth>0){mpImgEl.onload=null;mpImgEl.onerror=null;mpImgEl.style.visibility='visible';beginMpTimers();}
+  } else {
+    mpImgWrap.style.display='none';mpImgEl.src='';
+    beginMpTimers();
   }
-  // Eliminated players in survival sit out the round — immediately mark answered
-  // so the host's allAnswered check never waits on them
-  if(isSurvivalElim){
-    answered=true;
-    const me=lobbyPlayers.find(p=>p.name===currentUser);
-    if(me){me.roundAnswered=true;me.roundCorrect=false;me.roundPts=0;}
-    if(rtChannel)rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:score,lives:lives,eliminated:true,roundAnswered:true,roundCorrect:false,roundPts:0,roundElapsed:0}});
-    // Still drain the timer bar visually so the UI doesn't look frozen
-    timeLeft=questionTimeLimit;questionStartTime=Date.now();
-    const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
-    timerInterval=setInterval(()=>{
-      timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
-      const pct=(timeLeft/questionTimeLimit)*100;
-      mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
-      if(timeLeft<=0)clearInterval(timerInterval);
-    },100);
-    return;
-  }
-  questionStartTime=Date.now();
-  const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
-  timerInterval=setInterval(()=>{
-    timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
-    const pct=(timeLeft/questionTimeLimit)*100;
-    mpBar.style.width=pct+'%';mpBar.className='timer-bar'+(pct<30?' danger':pct<60?' warn':'');
-    if(timeLeft<=0){clearInterval(timerInterval);mpTimeOut();}
-  },100);
 }
 
 function mpAnswerMC(idx,el,qData){
@@ -9846,7 +9872,7 @@ async function mpLoadQuestion(){
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
   const _mpIwLQ=document.getElementById('mpQImageWrap');const _mpIeLQ=document.getElementById('mpQImage');
-  if(_mpIwLQ){_mpIwLQ.style.display='none';}if(_mpIeLQ){_mpIeLQ.src='';}
+  if(_mpIwLQ){_mpIwLQ.style.display='none';}if(_mpIeLQ){_mpIeLQ.onload=null;_mpIeLQ.onerror=null;_mpIeLQ.src='';}
   const mpQCardLQ=document.querySelector('#page-mp-quiz .q-card');
   if(mpQCardLQ)mpQCardLQ.classList.remove('answered');
   renderMPHUD();
