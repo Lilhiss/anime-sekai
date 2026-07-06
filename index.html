@@ -5320,20 +5320,19 @@ async function loadQuestion(){
   fetchQuestion().then(q=>{prefetchedQuestion=q});
 }
 function showQuestion(qData){
-  document.getElementById('qLoading').style.display='none';
-  document.getElementById('questionText').style.display='block';
   document.getElementById('questionText').textContent=qData.question||'Question unavailable';
   const imgWrap=document.getElementById('qImageWrap');
   const imgEl=document.getElementById('qImage');
-  const grid=document.getElementById('answersGrid');grid.innerHTML='';
+  const grid=document.getElementById('answersGrid');grid.innerHTML='';grid.style.display='none';
   const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
+  let focusEl=null;
   if(isType){
     document.querySelector('.q-card').classList.add('type-mode');
     const wrap=document.createElement('div');wrap.className='type-wrap';
     wrap.innerHTML=`<div class="type-input-row"><input id="typeInput" class="type-input" type="text" placeholder="Type your answer..." autocomplete="off"><button class="type-submit" id="typeSubmitBtn" onclick="checkTypeAnswer()"><i class="ti ti-check" style="font-size:15px"></i> Submit</button></div><div id="typeWrongHint" style="font-size:12px;color:#f87171;font-weight:700;display:none;margin-top:4px"><i class="ti ti-x" style="font-size:12px"></i> Not quite, try again!</div>`;
     grid.appendChild(wrap);applyTheme();
     document.getElementById('typeInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkTypeAnswer()});
-    document.getElementById('typeInput').focus();
+    focusEl=document.getElementById('typeInput');
   } else {
     (qData.options||[]).forEach((opt,i)=>{
       const d=document.createElement('div');d.className='ans';
@@ -5342,18 +5341,28 @@ function showQuestion(qData){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
-  // Don't start the timer until the image (if any) has actually loaded — otherwise Image
-  // Round / Name the Character questions burn timer time on a blank image while it downloads.
+  // Keep the "Generating question" spinner on screen — and the question text/answers
+  // hidden — until the image (if any) has actually finished loading. Revealing the
+  // text and image together avoids the layout jump/glitch of the card popping the
+  // image in after the answers were already visible, and also means the timer never
+  // burns time on a blank image while it downloads.
+  const revealQuestion=()=>{
+    document.getElementById('qLoading').style.display='none';
+    document.getElementById('questionText').style.display='block';
+    grid.style.display='';
+    if(focusEl)focusEl.focus();
+    startTimer();
+  };
   if(qData.media_url){
     imgEl.onload=null;imgEl.onerror=null;
     imgWrap.style.display='flex';imgEl.style.visibility='hidden';
-    imgEl.onload=()=>{imgEl.style.visibility='visible';startTimer();};
-    imgEl.onerror=()=>{imgWrap.style.display='none';startTimer();};
+    imgEl.onload=()=>{imgEl.style.visibility='visible';revealQuestion();};
+    imgEl.onerror=()=>{imgWrap.style.display='none';revealQuestion();};
     imgEl.src=qData.media_url;
-    if(imgEl.complete&&imgEl.naturalWidth>0){imgEl.onload=null;imgEl.onerror=null;imgEl.style.visibility='visible';startTimer();}
+    if(imgEl.complete&&imgEl.naturalWidth>0){imgEl.onload=null;imgEl.onerror=null;imgEl.style.visibility='visible';revealQuestion();}
   } else {
     imgWrap.style.display='none';imgEl.src='';
-    startTimer();
+    revealQuestion();
   }
 }
 function answerMC(idx,el,qData){
@@ -6881,7 +6890,6 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     currentQData=payload.qData;qIndex=payload.qIndex;
-    document.getElementById('mpQLoading').style.display='none';
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
@@ -9527,24 +9535,24 @@ async function mpQuitGame(){
 
 function mpShowQuestion(qData,hpFuse){
   answered=false;
-  document.getElementById('mpQLoading').style.display='none';
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
-  document.getElementById('mpQuestionText').style.display='block';
   document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
   const mpImgWrap=document.getElementById('mpQImageWrap');
   const mpImgEl=document.getElementById('mpQImage');
-  const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='';
+  const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='display:none';
   const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   const isHP=lobbyMode==='potato';
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
 
   const isBlocked=mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser);
   const isSurvivalElim=lobbyMode==='survival'&&(lobbyPlayers.find(p=>p.name===currentUser)?.eliminated||false);
+  let mpFocusEl=null; // element to focus once the question is revealed (set below for type/HP input)
 
+  let gridFinalCss=''; // final grid.style.cssText to apply once the question is revealed
   if(isSurvivalElim){
     // Show a spectator message — eliminated players can't answer
-    grid.style.cssText='display:flex;justify-content:center'; // override the 2-col answers grid so this centers across the full card width
+    gridFinalCss='display:flex;justify-content:center'; // override the 2-col answers grid so this centers across the full card width
     const msg=document.createElement('div');
     msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
     msg.innerHTML=`<div style="font-size:32px">💀</div><div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text)">You've been eliminated</div><div>Spectating the remaining players…</div>`;
@@ -9557,7 +9565,7 @@ function mpShowQuestion(qData,hpFuse){
     grid.appendChild(wrap);applyTheme();
     if(isMyTurn&&!isBlocked){
       document.getElementById('mpTypeInput').addEventListener('keydown',e=>{if(e.key==='Enter')mpCheckTypeAnswer();});
-      document.getElementById('mpTypeInput').focus();
+      mpFocusEl=document.getElementById('mpTypeInput');
       if(isHP&&rtChannel){
         document.getElementById('mpTypeInput').addEventListener('input',e=>{
           const draft=e.target.value;
@@ -9582,10 +9590,19 @@ function mpShowQuestion(qData,hpFuse){
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
 
-  // Don't start any of the timers below until the image (if any) has actually loaded —
-  // otherwise Image Round / Name the Character questions burn timer time on a blank image
-  // while it downloads.
+  // Keep the "Generating question" spinner on screen — and the question text/answers
+  // hidden — until the image (if any) has actually finished loading. Revealing the
+  // text and image together avoids the layout jump/glitch of the card popping the
+  // image in after the answers were already visible, and also means the timers below
+  // never burn time on a blank image while it downloads.
+  const revealMpQuestion=()=>{
+    document.getElementById('mpQLoading').style.display='none';
+    document.getElementById('mpQuestionText').style.display='block';
+    grid.style.cssText=gridFinalCss;
+    if(mpFocusEl)mpFocusEl.focus();
+  };
   const beginMpTimers=()=>{
+    revealMpQuestion();
     const questionTimeLimit=isHP?(hpFuse!=null?hpFuse:hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):raceTimeLimit; // use host-broadcast fuse for HP
     // Hide the timer bar in Hot Potato — the fuse is intentionally secret
     const mpTimerWrapEl=document.getElementById('mpTimerWrap');
