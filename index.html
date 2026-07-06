@@ -7099,7 +7099,13 @@ function rtSubscribe(lobbyId){
     srApplyBuzzGranted(payload.name,payload.charIndex);
   });
   rtChannel.on('broadcast',{event:'sr_buzz_result'},({payload})=>{
-    if(isHost)return;
+    // Every client — including the host — applies the result only from this
+    // broadcast (self:true means the sender gets their own event back too).
+    // Previously the host applied results locally and directly whenever it
+    // was the one who answered/timed out, and this listener ignored the
+    // broadcast entirely (`if(isHost)return`), so a non-host's answer never
+    // reached the host: no score update, and no unlock of the buzz button
+    // (the host's local 5s countdown just kept running to its natural end).
     srApplyBuzzResult(payload.name,payload.correct,payload.timedOut,payload.answer,payload.buzzRatio||0);
   });
   rtChannel.on('broadcast',{event:'sr_post_reveal'},({payload})=>{
@@ -10099,6 +10105,10 @@ let srPostRevealTimer=null;
 // broadcast) instead of letting them race against the next round's state.
 let srRoundActive=false;
 const SR_CHAR_INTERVAL=60;
+// Max characters a single reveal tick is allowed to newly show. Caps the
+// "catch up" jump after any delayed tick (see the two reveal loops below)
+// so a late tick can never dump the whole remaining question at once.
+const SR_MAX_REVEAL_PER_TICK=3;
 
 async function srHostFetchAndBroadcast(){
   // Snapshot scores at the start of each SR round so a void rolls back to here,
@@ -10161,10 +10171,19 @@ function srStartReveal(qData,startTime){
     if(srBuzzedPlayer)return;
     const elapsed=Date.now()-startTime;
     const targetIdx=Math.floor(elapsed/SR_CHAR_INTERVAL);
-    while(srCharIndex<=targetIdx&&srCharIndex<srChars.length){
+    // Cap how many characters can become visible in a single tick. Without this,
+    // if this tick is ever delayed for any reason (the window losing scheduling
+    // priority while unfocused, a slow reflow, etc.), `elapsed` jumps way ahead
+    // and the loop below would reveal the *entire remaining question* in one
+    // frame instead of animating it. Capping means a late tick just trickles
+    // through the backlog over the next few ticks — invisible to the user —
+    // instead of ever dumping the whole thing at once.
+    let revealedThisTick=0;
+    while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
       const el=document.getElementById('src'+srCharIndex);
       if(el)el.classList.add('visible');
       srCharIndex++;
+      revealedThisTick++;
     }
     if(srCharIndex>=srChars.length){
       clearInterval(srRevealInterval);srRevealInterval=null;
@@ -10297,9 +10316,11 @@ function srApplyBuzzGranted(name,wordIndex){
     }
     if(Date.now()-buzzStart>=buzzTotal){
       clearInterval(srBuzzCountdown);srBuzzCountdown=null;
+      // Broadcast only — the sr_buzz_result listener applies it for every
+      // client (including this host, via self:true), so there's one apply
+      // path regardless of who buzzed in.
       if(isHost){
         rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:srBuzzedPlayer,correct:false,timedOut:true,answer:'(timed out)',buzzRatio:srBuzzRatio}});
-        srApplyBuzzResult(srBuzzedPlayer,false,true,'(timed out)',srBuzzRatio);
       }
     }
   },200);
@@ -10314,8 +10335,10 @@ function srSubmitAnswer(){
   const userAns=input?input.value.trim():'';
   if(!userAns)return;
   const correct=checkAnswer(userAns,currentQData);
+  // Send only — the sr_buzz_result listener applies it for every client,
+  // including this one (self:true), so there's a single apply path whether
+  // the answerer is the host or a regular player.
   if(rtChannel){rtChannel.send({type:'broadcast',event:'sr_buzz_result',payload:{name:currentUser,correct,timedOut:false,answer:userAns,buzzRatio:srBuzzRatio}});}
-  if(isHost)srApplyBuzzResult(currentUser,correct,false,userAns,srBuzzRatio);
 }
 
 function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
@@ -10361,10 +10384,14 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
     srRevealInterval=setInterval(()=>{
       const elapsed=Date.now()-startTime;
       const targetIdx=Math.floor(elapsed/SR_CHAR_INTERVAL);
-      while(srCharIndex<=targetIdx&&srCharIndex<srChars.length){
+      // Same per-tick cap as the main reveal loop in srStartReveal — see the
+      // comment there for why this prevents an instant full-question dump.
+      let revealedThisTick=0;
+      while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
         const el=document.getElementById('src'+srCharIndex);
         if(el)el.classList.add('visible');
         srCharIndex++;
+        revealedThisTick++;
       }
       if(srCharIndex>=srChars.length){
         clearInterval(srRevealInterval);srRevealInterval=null;
