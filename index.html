@@ -10380,24 +10380,36 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
       srBroadcastRoundEnd(correctAns);
       return;
     }
-    const startTime=Date.now()-(srCharIndex*SR_CHAR_INTERVAL);
-    srRevealInterval=setInterval(()=>{
-      const elapsed=Date.now()-startTime;
-      const targetIdx=Math.floor(elapsed/SR_CHAR_INTERVAL);
-      // Same per-tick cap as the main reveal loop in srStartReveal — see the
-      // comment there for why this prevents an instant full-question dump.
-      let revealedThisTick=0;
-      while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
-        const el=document.getElementById('src'+srCharIndex);
-        if(el)el.classList.add('visible');
-        srCharIndex++;
-        revealedThisTick++;
-      }
-      if(srCharIndex>=srChars.length){
-        clearInterval(srRevealInterval);srRevealInterval=null;
-        if(isHost)srStartPostRevealTimer();
-      }
-    },30);
+    // If the reveal was already complete before this buzz (the player buzzed
+    // in during the post-reveal answer window), srApplyBuzzGranted only
+    // paused the post-reveal timer — it never cleared its interval. That
+    // paused timer will resume on its own from wherever it left off as soon
+    // as srBuzzedPlayer is null (see srRunPostRevealTimer's pausedSince
+    // logic above), so we must NOT call srStartPostRevealTimer() here: doing
+    // so restarts the countdown from a fresh 10s and re-broadcasts it,
+    // resetting the remaining time for every other player. Only re-run the
+    // char-reveal loop (and start the post-reveal timer for the first time)
+    // when the reveal genuinely hadn't finished yet at the moment of buzzing.
+    if(srCharIndex<srChars.length){
+      const startTime=Date.now()-(srCharIndex*SR_CHAR_INTERVAL);
+      srRevealInterval=setInterval(()=>{
+        const elapsed=Date.now()-startTime;
+        const targetIdx=Math.floor(elapsed/SR_CHAR_INTERVAL);
+        // Same per-tick cap as the main reveal loop in srStartReveal — see the
+        // comment there for why this prevents an instant full-question dump.
+        let revealedThisTick=0;
+        while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
+          const el=document.getElementById('src'+srCharIndex);
+          if(el)el.classList.add('visible');
+          srCharIndex++;
+          revealedThisTick++;
+        }
+        if(srCharIndex>=srChars.length){
+          clearInterval(srRevealInterval);srRevealInterval=null;
+          if(isHost)srStartPostRevealTimer();
+        }
+      },30);
+    }
     srRenderBuzzArea();
   }
 }
