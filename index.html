@@ -228,6 +228,7 @@ h1 .hi{color:var(--accent)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
 .q-answer-sub-name{color:#fff}
+.q-fallback-hint{font-size:11px;color:#fbbf24;font-weight:700;margin-top:8px;display:flex;align-items:center;gap:4px}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
 .q-meta{margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px}
 .q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
@@ -5077,7 +5078,17 @@ async function fetchQuestion(){
     if(selectedFormat==='char-mc') return buildCharMcQuestion(banked);
     return shuffleOptions(banked);
   }
-  return shuffleOptions(getFallback());
+  // sbGetQuestion returned null — either this topic's pool is genuinely
+  // exhausted, or the fetch itself failed (network/Supabase error); it
+  // doesn't currently distinguish the two. Tag the fallback question so the
+  // UI can tell the player their question may not match their chosen topic,
+  // without guessing at a specific cause.
+  return {...shuffleOptions(getFallback()),is_fallback:true};
+}
+// Small hint shown near a question that came from the local fallback pool
+// instead of matching the player's selected topic — see fetchQuestion() above.
+function fallbackHintHTML(qData){
+  return qData?.is_fallback?'<div class="q-fallback-hint"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Couldn\'t load a question from the database. Showing a fallback question.</div>':'';
 }
 
 function buildCharMcQuestion(q){
@@ -5323,7 +5334,7 @@ async function loadQuestion(){
   fetchQuestion().then(q=>{prefetchedQuestion=q});
 }
 function showQuestion(qData){
-  document.getElementById('questionText').textContent=qData.question||'Question unavailable';
+  document.getElementById('questionText').innerHTML=(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   const imgWrap=document.getElementById('qImageWrap');
   const imgEl=document.getElementById('qImage');
   const grid=document.getElementById('answersGrid');grid.innerHTML='';grid.style.display='none';
@@ -5470,7 +5481,7 @@ function showFeedback(correct,correctAns,userAns,override){
   const qCard=document.querySelector('#page-quiz .q-card');
   const qText=document.getElementById('questionText');
   const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-  qText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+  qText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${subBy}${fallbackHintHTML(currentQData)}`;
   if(qCard)qCard.classList.add('answered');
   document.getElementById('fbSubmittedBy').style.display='none';
   applyTheme();
@@ -9568,7 +9579,7 @@ function mpShowQuestion(qData,hpFuse){
   answered=false;
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
-  document.getElementById('mpQuestionText').textContent=qData.question||'Question unavailable';
+  document.getElementById('mpQuestionText').innerHTML=(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   const mpImgWrap=document.getElementById('mpQImageWrap');
   const mpImgEl=document.getElementById('mpQImage');
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='display:none';
@@ -9874,7 +9885,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
   const mpQText=document.getElementById('mpQuestionText');
   const mpSubBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-  mpQText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${mpSubBy}`;
+  mpQText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${mpSubBy}${fallbackHintHTML(currentQData)}`;
   if(mpQCard)mpQCard.classList.add('answered');
   if(mpSubEl)mpSubEl.style.display='none';
   applyTheme();
@@ -10168,6 +10179,7 @@ function srStartReveal(qData,startTime){
     }).join('');
     return `<span class="sr-word-wrap">${chars}</span>`;
   }).join(' ');
+  textEl.innerHTML+=fallbackHintHTML(qData);
   // Reset timer bar to full at question start; it will drain during the post-reveal window
   const mpBarSR=document.getElementById('mpTimerBar');
   if(mpBarSR){mpBarSR.style.width='100%';mpBarSR.className='timer-bar';}
@@ -10501,7 +10513,7 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
     srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
     const mpQText=document.getElementById('mpQuestionText');
     const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-    mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
+    mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}${fallbackHintHTML(currentQData)}`;
     applyTheme();
   }
 }
@@ -10530,7 +10542,7 @@ function srRoundEnd(winner,correctAns){
   const mpQText=document.getElementById('mpQuestionText');
   const ans=correctAns||(currentQData?.options?currentQData.options[currentQData.answer]:currentQData?.answer)||'?';
   const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-  mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${ans}</div>${subBy}`;
+  mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${ans}</div>${subBy}${fallbackHintHTML(currentQData)}`;
   document.getElementById('mpAnswersGrid').innerHTML='';
   // Show the flag button now that the answer is revealed
   const rwRE=document.getElementById('mpReportWrap');if(rwRE)rwRE.style.display='block';
