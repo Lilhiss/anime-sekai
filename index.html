@@ -10383,7 +10383,17 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
     srShowFeedback(true,name,correctAns,userAns,false,buzzRatio);
     const winner=lobbyPlayers.find(lp=>lp.score>=srTargetScore);
     if(winner){
-      if(isHost){rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});mpEndGame();}
+      // Same 5s "Wrapping up…" pause every other mode plays before ending the
+      // game, so the winning answer stays on screen instead of instantly
+      // cutting to the results page. srApplyBuzzResult runs on every client
+      // (via the sr_buzz_result broadcast), so each client shows its own
+      // local countdown the same way SR's normal round-advance below already
+      // does — only the host actually broadcasts game_ended once it fires.
+      mpStartAutoNext(()=>{
+        if(!isHost)return;
+        rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+        mpEndGame();
+      },true);
       return;
     }
     mpStartAutoNext(()=>{
