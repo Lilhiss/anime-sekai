@@ -338,6 +338,10 @@ h1 .hi{color:var(--accent)}
 .correct-ans{color:#4ade80;font-weight:700}
 .wrong-ans{color:#f87171;font-weight:700;text-decoration:line-through}
 .recap-num{width:22px;height:22px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:11px;color:var(--muted);flex-shrink:0;margin-top:1px}
+.recap-player-select{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.recap-player-pill{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;background:var(--bg2);border:1.5px solid var(--border2);color:var(--muted);padding:6px 13px;border-radius:99px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.recap-player-pill:hover{border-color:var(--accent);color:var(--text)}
+.recap-player-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
 
 /* PROFILE PAGE */
 .profile-wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:18px}
@@ -1893,7 +1897,8 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <button class="action-btn secondary" onclick="goHome()"><i class="ti ti-home" style="font-size:17px"></i> Home</button>
       </div>
       <div class="slide-in d4">
-        <div class="recap-header"><div class="recap-title">Answer Recap</div><button class="recap-toggle" onclick="toggleMpRecap()" id="mpRecapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
+        <div class="recap-header"><div class="recap-title" id="mpRecapTitle">Answer Recap</div><button class="recap-toggle" onclick="toggleMpRecap()" id="mpRecapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
+        <div class="recap-player-select" id="mpRecapPlayerSelect" style="display:none"></div>
         <div class="recap-list" id="mpRecapList"></div>
       </div>
     </div>
@@ -3309,6 +3314,11 @@ let selectedQuestionLimit=10;
 let soloRaceTarget=100; // solo Score Race target score (50/75/100/150/custom)
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
 let reportedQuestionIds=new Set(); // tracks IDs flagged in-game or via recap
+// Hot Potato per-player round history — one entry per round, tagged with whichever
+// player was actively holding the potato that round. Kept separate from quizHistory
+// (which only reflects the local client's own answers) so the end-game recap can be
+// filtered per player instead of showing every spectated round as a false "miss".
+let hpHistory=[],mpRecapPlayer=null; // mpRecapPlayer: which player's turns the recap is currently showing
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
 
@@ -6879,7 +6889,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -6942,6 +6952,13 @@ function rtSubscribe(lobbyId){
     // answer already resolved the round.
     if(lobbyMode==='potato'){
       clearInterval(timerInterval);
+      // Sync this round into hpHistory for spectating clients — the active player's own
+      // client already logged it locally in mpCheckTypeAnswer, so only fill it in here if
+      // it's still unresolved (guards against double-processing on the sender's own client).
+      const hpLastSync=hpHistory[hpHistory.length-1];
+      if(hpLastSync&&hpLastSync.correct===null&&payload.roundCorrect){
+        hpLastSync.correct=true;hpLastSync.userAns=payload.hpUserAns||hpLastSync.correctAns;
+      }
       if(payload.name!==currentUser){
         const correctAns=currentQData?(currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer):'?';
         // Only show feedback reveal for a correct answer — misses use the vignette/shake path instead
@@ -7162,14 +7179,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+    qIndex=0;answered=false;quizHistory=[];hpHistory=[];prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -7899,7 +7916,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];
+  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -7963,19 +7980,50 @@ function toggleMpRecap(){
   document.getElementById('mpRecapToggleBtn').innerHTML=mpRecapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
 }
 
+function switchMpRecapPlayer(name){
+  mpRecapPlayer=name;
+  renderMpRecap();
+}
+
 function renderMpRecap(){
   const list=document.getElementById('mpRecapList');
   if(!list)return;
+  const selectWrap=document.getElementById('mpRecapPlayerSelect');
+  const titleEl=document.getElementById('mpRecapTitle');
   list.innerHTML='';
   mpRecapOpen=true;
   const toggleBtn=document.getElementById('mpRecapToggleBtn');
   if(toggleBtn)toggleBtn.innerHTML='<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide';
-  quizHistory.forEach((a,i)=>{
+
+  const isHP=lobbyMode==='potato';
+  let data=quizHistory,labelName='You';
+  if(isHP){
+    // Hot Potato: only the active player ever answers a given round, so the recap is
+    // scoped to one player's turns at a time via the pill selector — defaults to your
+    // own turns, with the option to check out anyone else's via the selector.
+    const turnPlayers=(hpTurnOrder.length?hpTurnOrder:lobbyPlayers.map(p=>p.name)).filter(name=>hpHistory.some(h=>h.player===name));
+    if(!mpRecapPlayer||!turnPlayers.includes(mpRecapPlayer))mpRecapPlayer=turnPlayers.includes(currentUser)?currentUser:(turnPlayers[0]||null);
+    if(selectWrap){
+      selectWrap.style.display=turnPlayers.length>1?'flex':'none';
+      selectWrap.innerHTML=turnPlayers.map(name=>`<button class="recap-player-pill ${name===mpRecapPlayer?'active':''}" onclick="switchMpRecapPlayer('${name.replace(/'/g,"\\'")}')">${name===currentUser?'You':name}</button>`).join('');
+    }
+    labelName=mpRecapPlayer===currentUser?'You':(mpRecapPlayer||'');
+    if(titleEl)titleEl.textContent=mpRecapPlayer===currentUser?'My Questions':(mpRecapPlayer?`${mpRecapPlayer}'s Questions`:'Answer Recap');
+    data=hpHistory.filter(h=>h.player===mpRecapPlayer);
+  } else {
+    if(selectWrap)selectWrap.style.display='none';
+    if(titleEl)titleEl.textContent='Answer Recap';
+  }
+
+  if(data.length===0){
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;font-weight:700">No questions to show.</div>';
+    return;
+  }
+
+  data.forEach((a,i)=>{
     const item=document.createElement('div');
     item.className='recap-item '+(a.correct?'correct':'wrong');
-    const reportId='mpRecapReport_'+i;
-    const dropId='mpRecapDrop_'+i;
-    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">You: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div>${a.id?buildRecapReportUI(i,a.id):''}</div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
+    item.innerHTML=`<div class="recap-num">${i+1}</div><div style="flex:1;min-width:0"><div class="recap-q">${a.q}</div><div class="recap-ans"><span class="correct-ans"><i class="ti ti-check" style="font-size:11px"></i> ${a.correctAns}</span>${!a.correct&&a.userAns&&a.userAns!=='(timed out)'?`<span class="wrong-ans">${labelName}: ${a.userAns}</span>`:''}${a.userAns==='(timed out)'?`<span style="color:var(--muted);font-size:11px">Timed out</span>`:''}</div>${a.id?buildRecapReportUI(i,a.id):''}</div>${a.topic?`<span style="font-size:10px;font-weight:800;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 8px;white-space:nowrap;flex-shrink:0">${a.topic}</span>`:''}<span>${a.correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:18px"></i>'}</span>`;
     list.appendChild(item);
   });
 }
@@ -9099,7 +9147,7 @@ function startLobbyGame(){
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -9631,6 +9679,12 @@ function mpShowQuestion(qData,hpFuse){
     });
   }
   quizHistory.push({q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
+  // Hot Potato: every client (not just the active player) logs this round, tagged with
+  // whichever player is holding the potato — see hpHistory declaration for why this is
+  // kept separate from quizHistory.
+  if(isHP){
+    hpHistory.push({player:hpActivePlayer().name,q:qData.question,correctAns:qData.options?qData.options[qData.answer]:qData.answer,userAns:null,correct:null,id:qData.id||null,topic:qData.topic_value||null});
+  }
 
   // Keep the "Generating question" spinner on screen — and the question text/answers
   // hidden — until the image (if any) has actually finished loading. Revealing the
@@ -9758,6 +9812,7 @@ function mpCheckTypeAnswer(){
     document.body.classList.remove('hp-my-turn');
     // Only a correct answer reaches here; life-loss on wrong answers happens in mpTimeOut
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
+    const hpLastLocal=hpHistory[hpHistory.length-1];if(hpLastLocal){hpLastLocal.userAns=userAns;hpLastLocal.correct=true;}
     const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
     mpShowFeedback(true,correctAns,userAns,null,active.name,false,hpPeekNextPlayer()?.name);
     renderMPHUD();
@@ -9787,6 +9842,10 @@ function mpTimeOut(){
     active.lives--;if(active.lives<=0)active.eliminated=true;
     renderMPHUD();
     const last=quizHistory[quizHistory.length-1];if(last){last.userAns='(timed out)';last.correct=false;}
+    // Every client independently detects the fuse expiring at the same moment (see the
+    // hpHistory declaration comment), so this stays in sync across all players without
+    // needing a network round-trip.
+    const hpLastTO=hpHistory[hpHistory.length-1];if(hpLastTO){hpLastTO.userAns='(timed out)';hpLastTO.correct=false;}
 
     // ── HP miss: vignette flash + card shake, then answer reveal ───
     sfxWrong();
@@ -9900,7 +9959,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   if(me){me.score=score;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
   if(!isHP&&me){me.lives=lives;}
   if(me&&rtChannel){
-    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:broadcastLives,eliminated:broadcastElim,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null}});
+    rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:broadcastLives,eliminated:broadcastElim,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null,hpUserAns:isHP?userAns:undefined}});
   }
 }
 
@@ -10040,7 +10099,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;
+  qIndex=0;answered=false;quizHistory=[];hpHistory=[];prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
@@ -10101,6 +10160,7 @@ function mpEndGame(){
     standings.appendChild(row);
   });
   if(iWon)launchConfetti();
+  mpRecapPlayer=isHP?currentUser:null; // default HP recap to "my turns" each time results load
   renderMpRecap();
   _origGoStep('mp-results');applyTheme();
 }
