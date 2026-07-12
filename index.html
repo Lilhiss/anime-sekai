@@ -227,6 +227,7 @@ h1 .hi{color:var(--accent)}
 .q-card.answered{border-color:var(--accent);background:var(--accent-soft)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
+.q-answer-sub-name{color:#fff}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
 .q-meta{margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px}
 .q-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:99px;padding:3px 12px;font-size:11px;font-weight:800;color:var(--accent)}
@@ -304,6 +305,8 @@ h1 .hi{color:var(--accent)}
 .rank-badge{width:90px;height:90px;border-radius:50%;background:var(--accent-soft);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto;position:relative;z-index:1;animation:rankPop .7s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes rankPop{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.15) rotate(8deg)}100%{transform:scale(1) rotate(0)}}
 .rank-glow{position:absolute;inset:-8px;border-radius:50%;background:var(--accent);opacity:.15;filter:blur(12px);animation:rankGlowPulse 2.2s ease-in-out infinite}
+.mp-winner-avatar{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:32px;flex-shrink:0;overflow:hidden}
+.mp-winner-trophy{position:absolute;bottom:-2px;right:-2px;width:30px;height:30px;border-radius:50%;background:var(--card-bg);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;z-index:2}
 @keyframes rankGlowPulse{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:.4;transform:scale(1.18)}}
 .rank-title{font-family:'Lilita One',cursive;font-size:clamp(22px,4vw,34px);color:var(--text);margin-bottom:6px}
 .rank-title span{color:var(--accent)}
@@ -1876,7 +1879,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
   <div class="page" id="page-mp-results">
     <div class="results-wrap">
       <div class="rank-hero slide-in d1" style="text-align:center">
-        <div class="rank-badge-wrap"><div class="rank-glow"></div><div class="rank-badge" id="mpWinnerBadge">🏆</div></div>
+        <div class="rank-badge-wrap"><div class="rank-glow"></div><div class="rank-badge" id="mpWinnerBadge">🏆</div><div class="mp-winner-trophy">🏆</div></div>
         <div class="rank-title" id="mpWinnerTitle">Game <span>Over</span></div>
         <div class="rank-sub" id="mpWinnerSub"></div>
       </div>
@@ -5466,7 +5469,7 @@ function showFeedback(correct,correctAns,userAns,override){
   // Reveal answer in the question card
   const qCard=document.querySelector('#page-quiz .q-card');
   const qText=document.getElementById('questionText');
-  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
   qText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${subBy}`;
   if(qCard)qCard.classList.add('answered');
   document.getElementById('fbSubmittedBy').style.display='none';
@@ -9870,7 +9873,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   // Reveal answer in the question card; submitted_by shown there instead of feedback bar
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
   const mpQText=document.getElementById('mpQuestionText');
-  const mpSubBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  const mpSubBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
   mpQText.innerHTML=`<div class="q-answer-reveal">${correctAns}</div>${mpSubBy}`;
   if(mpQCard)mpQCard.classList.add('answered');
   if(mpSubEl)mpSubEl.style.display='none';
@@ -10062,8 +10065,10 @@ function mpEndGame(){
     ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
     :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
   const winner=sorted[0];const iWon=winner.name===currentUser;
-  document.getElementById('mpWinnerBadge').textContent=iWon?'🏆':'😅';
-  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':'<span>GG</span>. So close!';
+  const winnerAvatarHTML=getLobbyAvatarHTML(winner.avatar||null,winner.color,winner.name[0].toUpperCase(),80);
+  const winnerAvatarStyled=winnerAvatarHTML.replace('class="lobby-player-avatar"','class="mp-winner-avatar"');
+  document.getElementById('mpWinnerBadge').innerHTML=winnerAvatarStyled;
+  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':`<span>${winner.name}</span> Wins!`;
   const isClassic=selectedMode==='classic';
   document.getElementById('mpWinnerSub').textContent=iWon
     ?(isHP?'Last one standing. You survived the potato!':isSurvival?'Last one standing. Undefeated!':isSR?'First to '+srTargetScore+'. You buzzed in like a pro!':isClassic?'Most points at the end. Nice work!':'First to '+mpRaceTarget+' pts. Legendary run!')
@@ -10178,12 +10183,32 @@ function srStartReveal(qData,startTime){
     // frame instead of animating it. Capping means a late tick just trickles
     // through the backlog over the next few ticks — invisible to the user —
     // instead of ever dumping the whole thing at once.
-    let revealedThisTick=0;
-    while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
-      const el=document.getElementById('src'+srCharIndex);
-      if(el)el.classList.add('visible');
-      srCharIndex++;
-      revealedThisTick++;
+    //
+    // EXCEPT when wall-clock time says the reveal should already be fully
+    // finished (targetIdx has reached the end). That happens when a tab is
+    // backgrounded: browsers throttle setInterval for inactive tabs down to
+    // roughly one tick a second (or less), so this callback might not fire
+    // again until well past the reveal's total duration. Trickling 3 chars
+    // per tick in that case would take many extra real seconds — or longer —
+    // before srCharIndex ever reaches the end, and since only the host's own
+    // completion triggers srStartPostRevealTimer() (which every other client
+    // waits on), a backgrounded host tab would stall the timer for everyone,
+    // not just themselves. So once we're genuinely past the finish line,
+    // reveal every remaining character immediately instead of capping.
+    if(targetIdx>=srChars.length){
+      while(srCharIndex<srChars.length){
+        const el=document.getElementById('src'+srCharIndex);
+        if(el)el.classList.add('visible');
+        srCharIndex++;
+      }
+    } else {
+      let revealedThisTick=0;
+      while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
+        const el=document.getElementById('src'+srCharIndex);
+        if(el)el.classList.add('visible');
+        srCharIndex++;
+        revealedThisTick++;
+      }
     }
     if(srCharIndex>=srChars.length){
       clearInterval(srRevealInterval);srRevealInterval=null;
@@ -10395,14 +10420,25 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
       srRevealInterval=setInterval(()=>{
         const elapsed=Date.now()-startTime;
         const targetIdx=Math.floor(elapsed/SR_CHAR_INTERVAL);
-        // Same per-tick cap as the main reveal loop in srStartReveal — see the
-        // comment there for why this prevents an instant full-question dump.
-        let revealedThisTick=0;
-        while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
-          const el=document.getElementById('src'+srCharIndex);
-          if(el)el.classList.add('visible');
-          srCharIndex++;
-          revealedThisTick++;
+        // Same per-tick cap as the main reveal loop in srStartReveal, with the
+        // same backgrounded-tab exception — see the comment there for why a
+        // tick that's already past the finish line must complete immediately
+        // rather than trickle, since only the host's completion starts the
+        // post-reveal timer for everyone.
+        if(targetIdx>=srChars.length){
+          while(srCharIndex<srChars.length){
+            const el=document.getElementById('src'+srCharIndex);
+            if(el)el.classList.add('visible');
+            srCharIndex++;
+          }
+        } else {
+          let revealedThisTick=0;
+          while(srCharIndex<=targetIdx&&srCharIndex<srChars.length&&revealedThisTick<SR_MAX_REVEAL_PER_TICK){
+            const el=document.getElementById('src'+srCharIndex);
+            if(el)el.classList.add('visible');
+            srCharIndex++;
+            revealedThisTick++;
+          }
         }
         if(srCharIndex>=srChars.length){
           clearInterval(srRevealInterval);srRevealInterval=null;
@@ -10454,7 +10490,7 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   if(correct){
     srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
     const mpQText=document.getElementById('mpQuestionText');
-    const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+    const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
     mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}`;
     applyTheme();
   }
@@ -10483,7 +10519,7 @@ function srRoundEnd(winner,correctAns){
   srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
   const mpQText=document.getElementById('mpQuestionText');
   const ans=correctAns||(currentQData?.options?currentQData.options[currentQData.answer]:currentQData?.answer)||'?';
-  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by ${currentQData.submitted_by}</div>`:'';
+  const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
   mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${ans}</div>${subBy}`;
   document.getElementById('mpAnswersGrid').innerHTML='';
   // Show the flag button now that the answer is revealed
