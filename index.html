@@ -338,10 +338,13 @@ h1 .hi{color:var(--accent)}
 .correct-ans{color:#4ade80;font-weight:700}
 .wrong-ans{color:#f87171;font-weight:700;text-decoration:line-through}
 .recap-num{width:22px;height:22px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:11px;color:var(--muted);flex-shrink:0;margin-top:1px}
-.recap-player-select{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
-.recap-player-pill{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;background:var(--bg2);border:1.5px solid var(--border2);color:var(--muted);padding:6px 13px;border-radius:99px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
-.recap-player-pill:hover{border-color:var(--accent);color:var(--text)}
-.recap-player-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.recap-player-dropdown{position:relative;margin-bottom:12px}
+.recap-dd-trigger{width:100%;display:flex;align-items:center;gap:9px;background:var(--bg2);border:1.5px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:8px 12px;border-radius:11px;cursor:pointer;transition:all .2s}
+.recap-dd-trigger:hover{border-color:var(--accent)}
+.recap-dd-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:6px;z-index:20;max-height:240px;overflow-y:auto;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.recap-dd-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:background .15s}
+.recap-dd-item:hover{background:var(--bg3)}
+.recap-dd-item.active{background:var(--accent);color:#fff}
 
 /* PROFILE PAGE */
 .profile-wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:18px}
@@ -1898,7 +1901,10 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       </div>
       <div class="slide-in d4">
         <div class="recap-header"><div class="recap-title" id="mpRecapTitle">Answer Recap</div><button class="recap-toggle" onclick="toggleMpRecap()" id="mpRecapToggleBtn"><i class="ti ti-chevron-up" style="font-size:13px"></i> Hide</button></div>
-        <div class="recap-player-select" id="mpRecapPlayerSelect" style="display:none"></div>
+        <div class="recap-player-dropdown" id="mpRecapPlayerSelect" style="display:none">
+          <button class="recap-dd-trigger" id="mpRecapDDTrigger" onclick="toggleMpRecapDropdown(event)"><span id="mpRecapDDAvatar"></span><span id="mpRecapDDName">You</span><i class="ti ti-chevron-down" style="font-size:14px;margin-left:auto"></i></button>
+          <div class="recap-dd-menu" id="mpRecapDDMenu" style="display:none"></div>
+        </div>
         <div class="recap-list" id="mpRecapList"></div>
       </div>
     </div>
@@ -3319,6 +3325,24 @@ let reportedQuestionIds=new Set(); // tracks IDs flagged in-game or via recap
 // (which only reflects the local client's own answers) so the end-game recap can be
 // filtered per player instead of showing every spectated round as a false "miss".
 let hpHistory=[],mpRecapPlayer=null; // mpRecapPlayer: which player's turns the recap is currently showing
+// Browsers throttle setInterval/setTimeout heavily on background tabs (Chrome can drop
+// to ~1 fire/min), so a client that's tabbed out can silently miss the moment its fuse
+// hits zero — mpTimeOut() never fires, and since HP's turn-advance logic only actually
+// executes on the host's copy of that call, the whole game can freeze until that client
+// refocuses. A dedicated Worker's timers aren't subject to that same throttling, so it's
+// used here purely as a reliable backup trigger; the existing setInterval path still
+// fires first in the normal (focused-tab) case, and mpTimeOut()'s `answered` guard makes
+// it safe for both to ever fire.
+let mpFuseToken=0,mpFuseWorker=null;
+try{
+  const _mpFuseWorkerSrc=`let t={};self.onmessage=function(e){const{id,ms}=e.data;if(t[id])clearTimeout(t[id]);t[id]=setTimeout(()=>{self.postMessage({id});delete t[id];},ms);};`;
+  mpFuseWorker=new Worker(URL.createObjectURL(new Blob([_mpFuseWorkerSrc],{type:'application/javascript'})));
+  mpFuseWorker.onmessage=(e)=>{
+    if(e.data.id===mpFuseToken&&!answered&&document.getElementById('page-mp-quiz')?.classList.contains('active')){
+      mpTimeOut();
+    }
+  };
+}catch(err){console.warn('mpFuseWorker unavailable, falling back to setInterval only',err);}
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
 
@@ -7980,10 +8004,32 @@ function toggleMpRecap(){
   document.getElementById('mpRecapToggleBtn').innerHTML=mpRecapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
 }
 
-function switchMpRecapPlayer(name){
+function mpRecapAvatarHTML(name,size){
+  const p=lobbyPlayers.find(lp=>lp.name===name);
+  const raw=getLobbyAvatarHTML(p&&p.avatar||null,p&&p.color||'var(--accent)',(name[0]||'?').toUpperCase(),size);
+  // Merge the size override into the style attribute getLobbyAvatarHTML already emits,
+  // rather than appending a second style="" attribute (browsers only honor the first).
+  return raw.replace('style="',`style="width:${size}px;height:${size}px;`);
+}
+
+function toggleMpRecapDropdown(e){
+  if(e)e.stopPropagation();
+  const menu=document.getElementById('mpRecapDDMenu');
+  if(!menu)return;
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+
+function selectMpRecapPlayer(name){
   mpRecapPlayer=name;
+  const menu=document.getElementById('mpRecapDDMenu');
+  if(menu)menu.style.display='none';
   renderMpRecap();
 }
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('mpRecapPlayerSelect');
+  const menu=document.getElementById('mpRecapDDMenu');
+  if(dd&&menu&&menu.style.display!=='none'&&!dd.contains(e.target))menu.style.display='none';
+});
 
 function renderMpRecap(){
   const list=document.getElementById('mpRecapList');
@@ -7999,13 +8045,20 @@ function renderMpRecap(){
   let data=quizHistory,labelName='You';
   if(isHP){
     // Hot Potato: only the active player ever answers a given round, so the recap is
-    // scoped to one player's turns at a time via the pill selector — defaults to your
-    // own turns, with the option to check out anyone else's via the selector.
+    // scoped to one player's turns at a time via the dropdown below — defaults to your
+    // own turns, with the option to check out anyone else's.
     const turnPlayers=(hpTurnOrder.length?hpTurnOrder:lobbyPlayers.map(p=>p.name)).filter(name=>hpHistory.some(h=>h.player===name));
     if(!mpRecapPlayer||!turnPlayers.includes(mpRecapPlayer))mpRecapPlayer=turnPlayers.includes(currentUser)?currentUser:(turnPlayers[0]||null);
     if(selectWrap){
-      selectWrap.style.display=turnPlayers.length>1?'flex':'none';
-      selectWrap.innerHTML=turnPlayers.map(name=>`<button class="recap-player-pill ${name===mpRecapPlayer?'active':''}" onclick="switchMpRecapPlayer('${name.replace(/'/g,"\\'")}')">${name===currentUser?'You':name}</button>`).join('');
+      selectWrap.style.display=turnPlayers.length>1?'block':'none';
+      const ddAvatar=document.getElementById('mpRecapDDAvatar');
+      const ddName=document.getElementById('mpRecapDDName');
+      if(ddAvatar)ddAvatar.innerHTML=mpRecapPlayer?mpRecapAvatarHTML(mpRecapPlayer,24):'';
+      if(ddName)ddName.textContent=mpRecapPlayer===currentUser?'You':(mpRecapPlayer||'');
+      const menu=document.getElementById('mpRecapDDMenu');
+      if(menu){
+        menu.innerHTML=turnPlayers.map(name=>`<div class="recap-dd-item ${name===mpRecapPlayer?'active':''}" onclick="selectMpRecapPlayer('${name.replace(/'/g,"\\'")}')">${mpRecapAvatarHTML(name,24)}<span>${name===currentUser?'You':name}</span></div>`).join('');
+      }
     }
     labelName=mpRecapPlayer===currentUser?'You':(mpRecapPlayer||'');
     if(titleEl)titleEl.textContent=mpRecapPlayer===currentUser?'My Questions':(mpRecapPlayer?`${mpRecapPlayer}'s Questions`:'Answer Recap');
@@ -9736,6 +9789,10 @@ function mpShowQuestion(qData,hpFuse){
     }
     questionStartTime=Date.now();
     const mpBar=document.getElementById('mpTimerBar');mpBar.style.width='100%';mpBar.className='timer-bar';
+    // Backup trigger — see mpFuseWorker declaration for why this is needed alongside
+    // the setInterval below (the interval alone can stall if this tab is backgrounded).
+    const _mpFuseToken=++mpFuseToken;
+    if(mpFuseWorker)mpFuseWorker.postMessage({id:_mpFuseToken,ms:Math.ceil(questionTimeLimit*1000)+150});
     timerInterval=setInterval(()=>{
       timeLeft=Math.max(0,questionTimeLimit-(Date.now()-questionStartTime)/1000);
       const pct=(timeLeft/questionTimeLimit)*100;
