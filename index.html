@@ -998,6 +998,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .admin-focus-label{font-size:12px;color:var(--muted);font-weight:800;margin-top:6px}
 .admin-summary{text-align:center;font-size:12px;color:var(--muted);font-weight:700}
 .admin-hl{background:var(--accent);color:#fff;border-radius:3px;padding:0 2px}
+.leak-hl{background:rgba(248,113,113,.25);color:#f87171;border-radius:3px;padding:0 2px;font-weight:800}
 .admin-sections{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 .admin-section-btn{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;padding:10px 18px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
 .admin-section-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -2212,6 +2213,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div class="admin-more-menu" id="adminMoreMenu">
             <button class="admin-more-item" id="adminSecSuggestions" onclick="_pickAdminMore('suggestions')"><i class="ti ti-bulb" style="font-size:15px"></i> Suggestions <span class="admin-tab-count" id="adminCountSuggestions" style="display:none"></span></button>
             <button class="admin-more-item" id="adminSecRomanize" onclick="_pickAdminMore('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
+            <button class="admin-more-item" id="adminSecLeaks" onclick="_pickAdminMore('leaks')"><i class="ti ti-eye-off" style="font-size:15px"></i> Answer Leaks</button>
             <button class="admin-more-item" id="adminSecMessages" onclick="_pickAdminMore('messages')"><i class="ti ti-mail" style="font-size:15px"></i> Messages <span class="admin-tab-count" id="adminCountMessages" style="display:none"></span></button>
           </div>
         </div>
@@ -2262,6 +2264,25 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <span id="romanizeConfirmCount" style="font-size:13px;font-weight:800;color:var(--text);flex:1"></span>
           <button onclick="confirmRomanize()" id="romanizeConfirmBtn" style="background:var(--accent);border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-check" style="font-size:14px"></i> Confirm &amp; Save</button>
         </div>
+      </div>
+      <div id="adminLeaks" class="slide-in" style="display:none;flex-direction:column;gap:18px">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-eye-off" style="color:var(--accent)"></i> Answer Leaks</div>
+          <span style="font-size:13px;color:var(--muted)">Finds questions that contain a word from their own answer — a spoiler hiding in plain sight.</span>
+        </div>
+        <!-- Controls -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <select id="leaksStatusFilter" class="admin-filter" onchange="fetchLeakCandidates()">
+            <option value="approved">Approved only</option>
+            <option value="all">All statuses</option>
+            <option value="pending">Pending only</option>
+          </select>
+          <button onclick="fetchLeakCandidates()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-search" style="font-size:14px"></i> Scan for leaks</button>
+          <div id="leaksStatus" style="font-size:13px;color:var(--muted)"></div>
+        </div>
+        <!-- Results list -->
+        <div id="leaksResults" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
       <div id="adminMessages" class="slide-in" style="display:none;flex-direction:column;gap:14px"></div>
       <div id="adminCharLib" class="slide-in" style="display:none;flex-direction:column;gap:16px">
@@ -10747,6 +10768,7 @@ const ADMIN_SECTION_INFO={
   import:{icon:'📥',title:'Import',desc:'Bulk-import new questions from SQL.'},
   suggestions:{icon:'💡',title:'Suggestions',desc:'Review topic suggestions submitted by players.'},
   romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'},
+  leaks:{icon:'🕵️',title:'Answer Leaks',desc:'Find questions that accidentally give away the answer in their own wording.'},
   messages:{icon:'✉️',title:'Messages',desc:'Contact messages sent by players via the footer form.'}
 };
 function toggleAdminSearchClear(){const v=document.getElementById('adminSearchInput')?.value;const btn=document.getElementById('adminSearchClear');if(btn)btn.style.display=v?'block':'none';}
@@ -11144,8 +11166,9 @@ async function switchAdminSection(section){
   document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
   document.getElementById('adminSecSuggestions').classList.toggle('active',section==='suggestions');
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
+  document.getElementById('adminSecLeaks').classList.toggle('active',section==='leaks');
   document.getElementById('adminSecMessages').classList.toggle('active',section==='messages');
-  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='messages');
+  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='leaks'||section==='messages');
   document.getElementById('adminMoreMenu').classList.remove('open');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
   if(section!=='review'){const pt=document.getElementById('adminPendingTopics');if(pt)pt.style.display='none';}
@@ -11154,9 +11177,10 @@ async function switchAdminSection(section){
   document.getElementById('adminImport').style.display=section==='import'?'flex':'none';
   document.getElementById('adminSuggestions').style.display=section==='suggestions'?'flex':'none';
   document.getElementById('adminRomanize').style.display=section==='romanize'?'flex':'none';
+  document.getElementById('adminLeaks').style.display=section==='leaks'?'flex':'none';
   document.getElementById('adminCharLib').style.display=section==='charlib'?'flex':'none';
   document.getElementById('adminMessages').style.display=section==='messages'?'flex':'none';
-  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='charlib'||section==='messages')?'none':'flex';
+  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   await renderAdminSection();
 }
@@ -11174,7 +11198,7 @@ async function renderAdminSection(){
   if(adminSection==='suggestions')return fetchAdminSuggestions();
   if(adminSection==='charlib')return fetchCharLibrary();
   if(adminSection==='messages')return fetchAdminMessages();
-  if(adminSection==='import'||adminSection==='romanize')return;
+  if(adminSection==='import'||adminSection==='romanize'||adminSection==='leaks')return;
   return fetchReviewTab();
 }
 // Pure render — called after fetchAdminBrowse() populates adminBrowseRows/adminBrowseTotal
@@ -12021,6 +12045,100 @@ async function confirmRomanize(){
   if(topic)fetchRomanizeCandidates();
 }
 // ── END ROMANIZE TOOL ────────────────────────────────────────────
+
+// ── ANSWER LEAKS TOOL ────────────────────────────────────────────
+// Finds questions whose own wording contains a significant word from their answer —
+// e.g. a question about "Log Pose" that literally says "log pose" in the question text.
+// Common function words and very short words are ignored so nearly every question
+// doesn't get flagged just for sharing "the" or "a" with its answer.
+const LEAK_STOPWORDS=new Set(['the','a','an','of','in','on','at','is','are','was','were','to','for','and',
+  'or','what','who','which','whom','whose','does','do','did','this','that','these','those','from','by',
+  'as','it','its','his','her','hers','their','theirs','our','ours','your','yours','my','mine','name',
+  'named','call','called','term','known','also','be','been','being','has','have','had','will','would',
+  'can','could','should','not','no','yes','you','we','they','he','she','him','them','us','one','two',
+  'three','first','second','third','into','out','up','down','over','under','than','then','so','such',
+  'if','when','where','why','how','all','any','some','each','every','other','another','more','most',
+  'many','much','few','little','only','just','both','either','neither','with','used','use']);
+function _leakWords(s){return (s||'').toLowerCase().match(/[a-z0-9']+/g)||[];}
+function _leakSignificantWords(s){return [...new Set(_leakWords(s).filter(w=>w.length>=3&&!LEAK_STOPWORDS.has(w)))];}
+function _leakAnswerText(q){
+  if(q.options&&Array.isArray(q.options)){
+    const idx=parseInt(q.answer);
+    return q.options[idx]!=null?String(q.options[idx]):'';
+  }
+  return q.answer!=null?String(q.answer):'';
+}
+function _leakFindMatches(question,answerText){
+  const answerWords=_leakSignificantWords(answerText);
+  if(!answerWords.length)return [];
+  const qText=question||'';
+  return answerWords.filter(w=>new RegExp('\\b'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(qText));
+}
+function _leakHL(text,matches){
+  if(!matches.length)return text;
+  const pattern=matches.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  return String(text).replace(new RegExp('\\b('+pattern+')\\b','gi'),'<mark class="leak-hl">$1</mark>');
+}
+let _leakCandidates=[];
+async function fetchLeakCandidates(){
+  const statusFilter=document.getElementById('leaksStatusFilter')?.value||'approved';
+  const status=document.getElementById('leaksStatus');
+  const results=document.getElementById('leaksResults');
+  status.textContent='Scanning…';results.innerHTML='';_leakCandidates=[];
+  try{
+    let q=sb.from('questions').select('id,question,answer,options,aliases,format,status,topic_value,difficulty,media_url');
+    if(statusFilter!=='all')q=q.eq('status',statusFilter);
+    const {data,error}=await q.limit(5000);
+    if(error)throw error;
+    const rows=data||[];
+    _leakCandidates=rows.map(row=>{
+      const answerText=_leakAnswerText(row);
+      const matches=_leakFindMatches(row.question,answerText);
+      return matches.length?Object.assign({},row,{_answerText:answerText,_matches:matches}):null;
+    }).filter(Boolean);
+    if(!_leakCandidates.length){
+      status.textContent='✓ No leaks found — every answer stays hidden in its own question ('+rows.length+' scanned).';
+      return;
+    }
+    status.textContent=_leakCandidates.length+' of '+rows.length+' questions may be leaking their answer.';
+    renderLeakResults();
+  }catch(e){
+    status.textContent='Could not scan questions.';
+  }
+}
+function renderLeakResults(){
+  const results=document.getElementById('leaksResults');
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  results.innerHTML='';
+  _leakCandidates.forEach(q=>{
+    const card=document.createElement('div');
+    card.className='admin-q-card';
+    card.id=`adminCard_${q.id}`;
+    // Mirrors buildAdminCard's dataset shape so the existing Preview modal works unmodified.
+    card.dataset.q=JSON.stringify({id:q.id,question:q.question,format:q.format,options:q.options||null,answer:q.answer,topic_value:q.topic_value||null,difficulty:q.difficulty||'normal',media_url:q.media_url||null});
+    const matchBadges=q._matches.map(w=>`<span class="admin-badge" style="background:rgba(248,113,113,.1);border-color:#f87171;color:#f87171">${w}</span>`).join('');
+    const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_leakHL(o,q._matches)}</span>`).join(' · ')}</div>`:'';
+    const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${_leakHL(q._answerText,q._matches)}</div>`:'';
+    card.innerHTML=`
+      <div>
+        <div class="admin-q-text">${_leakHL(q.question,q._matches)}</div>
+        ${optionsHtml}${answerHtml}
+      </div>
+      <div class="admin-q-meta">
+        <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
+        <span class="admin-badge">${q.topic_value||'General'}</span>
+        <span class="admin-badge${q.status==='pending'?' reported':''}">${q.status}</span>
+        ${matchBadges}
+      </div>
+      <div class="admin-actions">
+        <button class="admin-btn edit" onclick="openAdminEdit('${q.id}')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button>
+        <button class="admin-btn edit" onclick="openAdminPreview('${q.id}')" title="Preview how this question looks in-game"><i class="ti ti-eye" style="font-size:12px"></i> Preview</button>
+      </div>`;
+    results.appendChild(card);
+  });
+  applyTheme();
+}
+// ── END ANSWER LEAKS TOOL ────────────────────────────────────────
 
 function renderAdminCoverage(){
   covSelectedTopics.clear();updateCovBulkBar();
