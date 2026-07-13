@@ -2324,6 +2324,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div id="adminBulkBar" class="admin-bulk-bar slide-in" style="display:none">
         <span class="admin-bulk-bar-count" id="adminBulkCount">0 selected</span>
         <button class="admin-bulk-btn approve-bulk" id="adminBulkApprove" onclick="bulkApprove()"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
+        <button class="admin-bulk-btn" id="adminBulkSendToReview" onclick="bulkSendToReview()" title="Send selected approved questions back to the Submitted review queue"><i class="ti ti-rotate" style="font-size:12px"></i> Send to Review</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('easy')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Easy</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('normal')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Normal</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('hard')"><i class="ti ti-flame" style="font-size:12px"></i> → Hard</button>
@@ -12304,12 +12305,13 @@ function buildAdminCard(q){
   const editBtn=`<button class="admin-btn edit" onclick="openAdminEdit('${q.id}')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button><button class="admin-btn edit" onclick="openAdminPreview('${q.id}')" title="Preview how this question looks in-game"><i class="ti ti-eye" style="font-size:12px"></i> Preview</button>`;
   const actionsHtml=editBtn+(isSuspect
     ?`<button class="admin-btn dismiss" onclick="adminClearStats('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Looks fine</button>
+       <button class="admin-btn dismiss" onclick="adminSendToReview('${q.id}')" title="Send this approved question back to the Submitted review queue"><i class="ti ti-rotate" style="font-size:12px"></i> Send to Review</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
     :isReported
     ?`<button class="admin-btn view-reports" onclick="toggleAdminReports('${q.id}')"><i class="ti ti-chevron-down" style="font-size:12px" id="adminReportChevron_${q.id}"></i> View Reports</button>
        <button class="admin-btn dismiss" onclick="adminDismiss('${q.id}')"><i class="ti ti-circle-check" style="font-size:12px"></i> Dismiss</button>
        <button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`
-    :(q.status==='pending'?`<button class="admin-btn approve" onclick="adminApprove('${q.id}')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>`:'')+`<button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`);
+    :(q.status==='pending'?`<button class="admin-btn approve" onclick="adminApprove('${q.id}')"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>`:q.status==='approved'?`<button class="admin-btn dismiss" onclick="adminSendToReview('${q.id}')" title="Send this approved question back to the Submitted review queue"><i class="ti ti-rotate" style="font-size:12px"></i> Send to Review</button>`:'')+`<button class="admin-btn delete" onclick="adminDelete('${q.id}')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>`);
 
   const mediaHtml=q.media_url
     ?`<div style="margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center"><img src="${q.media_url}" alt="Submitted image" style="width:100%;height:auto;max-height:260px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'"></div>`
@@ -12384,6 +12386,14 @@ async function adminApprove(id){
     await sb.from('questions').update({status:'approved'}).eq('id',id);
     const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';
     renderAdminStats();renderAdminBadges();await fetchReviewTab();
+  });
+}
+async function adminSendToReview(id){
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').update({status:'pending'}).eq('id',id);
+    const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='pending';
+    showAdminToast('Sent back to review 📬');
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
   });
 }
 async function adminDismiss(id){
@@ -12589,6 +12599,8 @@ function _bulkSyncBar(){
   document.getElementById('adminBulkCount').textContent=n+' selected';
   const showApprove=(adminSection==='review'&&adminTab==='submitted')||adminSection==='browse';
   document.getElementById('adminBulkApprove').style.display=showApprove?'inline-flex':'none';
+  const showSendToReview=(adminSection==='review'&&adminTab==='suspect')||adminSection==='browse';
+  document.getElementById('adminBulkSendToReview').style.display=showSendToReview?'inline-flex':'none';
 }
 function _bulkToggle(id,el){
   if(el.checked)_bulkIds.add(String(id));else _bulkIds.delete(String(id));
@@ -12621,6 +12633,17 @@ async function bulkApprove(){
     await sb.from('questions').update({status:'approved'}).in('id',ids);
     ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='approved';});
     _bulkIds.clear();
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
+}
+async function bulkSendToReview(){
+  if(!_bulkIds.size)return;
+  requireAdminUnlock(async()=>{
+    const ids=[..._bulkIds];
+    await sb.from('questions').update({status:'pending'}).in('id',ids);
+    ids.forEach(id=>{const l=adminLite.find(x=>String(x.id)===String(id));if(l)l.status='pending';});
+    _bulkIds.clear();
+    showAdminToast(ids.length+' question'+(ids.length===1?'':'s')+' sent back to review 📬');
     renderAdminStats();renderAdminBadges();await renderAdminSection();
   });
 }
