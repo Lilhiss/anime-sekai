@@ -3357,6 +3357,7 @@ function mpCancelBackup(id){
   if(id!=null)delete mpFusePending[id];
 }
 let mpActiveFuseBackupId=null; // token for the currently-scheduled fuse backup, so it can be cancelled the instant a round resolves
+let mpActiveAutoNextBackupId=null; // same idea, for the 5s "wrapping up" pause between rounds (see mpStartAutoNext)
 let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
 let allHistory=[];
 
@@ -4348,6 +4349,7 @@ async function uploadGuestPfp(blob){
 function goStep(name){
   clearInterval(timerInterval);clearInterval(dailyTimerInterval);
   clearInterval(soloAutoNextInterval);clearInterval(mpAutoNextInterval);
+  mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   clearInterval(srRevealInterval);clearTimeout(srPostRevealTimer);
   clearTimeout(mpFlagWindowTimer);mpFlagWindowOpen=false;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -6927,7 +6929,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -7120,6 +7122,7 @@ function rtSubscribe(lobbyId){
       // Threshold met — void the question
       mpFlagWindowOpen=false;clearTimeout(mpFlagWindowTimer);
       clearInterval(mpAutoNextInterval); // cancel auto-next
+      mpCancelBackup(mpActiveAutoNextBackupId);
       mpVoidQuestion();
       // Broadcast void to all clients
       rtChannel.send({type:'broadcast',event:'question_voided',payload:{
@@ -7220,14 +7223,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);
+    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);prefetchedQuestion=null;currentQData=null;
+    qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -7957,7 +7960,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);
+  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -7965,23 +7968,34 @@ function mpCancelCountdown(){
 
 function mpStartAutoNext(onDone,isLastQuestion){
   clearInterval(mpAutoNextInterval);
+  mpCancelBackup(mpActiveAutoNextBackupId);
   mpAutoNextPaused=false;
-  let t=5;
+  let t=5,fired=false;
+  // onDone only actually does anything on the host's client (it broadcasts the next
+  // step) — so a backgrounded host stalling here freezes the game exactly like a
+  // stalled fuse would. See mpFuseWorker declaration for why the Worker backup is
+  // immune to that. fireOnce() guards against both paths ever firing.
+  const fireOnce=()=>{
+    if(fired)return;fired=true;
+    mpCancelBackup(mpActiveAutoNextBackupId);
+    onDone();
+  };
   const el=document.getElementById('mpAutoNext');
   if(el)el.textContent=isLastQuestion?'Wrapping up…':`Next in ${t}s`;
   if(rtChannel&&isHost){
     rtChannel.send({type:'broadcast',event:'show_auto_next',payload:{seconds:t,isLastQuestion:!!isLastQuestion}});
   }
+  mpActiveAutoNextBackupId=mpScheduleBackup(5150,fireOnce);
   if(isLastQuestion){
     // Short delay then fire — no countdown needed
-    setTimeout(()=>onDone(),5000);
+    setTimeout(()=>fireOnce(),5000);
     return;
   }
   mpAutoNextInterval=setInterval(()=>{
     if(mpAutoNextPaused)return;
     t--;
     if(el)el.textContent=t>0?`Next in ${t}s`:'';
-    if(t<=0){clearInterval(mpAutoNextInterval);onDone();}
+    if(t<=0){clearInterval(mpAutoNextInterval);fireOnce();}
   },1000);
 }
 
@@ -9217,7 +9231,7 @@ function startLobbyGame(){
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -9910,6 +9924,7 @@ function mpTimeOut(){
   if(answered)return;answered=true;
   clearInterval(timerInterval);
   clearInterval(mpAutoNextInterval); // cancel any in-progress auto-next from all-answered path
+  mpCancelBackup(mpActiveAutoNextBackupId);
   mpCancelBackup(mpActiveFuseBackupId);
   document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
   const inp=document.getElementById('mpTypeInput');
@@ -10180,7 +10195,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);prefetchedQuestion=null;currentQData=null;
+  qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
@@ -10193,7 +10208,7 @@ function mpEndGame(){
   srClearReveal();
   document.body.classList.remove('hp-my-turn');
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
-  mpCancelBackup(mpActiveFuseBackupId);
+  mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   // Game's over — give the lobby a fresh 10 minutes so the results page isn't rushed
   lobbyInGame=false;
   lobbyExpiresAt=new Date(Date.now()+LOBBY_TTL*1000).toISOString();
@@ -10711,6 +10726,7 @@ function srClearReveal(){
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
   clearInterval(srPostRevealTimer);srPostRevealTimer=null;
   clearInterval(mpAutoNextInterval);mpAutoNextInterval=null;
+  mpCancelBackup(mpActiveAutoNextBackupId);
   srRoundActive=false;
   srBuzzedPlayer=null;
   srLockedPlayers=[];
