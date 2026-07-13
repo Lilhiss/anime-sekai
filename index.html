@@ -2278,6 +2278,12 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <option value="all">All statuses</option>
             <option value="pending">Pending only</option>
           </select>
+          <select id="leaksFormatFilter" class="admin-filter" onchange="fetchLeakCandidates()">
+            <option value="">All formats</option>
+            <option value="mc">Multiple Choice</option>
+            <option value="type">Type Answer</option>
+            <option value="char">Name Character</option>
+          </select>
           <button onclick="fetchLeakCandidates()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-search" style="font-size:14px"></i> Scan for leaks</button>
           <div id="leaksStatus" style="font-size:13px;color:var(--muted)"></div>
         </div>
@@ -12082,12 +12088,14 @@ function _leakHL(text,matches){
 let _leakCandidates=[];
 async function fetchLeakCandidates(){
   const statusFilter=document.getElementById('leaksStatusFilter')?.value||'approved';
+  const formatFilter=document.getElementById('leaksFormatFilter')?.value||'';
   const status=document.getElementById('leaksStatus');
   const results=document.getElementById('leaksResults');
   status.textContent='Scanning…';results.innerHTML='';_leakCandidates=[];
   try{
     let q=sb.from('questions').select('id,question,answer,options,aliases,format,status,topic_value,difficulty,media_url');
     if(statusFilter!=='all')q=q.eq('status',statusFilter);
+    if(formatFilter)q=q.eq('format',formatFilter);
     const {data,error}=await q.limit(5000);
     if(error)throw error;
     const rows=data||[];
