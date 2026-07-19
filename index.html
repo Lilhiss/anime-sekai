@@ -2346,12 +2346,29 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <button id="adminImportBtn" onclick="adminImportConfirm()" style="font-family:'Lilita One',cursive;font-size:16px;background:var(--accent);border:none;padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:opacity .2s"><i class="ti ti-database-import" style="font-size:17px"></i> Import Questions</button>
           <div id="adminImportResult" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#4ade80;padding:8px"></div>
         </div>
+        <div style="height:1px;background:var(--border);margin:6px 0"></div>
+        <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-replace" style="font-size:17px"></i> Bulk Rewrite (updates existing questions)</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Paste an AI-rewritten <code>[ID:...]</code> export from Browse → Export for Rewrite. Matched rows are updated in place by ID — nothing is deleted or duplicated, and IDs/stats/links are preserved.</div>
+        <textarea id="adminRewriteInput" placeholder="Paste [ID:...] rewritten lines here…" oninput="adminRewriteParse()" style="width:100%;min-height:180px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:12px;padding:14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;resize:vertical;line-height:1.6"></textarea>
+        <div id="adminRewriteSummary" style="display:none;flex-direction:column;gap:6px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:12px;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <span id="adminRewriteStatParsed" style="font-size:13px;font-weight:800;color:var(--text)"></span>
+            <span id="adminRewriteStatMatched" style="font-size:13px;font-weight:800;color:#4ade80"></span>
+            <span id="adminRewriteStatSkipped" style="font-size:13px;font-weight:800;color:#f87171"></span>
+          </div>
+        </div>
+        <div id="adminRewritePreview" style="display:none;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent"></div>
+        <div id="adminRewriteActions" style="display:none;flex-direction:column;gap:8px">
+          <button id="adminRewriteBtn" onclick="adminRewriteConfirm()" style="font-family:'Lilita One',cursive;font-size:16px;background:var(--accent);border:none;padding:13px;border-radius:12px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:opacity .2s"><i class="ti ti-replace" style="font-size:17px"></i> Update Questions</button>
+          <div id="adminRewriteResult" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#4ade80;padding:8px"></div>
+        </div>
       </div>
       <!-- Bulk action bar (hidden until selections exist) -->
       <div id="adminBulkBar" class="admin-bulk-bar slide-in" style="display:none">
         <span class="admin-bulk-bar-count" id="adminBulkCount">0 selected</span>
         <button class="admin-bulk-btn approve-bulk" id="adminBulkApprove" onclick="bulkApprove()"><i class="ti ti-check" style="font-size:12px"></i> Approve</button>
         <button class="admin-bulk-btn" id="adminBulkSendToReview" onclick="bulkSendToReview()" title="Send selected approved questions back to the Submitted review queue"><i class="ti ti-rotate" style="font-size:12px"></i> Send to Review</button>
+        <button class="admin-bulk-btn" onclick="exportSelectedForRewrite()" title="Download selected questions tagged with their IDs, ready to paste into an AI tool for rewriting"><i class="ti ti-file-export" style="font-size:12px"></i> Export for Rewrite</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('easy')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Easy</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('normal')"><i class="ti ti-circle-half-2" style="font-size:12px"></i> → Normal</button>
         <button class="admin-bulk-btn" onclick="bulkDiff('hard')"><i class="ti ti-flame" style="font-size:12px"></i> → Hard</button>
@@ -12189,6 +12206,35 @@ async function exportTopicQuestions(topicKey){
   a.click();
   URL.revokeObjectURL(url);
 }
+async function exportSelectedForRewrite(){
+  if(!_bulkIds.size)return;
+  const ids=[..._bulkIds];
+  const {data,error}=await sb.from('questions').select(ADMIN_FULL_COLS).in('id',ids);
+  if(error||!data||!data.length)return;
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'};
+  // For MC questions the stored answer is an option index — resolve it to the
+  // actual answer text so the AI has real context without touching the options array.
+  const answerText=q=>q.options&&q.options.length?(q.options[parseInt(q.answer)]??''):(q.answer||'');
+  const header='# Anime Sekai — Bulk Rewrite Export\n'
+    +'# '+data.length+' question'+(data.length===1?'':'s')+' — exported '+new Date().toLocaleDateString()+'\n#\n'
+    +'# HOW TO USE THIS FILE:\n'
+    +'# 1. Paste this whole file into an AI chat tool (e.g. Claude, ChatGPT).\n'
+    +'# 2. Ask it to reword each question so it does NOT start with "What is the name of",\n'
+    +'#    keeping the same meaning and the same correct answer.\n'
+    +'# 3. Tell it to keep the [ID:...] tag and the " || " answer exactly as-is on every line,\n'
+    +'#    change only the question text, and output the same number of lines in the same order.\n'
+    +'# 4. Paste the AI\'s output into the "Bulk Rewrite" box in the Import tab and confirm.\n'
+    +'#\n'
+    +'# Format: [ID:xxxx] Question text || Correct answer (for context only — do not need to repeat exactly)\n\n';
+  const lines=data.map(q=>'[ID:'+q.id+'] '+(q.question||'')+' || '+answerText(q));
+  const blob=new Blob([header+lines.join('\n')],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='rewrite-export-'+data.length+'-questions.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 let _importParsed=[];
 function adminImportParse(){
   const raw=document.getElementById('adminImportInput').value;
@@ -12379,6 +12425,122 @@ async function adminImportConfirm(){
     }
   });
 }
+
+// ── BULK REWRITE — match pasted [ID:...] lines to existing questions and UPDATE in place ──
+let _rewriteParsed=[]; // [{id, question, oldQuestion, collision}]
+let _rewriteSkipped=0; // lines whose ID wasn't found in the database
+function adminRewriteParse(){
+  const raw=document.getElementById('adminRewriteInput').value;
+  _rewriteParsed=[];_rewriteSkipped=0;
+  if(!raw.trim()){
+    document.getElementById('adminRewriteSummary').style.display='none';
+    document.getElementById('adminRewritePreview').style.display='none';
+    document.getElementById('adminRewriteActions').style.display='none';
+    return;
+  }
+  const existingById=new Map(adminLite.map(q=>[String(q.id),q]));
+  // Matches: [ID:xxxx] Question text || anything (the " || answer" suffix is optional
+  // and ignored — it's only there to give the AI context, not to be parsed back).
+  const lineRe=/^\[ID:([^\]]+)\]\s*(.+?)\s*(?:\|\|.*)?$/;
+  const seenIds=new Set();
+  raw.split('\n').forEach(line=>{
+    const t=line.trim();
+    if(!t||t.startsWith('#'))return;
+    const m=t.match(lineRe);
+    if(!m)return;
+    const id=m[1].trim();
+    const question=m[2].trim();
+    if(!id||!question||seenIds.has(id))return;
+    seenIds.add(id);
+    const match=existingById.get(id);
+    if(!match){_rewriteSkipped++;return;}
+    if((match.question||'').trim()===question)return; // unchanged — nothing to do
+    _rewriteParsed.push({id,question,oldQuestion:match.question||''});
+  });
+  // Flag rows whose new text would collide with a different existing question
+  // (the questions table enforces unique text, so these would fail on save).
+  const textLower=new Set(adminLite.map(q=>(q.question||'').trim().toLowerCase()));
+  _rewriteParsed.forEach(r=>{r.collision=textLower.has(r.question.toLowerCase());});
+
+  const totalLines=raw.split('\n').filter(l=>l.trim()&&!l.trim().startsWith('#')).length;
+  const summary=document.getElementById('adminRewriteSummary');
+  summary.style.display='flex';
+  document.getElementById('adminRewriteStatParsed').textContent='📋 '+totalLines+' line'+(totalLines===1?'':'s')+' read';
+  document.getElementById('adminRewriteStatMatched').textContent='✅ '+_rewriteParsed.length+' ready to update';
+  const skippedEl=document.getElementById('adminRewriteStatSkipped');
+  skippedEl.style.display=_rewriteSkipped>0?'inline':'none';
+  skippedEl.textContent='⚠️ '+_rewriteSkipped+' ID'+(_rewriteSkipped===1?'':'s')+' not found';
+
+  const preview=document.getElementById('adminRewritePreview');
+  if(_rewriteParsed.length){
+    preview.style.display='flex';
+    preview.innerHTML='<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 0 6px">Preview — '+_rewriteParsed.length+' change'+(_rewriteParsed.length===1?'':'s')+'</div>'
+      +_rewriteParsed.map(r=>
+        '<div style="background:var(--card-bg);border:1px solid '+(r.collision?'#f87171':'var(--border)')+';border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+        +'<div style="font-size:12px;color:var(--muted);text-decoration:line-through">'+(r.oldQuestion||'(no previous text)')+'</div>'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+r.question+'</div>'
+        +(r.collision?'<div style="font-size:11px;font-weight:800;color:#f87171">⚠️ Matches another existing question\'s text — will be skipped</div>':'')
+        +'</div>'
+      ).join('');
+    document.getElementById('adminRewriteActions').style.display='flex';
+    document.getElementById('adminRewriteBtn').disabled=false;
+    document.getElementById('adminRewriteBtn').style.opacity='1';
+    document.getElementById('adminRewriteResult').style.display='none';
+  } else {
+    preview.style.display='none';
+    document.getElementById('adminRewriteActions').style.display='none';
+  }
+  applyTheme();
+}
+async function adminRewriteConfirm(){
+  const toApply=_rewriteParsed.filter(r=>!r.collision);
+  if(!toApply.length)return;
+  requireAdminUnlock(async()=>{
+    const btn=document.getElementById('adminRewriteBtn');
+    btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:17px;animation:spin .8s linear infinite"></i> Updating…';
+    let ok=0,fail=0;
+    // Each row gets different text, so this is one PATCH per row — sent in small
+    // concurrent batches so we don't fire 660 requests at once.
+    const BATCH=15;
+    for(let i=0;i<toApply.length;i+=BATCH){
+      const chunk=toApply.slice(i,i+BATCH);
+      const results=await Promise.all(chunk.map(r=>
+        sb.from('questions').update({question:r.question}).eq('id',r.id)
+          .then(({error})=>({r,error}))
+          .catch(error=>({r,error}))
+      ));
+      results.forEach(({r,error})=>{
+        if(error){fail++;}
+        else{
+          ok++;
+          const l=adminLite.find(x=>String(x.id)===String(r.id));
+          if(l)l.question=r.question;
+        }
+      });
+    }
+    const result=document.getElementById('adminRewriteResult');
+    result.style.display='block';
+    if(fail===0){
+      result.style.color='#4ade80';
+      result.textContent='✅ '+ok+' question'+(ok===1?'':'s')+' updated successfully!';
+    }else{
+      result.style.color='#f87171';
+      result.textContent='⚠️ '+ok+' updated, '+fail+' failed — re-export those IDs and try again.';
+    }
+    setTimeout(()=>{
+      document.getElementById('adminRewriteInput').value='';
+      document.getElementById('adminRewriteSummary').style.display='none';
+      document.getElementById('adminRewritePreview').style.display='none';
+      document.getElementById('adminRewriteActions').style.display='none';
+      result.style.display='none';
+      _rewriteParsed=[];
+    },3000);
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-replace" style="font-size:17px"></i> Update Questions';
+    renderAdminStats();renderAdminBadges();await renderAdminSection();
+  });
+}
+
 function renderAdminList(rows,emptyMsg){
   const list=document.getElementById('adminQuestionList');
   _bulkIds.clear();
