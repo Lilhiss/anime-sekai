@@ -2354,6 +2354,8 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <span id="adminRewriteStatParsed" style="font-size:13px;font-weight:800;color:var(--text)"></span>
             <span id="adminRewriteStatMatched" style="font-size:13px;font-weight:800;color:#4ade80"></span>
+            <span id="adminRewriteStatReview" style="font-size:13px;font-weight:800;color:#fbbf24"></span>
+            <span id="adminRewriteStatRejected" style="font-size:13px;font-weight:800;color:#f87171"></span>
             <span id="adminRewriteStatSkipped" style="font-size:13px;font-weight:800;color:#f87171"></span>
           </div>
         </div>
@@ -12220,10 +12222,42 @@ async function exportSelectedForRewrite(){
     +'# HOW TO USE THIS FILE:\n'
     +'# 1. Paste this whole file into an AI chat tool (e.g. Claude, ChatGPT).\n'
     +'# 2. Ask it to reword each question so it does NOT start with "What is the name of",\n'
-    +'#    keeping the same meaning and the same correct answer.\n'
-    +'# 3. Tell it to keep the [ID:...] tag and the " || " answer exactly as-is on every line,\n'
-    +'#    change only the question text, and output the same number of lines in the same order.\n'
+    +'#    keeping the same meaning and the same correct answer, while checking every question\n'
+    +'#    (not just the reworded ones) against the QUALITY RULES below.\n'
+    +'# 3. For every line, output exactly one of:\n'
+    +'#      PASS   [ID:...] Rewritten question text || Answer   — normal case, rule 10/11 fixed\n'
+    +'#      REVIEW [ID:...] Unchanged question text  || Answer  — rule 10 only: awkward phrasing\n'
+    +'#                                                             you are not confident rewording\n'
+    +'#      REJECT [ID:...] Unchanged question text  || Answer  — fails a rule that rewording can\n'
+    +'#                                                             not fix (rules 1,2,4,5,6,7,8)\n'
+    +'#    Keep the [ID:...] tag and the " || " answer exactly as-is on every line. Output the same\n'
+    +'#    number of lines in the same order — never drop a line, even for REJECT.\n'
     +'# 4. Paste the AI\'s output into the "Bulk Rewrite" box in the Import tab and confirm.\n'
+    +'#    Only PASS lines get written to the database. REVIEW and REJECT lines are shown in the\n'
+    +'#    preview for you to check by hand, but nothing is changed for them automatically.\n'
+    +'#\n'
+    +'# QUALITY RULES:\n'
+    +'# 1. FACT: Is the marked answer actually correct?\n'
+    +'# 2. UNAMBIGUOUS: Is there exactly one defensible answer?\n'
+    +'# 3. MC distractors: plausible but clearly wrong to someone who knows the series.\n'
+    +'# 4. CLEAN: no answer leak into question; no duplicate within batch; exactly 4 options for MC.\n'
+    +'# 5. NO ANSWER LEAK: if the answer word or phrase appears in the question text, or is\n'
+    +'#    directly implied by it = REJECT. This applies to all formats.\n'
+    +'# 6. NO SPOILERS: question/options/answer must NOT contain "kill","killed","kills","death",\n'
+    +'#    "died","deaths". Any row that does = REJECT.\n'
+    +'# 7. SEMANTIC DUPLICATE: same meaning as any existing question of the SAME FORMAT = REJECT.\n'
+    +'#    A question that is semantically identical to an existing one but in a different format\n'
+    +'#    (e.g. one is \'mc\' and the other is \'type\') is NOT a duplicate and should PASS.\n'
+    +'# 8. LANGUAGE NEUTRAL: any question that asks specifically for a Japanese or English name\n'
+    +'#    = REJECT. Questions must be answerable regardless of language preference.\n'
+    +'# 9. PHRASING DIVERSITY: Vary question structure across the batch — mix direct questions,\n'
+    +'#    fill-in-the-blank, "which of the following", scenario-based, superlative, relationship,\n'
+    +'#    and negative framing (e.g. "Which of these is NOT..."). No single opening phrase (e.g.\n'
+    +'#    "What is the name of", "What is the") should appear more than 3 times in a batch of 20.\n'
+    +'#    Aim for at least 6 distinct opening structures per batch.\n'
+    +'# 10. NATURAL PHRASING: Question text must read as natural English. Awkward constructions\n'
+    +'#     (e.g. ending with "is named what?", "is called what?", "is known as what?") = REVIEW.\n'
+    +'#     Do not rewrite — flag for human review.\n'
     +'#\n'
     +'# Format: [ID:xxxx] Question text || Correct answer (for context only — do not need to repeat exactly)\n\n';
   const lines=data.map(q=>'[ID:'+q.id+'] '+(q.question||'')+' || '+answerText(q));
@@ -12427,11 +12461,13 @@ async function adminImportConfirm(){
 }
 
 // ── BULK REWRITE — match pasted [ID:...] lines to existing questions and UPDATE in place ──
-let _rewriteParsed=[]; // [{id, question, oldQuestion, collision}]
+let _rewriteParsed=[]; // [{id, question, oldQuestion, collision}] — PASS lines only, ready to apply
+let _rewriteReview=[]; // [{id, oldQuestion}] — flagged by the AI for human review, never auto-applied
+let _rewriteRejected=[]; // [{id, oldQuestion}] — flagged by the AI as failing a rule, never auto-applied
 let _rewriteSkipped=0; // lines whose ID wasn't found in the database
 function adminRewriteParse(){
   const raw=document.getElementById('adminRewriteInput').value;
-  _rewriteParsed=[];_rewriteSkipped=0;
+  _rewriteParsed=[];_rewriteReview=[];_rewriteRejected=[];_rewriteSkipped=0;
   if(!raw.trim()){
     document.getElementById('adminRewriteSummary').style.display='none';
     document.getElementById('adminRewritePreview').style.display='none';
@@ -12439,21 +12475,25 @@ function adminRewriteParse(){
     return;
   }
   const existingById=new Map(adminLite.map(q=>[String(q.id),q]));
-  // Matches: [ID:xxxx] Question text || anything (the " || answer" suffix is optional
-  // and ignored — it's only there to give the AI context, not to be parsed back).
-  const lineRe=/^\[ID:([^\]]+)\]\s*(.+?)\s*(?:\|\|.*)?$/;
+  // Optional leading status word (PASS/REVIEW/REJECT), then [ID:xxxx], then the question
+  // text, then an optional " || answer" suffix — the suffix is only there to give the AI
+  // context and is ignored when parsing back.
+  const lineRe=/^(PASS|REVIEW|REJECT)?\s*\[ID:([^\]]+)\]\s*(.+?)\s*(?:\|\|.*)?$/i;
   const seenIds=new Set();
   raw.split('\n').forEach(line=>{
     const t=line.trim();
     if(!t||t.startsWith('#'))return;
     const m=t.match(lineRe);
     if(!m)return;
-    const id=m[1].trim();
-    const question=m[2].trim();
+    const status=(m[1]||'PASS').toUpperCase();
+    const id=m[2].trim();
+    const question=m[3].trim();
     if(!id||!question||seenIds.has(id))return;
     seenIds.add(id);
     const match=existingById.get(id);
     if(!match){_rewriteSkipped++;return;}
+    if(status==='REVIEW'){_rewriteReview.push({id,oldQuestion:match.question||''});return;}
+    if(status==='REJECT'){_rewriteRejected.push({id,oldQuestion:match.question||''});return;}
     if((match.question||'').trim()===question)return; // unchanged — nothing to do
     _rewriteParsed.push({id,question,oldQuestion:match.question||''});
   });
@@ -12467,24 +12507,45 @@ function adminRewriteParse(){
   summary.style.display='flex';
   document.getElementById('adminRewriteStatParsed').textContent='📋 '+totalLines+' line'+(totalLines===1?'':'s')+' read';
   document.getElementById('adminRewriteStatMatched').textContent='✅ '+_rewriteParsed.length+' ready to update';
+  const reviewEl=document.getElementById('adminRewriteStatReview');
+  reviewEl.style.display=_rewriteReview.length>0?'inline':'none';
+  reviewEl.textContent='👀 '+_rewriteReview.length+' need'+(_rewriteReview.length===1?'s':'')+' human review';
+  const rejectedEl=document.getElementById('adminRewriteStatRejected');
+  rejectedEl.style.display=_rewriteRejected.length>0?'inline':'none';
+  rejectedEl.textContent='🚫 '+_rewriteRejected.length+' rejected by AI';
   const skippedEl=document.getElementById('adminRewriteStatSkipped');
   skippedEl.style.display=_rewriteSkipped>0?'inline':'none';
   skippedEl.textContent='⚠️ '+_rewriteSkipped+' ID'+(_rewriteSkipped===1?'':'s')+' not found';
 
   const preview=document.getElementById('adminRewritePreview');
-  if(_rewriteParsed.length){
+  const hasAnything=_rewriteParsed.length||_rewriteReview.length||_rewriteRejected.length;
+  if(hasAnything){
     preview.style.display='flex';
-    preview.innerHTML='<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 0 6px">Preview — '+_rewriteParsed.length+' change'+(_rewriteParsed.length===1?'':'s')+'</div>'
-      +_rewriteParsed.map(r=>
-        '<div style="background:var(--card-bg);border:1px solid '+(r.collision?'#f87171':'var(--border)')+';border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
-        +'<div style="font-size:12px;color:var(--muted);text-decoration:line-through">'+(r.oldQuestion||'(no previous text)')+'</div>'
-        +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+r.question+'</div>'
-        +(r.collision?'<div style="font-size:11px;font-weight:800;color:#f87171">⚠️ Matches another existing question\'s text — will be skipped</div>':'')
-        +'</div>'
-      ).join('');
-    document.getElementById('adminRewriteActions').style.display='flex';
-    document.getElementById('adminRewriteBtn').disabled=false;
-    document.getElementById('adminRewriteBtn').style.opacity='1';
+    const passHtml=_rewriteParsed.map(r=>
+      '<div style="background:var(--card-bg);border:1px solid '+(r.collision?'#f87171':'var(--border)')+';border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+      +'<div style="font-size:12px;color:var(--muted);text-decoration:line-through">'+(r.oldQuestion||'(no previous text)')+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+r.question+'</div>'
+      +(r.collision?'<div style="font-size:11px;font-weight:800;color:#f87171">⚠️ Matches another existing question\'s text — will be skipped</div>':'')
+      +'</div>'
+    ).join('');
+    const reviewHtml=_rewriteReview.map(r=>
+      '<div style="background:var(--card-bg);border:1px solid #fbbf24;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+(r.oldQuestion||'')+'</div>'
+      +'<div style="font-size:11px;font-weight:800;color:#fbbf24">👀 Flagged for human review — left unchanged</div>'
+      +'</div>'
+    ).join('');
+    const rejectHtml=_rewriteRejected.map(r=>
+      '<div style="background:var(--card-bg);border:1px solid #f87171;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+(r.oldQuestion||'')+'</div>'
+      +'<div style="font-size:11px;font-weight:800;color:#f87171">🚫 Rejected by AI — left unchanged, needs a manual fix or delete</div>'
+      +'</div>'
+    ).join('');
+    preview.innerHTML=(_rewriteParsed.length?'<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 0 6px">Ready to update — '+_rewriteParsed.length+'</div>'+passHtml:'')
+      +(_rewriteReview.length?'<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:10px 0 6px">Needs review — '+_rewriteReview.length+'</div>'+reviewHtml:'')
+      +(_rewriteRejected.length?'<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:10px 0 6px">Rejected — '+_rewriteRejected.length+'</div>'+rejectHtml:'');
+    document.getElementById('adminRewriteActions').style.display=_rewriteParsed.length?'flex':'none';
+    document.getElementById('adminRewriteBtn').disabled=!_rewriteParsed.length;
+    document.getElementById('adminRewriteBtn').style.opacity=_rewriteParsed.length?'1':'.45';
     document.getElementById('adminRewriteResult').style.display='none';
   } else {
     preview.style.display='none';
