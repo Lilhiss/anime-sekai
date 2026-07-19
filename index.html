@@ -10811,7 +10811,7 @@ let adminReviewDateAsc=false; // false = newest first (default)
 let adminPendingTopicFilter=null; // active topic filter on the Submitted (pending) tab
 let adminPendingAllRows=[]; // unfiltered Submitted rows, used to derive topic pills
 let ADMIN_PAGE_SIZE=50;
-let aeEditId=null,aeOrig=null,adminHL='';
+let aeEditId=null,aeOrig=null,adminHL='',_aeSaveCallback=null; // _aeSaveCallback: optional one-shot fired after a successful save, used by callers (e.g. the rewrite tool) that need to react beyond the default admin-list refresh
 let ADMIN_ANIME_TOPICS=[];
 let ADMIN_GENRE_TOPICS=[];
 const ADMIN_COV_THIN=10;
@@ -12502,10 +12502,17 @@ function adminRewriteParse(){
   const textLower=new Set(adminLite.map(q=>(q.question||'').trim().toLowerCase()));
   _rewriteParsed.forEach(r=>{r.collision=textLower.has(r.question.toLowerCase());});
 
-  const totalLines=raw.split('\n').filter(l=>l.trim()&&!l.trim().startsWith('#')).length;
+  _rewriteTotalLines=raw.split('\n').filter(l=>l.trim()&&!l.trim().startsWith('#')).length;
+  _rewriteRenderPreview();
+}
+let _rewriteTotalLines=0; // lines read on the last parse; kept around so _rewriteRenderPreview can redraw without re-parsing the textarea
+// Redraws the summary badges + preview list from the current _rewriteParsed/_rewriteReview/_rewriteRejected
+// arrays. Called by adminRewriteParse(), and also after editing/deleting a rejected row so its card can
+// disappear from the preview without re-parsing the pasted text.
+function _rewriteRenderPreview(){
   const summary=document.getElementById('adminRewriteSummary');
   summary.style.display='flex';
-  document.getElementById('adminRewriteStatParsed').textContent='📋 '+totalLines+' line'+(totalLines===1?'':'s')+' read';
+  document.getElementById('adminRewriteStatParsed').textContent='📋 '+_rewriteTotalLines+' line'+(_rewriteTotalLines===1?'':'s')+' read';
   document.getElementById('adminRewriteStatMatched').textContent='✅ '+_rewriteParsed.length+' ready to update';
   const reviewEl=document.getElementById('adminRewriteStatReview');
   reviewEl.style.display=_rewriteReview.length>0?'inline':'none';
@@ -12535,9 +12542,13 @@ function adminRewriteParse(){
       +'</div>'
     ).join('');
     const rejectHtml=_rewriteRejected.map(r=>
-      '<div style="background:var(--card-bg);border:1px solid #f87171;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+      '<div style="background:var(--card-bg);border:1px solid #f87171;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+(r.oldQuestion||'')+'</div>'
-      +'<div style="font-size:11px;font-weight:800;color:#f87171">🚫 Rejected by AI — left unchanged, needs a manual fix or delete</div>'
+      +'<div style="font-size:11px;font-weight:800;color:#f87171">🚫 Rejected by AI — left unchanged</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button class="admin-btn edit" onclick="adminRewriteEditRejected(\''+r.id+'\')"><i class="ti ti-pencil" style="font-size:12px"></i> Edit</button>'
+      +'<button class="admin-btn delete" onclick="adminRewriteDeleteRejected(\''+r.id+'\')"><i class="ti ti-trash" style="font-size:12px"></i> Delete</button>'
+      +'</div>'
       +'</div>'
     ).join('');
     preview.innerHTML=(_rewriteParsed.length?'<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 0 6px">Ready to update — '+_rewriteParsed.length+'</div>'+passHtml:'')
@@ -12552,6 +12563,27 @@ function adminRewriteParse(){
     document.getElementById('adminRewriteActions').style.display='none';
   }
   applyTheme();
+}
+// Reuses the shared admin edit modal (same one Browse uses) on a rejected row, then drops it from
+// the rejected list once saved so its card disappears from the preview.
+function adminRewriteEditRejected(id){
+  _aeSaveCallback=()=>{
+    _rewriteRejected=_rewriteRejected.filter(r=>String(r.id)!==String(id));
+    _rewriteRenderPreview();
+  };
+  openAdminEdit(id);
+}
+// Deletes a rejected row outright (same PIN-gated delete used everywhere else in the admin panel)
+// and drops it from the rejected list so the preview updates immediately.
+function adminRewriteDeleteRejected(id){
+  requireAdminUnlock(async()=>{
+    await sb.from('questions').delete().eq('id',id);
+    adminLite=adminLite.filter(x=>String(x.id)!==String(id));
+    _rewriteRejected=_rewriteRejected.filter(r=>String(r.id)!==String(id));
+    showAdminToast('Question deleted 🗑️');
+    renderAdminStats();renderAdminBadges();
+    _rewriteRenderPreview();
+  });
 }
 async function adminRewriteConfirm(){
   const toApply=_rewriteParsed.filter(r=>!r.collision);
@@ -12898,7 +12930,7 @@ async function openAdminEdit(id){
   document.getElementById('adminEditModal').style.display='flex';
   applyTheme();
 }
-function closeAdminEdit(){document.getElementById('adminEditModal').style.display='none';aeEditId=null;}
+function closeAdminEdit(){document.getElementById('adminEditModal').style.display='none';aeEditId=null;_aeSaveCallback=null;}
 async function saveAdminEdit(){
   if(!aeEditId)return;
   requireAdminUnlock(async()=>{
@@ -12932,8 +12964,10 @@ async function saveAdminEdit(){
     if(error)return showErrLocal(error.code==='23505'?'Another question already has that exact text.':'Could not save — try again.');
     const l=adminLite.find(x=>String(x.id)===String(aeEditId));
     if(l)Object.assign(l,{question:update.question,format:update.format,topic_type:update.topic_type,topic_value:update.topic_value,difficulty:update.difficulty});
+    const savedCb=_aeSaveCallback;
     closeAdminEdit();
     renderAdminStats();renderAdminBadges();await renderAdminSection();
+    if(savedCb)savedCb();
   });
 }
 
