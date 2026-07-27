@@ -611,6 +611,8 @@ h1 .hi{color:var(--accent)}
 .gs-bigcard.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
 .gs-bigcard.locked{opacity:.45;filter:grayscale(.7);cursor:not-allowed;pointer-events:none}
 .gs-bigcard.locked .gs-bc-desc{color:var(--accent)}
+.fmt-card.locked,.mode-card.locked{opacity:.45;filter:grayscale(.7);cursor:not-allowed;pointer-events:none}
+.fmt-card.locked .fmt-card-desc,.mode-card.locked .mode-desc{color:var(--accent)}
 .gs-bc-emoji{font-size:30px;line-height:1;transition:transform .2s}
 .gs-bigcard:hover .gs-bc-emoji{transform:scale(1.15) rotate(-6deg)}
 .gs-bc-title{font-family:'Lilita One',cursive;font-size:13.5px;color:var(--text);line-height:1.1}
@@ -1506,10 +1508,10 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <h1>Test your <span class="hi">anime</span> knowledge</h1>
     </div>
     <div class="fmt-grid slide-in">
-      <div class="fmt-card" onclick="selectFormat('mc')"><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
-      <div class="fmt-card" onclick="selectFormat('type')"><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
-      <div class="fmt-card" onclick="selectFormat('img')"><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
-      <div class="fmt-card" onclick="openCharFmtModal()"><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
+      <div class="fmt-card" data-fmt="mc" onclick="fmtCardClick('mc')"><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
+      <div class="fmt-card" data-fmt="type" onclick="fmtCardClick('type')"><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
+      <div class="fmt-card" data-fmt="img" onclick="fmtCardClick('img')"><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
+      <div class="fmt-card" data-fmt="char" onclick="fmtCardClick('char')"><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
     </div>
   </div>
 
@@ -1521,9 +1523,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
     </div>
     <div id="selectedTopicBadge" class="slide-in" style="display:none;flex-wrap:wrap;gap:6px;justify-content:center;max-width:600px"></div>
     <div class="mode-grid solo-mode-grid slide-in">
-      <div class="mode-card" onclick="selectSoloMode('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure, just how many can you get right?</div></div>
-      <div class="mode-card" onclick="selectSoloMode('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
-      <div class="mode-card" onclick="selectSoloMode('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
+      <div class="mode-card" data-mode="classic" onclick="modeCardClick('classic')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('classic')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🎮</div><div class="mode-title">Classic</div><div class="mode-desc">Answer questions, 1 point each. No pressure, just how many can you get right?</div></div>
+      <div class="mode-card" data-mode="race" onclick="modeCardClick('race')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('race')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">🏁</div><div class="mode-title">Score Race</div><div class="mode-desc">Answer correctly to earn points. Race to the target score as fast as you can.</div></div>
+      <div class="mode-card" data-mode="survival" onclick="modeCardClick('survival')"><button class="mode-info-btn" onclick="event.stopPropagation();openSoloModeInfo('survival')" aria-label="How to play"><i class="ti ti-help" style="font-size:13px"></i></button><span class="mode-info-tip">Rules</span><div class="mode-icon">❤️</div><div class="mode-title">Survival</div><div class="mode-desc">You have 3 lives. Each wrong answer costs one. Survive as long as you can.</div></div>
     </div>
   </div>
 
@@ -1677,7 +1679,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               <div class="gs-grid" id="gsFormatGrid">
                 <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
                 <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
-                <div class="gs-bigcard locked" data-fmt="img"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">🔒 Coming soon</div></div>
+                <div class="gs-bigcard locked" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">🔒 Coming soon</div></div>
                 <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
               </div>
             </div>
@@ -2208,6 +2210,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <button class="admin-section-btn" id="adminSecCharLib" onclick="switchAdminSection('charlib')"><i class="ti ti-user-circle" style="font-size:15px"></i> Characters</button>
         <div class="admin-section-divider" role="separator"></div>
         <button class="admin-section-btn" id="adminSecImport" onclick="switchAdminSection('import')"><i class="ti ti-file-upload" style="font-size:15px"></i> Import</button>
+        <button class="admin-section-btn" id="adminSecContent" onclick="switchAdminSection('content')"><i class="ti ti-typography" style="font-size:15px"></i> Content</button>
         <div class="admin-more-wrap">
           <button class="admin-section-btn" id="adminSecMore" onclick="_toggleAdminMoreMenu()"><i class="ti ti-dots" style="font-size:15px"></i> More <i class="ti ti-chevron-down" style="font-size:13px"></i></button>
           <div class="admin-more-menu" id="adminMoreMenu">
@@ -2365,6 +2368,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div id="adminRewriteResult" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#4ade80;padding:8px"></div>
         </div>
       </div>
+      <div id="adminContent" class="slide-in" style="display:none;flex-direction:column;gap:22px"></div>
       <!-- Bulk action bar (hidden until selections exist) -->
       <div id="adminBulkBar" class="admin-bulk-bar slide-in" style="display:none">
         <span class="admin-bulk-bar-count" id="adminBulkCount">0 selected</span>
@@ -3110,6 +3114,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   }
 });
 
+// Site content (card titles/descriptions/locks) is public read data — load it
+// regardless of sign-in state, so guests see the same overrides. loadSiteConfig
+// is declared further down the page, so wait until the DOM (and therefore every
+// inline script) has finished parsing before calling it.
+function _bootSiteConfig(){if(!SUPABASE_URL.includes('YOUR_PROJECT')&&typeof loadSiteConfig==='function')loadSiteConfig();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_bootSiteConfig,{once:true});
+else _bootSiteConfig();
+
 // ── SUPABASE AUTH ─────────────────────────────────────────────
 async function sbSignUp(username, password, email=''){
   const meta = {username};
@@ -3414,6 +3426,72 @@ const g2={midnight:'#7c5cbf',blossom:'#be185d',abyss:'#1d4ed8',inferno:'#c2410c'
 const colorNames={midnight:'Ethereal',blossom:'Blossom',abyss:'Abyss',inferno:'Inferno',jade:'Jade',arcane:'Arcane'};
 const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character','char-mc':'Name the Character (MC)'};
 const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
+
+// ── SITE CONTENT (admin-editable cards) ────────────────────────
+// Registry of every format/mode card the admin panel can edit. `title`/`desc`
+// here are the fallback values used until (or unless) an override is loaded
+// from Supabase. `group` is just for organizing the admin editor UI.
+const CARD_REGISTRY=[
+  {key:'fmt_mc',type:'fmt',id:'mc',group:'Format',title:'Multiple Choice',desc:'Four options, one correct answer. Pick wisely.',locked:false},
+  {key:'fmt_type',type:'fmt',id:'type',group:'Format',title:'Type the Answer',desc:'No hints. Spell it out. True otaku mode.',locked:false},
+  {key:'fmt_img',type:'fmt',id:'img',group:'Format',title:'Image Round',desc:'Guess the anime from a single screenshot.',locked:true},
+  {key:'fmt_char',type:'fmt',id:'char',group:'Format',title:'Name the Character',desc:'Can you name who\'s on screen? Prove it.',locked:false},
+  {key:'mode_classic',type:'mode',id:'classic',group:'Mode',title:'Classic',desc:'Answer questions, 1 point each. No pressure, just how many can you get right?',locked:false},
+  {key:'mode_race',type:'mode',id:'race',group:'Mode',title:'Score Race',desc:'Answer correctly to earn points. Race to the target score as fast as you can.',locked:false},
+  {key:'mode_survival',type:'mode',id:'survival',group:'Mode',title:'Survival',desc:'You have 3 lives. Each wrong answer costs one. Survive as long as you can.',locked:false},
+  {key:'mode_potato',type:'mode',id:'potato',group:'Mode (multiplayer only)',title:'Hot Potato',desc:'Pass it or lose a life',locked:false},
+  {key:'mode_slowreveal',type:'mode',id:'slowreveal',group:'Mode (multiplayer only)',title:'Slow Reveal',desc:'Buzz in to answer',locked:false},
+];
+let siteCardConfig={}; // populated from Supabase; keyed by CARD_REGISTRY[].key -> {title,desc,locked}
+function getCardConfig(key){
+  const def=CARD_REGISTRY.find(c=>c.key===key);
+  return {...def,...(siteCardConfig[key]||{})};
+}
+function isCardLocked(type,id){
+  const reg=CARD_REGISTRY.find(c=>c.type===type&&c.id===id);
+  return reg?getCardConfig(reg.key).locked===true:false;
+}
+async function loadSiteConfig(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/site_config?select=value&key=eq.cards`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
+    const rows=res.ok?await res.json():[];
+    siteCardConfig=(rows&&rows[0]&&rows[0].value)||{};
+  }catch(e){ siteCardConfig={}; }
+  applySiteCardOverrides();
+}
+// Patches title/desc/locked state onto every rendered copy of a card (solo
+// pages use [data-fmt]/[data-mode] on .fmt-card/.mode-card; the multiplayer
+// lobby setup uses the same attributes on .gs-bigcard). Safe to call anytime,
+// including after the lobby re-renders its grids.
+function applySiteCardOverrides(){
+  CARD_REGISTRY.forEach(reg=>{
+    const cfg=getCardConfig(reg.key);
+    const sel=reg.type==='fmt'?`[data-fmt="${reg.id}"]`:`[data-mode="${reg.id}"]`;
+    document.querySelectorAll(sel).forEach(el=>{
+      const titleEl=el.querySelector('.fmt-card-title,.mode-title,.gs-bc-title');
+      const descEl=el.querySelector('.fmt-card-desc,.mode-desc,.gs-bc-desc');
+      if(titleEl)titleEl.textContent=cfg.title;
+      if(descEl)descEl.textContent=cfg.locked?'🔒 Coming soon':cfg.desc;
+      el.classList.toggle('locked',!!cfg.locked);
+    });
+  });
+  // Re-sync the lobby grid's own per-format compatibility locks (Slow Reveal/
+  // Hot Potato depend on the chosen answer format) on top of admin overrides.
+  if(typeof gsSyncUI==='function'&&document.getElementById('gsModeGrid'))gsSyncUI();
+}
+// Click dispatchers used by the solo Format/Mode cards — check the admin lock
+// before doing anything (the .locked class also blocks clicks via CSS
+// pointer-events, but this guards any programmatic/keyboard-triggered calls).
+function fmtCardClick(fmt){
+  if(isCardLocked('fmt',fmt))return;
+  if(fmt==='char'){openCharFmtModal('solo');return;}
+  selectFormat(fmt);
+}
+function modeCardClick(mode){
+  if(isCardLocked('mode',mode))return;
+  selectSoloMode(mode);
+}
 const keys=['A','B','C','D'];
 const ranks=[
   {min:0,max:19,emoji:'😅',title:'Casual Watcher',sub:"You've seen a few episodes here and there. Keep watching!"},
@@ -8997,17 +9075,19 @@ function gsSyncUI(){
   document.querySelectorAll('#gsModeGrid [data-mode]').forEach(b=>b.classList.toggle('selected',b.dataset.mode===lobbyMode));
   const srCard=document.querySelector('#gsModeGrid [data-mode="slowreveal"]');
   if(srCard){
-    const srLocked=lobbyFormat!=='type';
+    const srAdminLocked=isCardLocked('mode','slowreveal');
+    const srLocked=srAdminLocked||lobbyFormat!=='type';
     srCard.classList.toggle('locked',srLocked);
     const srDescEl=srCard.querySelector('.gs-bc-desc');
-    if(srDescEl)srDescEl.textContent=srLocked?'🔒 Type the Answer only':'Buzz in to answer';
+    if(srDescEl)srDescEl.textContent=srAdminLocked?'🔒 Coming soon':srLocked?'🔒 Type the Answer only':getCardConfig('mode_slowreveal').desc;
   }
   const hpCard=document.querySelector('#gsModeGrid [data-mode="potato"]');
   if(hpCard){
-    const hpLocked=!HP_ALLOWED_FORMATS.includes(lobbyFormat);
+    const hpAdminLocked=isCardLocked('mode','potato');
+    const hpLocked=hpAdminLocked||!HP_ALLOWED_FORMATS.includes(lobbyFormat);
     hpCard.classList.toggle('locked',hpLocked);
     const hpDescEl=hpCard.querySelector('.gs-bc-desc');
-    if(hpDescEl)hpDescEl.textContent=hpLocked?'🔒 No Multiple Choice':'Pass it or lose a life';
+    if(hpDescEl)hpDescEl.textContent=hpAdminLocked?'🔒 Coming soon':hpLocked?'🔒 No Multiple Choice':getCardConfig('mode_potato').desc;
   }
   document.querySelectorAll('#gsQGrid [data-q]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.q)===selectedQuestionLimit));
   document.querySelectorAll('#gsTimeGrid [data-t]').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.t)===raceTimeLimit));
@@ -9056,11 +9136,11 @@ function gsAfterChange(){
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
 function gsSetFormat(f){
-  if(f==='img')return; // Image Round isn't ready yet — coming soon
+  if(isCardLocked('fmt',f))return; // admin has this format locked ("coming soon")
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;gsAfterChange();
 }
-function gsSetMode(m){if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetMode(m){if(isCardLocked('mode',m))return;if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){
   selectedLives=n;
@@ -10791,6 +10871,7 @@ const ADMIN_SECTION_INFO={
   coverage:{icon:'📊',title:'Coverage',desc:'See how many questions exist per topic and format.'},
   charlib:{icon:'🎭',title:'Characters',desc:'Browse, search, and edit characters used in Name-the-Character questions.'},
   import:{icon:'📥',title:'Import',desc:'Bulk-import new questions from SQL.'},
+  content:{icon:'🎛️',title:'Site Content',desc:'Edit card titles/descriptions and lock or unlock formats and game modes — changes go live immediately, no code or deploy needed.'},
   suggestions:{icon:'💡',title:'Suggestions',desc:'Review topic suggestions submitted by players.'},
   romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'},
   leaks:{icon:'🕵️',title:'Answer Leaks',desc:'Find questions that accidentally give away the answer in their own wording.'},
@@ -11188,6 +11269,7 @@ async function switchAdminSection(section){
   document.getElementById('adminSecBrowse').classList.toggle('active',section==='browse');
   document.getElementById('adminSecCoverage').classList.toggle('active',section==='coverage');
   document.getElementById('adminSecImport').classList.toggle('active',section==='import');
+  document.getElementById('adminSecContent').classList.toggle('active',section==='content');
   document.getElementById('adminSecCharLib').classList.toggle('active',section==='charlib');
   document.getElementById('adminSecSuggestions').classList.toggle('active',section==='suggestions');
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
@@ -11200,12 +11282,13 @@ async function switchAdminSection(section){
   document.getElementById('adminBrowseBar').style.display=section==='browse'?'flex':'none';
   document.getElementById('adminCoverage').style.display=section==='coverage'?'block':'none';
   document.getElementById('adminImport').style.display=section==='import'?'flex':'none';
+  document.getElementById('adminContent').style.display=section==='content'?'flex':'none';
   document.getElementById('adminSuggestions').style.display=section==='suggestions'?'flex':'none';
   document.getElementById('adminRomanize').style.display=section==='romanize'?'flex':'none';
   document.getElementById('adminLeaks').style.display=section==='leaks'?'flex':'none';
   document.getElementById('adminCharLib').style.display=section==='charlib'?'flex':'none';
   document.getElementById('adminMessages').style.display=section==='messages'?'flex':'none';
-  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages')?'none':'flex';
+  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='content'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   await renderAdminSection();
 }
@@ -11223,6 +11306,7 @@ async function renderAdminSection(){
   if(adminSection==='suggestions')return fetchAdminSuggestions();
   if(adminSection==='charlib')return fetchCharLibrary();
   if(adminSection==='messages')return fetchAdminMessages();
+  if(adminSection==='content')return renderAdminContentPanel();
   if(adminSection==='import'||adminSection==='romanize'||adminSection==='leaks')return;
   return fetchReviewTab();
 }
@@ -12968,6 +13052,69 @@ async function saveAdminEdit(){
     closeAdminEdit();
     renderAdminStats();renderAdminBadges();await renderAdminSection();
     if(savedCb)savedCb();
+  });
+}
+
+// ── SITE CONTENT ADMIN EDITOR ──────────────────────────────────
+function _htmlEsc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderAdminContentPanel(){
+  const wrap=document.getElementById('adminContent');
+  if(!wrap)return;
+  const groups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
+  wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit the title/description shown on each Format and Mode card, or lock one to show "🔒 Coming soon" and disable it. Changes save straight to the database and apply immediately — no redeploy needed.</div>`
+    +groups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(g)}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">${CARD_REGISTRY.filter(c=>c.group===g).map(buildAdminCardEditor).join('')}</div>
+    </div>`).join('');
+}
+function buildAdminCardEditor(reg){
+  const cfg=getCardConfig(reg.key);
+  return `<div class="admin-q-card" id="acard_${reg.key}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <span class="admin-badge format">${reg.type==='fmt'?'Format':'Mode'}</span>
+      <label style="display:inline-flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:${cfg.locked?'#f87171':'var(--muted)'};cursor:pointer;user-select:none">
+        <input type="checkbox" ${cfg.locked?'checked':''} onchange="this.closest('label').style.color=this.checked?'#f87171':'var(--muted)'" style="accent-color:#f87171;width:15px;height:15px;cursor:pointer"> Locked (coming soon)
+      </label>
+    </div>
+    <input id="actitle_${reg.key}" value="${_htmlEsc(cfg.title)}" placeholder="Card title" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;outline:none">
+    <textarea id="acdesc_${reg.key}" placeholder="Card description" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:56px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(cfg.desc)}</textarea>
+    <div class="admin-actions">
+      <button class="admin-btn approve" onclick="saveAdminCard('${reg.key}')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save</button>
+      <button class="admin-btn dismiss" onclick="resetAdminCard('${reg.key}')"><i class="ti ti-rotate" style="font-size:13px"></i> Reset to default</button>
+      <span id="acstatus_${reg.key}" style="font-size:12px;font-weight:800;color:#4ade80;display:none">Saved ✓</span>
+    </div>
+  </div>`;
+}
+async function saveAdminCard(key){
+  const reg=CARD_REGISTRY.find(c=>c.key===key);
+  if(!reg)return;
+  const titleEl=document.getElementById('actitle_'+key),descEl=document.getElementById('acdesc_'+key);
+  const title=titleEl.value.trim(),desc=descEl.value.trim();
+  const locked=!!document.querySelector(`#acard_${key} input[type="checkbox"]`).checked;
+  if(!title||!desc){showAdminToast('Title and description can\'t be empty.');return;}
+  requireAdminUnlock(async()=>{
+    const next={...siteCardConfig,[key]:{title,desc,locked}};
+    const btn=document.querySelector(`#acard_${key} .admin-btn.approve`);
+    if(btn){btn.disabled=true;btn.style.opacity='.6';}
+    let error;
+    try{({error}=await sb.from('site_config').upsert({key:'cards',value:next},{onConflict:'key'}));}catch(e){error=e;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(error){showAdminToast('Could not save — try again.');return;}
+    siteCardConfig=next;
+    applySiteCardOverrides();
+    const status=document.getElementById('acstatus_'+key);
+    if(status){status.style.display='inline';setTimeout(()=>{status.style.display='none';},2000);}
+  });
+}
+function resetAdminCard(key){
+  requireAdminUnlock(async()=>{
+    const next={...siteCardConfig};delete next[key];
+    let error;
+    try{({error}=await sb.from('site_config').upsert({key:'cards',value:next},{onConflict:'key'}));}catch(e){error=e;}
+    if(error){showAdminToast('Could not reset — try again.');return;}
+    siteCardConfig=next;
+    applySiteCardOverrides();
+    renderAdminContentPanel();
   });
 }
 
