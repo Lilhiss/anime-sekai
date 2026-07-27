@@ -1209,8 +1209,8 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div style="text-align:center">
         <!-- Placeholder logo. To use your own later: replace this div with <img src="your-logo.png" class="entry-logo-mark entry-logo-pop" alt="Anime Sekai"> -->
         <div class="entry-logo-mark entry-logo-pop" id="entryLogoMark">AS</div>
-        <div class="entry-title">Anime <span>Sekai</span></div>
-        <div class="entry-sub">Name the character, guess the anime, climb the ranks, solo or against your friends.<br><b style="color:var(--text)">Jump in free, no sign-up needed!</b> 🎮</div>
+        <div class="entry-title" id="entryTitleEl">Anime <span>Sekai</span></div>
+        <div class="entry-sub"><span data-copy-key="landing_subhead">Name the character, guess the anime, climb the ranks, solo or against your friends.</span><br><b style="color:var(--text)" data-copy-key="landing_tagline">Jump in free, no sign-up needed! 🎮</b></div>
       </div>
       <div class="entry-cards">
         <div class="entry-card" tabindex="0" role="button" aria-label="Solo quiz" onclick="choosePath('solo')">
@@ -2882,7 +2882,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
   </div>
 
   <footer>
-    <div class="foot-left">© <span id="footerYear"></span> Anime Sekai</div>
+    <div class="foot-left">© <span id="footerYear"></span> <span data-copy-key="footer_brand">Anime Sekai</span></div>
     <div class="foot-links">
       <a class="foot-link" onclick="openSubmitQuestion()">Submit a question</a>
       <a class="foot-link" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()">About</a>
@@ -3005,7 +3005,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div style="font-family:'Lilita One',cursive;font-size:18px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-flag" style="font-size:18px;color:var(--accent)"></i> Question Voiding</div>
         <button onclick="closeVoidingInfoModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
       </div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.7">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7" data-copy-key="voiding_info_body">
         If a question seems wrong, players can flag it. Enough flags and the round gets skipped with no points lost.
       </div>
       <button class="action-btn primary" onclick="closeVoidingInfoModal()">Got it!</button>
@@ -3451,14 +3451,75 @@ function isCardLocked(type,id){
   const reg=CARD_REGISTRY.find(c=>c.type===type&&c.id===id);
   return reg?getCardConfig(reg.key).locked===true:false;
 }
+
+// ── SITE CONTENT (admin-editable static copy) ──────────────────
+// Registry of purely informational, static text blocks the admin panel can
+// edit — landing hero copy, footer, How to Play / rules modal blurbs, and
+// pure-copy empty states. Deliberately excludes anything functional: button
+// labels, error/toast messages, and any string with a dynamic value (scores,
+// counts, usernames) baked in — those carry real logic risk if edited freely
+// and aren't worth the admin-editable surface area.
+const TEXT_REGISTRY=[
+  {key:'landing_headline',group:'Landing Page',label:'Hero headline',default:'Anime Sekai',multiline:false},
+  {key:'landing_subhead',group:'Landing Page',label:'Hero subheadline',default:'Name the character, guess the anime, climb the ranks, solo or against your friends.',multiline:true},
+  {key:'landing_tagline',group:'Landing Page',label:'Hero tagline',default:'Jump in free, no sign-up needed! 🎮',multiline:false},
+  {key:'footer_brand',group:'Footer',label:'Footer brand text',default:'Anime Sekai',multiline:false},
+  {key:'htp_fmt_mc',group:'How to Play — Format',label:'Multiple Choice',default:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',multiline:true},
+  {key:'htp_fmt_type',group:'How to Play — Format',label:'Type the Answer',default:'No options are shown. You must type the correct answer from memory. Partial matches and common aliases are accepted.',multiline:true},
+  {key:'htp_fmt_img',group:'How to Play — Format',label:'Image Round',default:'A screenshot from an anime is shown. Identify which series it\'s from before time runs out.',multiline:true},
+  {key:'htp_fmt_char',group:'How to Play — Format',label:'Name the Character',default:'A character description or image is shown. Name the character correctly to score points.',multiline:true},
+  {key:'htp_mode_classic',group:'How to Play — Mode',label:'Classic',default:'Answer at your own pace — every correct answer is worth a flat 10 points, no speed bonus. There are no lives to lose and no target to race to. The game simply runs through the set number of questions, and whoever has the most points at the end wins.',multiline:true},
+  {key:'htp_mode_race',group:'How to Play — Mode',label:'Score Race',default:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts. The longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',multiline:true},
+  {key:'htp_mode_survival',group:'How to Play — Mode',label:'Survival',default:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going. Lose all 3 and you\'re out. Last one standing wins.',multiline:true},
+  {key:'htp_mode_potato',group:'How to Play — Mode',label:'Hot Potato',default:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',multiline:true},
+  {key:'htp_mode_slowreveal',group:'How to Play — Mode',label:'Slow Reveal',default:'The question fades in word by word. Hit Buzz In when you think you know the answer. The reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.',multiline:true},
+  {key:'htp_topic_general',group:'How to Play — Mode',label:'"General Anime" topic blurb',default:'General Anime: questions from across the entire anime universe.',multiline:true},
+  {key:'solo_rules_classic',group:'Solo Mode Rules Popup',label:'Classic',default:'Every correct answer is worth exactly 1 point, no matter how fast you answer. There\'s no pressure and no penalty for taking your time. The game ends after the set number of questions, and your final score is just how many you got right.',multiline:true},
+  {key:'solo_rules_race',group:'Solo Mode Rules Popup',label:'Score Race',default:'Each correct answer earns between 3 and 10 points. Answer within the first 5 seconds for the full 10. The longer you take after that, the lower the score, down to a minimum of 3. The game ends as soon as you reach the target score.',multiline:true},
+  {key:'solo_rules_survival',group:'Solo Mode Rules Popup',label:'Survival',default:'You start with 3 lives. Every wrong answer or timeout costs one life. Answer correctly to keep going. Lose all 3 lives and the run ends. See how many questions you can survive.',multiline:true},
+  {key:'voiding_info_body',group:'Info Popups',label:'Question Voiding explainer',default:'If a question seems wrong, players can flag it. Enough flags and the round gets skipped with no points lost.',multiline:true},
+  {key:'lb_empty',group:'Empty States',label:'Leaderboard — no scores yet',default:'No scores yet. Be the first!',multiline:false},
+  {key:'lobby_browse_empty_title',group:'Empty States',label:'Lobby browser — no open lobbies (title)',default:'😴 No open lobbies right now.',multiline:false},
+  {key:'lobby_browse_empty_sub',group:'Empty States',label:'Lobby browser — no open lobbies (subtext)',default:'Create one and share the code with friends!',multiline:false},
+];
+let siteTextConfig={}; // populated from Supabase; keyed by TEXT_REGISTRY[].key -> string override
+function getSiteText(key){
+  const reg=TEXT_REGISTRY.find(t=>t.key===key);
+  const val=siteTextConfig[key];
+  return (val!==undefined&&val!==null&&val!=='')?val:(reg?reg.default:'');
+}
+// Patches textContent onto every static element tagged data-copy-key="...",
+// plus the landing headline (handled separately so its two-tone accent word
+// survives an override). Safe to call anytime — it only ever sets textContent,
+// never innerHTML, so admin-entered copy can't inject markup.
+function applySiteTextOverrides(){
+  document.querySelectorAll('[data-copy-key]').forEach(el=>{
+    el.textContent=getSiteText(el.getAttribute('data-copy-key'));
+  });
+  applyLandingHeadline();
+}
+function applyLandingHeadline(){
+  const el=document.getElementById('entryTitleEl');
+  if(!el)return;
+  const words=getSiteText('landing_headline').trim().split(/\s+/).filter(Boolean);
+  el.textContent='';
+  if(!words.length)return;
+  const last=words.pop();
+  if(words.length)el.appendChild(document.createTextNode(words.join(' ')+' '));
+  const span=document.createElement('span');
+  span.textContent=last;
+  el.appendChild(span);
+}
 async function loadSiteConfig(){
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/site_config?select=value&key=eq.cards`,
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/site_config?select=key,value&key=in.(cards,copy)`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
     const rows=res.ok?await res.json():[];
-    siteCardConfig=(rows&&rows[0]&&rows[0].value)||{};
-  }catch(e){ siteCardConfig={}; }
+    siteCardConfig=(rows.find(r=>r.key==='cards')||{}).value||{};
+    siteTextConfig=(rows.find(r=>r.key==='copy')||{}).value||{};
+  }catch(e){ siteCardConfig={}; siteTextConfig={}; }
   applySiteCardOverrides();
+  applySiteTextOverrides();
 }
 // Patches title/desc/locked state onto every rendered copy of a card (solo
 // pages use [data-fmt]/[data-mode] on .fmt-card/.mode-card; the multiplayer
@@ -4878,9 +4939,9 @@ function selectCharFormat(fmt){
 }
 function openSoloModeInfo(mode){
   const info={
-    classic:{emoji:'🎮',name:'Classic',desc:'Every correct answer is worth exactly 1 point, no matter how fast you answer. There\'s no pressure and no penalty for taking your time. The game ends after the set number of questions, and your final score is just how many you got right.'},
-    race:{emoji:'🏁',name:'Score Race',desc:'Each correct answer earns between 3 and 10 points. Answer within the first 5 seconds for the full 10. The longer you take after that, the lower the score, down to a minimum of 3. The game ends as soon as you reach the target score.'},
-    survival:{emoji:'❤️',name:'Survival',desc:'You start with 3 lives. Every wrong answer or timeout costs one life. Answer correctly to keep going. Lose all 3 lives and the run ends. See how many questions you can survive.'}
+    classic:{emoji:'🎮',name:'Classic',desc:getSiteText('solo_rules_classic')},
+    race:{emoji:'🏁',name:'Score Race',desc:getSiteText('solo_rules_race')},
+    survival:{emoji:'❤️',name:'Survival',desc:getSiteText('solo_rules_survival')}
   }[mode];
   if(!info)return;
   document.getElementById('smiEmoji').textContent=info.emoji;
@@ -8285,7 +8346,7 @@ async function renderLb(){
     row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games · ${getRank(p.best_score).emoji} ${getRank(p.best_score).title}</div></div><div class="lb-score">${p.best_score}</div>`;
     list.appendChild(row);
   });
-  if(!data.length)list.innerHTML='<div class="lb-empty">No scores yet. Be the first!</div>';
+  if(!data.length)list.innerHTML='<div class="lb-empty">'+_htmlEsc(getSiteText('lb_empty'))+'</div>';
   applyTheme();
 }
 async function renderFriendsLb(){
@@ -8748,7 +8809,7 @@ async function loadPublicLobbies(silent=false){
     const lobbies=await res.json();
     console.log('Lobbies fetched:',lobbies);
     if(!Array.isArray(lobbies)||!lobbies.length){
-      list.innerHTML='<div class="lobby-list-empty">😴 No open lobbies right now.<br><span style="font-size:12px;margin-top:6px;display:block">Create one and share the code with friends!</span></div>';
+      list.innerHTML='<div class="lobby-list-empty">'+_htmlEsc(getSiteText('lobby_browse_empty_title'))+'<br><span style="font-size:12px;margin-top:6px;display:block">'+_htmlEsc(getSiteText('lobby_browse_empty_sub'))+'</span></div>';
       countLabel.textContent='0 open';
       return;
     }
@@ -9007,18 +9068,18 @@ function updateLobbyTopicsLabel(){
 function lobbyModeLabel(m){return m==='classic'?'Classic':m==='race'?'Score Race':m==='survival'?'Survival':m==='slowreveal'?'Slow Reveal 👁️':m==='potato'?'Hot Potato 🥔':m}
 function openHowToPlay(){
   const fmtDescs={
-    mc:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',
-    type:'No options are shown. You must type the correct answer from memory. Partial matches and common aliases are accepted.',
-    img:'A screenshot from an anime is shown. Identify which series it\'s from before time runs out.',
-    char:'A character description or image is shown. Name the character correctly to score points.'
+    mc:getSiteText('htp_fmt_mc'),
+    type:getSiteText('htp_fmt_type'),
+    img:getSiteText('htp_fmt_img'),
+    char:getSiteText('htp_fmt_char')
   };
   const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
   const modeDescs={
-    classic:'Answer at your own pace — every correct answer is worth a flat 10 points, no speed bonus. There are no lives to lose and no target to race to. The game simply runs through the set number of questions, and whoever has the most points at the end wins.',
-    race:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts. The longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',
-    survival:'You start with 3 lives. Every wrong answer costs one life. Answer correctly to keep going. Lose all 3 and you\'re out. Last one standing wins.',
-    potato:'A fuse counts down on a random player. Answer correctly to pass it to someone else. Answer wrong and you explode. Last player alive wins.',
-    slowreveal:'The question fades in word by word. Hit Buzz In when you think you know the answer. The reveal freezes and you have 5 seconds to type it. Get it right and earn a point. Get it wrong and you\'re locked out for that round. First to the target score wins.'
+    classic:getSiteText('htp_mode_classic'),
+    race:getSiteText('htp_mode_race'),
+    survival:getSiteText('htp_mode_survival'),
+    potato:getSiteText('htp_mode_potato'),
+    slowreveal:getSiteText('htp_mode_slowreveal')
   };
   const modeIcons={classic:'ti-device-gamepad-2',race:'ti-trophy',survival:'ti-heart',potato:'ti-flame',slowreveal:'ti-eye'};
   const modeEmojis={classic:'🎮',race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
@@ -9031,7 +9092,7 @@ function openHowToPlay(){
   document.getElementById('htpModeName').textContent=lobbyModeLabel(mode);
   document.getElementById('htpModeDesc').textContent=modeDescs[mode]||'';
   const topicText=(lobbyIsGeneral||lobbyTopics.length===0)
-    ?'General Anime: questions from across the entire anime universe.'
+    ?getSiteText('htp_topic_general')
     :lobbyTopics.map(t=>(t.emoji?t.emoji+' ':'')+t.name).join(', ');
   document.getElementById('htpTopic').textContent=topicText;
   const modal=document.getElementById('howToPlayModal');
@@ -13060,11 +13121,19 @@ function _htmlEsc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</
 function renderAdminContentPanel(){
   const wrap=document.getElementById('adminContent');
   if(!wrap)return;
-  const groups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
+  const cardGroups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
+  const textGroups=[...new Set(TEXT_REGISTRY.map(t=>t.group))];
   wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit the title/description shown on each Format and Mode card, or lock one to show "🔒 Coming soon" and disable it. Changes save straight to the database and apply immediately — no redeploy needed.</div>`
-    +groups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
+    +cardGroups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
       <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(g)}</div>
       <div style="display:flex;flex-direction:column;gap:10px">${CARD_REGISTRY.filter(c=>c.group===g).map(buildAdminCardEditor).join('')}</div>
+    </div>`).join('')
+    +`<div style="height:1px;background:var(--border);margin:6px 0"></div>`
+    +`<div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">Site Copy</div>`
+    +`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit static, informational text — the landing page hero, footer, How to Play / rules popups, and pure-copy empty states. Button labels, error/toast messages, and any text with live scores or usernames baked in are intentionally not editable here.</div>`
+    +textGroups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(g)}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">${TEXT_REGISTRY.filter(t=>t.group===g).map(buildAdminTextEditor).join('')}</div>
     </div>`).join('');
 }
 function buildAdminCardEditor(reg){
@@ -13114,6 +13183,52 @@ function resetAdminCard(key){
     if(error){showAdminToast('Could not reset — try again.');return;}
     siteCardConfig=next;
     applySiteCardOverrides();
+    renderAdminContentPanel();
+  });
+}
+function buildAdminTextEditor(reg){
+  const val=getSiteText(reg.key);
+  const field=reg.multiline
+    ?`<textarea id="atext_${reg.key}" placeholder="${_htmlEsc(reg.label)}" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:56px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(val)}</textarea>`
+    :`<input id="atext_${reg.key}" value="${_htmlEsc(val)}" placeholder="${_htmlEsc(reg.label)}" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;outline:none">`;
+  return `<div class="admin-q-card" id="atcard_${reg.key}">
+    <span class="admin-badge format">${_htmlEsc(reg.label)}</span>
+    ${field}
+    <div class="admin-actions">
+      <button class="admin-btn approve" onclick="saveAdminText('${reg.key}')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save</button>
+      <button class="admin-btn dismiss" onclick="resetAdminText('${reg.key}')"><i class="ti ti-rotate" style="font-size:13px"></i> Reset to default</button>
+      <span id="atstatus_${reg.key}" style="font-size:12px;font-weight:800;color:#4ade80;display:none">Saved ✓</span>
+    </div>
+  </div>`;
+}
+async function saveAdminText(key){
+  const reg=TEXT_REGISTRY.find(t=>t.key===key);
+  if(!reg)return;
+  const fieldEl=document.getElementById('atext_'+key);
+  const text=fieldEl.value.trim();
+  if(!text){showAdminToast('This field can\'t be empty.');return;}
+  requireAdminUnlock(async()=>{
+    const next={...siteTextConfig,[key]:text};
+    const btn=document.querySelector(`#atcard_${key} .admin-btn.approve`);
+    if(btn){btn.disabled=true;btn.style.opacity='.6';}
+    let error;
+    try{({error}=await sb.from('site_config').upsert({key:'copy',value:next},{onConflict:'key'}));}catch(e){error=e;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(error){showAdminToast('Could not save — try again.');return;}
+    siteTextConfig=next;
+    applySiteTextOverrides();
+    const status=document.getElementById('atstatus_'+key);
+    if(status){status.style.display='inline';setTimeout(()=>{status.style.display='none';},2000);}
+  });
+}
+function resetAdminText(key){
+  requireAdminUnlock(async()=>{
+    const next={...siteTextConfig};delete next[key];
+    let error;
+    try{({error}=await sb.from('site_config').upsert({key:'copy',value:next},{onConflict:'key'}));}catch(e){error=e;}
+    if(error){showAdminToast('Could not reset — try again.');return;}
+    siteTextConfig=next;
+    applySiteTextOverrides();
     renderAdminContentPanel();
   });
 }
