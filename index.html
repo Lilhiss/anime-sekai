@@ -1059,6 +1059,10 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .admin-content-savebar{position:sticky;bottom:0;z-index:150;background:var(--bg2);border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 -4px 20px color-mix(in srgb,var(--accent) 20%,transparent)}
 .admin-content-launcher{cursor:pointer}
 .admin-content-launcher:hover{border-color:var(--accent)}
+.act-tab{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 12px;border-radius:8px 8px 0 0;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .15s}
+.act-tab:hover{color:var(--text)}
+.act-tab.active{color:var(--accent);background:var(--accent-soft)}
+.ac-panel{display:flex;flex-direction:column;gap:8px}
 .admin-bulk-bar-count{font-size:13px;font-weight:800;color:var(--accent);flex:1;white-space:nowrap}
 .admin-bulk-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px;background:var(--accent-soft);color:var(--accent)}
 .admin-bulk-btn:hover{border-color:var(--accent)}
@@ -13123,38 +13127,37 @@ async function saveAdminEdit(){
 function _htmlEsc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Holds only the fields the admin has actively changed but not yet saved —
 // {cards:{key:{title,desc,locked}}, copy:{key:string}}. Cleared on Save All,
-// Discard, or once a Reset/modal-save commits that specific key to the DB.
+// Discard, or once a Reset commits that specific key to the DB.
 let adminContentDirty={cards:{},copy:{}};
+// Which tab ('card'|'htp'|'solo') is showing in each card's editor, keyed by
+// CARD_REGISTRY[].key. Consulted on every re-render so a tab choice survives
+// a Reset-triggered rebuild instead of always snapping back to "Card".
+let cardActiveTab={};
 const CARD_PREVIEW_ICON={fmt:{mc:'📝',type:'⌨️',img:'🖼️',char:'🎭'},mode:{classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'}};
-// Static-copy groups that live inside an in-app popup rather than directly on
-// a page. These are edited via a real, faithfully-styled replica of that
-// popup (see MODAL_COPY_LAUNCHERS) instead of as loose fields in the list.
-const MODAL_COPY_LAUNCHERS=[
-  {label:'How to Play',icon:'ti-info-circle',desc:'Format, Mode & Topic explainer shown from the lobby.',
-    keys:['htp_fmt_mc','htp_fmt_type','htp_fmt_img','htp_fmt_char','htp_mode_classic','htp_mode_race','htp_mode_survival','htp_mode_potato','htp_mode_slowreveal','htp_topic_general'],
-    openFn:'openAdminHowToPlay'},
-  {label:'Solo Mode Rules',icon:'ti-help',desc:'Rules popup opened from each Solo mode card.',
-    keys:['solo_rules_classic','solo_rules_race','solo_rules_survival'],
-    openFn:'openAdminSoloRules'},
-  {label:'Question Voiding',icon:'ti-flag',desc:'Explainer popup for the Question Voiding toggle.',
-    keys:['voiding_info_body'],
-    openFn:'openAdminVoidingInfo'},
-];
+const HTP_PREVIEW_ICON={fmt:{mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'},mode:{classic:'ti-device-gamepad-2',race:'ti-trophy',survival:'ti-heart',potato:'ti-flame',slowreveal:'ti-eye'}};
+const SOLO_RULES_MODES=['classic','race','survival']; // the only modes with a solo Rules popup
+function _htpKeyFor(reg){return reg.type==='fmt'?'htp_fmt_'+reg.id:'htp_mode_'+reg.id;}
+function _soloKeyFor(reg){return (reg.type==='mode'&&SOLO_RULES_MODES.includes(reg.id))?'solo_rules_'+reg.id:null;}
+function _regDefault(key){const r=TEXT_REGISTRY.find(t=>t.key===key);return r?r.default:'';}
 function renderAdminContentPanel(){
   const wrap=document.getElementById('adminContent');
   if(!wrap)return;
   const cardGroups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
-  const modalKeys=new Set(MODAL_COPY_LAUNCHERS.flatMap(m=>m.keys));
-  const pageGroups=[...new Set(TEXT_REGISTRY.filter(t=>!modalKeys.has(t.key)).map(t=>t.group))];
-  wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit the title/description shown on each Format and Mode card, or lock one to show "🔒 Coming soon" and disable it. The preview updates as you type — hit <b>Save All</b> at the bottom when you're happy with your changes.</div>`
+  const cardTabKeys=new Set(CARD_REGISTRY.flatMap(reg=>[_htpKeyFor(reg),_soloKeyFor(reg)].filter(Boolean)));
+  const settingsKeys=new Set(['voiding_info_body']);
+  const pageGroups=[...new Set(TEXT_REGISTRY.filter(t=>!cardTabKeys.has(t.key)&&!settingsKeys.has(t.key)).map(t=>t.group))];
+  wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit what each Format/Mode card shows — its brief blurb, its "How to Play" description, and (for solo-playable modes) its Rules popup — right where each one appears. Switch tabs on a card to jump between them; the preview on the left follows along. Hit <b>Save All</b> at the bottom when you're happy with your changes.</div>`
     +cardGroups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
       <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(g)}</div>
       <div style="display:flex;flex-direction:column;gap:10px">${CARD_REGISTRY.filter(c=>c.group===g).map(buildAdminCardEditor).join('')}</div>
     </div>`).join('')
     +`<div style="height:1px;background:var(--border);margin:6px 0"></div>`
-    +`<div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">In-App Popups</div>`
-    +`<div style="font-size:13px;color:var(--muted);line-height:1.6">These open the exact popup players see, with its text made editable right where it appears.</div>`
-    +`<div style="display:flex;flex-direction:column;gap:10px">${MODAL_COPY_LAUNCHERS.map(buildModalLauncher).join('')}</div>`
+    +`<div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">Game Settings</div>`
+    +`<div style="font-size:13px;color:var(--muted);line-height:1.6">Explainer text for lobby settings that isn't tied to a Format/Mode card.</div>`
+    +`<div style="display:flex;flex-direction:column;gap:12px">
+      ${buildGameSettingsPreview()}
+      <div style="display:flex;flex-direction:column;gap:10px">${TEXT_REGISTRY.filter(t=>settingsKeys.has(t.key)).map(buildAdminTextEditor).join('')}</div>
+    </div>`
     +`<div style="height:1px;background:var(--border);margin:6px 0"></div>`
     +`<div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">Page Copy</div>`
     +`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit static, informational text — the landing page hero, footer, and empty states — with a live mini-preview. Button labels, error/toast messages, and any text with live scores or usernames baked in are intentionally not editable here.</div>`
@@ -13171,52 +13174,129 @@ function renderAdminContentPanel(){
   _initPagePreviews();
   _syncContentSaveBar();
 }
-// ── Format/Mode cards: live preview rendered with the exact same classes
-// used on the real solo/multiplayer cards, sitting right next to its fields ──
+// ── Format/Mode cards: a live preview (rendered with the exact classes used
+// on the real solo/multiplayer cards) sits next to tabbed fields — Card /
+// How to Play / Solo Rules — so every popup's text is edited in one place,
+// with the preview switching to match whichever tab is active. ──
 function buildAdminCardEditor(reg){
   const cfg=getCardConfig(reg.key);
-  const icon=CARD_PREVIEW_ICON[reg.type][reg.id]||'❔';
-  const previewClass=reg.type==='fmt'?'fmt-card':'mode-card';
-  const iconHtml=reg.type==='fmt'?`<div class="fmt-card-icon">${icon}</div>`:`<div class="mode-icon">${icon}</div>`;
-  const titleClass=reg.type==='fmt'?'fmt-card-title':'mode-title';
-  const descClass=reg.type==='fmt'?'fmt-card-desc':'mode-desc';
+  const htpKey=_htpKeyFor(reg),soloKey=_soloKeyFor(reg);
+  const tab=cardActiveTab[reg.key]||'card';
   return `<div class="admin-q-card" id="acard_${reg.key}" style="flex-direction:row;align-items:stretch;gap:18px;flex-wrap:wrap">
-    <div id="acpreview_${reg.key}" class="${previewClass}${cfg.locked?' locked':''}" style="width:170px;flex-shrink:0;pointer-events:none;cursor:default">
-      ${iconHtml}<div class="${titleClass}">${_htmlEsc(cfg.title)}</div><div class="${descClass}">${_htmlEsc(cfg.locked?'🔒 Coming soon':cfg.desc)}</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:220px">
+    <div id="acpreview_${reg.key}" style="flex-shrink:0;display:flex"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:240px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <span class="admin-badge format">${reg.type==='fmt'?'Format':'Mode'}</span>
         <label style="display:inline-flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:${cfg.locked?'#f87171':'var(--muted)'};cursor:pointer;user-select:none">
           <input type="checkbox" ${cfg.locked?'checked':''} onchange="this.closest('label').style.color=this.checked?'#f87171':'var(--muted)';onCardFieldInput('${reg.key}')" style="accent-color:#f87171;width:15px;height:15px;cursor:pointer"> Locked (coming soon)
         </label>
       </div>
-      <input id="actitle_${reg.key}" value="${_htmlEsc(cfg.title)}" placeholder="Card title" oninput="onCardFieldInput('${reg.key}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;outline:none">
-      <textarea id="acdesc_${reg.key}" placeholder="Card description" oninput="onCardFieldInput('${reg.key}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:56px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(cfg.desc)}</textarea>
+      <div style="display:flex;gap:2px;border-bottom:1px solid var(--border2)">
+        <button type="button" class="act-tab${tab==='card'?' active':''}" data-tab="card" onclick="switchCardTab('${reg.key}','card')">Card</button>
+        <button type="button" class="act-tab${tab==='htp'?' active':''}" data-tab="htp" onclick="switchCardTab('${reg.key}','htp')">How to Play</button>
+        ${soloKey?`<button type="button" class="act-tab${tab==='solo'?' active':''}" data-tab="solo" onclick="switchCardTab('${reg.key}','solo')">Solo Rules</button>`:''}
+      </div>
+      <div id="acpanel_card_${reg.key}" class="ac-panel" style="display:${tab==='card'?'flex':'none'}">
+        <input id="actitle_${reg.key}" value="${_htmlEsc(cfg.title)}" placeholder="Card title" oninput="onCardFieldInput('${reg.key}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;outline:none">
+        <textarea id="acdesc_${reg.key}" placeholder="Card description" oninput="onCardFieldInput('${reg.key}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:56px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(cfg.desc)}</textarea>
+      </div>
+      <div id="acpanel_htp_${reg.key}" class="ac-panel" style="display:${tab==='htp'?'flex':'none'}">
+        <textarea id="achtp_${reg.key}" placeholder="How to Play description" oninput="onCardTextTabInput('${reg.key}','htp')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:80px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(getSiteText(htpKey))}</textarea>
+      </div>
+      ${soloKey?`<div id="acpanel_solo_${reg.key}" class="ac-panel" style="display:${tab==='solo'?'flex':'none'}">
+        <textarea id="acsolo_${reg.key}" placeholder="Solo Rules popup description" oninput="onCardTextTabInput('${reg.key}','solo')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;min-height:80px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(getSiteText(soloKey))}</textarea>
+      </div>`:''}
       <div class="admin-actions">
-        <button class="admin-btn dismiss" onclick="resetAdminCard('${reg.key}')"><i class="ti ti-rotate" style="font-size:13px"></i> Reset to default</button>
+        <button class="admin-btn dismiss" onclick="resetAdminCardTab('${reg.key}')"><i class="ti ti-rotate" style="font-size:13px"></i> Reset this tab to default</button>
         <span id="acstatus_${reg.key}" style="font-size:12px;font-weight:800;color:var(--accent);display:none">Edited — remember to Save All</span>
       </div>
     </div>
   </div>`;
 }
-function onCardFieldInput(key){
+function _liveCardTitle(key,reg){const el=document.getElementById('actitle_'+key);return (el&&el.value.trim())||reg.title;}
+function _cardPreviewBox(reg,title,desc,locked){
+  const icon=CARD_PREVIEW_ICON[reg.type][reg.id]||'❔';
+  const cls=reg.type==='fmt'?'fmt-card':'mode-card';
+  const iconHtml=reg.type==='fmt'?`<div class="fmt-card-icon">${icon}</div>`:`<div class="mode-icon">${icon}</div>`;
+  const titleClass=reg.type==='fmt'?'fmt-card-title':'mode-title';
+  const descClass=reg.type==='fmt'?'fmt-card-desc':'mode-desc';
+  return `<div class="${cls}${locked?' locked':''}" style="width:170px;pointer-events:none;cursor:default">${iconHtml}<div class="${titleClass}">${_htmlEsc(title)}</div><div class="${descClass}">${_htmlEsc(locked?'🔒 Coming soon':desc)}</div></div>`;
+}
+function _htpPreviewBox(reg,title,desc){
+  const icon=HTP_PREVIEW_ICON[reg.type][reg.id]||'ti-info-circle';
+  return `<div style="display:flex;align-items:flex-start;gap:12px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px;width:250px;pointer-events:none">
+    <div style="width:38px;height:38px;border-radius:10px;background:var(--bg2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--accent);flex-shrink:0"><i class="ti ${icon}"></i></div>
+    <div><div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:4px">${_htmlEsc(title)}</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${_htmlEsc(desc)}</div></div>
+  </div>`;
+}
+function _soloPreviewBox(reg,title,desc){
+  const emoji=CARD_PREVIEW_ICON.mode[reg.id]||'❔';
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;background:var(--bg2);border:1px solid var(--card-border);border-radius:16px;padding:18px;width:250px;pointer-events:none">
+    <div style="font-size:32px">${emoji}</div>
+    <div style="font-family:'Lilita One',cursive;font-size:16px;color:var(--text)">${_htmlEsc(title)}</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;text-align:left">${_htmlEsc(desc)}</div>
+  </div>`;
+}
+function _refreshCardPreview(key){
   const reg=CARD_REGISTRY.find(c=>c.key===key);
+  const pv=document.getElementById('acpreview_'+key);
+  if(!pv||!reg)return;
+  const tab=cardActiveTab[key]||'card';
+  const title=_liveCardTitle(key,reg);
+  if(tab==='card'){
+    const desc=document.getElementById('acdesc_'+key)?.value.trim()||reg.desc;
+    const locked=!!document.querySelector(`#acard_${key} input[type="checkbox"]`)?.checked;
+    pv.innerHTML=_cardPreviewBox(reg,title,desc,locked);
+  } else if(tab==='htp'){
+    const htpKey=_htpKeyFor(reg);
+    const desc=document.getElementById('achtp_'+key)?.value.trim()||_regDefault(htpKey);
+    pv.innerHTML=_htpPreviewBox(reg,title,desc);
+  } else if(tab==='solo'){
+    const soloKey=_soloKeyFor(reg);
+    const desc=document.getElementById('acsolo_'+key)?.value.trim()||_regDefault(soloKey);
+    pv.innerHTML=_soloPreviewBox(reg,title,desc);
+  }
+}
+function switchCardTab(key,tab){
+  cardActiveTab[key]=tab;
+  const card=document.getElementById('acard_'+key);
+  if(!card)return;
+  card.querySelectorAll('.act-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  card.querySelectorAll('.ac-panel').forEach(p=>{p.style.display=(p.id===`acpanel_${tab}_${key}`)?'flex':'none';});
+  _refreshCardPreview(key);
+}
+function _cardHasDirty(key){
+  const reg=CARD_REGISTRY.find(c=>c.key===key);
+  if(adminContentDirty.cards[key])return true;
+  const htpKey=_htpKeyFor(reg);if(htpKey&&adminContentDirty.copy[htpKey]!==undefined)return true;
+  const soloKey=_soloKeyFor(reg);if(soloKey&&adminContentDirty.copy[soloKey]!==undefined)return true;
+  return false;
+}
+function _updateCardStatus(key){
+  const status=document.getElementById('acstatus_'+key);
+  if(status)status.style.display=_cardHasDirty(key)?'inline':'none';
+}
+function onCardFieldInput(key){
   const cfg=getCardConfig(key);
   const title=document.getElementById('actitle_'+key).value.trim();
   const desc=document.getElementById('acdesc_'+key).value.trim();
   const locked=!!document.querySelector(`#acard_${key} input[type="checkbox"]`).checked;
   const isDirty=title!==cfg.title||desc!==cfg.desc||locked!==!!cfg.locked;
   if(isDirty)adminContentDirty.cards[key]={title,desc,locked};else delete adminContentDirty.cards[key];
-  const pv=document.getElementById('acpreview_'+key);
-  if(pv){
-    const t=pv.querySelector('.fmt-card-title,.mode-title'),d=pv.querySelector('.fmt-card-desc,.mode-desc');
-    if(t)t.textContent=title||reg.title;
-    if(d)d.textContent=locked?'🔒 Coming soon':(desc||reg.desc);
-    pv.classList.toggle('locked',locked);
-  }
-  const status=document.getElementById('acstatus_'+key);
-  if(status)status.style.display=isDirty?'inline':'none';
+  _refreshCardPreview(key);
+  _updateCardStatus(key);
+  _syncContentSaveBar();
+}
+function onCardTextTabInput(key,tab){
+  const reg=CARD_REGISTRY.find(c=>c.key===key);
+  const textKey=tab==='htp'?_htpKeyFor(reg):_soloKeyFor(reg);
+  if(!textKey)return;
+  const el=document.getElementById((tab==='htp'?'achtp_':'acsolo_')+key);
+  const val=el.value.trim();
+  const isDirty=val!==getSiteText(textKey);
+  if(isDirty)adminContentDirty.copy[textKey]=val;else delete adminContentDirty.copy[textKey];
+  _refreshCardPreview(key);
+  _updateCardStatus(key);
   _syncContentSaveBar();
 }
 function resetAdminCard(key){
@@ -13231,7 +13311,14 @@ function resetAdminCard(key){
     renderAdminContentPanel();
   });
 }
-// ── Page copy: plain field editors with a live mini-preview above them ──
+function resetAdminCardTab(key){
+  const reg=CARD_REGISTRY.find(c=>c.key===key);
+  const tab=cardActiveTab[key]||'card';
+  if(tab==='card'){resetAdminCard(key);return;}
+  const textKey=tab==='htp'?_htpKeyFor(reg):_soloKeyFor(reg);
+  if(textKey)resetAdminText(textKey);
+}
+// ── Page copy & Game Settings: plain field editors with a live mini-preview ──
 function buildAdminTextEditor(reg){
   const val=getSiteText(reg.key);
   const field=reg.multiline
@@ -13268,7 +13355,20 @@ function resetAdminText(key){
     renderAdminContentPanel();
   });
 }
-// ── Mini live previews for the Page Copy groups ──
+// ── Live mini-previews ──
+function buildGameSettingsPreview(){
+  return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding</span>
+      <i class="ti ti-info-circle" style="font-size:14px;color:var(--muted)"></i>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted)">Allow players to void bad questions.</div>
+    <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border:1px solid var(--card-border);border-radius:12px;padding:12px 14px">
+      <i class="ti ti-flag" style="font-size:16px;color:var(--accent);flex-shrink:0;margin-top:2px"></i>
+      <div id="pv_voiding_info_body" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+    </div>
+  </div>`;
+}
 function buildPagePreview(g){
   if(g==='Landing Page')return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:16px;padding:26px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px">
     <div id="pv_landing_headline" class="entry-title" style="font-size:30px"></div>
@@ -13299,6 +13399,8 @@ function _initPagePreviews(){
   const lbe=document.getElementById('pv_lb_empty');if(lbe)lbe.textContent=getSiteText('lb_empty');
   const lbt=document.getElementById('pv_lobby_browse_title');if(lbt)lbt.textContent=getSiteText('lobby_browse_empty_title');
   const lbs=document.getElementById('pv_lobby_browse_sub');if(lbs)lbs.textContent=getSiteText('lobby_browse_empty_sub');
+  const vb=document.getElementById('pv_voiding_info_body');if(vb)vb.textContent=getSiteText('voiding_info_body');
+  CARD_REGISTRY.forEach(reg=>_refreshCardPreview(reg.key));
 }
 function _updatePagePreview(key,val){
   if(key==='landing_headline'){const el=document.getElementById('pv_landing_headline');if(el)_setPreviewHeadline(el,val);}
@@ -13308,9 +13410,10 @@ function _updatePagePreview(key,val){
   else if(key==='lb_empty'){const el=document.getElementById('pv_lb_empty');if(el)el.textContent=val;}
   else if(key==='lobby_browse_empty_title'){const el=document.getElementById('pv_lobby_browse_title');if(el)el.textContent=val;}
   else if(key==='lobby_browse_empty_sub'){const el=document.getElementById('pv_lobby_browse_sub');if(el)el.textContent=val;}
+  else if(key==='voiding_info_body'){const el=document.getElementById('pv_voiding_info_body');if(el)el.textContent=val;}
 }
-// ── Bottom "Save All" bar shared by Cards + Page Copy (In-App Popups save
-// independently from within their own modal — see below) ──
+// ── Bottom "Save All" bar shared by every field in this tab (Cards' Card/How
+// to Play/Solo Rules tabs, Game Settings, and Page Copy) ──
 function _syncContentSaveBar(){
   const bar=document.getElementById('adminContentSaveBar');
   if(!bar)return;
@@ -13350,118 +13453,6 @@ async function saveAllAdminContent(){
     renderAdminContentPanel();
     showAdminToast('Changes saved ✓');
   });
-}
-// ── In-App Popups: click a launcher to open a faithful replica of the real
-// popup, with each blurb swapped for an editable field in place, and its own
-// Save button (writes immediately, independent of the Save All bar above) ──
-function buildModalLauncher(m){
-  return `<div class="admin-q-card admin-content-launcher" onclick="${m.openFn}()">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:42px;height:42px;border-radius:11px;background:var(--accent-soft);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--accent);flex-shrink:0"><i class="ti ${m.icon}"></i></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(m.label)}</div>
-        <div style="font-size:12px;color:var(--muted)">${_htmlEsc(m.desc)}</div>
-      </div>
-      <i class="ti ti-chevron-right" style="color:var(--muted);font-size:16px;flex-shrink:0"></i>
-    </div>
-  </div>`;
-}
-function _regDefault(key){const r=TEXT_REGISTRY.find(t=>t.key===key);return r?r.default:'';}
-function _adminCopyFieldBox(iconHtml,label,key,idPrefix){
-  const id=idPrefix+key,value=getSiteText(key),def=_regDefault(key);
-  return `<div style="display:flex;align-items:flex-start;gap:14px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px">
-    <div style="width:42px;height:42px;border-radius:11px;background:var(--bg2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0">${iconHtml}</div>
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-        <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(label)}</div>
-        <button type="button" onclick="document.getElementById('${id}').value=${JSON.stringify(def)}" title="Reset to default" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:0;display:flex;align-items:center"><i class="ti ti-rotate" style="font-size:14px"></i></button>
-      </div>
-      <textarea id="${id}" style="width:100%;background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;min-height:60px;resize:vertical;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;line-height:1.5">${_htmlEsc(value)}</textarea>
-    </div>
-  </div>`;
-}
-function _closeAdminCopyModal(){
-  const m=document.getElementById('adminCopyModal');
-  if(m)m.remove();
-}
-function _openAdminCopyModal(title,iconClass,bodyHtml,saveHandler){
-  _closeAdminCopyModal();
-  const el=document.createElement('div');
-  el.id='adminCopyModal';
-  el.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:2000;align-items:center;justify-content:center;padding:20px';
-  el.onclick=(e)=>{if(e.target===el)_closeAdminCopyModal();};
-  el.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ${iconClass}" style="font-size:19px;color:var(--accent)"></i> ${_htmlEsc(title)}</div>
-      <button onclick="_closeAdminCopyModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px">${bodyHtml}</div>
-    <div class="admin-actions">
-      <button class="admin-btn approve" id="adminCopyModalSave"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save changes</button>
-      <button class="admin-btn dismiss" onclick="_closeAdminCopyModal()">Cancel</button>
-      <span id="adminCopyModalStatus" style="font-size:12px;font-weight:800;color:#f87171;display:none"></span>
-    </div>
-  </div>`;
-  document.body.appendChild(el);
-  document.getElementById('adminCopyModalSave').onclick=saveHandler;
-  applyTheme();
-}
-function _adminCopyModalError(msg){
-  const s=document.getElementById('adminCopyModalStatus');
-  if(s){s.textContent=msg;s.style.display='inline';}
-}
-async function _saveAdminCopyKeys(keys,idPrefix){
-  const values={};
-  for(const k of keys){
-    const v=(document.getElementById(idPrefix+k)||{}).value;
-    const trimmed=(v||'').trim();
-    if(!trimmed){_adminCopyModalError('All fields must be filled in.');return;}
-    values[k]=trimmed;
-  }
-  requireAdminUnlock(async()=>{
-    const btn=document.getElementById('adminCopyModalSave');
-    if(btn){btn.disabled=true;btn.style.opacity='.6';}
-    const next={...siteTextConfig,...values};
-    let error;
-    try{({error}=await sb.from('site_config').upsert({key:'copy',value:next},{onConflict:'key'}));}catch(e){error=e;}
-    if(btn){btn.disabled=false;btn.style.opacity='1';}
-    if(error){_adminCopyModalError('Could not save — try again.');return;}
-    siteTextConfig=next;
-    keys.forEach(k=>delete adminContentDirty.copy[k]);
-    applySiteTextOverrides();
-    _closeAdminCopyModal();
-    showAdminToast('Changes saved ✓');
-    renderAdminContentPanel();
-  });
-}
-function openAdminHowToPlay(){
-  const fmts=[['mc','ti-list','Multiple Choice'],['type','ti-keyboard','Type the Answer'],['img','ti-photo','Image Round'],['char','ti-user-circle','Name the Character']];
-  const modes=[['classic','ti-device-gamepad-2','Classic'],['race','ti-trophy','Score Race'],['survival','ti-heart','Survival'],['potato','ti-flame','Hot Potato'],['slowreveal','ti-eye','Slow Reveal']];
-  const body=`<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Format</div>`
-    +fmts.map(([id,icon,label])=>_adminCopyFieldBox(`<i class="ti ${icon}"></i>`,label,'htp_fmt_'+id,'ahtp_')).join('')
-    +`<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:6px">Mode &amp; Scoring</div>`
-    +modes.map(([id,icon,label])=>_adminCopyFieldBox(`<i class="ti ${icon}"></i>`,label,'htp_mode_'+id,'ahtp_')).join('')
-    +`<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:6px">Topic</div>`
-    +_adminCopyFieldBox('<i class="ti ti-books"></i>','General Anime','htp_topic_general','ahtp_');
-  _openAdminCopyModal('How to Play','ti-info-circle',body,saveAdminHowToPlay);
-}
-function saveAdminHowToPlay(){
-  _saveAdminCopyKeys(['htp_fmt_mc','htp_fmt_type','htp_fmt_img','htp_fmt_char','htp_mode_classic','htp_mode_race','htp_mode_survival','htp_mode_potato','htp_mode_slowreveal','htp_topic_general'],'ahtp_');
-}
-function openAdminSoloRules(){
-  const modes=[['classic','🎮','Classic'],['race','🏁','Score Race'],['survival','❤️','Survival']];
-  const body=modes.map(([id,emoji,label])=>_adminCopyFieldBox(emoji,label,'solo_rules_'+id,'asr_')).join('');
-  _openAdminCopyModal('Solo Mode Rules','ti-help',body,saveAdminSoloRules);
-}
-function saveAdminSoloRules(){
-  _saveAdminCopyKeys(['solo_rules_classic','solo_rules_race','solo_rules_survival'],'asr_');
-}
-function openAdminVoidingInfo(){
-  const body=_adminCopyFieldBox('<i class="ti ti-flag"></i>','Explainer text','voiding_info_body','avi_');
-  _openAdminCopyModal('Question Voiding','ti-flag',body,saveAdminVoidingInfo);
-}
-function saveAdminVoidingInfo(){
-  _saveAdminCopyKeys(['voiding_info_body'],'avi_');
 }
 
 // ── BULK ACTIONS ─────────────────────────────────────────────
