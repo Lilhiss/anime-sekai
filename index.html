@@ -1056,7 +1056,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .admin-btn.edit:hover{border-color:var(--accent)}
 /* ── Bulk action bar ── */
 .admin-bulk-bar{position:sticky;top:0;z-index:200;background:var(--bg2);border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 20px color-mix(in srgb,var(--accent) 20%,transparent);margin-bottom:8px}
-.admin-content-savebar{position:sticky;bottom:0;z-index:150;background:var(--bg2);border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 -4px 20px color-mix(in srgb,var(--accent) 20%,transparent)}
+.admin-content-savebar{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:500;background:var(--bg2);border:1.5px solid var(--accent);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;box-shadow:0 10px 32px color-mix(in srgb,var(--accent) 25%,transparent),0 2px 8px #0006;width:calc(100% - 48px);max-width:852px}
 .admin-content-launcher{cursor:pointer}
 .admin-content-launcher:hover{border-color:var(--accent)}
 .act-tab{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;padding:6px 12px;border-radius:8px 8px 0 0;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .15s}
@@ -4540,6 +4540,7 @@ async function uploadGuestPfp(blob){
 }
 
 function goStep(name){
+  if(name!=='admin'){const b=document.getElementById('adminContentSaveBar');if(b)b.style.display='none';}
   clearInterval(timerInterval);clearInterval(dailyTimerInterval);
   clearInterval(soloAutoNextInterval);clearInterval(mpAutoNextInterval);
   mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
@@ -11358,6 +11359,7 @@ async function switchAdminSection(section){
   document.getElementById('adminMessages').style.display=section==='messages'?'flex':'none';
   document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='content'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
+  _syncContentSaveBar();
   await renderAdminSection();
 }
 async function switchAdminTab(tab){
@@ -13165,12 +13167,8 @@ function renderAdminContentPanel(){
       <div style="font-family:'Lilita One',cursive;font-size:15px;color:var(--text)">${_htmlEsc(g)}</div>
       ${buildPagePreview(g)}
       <div style="display:flex;flex-direction:column;gap:10px">${TEXT_REGISTRY.filter(t=>t.group===g).map(buildAdminTextEditor).join('')}</div>
-    </div>`).join('')
-    +`<div id="adminContentSaveBar" class="admin-content-savebar" style="display:none">
-      <span class="admin-bulk-bar-count" id="adminContentDirtyCount">0 unsaved changes</span>
-      <button class="admin-btn dismiss" onclick="discardAdminContentChanges()"><i class="ti ti-x" style="font-size:13px"></i> Discard</button>
-      <button class="admin-btn approve" onclick="saveAllAdminContent()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save All</button>
-    </div>`;
+    </div>`).join('');
+  _ensureContentSaveBar();
   _initPagePreviews();
   _syncContentSaveBar();
 }
@@ -13425,11 +13423,30 @@ function _updatePagePreview(key,val){
 }
 // ── Bottom "Save All" bar shared by every field in this tab (Cards' Card/How
 // to Play/Solo Rules tabs, Game Settings, and Page Copy) ──
+// Lives directly on <body>, outside the admin panel's .slide-in-animated
+// containers — a position:fixed descendant of an element with a CSS
+// transform (even a settled translateY(0)) is fixed to THAT ancestor, not
+// the viewport, which is why this can't just be rendered inside #adminContent.
+function _ensureContentSaveBar(){
+  let bar=document.getElementById('adminContentSaveBar');
+  if(bar)return bar;
+  bar=document.createElement('div');
+  bar.id='adminContentSaveBar';
+  bar.className='admin-content-savebar';
+  bar.style.display='none';
+  bar.innerHTML=`<span class="admin-bulk-bar-count" id="adminContentDirtyCount">0 unsaved changes</span>
+    <button class="admin-btn dismiss" onclick="discardAdminContentChanges()"><i class="ti ti-x" style="font-size:13px"></i> Discard</button>
+    <button class="admin-btn approve" onclick="saveAllAdminContent()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save All</button>`;
+  document.body.appendChild(bar);
+  return bar;
+}
 function _syncContentSaveBar(){
-  const bar=document.getElementById('adminContentSaveBar');
-  if(!bar)return;
+  const bar=_ensureContentSaveBar();
+  const wrap=document.getElementById('adminContent');
+  if(adminSection!=='content'){bar.style.display='none';if(wrap)wrap.style.paddingBottom='';return;}
   const n=Object.keys(adminContentDirty.cards).length+Object.keys(adminContentDirty.copy).length;
   bar.style.display=n?'flex':'none';
+  if(wrap)wrap.style.paddingBottom=n?'76px':'';
   const c=document.getElementById('adminContentDirtyCount');
   if(c)c.textContent=n+' unsaved change'+(n===1?'':'s');
 }
