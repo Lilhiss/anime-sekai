@@ -13144,7 +13144,7 @@ function renderAdminContentPanel(){
   if(!wrap)return;
   const cardGroups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
   const cardTabKeys=new Set(CARD_REGISTRY.flatMap(reg=>[_htpKeyFor(reg),_soloKeyFor(reg)].filter(Boolean)));
-  const settingsKeys=new Set(['voiding_info_body']);
+  const settingsKeys=new Set(['voiding_info_body','htp_topic_general']);
   const pageGroups=[...new Set(TEXT_REGISTRY.filter(t=>!cardTabKeys.has(t.key)&&!settingsKeys.has(t.key)).map(t=>t.group))];
   wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit what each Format/Mode card shows — its brief blurb, its "How to Play" description, and (for solo-playable modes) its Rules popup — right where each one appears. Switch tabs on a card to jump between them; the preview on the left follows along. Hit <b>Save All</b> at the bottom when you're happy with your changes.</div>`
     +cardGroups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
@@ -13153,7 +13153,7 @@ function renderAdminContentPanel(){
     </div>`).join('')
     +`<div style="height:1px;background:var(--border);margin:6px 0"></div>`
     +`<div style="font-family:'Lilita One',cursive;font-size:17px;color:var(--text)">Game Settings</div>`
-    +`<div style="font-size:13px;color:var(--muted);line-height:1.6">Explainer text for lobby settings that isn't tied to a Format/Mode card.</div>`
+    +`<div style="font-size:13px;color:var(--muted);line-height:1.6">Text for lobby settings and popup sections that aren't tied to any single Format/Mode card.</div>`
     +`<div style="display:flex;flex-direction:column;gap:12px">
       ${buildGameSettingsPreview()}
       <div style="display:flex;flex-direction:column;gap:10px">${TEXT_REGISTRY.filter(t=>settingsKeys.has(t.key)).map(buildAdminTextEditor).join('')}</div>
@@ -13357,15 +13357,24 @@ function resetAdminText(key){
 }
 // ── Live mini-previews ──
 function buildGameSettingsPreview(){
-  return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
-    <div style="display:flex;align-items:center;gap:6px">
-      <span style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding</span>
-      <i class="ti ti-info-circle" style="font-size:14px;color:var(--muted)"></i>
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">Question Voiding</span>
+        <i class="ti ti-info-circle" style="font-size:14px;color:var(--muted)"></i>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted)">Allow players to void bad questions.</div>
+      <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border:1px solid var(--card-border);border-radius:12px;padding:12px 14px">
+        <i class="ti ti-flag" style="font-size:16px;color:var(--accent);flex-shrink:0;margin-top:2px"></i>
+        <div id="pv_voiding_info_body" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+      </div>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--muted)">Allow players to void bad questions.</div>
-    <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border:1px solid var(--card-border);border-radius:12px;padding:12px 14px">
-      <i class="ti ti-flag" style="font-size:16px;color:var(--accent);flex-shrink:0;margin-top:2px"></i>
-      <div id="pv_voiding_info_body" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+    <div style="display:flex;align-items:flex-start;gap:14px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:13px;padding:14px 16px">
+      <i class="ti ti-books" style="font-size:20px;color:var(--accent);flex-shrink:0"></i>
+      <div>
+        <div style="font-family:'Lilita One',cursive;font-size:14px;color:var(--text);margin-bottom:2px">How to Play — Topic</div>
+        <div id="pv_htp_topic_general" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+      </div>
     </div>
   </div>`;
 }
@@ -13400,6 +13409,7 @@ function _initPagePreviews(){
   const lbt=document.getElementById('pv_lobby_browse_title');if(lbt)lbt.textContent=getSiteText('lobby_browse_empty_title');
   const lbs=document.getElementById('pv_lobby_browse_sub');if(lbs)lbs.textContent=getSiteText('lobby_browse_empty_sub');
   const vb=document.getElementById('pv_voiding_info_body');if(vb)vb.textContent=getSiteText('voiding_info_body');
+  const tg=document.getElementById('pv_htp_topic_general');if(tg)tg.textContent=getSiteText('htp_topic_general');
   CARD_REGISTRY.forEach(reg=>_refreshCardPreview(reg.key));
 }
 function _updatePagePreview(key,val){
@@ -13411,6 +13421,7 @@ function _updatePagePreview(key,val){
   else if(key==='lobby_browse_empty_title'){const el=document.getElementById('pv_lobby_browse_title');if(el)el.textContent=val;}
   else if(key==='lobby_browse_empty_sub'){const el=document.getElementById('pv_lobby_browse_sub');if(el)el.textContent=val;}
   else if(key==='voiding_info_body'){const el=document.getElementById('pv_voiding_info_body');if(el)el.textContent=val;}
+  else if(key==='htp_topic_general'){const el=document.getElementById('pv_htp_topic_general');if(el)el.textContent=val;}
 }
 // ── Bottom "Save All" bar shared by every field in this tab (Cards' Card/How
 // to Play/Solo Rules tabs, Game Settings, and Page Copy) ──
