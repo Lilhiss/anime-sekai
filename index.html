@@ -1517,7 +1517,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
     <div class="fmt-grid slide-in">
       <div class="fmt-card" data-fmt="mc" onclick="fmtCardClick('mc')"><div class="fmt-card-icon">📝</div><div class="fmt-card-title">Multiple Choice</div><div class="fmt-card-desc">Four options, one correct answer. Pick wisely.</div></div>
       <div class="fmt-card" data-fmt="type" onclick="fmtCardClick('type')"><div class="fmt-card-icon">⌨️</div><div class="fmt-card-title">Type the Answer</div><div class="fmt-card-desc">No hints. Spell it out. True otaku mode.</div></div>
-      <div class="fmt-card" data-fmt="img" onclick="fmtCardClick('img')"><div class="fmt-card-icon">🖼️</div><div class="fmt-card-title">Image Round</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
+      <div class="fmt-card" data-fmt="scene" onclick="fmtCardClick('scene')"><div class="fmt-card-icon">🎬</div><div class="fmt-card-title">Guess the Scene</div><div class="fmt-card-desc">Guess the anime from a single screenshot.</div></div>
       <div class="fmt-card" data-fmt="char" onclick="fmtCardClick('char')"><div class="fmt-card-icon">🎭</div><div class="fmt-card-title">Name the Character</div><div class="fmt-card-desc">Can you name who's on screen? Prove it.</div></div>
     </div>
   </div>
@@ -1686,7 +1686,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               <div class="gs-grid" id="gsFormatGrid">
                 <div class="gs-bigcard" data-fmt="mc" onclick="gsSetFormat('mc')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">📝</div><div class="gs-bc-title">Multiple Choice</div><div class="gs-bc-desc">Four options, one answer</div></div>
                 <div class="gs-bigcard" data-fmt="type" onclick="gsSetFormat('type')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">⌨️</div><div class="gs-bc-title">Type the Answer</div><div class="gs-bc-desc">Spell it out, no hints</div></div>
-                <div class="gs-bigcard locked" data-fmt="img" onclick="gsSetFormat('img')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🖼️</div><div class="gs-bc-title">Image Round</div><div class="gs-bc-desc">🔒 Coming soon</div></div>
+                <div class="gs-bigcard" data-fmt="scene" onclick="gsSetFormat('scene')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎬</div><div class="gs-bc-title">Guess the Scene</div><div class="gs-bc-desc">Guess the anime from a screenshot</div></div>
                 <div class="gs-bigcard" data-fmt="char" onclick="gsSetFormat('char')"><div class="gs-bc-check"><i class="ti ti-check"></i></div><div class="gs-bc-emoji">🎭</div><div class="gs-bc-title">Name the Character</div><div class="gs-bc-desc">Who's on screen?</div></div>
               </div>
             </div>
@@ -2241,7 +2241,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <div class="admin-pending-topics slide-in" id="adminPendingTopics" style="display:none"></div>
       <div class="admin-browse-bar slide-in" id="adminBrowseBar" style="display:none">
         <div class="admin-search-wrap"><i class="ti ti-search" style="font-size:15px;color:var(--muted)"></i><input id="adminSearchInput" class="admin-search-input" type="text" placeholder="Search questions &amp; answers…" oninput="adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear()"><button id="adminSearchClear" onclick="document.getElementById('adminSearchInput').value='';adminBrowsePage=0;renderAdminSection();toggleAdminSearchClear();document.getElementById('adminSearchInput').focus()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear search"><i class="ti ti-x" style="font-size:15px"></i></button></div>
-        <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option></select>
+        <select class="admin-filter" id="adminFilterFormat" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All formats</option><option value="mc">Multiple Choice</option><option value="type">Type Answer</option><option value="char">Name Character</option><option value="scene">Guess the Scene</option></select>
         <select class="admin-filter" id="adminFilterDiff" onchange="adminBrowsePage=0;renderAdminSection()"><option value="">All difficulty</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
         <div style="position:relative;display:inline-flex;align-items:center;min-width:160px"><input id="adminTopicFilter" class="admin-filter" placeholder="Filter by topic…" autocomplete="off" style="min-width:160px;padding-right:28px;width:100%" oninput="adminBrowsePage=0;_adminTopicSuggest();toggleAdminTopicClear()" onkeydown="_adminTopicSuggestKey(event)" onblur="_adminTopicSuggestBlur()"><button id="adminTopicClear" onclick="document.getElementById('adminTopicFilter').value='';adminBrowsePage=0;fetchAdminBrowse();_adminTopicSuggestClose();toggleAdminTopicClear();document.getElementById('adminTopicFilter').focus()" style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Clear filter"><i class="ti ti-x" style="font-size:13px"></i></button><div id="adminTopicSuggestDrop" class="admin-topic-suggest"></div></div>
         <select class="admin-filter" id="adminBrowseSort" onchange="adminBrowsePage=0;fetchAdminBrowse()"><option value="topic">Sort: Topic A–Z</option><option value="date_desc">Sort: Newest first</option><option value="date_asc">Sort: Oldest first</option></select>
@@ -2293,6 +2293,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <option value="mc">Multiple Choice</option>
             <option value="type">Type Answer</option>
             <option value="char">Name Character</option>
+            <option value="scene">Guess the Scene</option>
           </select>
           <button onclick="fetchLeakCandidates()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-search" style="font-size:14px"></i> Scan for leaks</button>
           <div id="leaksStatus" style="font-size:13px;color:var(--muted)"></div>
@@ -2728,6 +2729,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <option value="mc">Multiple Choice</option>
           <option value="type">Type the Answer</option>
           <option value="char">Name the Character</option>
+          <option value="scene">Guess the Scene</option>
         </select>
       </div>
       <div id="aeOptionsWrap">
@@ -3431,8 +3433,12 @@ const accentHex={midnight:'#a78bfa',blossom:'#f472b6',abyss:'#38bdf8',inferno:'#
 const g1=accentHex;
 const g2={midnight:'#7c5cbf',blossom:'#be185d',abyss:'#1d4ed8',inferno:'#c2410c',jade:'#166534',arcane:'#9d174d'};
 const colorNames={midnight:'Ethereal',blossom:'Blossom',abyss:'Abyss',inferno:'Inferno',jade:'Jade',arcane:'Arcane'};
-const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',img:'Image Round',char:'Name the Character','char-mc':'Name the Character (MC)'};
-const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
+const fmtLabels={mc:'Multiple Choice',type:'Type the Answer',scene:'Guess the Scene',char:'Name the Character','char-mc':'Name the Character (MC)'};
+const fmtIcons={mc:'ti-list',type:'ti-keyboard',scene:'ti-photo',char:'ti-user-circle'};
+// Fallback prompt shown for "Guess the Scene" rows that don't carry their own
+// question text (scene rows are expected to store this directly, but this
+// covers any row uploaded without it).
+const SCENE_DEFAULT_QUESTION='Which anime is this scene from?';
 
 // ── SITE CONTENT (admin-editable cards) ────────────────────────
 // Registry of every format/mode card the admin panel can edit. `title`/`desc`
@@ -3441,7 +3447,7 @@ const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-cir
 const CARD_REGISTRY=[
   {key:'fmt_mc',type:'fmt',id:'mc',group:'Format',title:'Multiple Choice',desc:'Four options, one correct answer. Pick wisely.',locked:false},
   {key:'fmt_type',type:'fmt',id:'type',group:'Format',title:'Type the Answer',desc:'No hints. Spell it out. True otaku mode.',locked:false},
-  {key:'fmt_img',type:'fmt',id:'img',group:'Format',title:'Image Round',desc:'Guess the anime from a single screenshot.',locked:true},
+  {key:'fmt_scene',type:'fmt',id:'scene',group:'Format',title:'Guess the Scene',desc:'Guess the anime from a single screenshot.',locked:false},
   {key:'fmt_char',type:'fmt',id:'char',group:'Format',title:'Name the Character',desc:'Can you name who\'s on screen? Prove it.',locked:false},
   {key:'mode_classic',type:'mode',id:'classic',group:'Mode',title:'Classic',desc:'Answer questions, 1 point each. No pressure, just how many can you get right?',locked:false},
   {key:'mode_race',type:'mode',id:'race',group:'Mode',title:'Score Race',desc:'Answer correctly to earn points. Race to the target score as fast as you can.',locked:false},
@@ -3473,7 +3479,7 @@ const TEXT_REGISTRY=[
   {key:'footer_brand',group:'Footer',label:'Footer brand text',default:'Anime Sekai',multiline:false},
   {key:'htp_fmt_mc',group:'How to Play — Format',label:'Multiple Choice',default:'Players are shown a question with four answer options. Pick the correct one before the timer runs out.',multiline:true},
   {key:'htp_fmt_type',group:'How to Play — Format',label:'Type the Answer',default:'No options are shown. You must type the correct answer from memory. Partial matches and common aliases are accepted.',multiline:true},
-  {key:'htp_fmt_img',group:'How to Play — Format',label:'Image Round',default:'A screenshot from an anime is shown. Identify which series it\'s from before time runs out.',multiline:true},
+  {key:'htp_fmt_scene',group:'How to Play — Format',label:'Guess the Scene',default:'A screenshot from an anime is shown. Type which series it\'s from before time runs out.',multiline:true},
   {key:'htp_fmt_char',group:'How to Play — Format',label:'Name the Character',default:'A character description or image is shown. Name the character correctly to score points.',multiline:true},
   {key:'htp_mode_classic',group:'How to Play — Mode',label:'Classic',default:'Answer at your own pace — every correct answer is worth a flat 10 points, no speed bonus. There are no lives to lose and no target to race to. The game simply runs through the set number of questions, and whoever has the most points at the end wins.',multiline:true},
   {key:'htp_mode_race',group:'How to Play — Mode',label:'Score Race',default:'Each correct answer earns between 3 and 10 pts. Answer within the first 5 seconds to get the full 10 pts. The longer you wait, the lower the score, with a minimum of 3 pts. The player with the most points at the end wins.',multiline:true},
@@ -5434,10 +5440,10 @@ function getFallback(){
     {question:"This character is a chainsaw devil hybrid who just wants to eat good food and be with women. Who are they?",answer:"Denji",aliases:["Chainsaw Man"]},
   ];
   // Filter to match current format where possible
-  const typeFormats=['type','char']; // char-mc uses MC path, handled separately
-  const mcFormats=['mc','img'];
+  const typeFormats=['type','char','scene']; // char-mc uses MC path, handled separately
+  const mcFormats=['mc'];
   let pool;
-  if(selectedFormat==='type'||selectedFormat==='char'){
+  if(selectedFormat==='type'||selectedFormat==='char'||selectedFormat==='scene'){
     pool=fb.filter(q=>!q.options);
   } else {
     pool=fb.filter(q=>q.options);
@@ -5514,7 +5520,7 @@ async function sbGetQuestion(format,topic){
         if(noImmediate.length)retryPool=noImmediate;
       }
       const row=retryPool[Math.floor(Math.random()*retryPool.length)];
-      return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
+      return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
     }
     const unseen=data.filter(q=>!seenIds.has(q.id));
     let pool=unseen.length?unseen:data;
@@ -5525,7 +5531,7 @@ async function sbGetQuestion(format,topic){
       if(noImmediate.length)pool=noImmediate;
     }
     const row=pool[Math.floor(Math.random()*pool.length)];
-    return {id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
+    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
   }catch(e){return null}
 }
 
@@ -5582,7 +5588,7 @@ function showQuestion(qData){
   const imgWrap=document.getElementById('qImageWrap');
   const imgEl=document.getElementById('qImage');
   const grid=document.getElementById('answersGrid');grid.innerHTML='';grid.style.display='none';
-  const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
+  const isType=(selectedFormat==='type'||selectedFormat==='char'||selectedFormat==='scene')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   let focusEl=null;
   if(isType){
     document.querySelector('.q-card').classList.add('type-mode');
@@ -8846,7 +8852,7 @@ async function loadPublicLobbies(silent=false){
       const mode=lobby.mode||'race';
       const qCount=lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
       const livesCount=lobby.lives||(mode==='survival'||mode==='potato'?3:null);
-      const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt]||fmt;
+      const fmtName={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character'}[fmt]||fmt;
       const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
       const timeBadge=(mode==='race'||mode==='survival'||mode==='classic')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
       const goalBadge=mode==='survival'
@@ -8919,7 +8925,7 @@ async function checkForActiveGameRejoin(){
     if(!lobby)return;
     const fmt=lobby.format||'mc';
     const mode=lobby.mode||'race';
-    const fmtName={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character','char-mc':'Name Char (MC)'}[fmt]||fmt;
+    const fmtName={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character','char-mc':'Name Char (MC)'}[fmt]||fmt;
     const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode]||mode;
     const lobbyLabel=lobby.lobby_name||(lobby.host_username?`${lobby.host_username}'s Lobby`:lobby.code);
     banner.innerHTML=`
@@ -9078,10 +9084,10 @@ function openHowToPlay(){
   const fmtDescs={
     mc:getSiteText('htp_fmt_mc'),
     type:getSiteText('htp_fmt_type'),
-    img:getSiteText('htp_fmt_img'),
+    scene:getSiteText('htp_fmt_scene'),
     char:getSiteText('htp_fmt_char')
   };
-  const fmtIcons={mc:'ti-list',type:'ti-keyboard',img:'ti-photo',char:'ti-user-circle'};
+  const fmtIcons={mc:'ti-list',type:'ti-keyboard',scene:'ti-photo',char:'ti-user-circle'};
   const modeDescs={
     classic:getSiteText('htp_mode_classic'),
     race:getSiteText('htp_mode_race'),
@@ -9192,7 +9198,7 @@ function gsSyncUI(){
   gsRenderTopic();
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const fmtRowE={mc:'📝',type:'⌨️',img:'🖼️',char:'🎭','char-mc':'🎭'},modeRowE={classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
+  const fmtRowE={mc:'📝',type:'⌨️',scene:'🎬',char:'🎭','char-mc':'🎭'},modeRowE={classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
   setTxt('gsValFormat',(fmtRowE[lobbyFormat]||'')+' '+(fmtLabels[lobbyFormat]||'—'));
   setTxt('gsValMode',(modeRowE[lobbyMode]||'')+' '+(modeRowName[lobbyMode]||'—'));
   setTxt('gsValTopic',lobbyIsGeneral?'🌐 General Anime':((lobbyTopics&&lobbyTopics.length)?'🎬 '+lobbyTopics.length+' selected':'—'));
@@ -9243,7 +9249,7 @@ function gsSetSurvivalQCustom(el){
   gsAfterChange();
 }
 // ── Hot Potato settings ───────────────────────────────────────
-const HP_ALLOWED_FORMATS=['type','char','img']; // any format whose answering mechanism is typing — not mc/char-mc
+const HP_ALLOWED_FORMATS=['type','char','scene']; // any format whose answering mechanism is typing — not mc/char-mc
 let hpLives=3,hpFuseMin=5,hpFuseMax=10;
 function gsSetHPLives(n){
   hpLives=n;
@@ -9555,7 +9561,7 @@ function patchLobbyListCard(lobby) {
   const mode = lobby.mode || 'race';
   const qCount = lobby.question_count||(mode==='race'?100:mode==='survival'||mode==='potato'?3:10);
   const livesCount = lobby.lives||(mode==='survival'||mode==='potato'?3:null);
-  const fmtName = {mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'}[fmt] || fmt;
+  const fmtName = {mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character'}[fmt] || fmt;
   const modeName = {classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[mode] || mode;
   const timeBadge = (mode==='race'||mode==='survival'||mode==='classic')&&lobby.time_limit?`<span class="lobby-list-badge">⏱ ${lobby.time_limit}s</span>`:'';
   const goalBadge = mode==='survival'
@@ -9911,7 +9917,7 @@ function mpShowQuestion(qData,hpFuse){
   const mpImgWrap=document.getElementById('mpQImageWrap');
   const mpImgEl=document.getElementById('mpQImage');
   const grid=document.getElementById('mpAnswersGrid');grid.innerHTML='';grid.style.cssText='display:none';
-  const isType=(selectedFormat==='type'||selectedFormat==='char')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
+  const isType=(selectedFormat==='type'||selectedFormat==='char'||selectedFormat==='scene')&&selectedFormat!=='char-mc'||(!qData.options&&typeof qData.answer==='string'&&selectedFormat!=='char-mc');
   const isHP=lobbyMode==='potato';
   const isMyTurn=!isHP||(hpActivePlayer().name===currentUser);
 
@@ -12289,7 +12295,7 @@ async function fetchLeakCandidates(){
 }
 function renderLeakResults(){
   const results=document.getElementById('leaksResults');
-  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character'};
   results.innerHTML='';
   _leakCandidates.forEach(q=>{
     const card=document.createElement('div');
@@ -12345,7 +12351,7 @@ async function exportTopicQuestions(topicKey){
   const {data}=await q.limit(10000);
   const qs=data||[];
   if(!qs.length)return;
-  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'};
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',scene:'Guess the Scene'};
   const lines=qs.map((q,i)=>{
     let out=(i+1)+'. ['+( fmtLabel[q.format]||q.format)+'] '+q.question+'\n   Answer: '+q.answer;
     if(q.aliases&&q.aliases.length)out+='\n   Aliases: '+q.aliases.join(', ');
@@ -12367,7 +12373,7 @@ async function exportSelectedForRewrite(){
   const ids=[..._bulkIds];
   const {data,error}=await sb.from('questions').select(ADMIN_FULL_COLS).in('id',ids);
   if(error||!data||!data.length)return;
-  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'};
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',scene:'Guess the Scene'};
   // For MC questions the stored answer is an option index — resolve it to the
   // actual answer text so the AI has real context without touching the options array.
   const answerText=q=>q.options&&q.options.length?(q.options[parseInt(q.answer)]??''):(q.answer||'');
@@ -12466,7 +12472,7 @@ function adminImportParse(){
   const colNamesMatch=cleaned.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
   const colNames=colNamesMatch
     ? colNamesMatch[1].split(',').map(c=>c.trim().replace(/^["'`]|["'`]$/g,'').toLowerCase())
-    : ['question','options','answer','aliases','format','topic_type','topic_value','difficulty','report_count','submitted_by','status'];
+    : ['question','options','answer','aliases','format','topic_type','topic_value','difficulty','media_url','report_count','submitted_by','status'];
   // Helper: split a row's inner text on commas not inside quotes or brackets
   const splitCols=inner=>{
     const cols=[];
@@ -12499,6 +12505,7 @@ function adminImportParse(){
       topic_type:get('topic_type'),
       topic_value:get('topic_value'),
       difficulty:get('difficulty'),
+      media_url:get('media_url'),
       report_count:0,
       submitted_by:get('submitted_by'),
       status:get('status')||'approved'
@@ -12520,7 +12527,7 @@ function adminImportParse(){
   const preview=document.getElementById('adminImportPreview');
   if(newQs.length>0){
     preview.style.display='flex';
-    const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',img:'Image Round'};
+    const fmtLabel={mc:'Multiple Choice',type:'Type Answer',char:'Name Character',scene:'Guess the Scene'};
     preview.innerHTML='<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 0 6px">Preview — '+newQs.length+' question'+(newQs.length===1?'':'s')+'</div>'
       +newQs.map((q,i)=>{
         const correctIdx=q.options!=null?parseInt(q.answer):-1;
@@ -12539,6 +12546,7 @@ function adminImportParse(){
         return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">'
           +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
           +'<span style="font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:2px 7px">'+(fmtLabel[q.format]||q.format)+'</span>'
+          +(q.media_url?'<span style="font-size:10px;font-weight:700;color:var(--muted)">🖼️ has image</span>':'')
           +(q.topic_value?'<span style="font-size:10px;font-weight:700;color:var(--muted)">📺 '+q.topic_value+'</span>':'')
           +'<span style="font-size:10px;font-weight:700;color:var(--muted)">'+(q.difficulty||'unset')+'</span>'
           +'</div>'
@@ -12814,7 +12822,7 @@ function _adminHL(text){
   return String(text).replace(new RegExp('('+t+')','ig'),'<mark class="admin-hl">$1</mark>');
 }
 function buildAdminCard(q){
-  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character'};
   const isReported=adminSection==='review'&&adminTab==='reported';
   const isSuspect=adminSection==='review'&&adminTab==='suspect';
   const showStats=(isSuspect||adminSection==='browse')&&q.answer_count>0;
@@ -13751,7 +13759,7 @@ function openAdminPreview(id){
   let q;
   try{q=JSON.parse(card.dataset.q);}catch(e){return;}
 
-  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',img:'Image Round',char:'Name Character'};
+  const fmtLabel={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character'};
   const diffEmoji={easy:'🟢',normal:'🟡',hard:'🔴'};
   const topicStr=q.topic_value||'General Anime';
   const diffStr=(diffEmoji[q.difficulty]||'🟡')+' '+(q.difficulty?q.difficulty.charAt(0).toUpperCase()+q.difficulty.slice(1):'Normal');
