@@ -490,6 +490,8 @@ h1 .hi{color:var(--accent)}
 .topic-results::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 .topic-result-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:9px;cursor:pointer;transition:background .15s;font-size:13px;font-weight:700;color:var(--text);border:1.5px solid transparent}
 .topic-result-item:hover{background:var(--bg3)}
+.topic-result-item.empty{opacity:.45;cursor:not-allowed}
+.topic-result-item.empty:hover{background:none}
 .topic-result-item.selected{background:var(--accent-soft);border-color:var(--border2);color:var(--accent)}
 .topic-result-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .topic-result-emoji{font-size:18px;width:24px;text-align:center}
@@ -655,6 +657,8 @@ h1 .hi{color:var(--accent)}
 .gs-topic-list::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 .gs-topic-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .12s}
 .gs-topic-item:hover{border-color:var(--border2)}
+.gs-topic-item.empty{opacity:.45;cursor:not-allowed}
+.gs-topic-item.empty:hover{border-color:var(--border)}
 .gs-topic-item.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .gs-topic-item-check{opacity:0;color:var(--accent);font-size:14px;flex-shrink:0}
 .gs-topic-item.selected .gs-topic-item-check{opacity:1}
@@ -4945,6 +4949,7 @@ function selectCharFormat(fmt){
   closeCharFmtModal();
   if(charFmtContext==='lobby'){
     lobbyFormat=fmt;selectedFormat=fmt;
+    pruneEmptyLobbyTopics();
     gsAfterChange();
   } else {
     selectedFormat=fmt;
@@ -5054,6 +5059,7 @@ async function loadTopicsFromSupabase(){
 }
 
 function getTopicList(){return currentTopicTab==='anime'?animeTopics:genreTopics;}
+function cntFmtFor(fmt){return fmt==='char-mc'?'char':fmt;}
 
 function renderTopicList(filter=''){
   const list=document.getElementById('topicResultsList');
@@ -5068,12 +5074,20 @@ function renderTopicList(filter=''){
     list.innerHTML='<div class="topic-empty">No results for "'+filter+'"</div>';
     return;
   }
-  list.innerHTML=items.map(t=>{
+  const cntFmt=cntFmtFor(selectedFormat);
+  const sorted=items.slice().sort((a,b)=>{
+    const aEmpty=(a.counts?a.counts[cntFmt]||0:0)===0;
+    const bEmpty=(b.counts?b.counts[cntFmt]||0:0)===0;
+    if(aEmpty!==bEmpty)return aEmpty?1:-1;
+    return a.name.localeCompare(b.name);
+  });
+  list.innerHTML=sorted.map(t=>{
     const sel=selectedTopics.some(s=>s.key===t.key);
-    const cntFmt=selectedFormat==='char-mc'?'char':selectedFormat;
     const cnt=t.counts?t.counts[cntFmt]||0:null;
-    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
-    return `<div class="topic-result-item${sel?' selected':''}" onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')">
+    const isEmpty=cnt===0;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:${isEmpty?'#ef4444':'var(--muted)'};margin-right:6px;flex-shrink:0">${cnt}Q</span>`:'';
+    const click=isEmpty?'':` onclick="toggleTopic('${t.key}','${t.emoji}','${t.name}','${t.type}')"`;
+    return `<div class="topic-result-item${sel?' selected':''}${isEmpty?' empty':''}"${click}>
       <div class="topic-result-left"><span>${t.name}</span></div>
       ${badge}<i class="ti ti-check topic-result-check"></i>
     </div>`;
@@ -8448,7 +8462,7 @@ goStep=function(name){
 };
 
 // ── LOBBY / MULTIPLAYER ───────────────────────────────────────
-let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
+let lobbyCode='',lobbyName='',lobbyPlayers=[],lobbyFormat='mc',lobbyMode='race',lobbyTopics=[],lobbyShelvedTopics=[],lobbyIsGeneral=true,intentionalLeave=false,lobbyIsPrivate=false,currentLobbyId=null;
 let voidingEnabled=false; // host-controlled toggle; off by default
 let lobbyShowTyping=true; // host-controlled toggle; on by default
 let srTargetScore=10; // Slow Reveal: first to this many points wins
@@ -8497,6 +8511,7 @@ function createLobby(){
   lobbyCode=generateCode();
   lobbyPlayers=[{name:currentUser,score:0,lives:3,isHost:true,color:accentHex[currentColor],eliminated:false,userId:currentUserId}];
   lobbyFormat=selectedFormat||'mc';lobbyMode=selectedMode||'race';
+  lobbyShelvedTopics=[];
   isHost=true;
   goStep('lobby-room');
   rtCreateLobby();
@@ -9210,10 +9225,46 @@ function gsAfterChange(){
   if(lobbyMode==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat)){lobbyMode='race';selectedMode='race';}
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
+function pruneEmptyLobbyTopics(){
+  // If topic data hasn't loaded yet, we can't tell empty from unloaded — skip rather than risk a false prune.
+  if(!animeTopics.length&&!genreTopics.length)return;
+  if(!lobbyTopics.length&&!lobbyShelvedTopics.length)return;
+  const cntFmt=cntFmtFor(lobbyFormat);
+  const seen=new Set();
+  const candidates=[...lobbyTopics,...lobbyShelvedTopics].filter(t=>{
+    if(seen.has(t.key))return false;
+    seen.add(t.key);return true;
+  });
+  const kept=[],shelved=[];
+  candidates.forEach(t=>{
+    const list=t.type==='genre'?genreTopics:animeTopics;
+    const full=list.find(x=>x.key===t.key);
+    const cnt=full&&full.counts?full.counts[cntFmt]||0:0;
+    if(cnt>0)kept.push(t);else shelved.push(t);
+  });
+  const newlyShelved=shelved.filter(t=>!lobbyShelvedTopics.some(s=>s.key===t.key));
+  const restored=kept.filter(t=>lobbyShelvedTopics.some(s=>s.key===t.key));
+  lobbyTopics=kept;
+  lobbyShelvedTopics=shelved;
+  if(!lobbyTopics.length&&(newlyShelved.length||restored.length))lobbyIsGeneral=true;
+  if(newlyShelved.length&&restored.length){
+    const removedLabel=newlyShelved.length===1?`"${newlyShelved[0].name}"`:`${newlyShelved.length} topics`;
+    const restoredLabel=restored.length===1?`"${restored[0].name}"`:`${restored.length} topics`;
+    showLobbyToast(`⚠️ ${removedLabel} removed (no questions in this format) · ✅ ${restoredLabel} back`,'warning');
+  }else if(newlyShelved.length){
+    const label=newlyShelved.length===1?`"${newlyShelved[0].name}"`:`${newlyShelved.length} topics`;
+    showLobbyToast(`⚠️ ${label} — no questions in this format yet. They'll come back if you switch back.`,'warning');
+  }else if(restored.length){
+    const label=restored.length===1?`"${restored[0].name}"`:`${restored.length} topics`;
+    showLobbyToast(`✅ ${label} back — available again in this format.`,'info');
+  }
+}
 function gsSetFormat(f){
   if(isCardLocked('fmt',f))return; // admin has this format locked ("coming soon")
   if(f==='char'){openCharFmtModal('lobby');return;}
-  lobbyFormat=f;selectedFormat=f;gsAfterChange();
+  lobbyFormat=f;selectedFormat=f;
+  pruneEmptyLobbyTopics();
+  gsAfterChange();
 }
 function gsSetMode(m){if(isCardLocked('mode',m))return;if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
@@ -9336,7 +9387,7 @@ function gsToggleShowTyping(){
   if(btn){btn.classList.toggle('on',lobbyShowTyping);btn.setAttribute('aria-pressed',lobbyShowTyping);}
   gsAfterChange();
 }
-function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];gsAfterChange();}
+function gsSetGeneral(){lobbyIsGeneral=true;lobbyTopics=[];lobbyShelvedTopics=[];gsAfterChange();}
 function gsTopicSubSwitch(sub){gsTopicSub=sub;gsBuildTopicContent();gsRenderTopic();if(typeof broadcastLobbySettings==='function')broadcastLobbySettings(true);}
 function gsRenderTopic(){
   const content=document.getElementById('gsTopicContent');
@@ -9378,11 +9429,20 @@ function gsRenderTopicList(){
   const all=gsTopicSub==='genre'?genreTopics:animeTopics;
   const items=all.filter(t=>t.name.toLowerCase().includes(filter));
   if(!items.length){list.innerHTML='<div class="gs-topic-empty">No matches</div>';return;}
-  list.innerHTML=items.map(t=>{
+  const cntFmt=cntFmtFor(lobbyFormat);
+  const sorted=items.slice().sort((a,b)=>{
+    const aEmpty=(a.counts?a.counts[cntFmt]||0:0)===0;
+    const bEmpty=(b.counts?b.counts[cntFmt]||0:0)===0;
+    if(aEmpty!==bEmpty)return aEmpty?1:-1;
+    return a.name.localeCompare(b.name);
+  });
+  list.innerHTML=sorted.map(t=>{
     const sel=lobbyTopics.some(s=>s.key===t.key);
-    const cnt=t.counts?t.counts[lobbyFormat]||0:null;
-    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
-    return `<div class="gs-topic-item${sel?' selected':''}" onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"><span>${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
+    const cnt=t.counts?t.counts[cntFmt]||0:null;
+    const isEmpty=cnt===0;
+    const badge=cnt!==null?`<span style="font-size:11px;font-weight:700;color:${isEmpty?'#ef4444':'var(--muted)'};margin-left:auto;flex-shrink:0">${cnt}Q</span>`:'';
+    const click=isEmpty?'':` onclick="gsTopicToggle('${t.key}','${t.emoji}','${t.name}','${t.type}')"`;
+    return `<div class="gs-topic-item${sel?' selected':''}${isEmpty?' empty':''}"${click}><span>${t.name}</span>${badge}<i class="ti ti-check gs-topic-item-check"></i></div>`;
   }).join('');
   if(!isHost&&gsTopicScrollTarget)list.scrollTop=gsTopicScrollTarget;
 }
