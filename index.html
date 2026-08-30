@@ -243,8 +243,6 @@ h1 .hi{color:var(--accent)}
 .q-loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
 @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
 .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* ── Image magnifier (hover loupe over the question image, desktop only) ── */
-.img-magnifier-glass{display:none;position:absolute;pointer-events:none;border-radius:50%;border:3px solid var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.4);background-repeat:no-repeat;z-index:5;width:170px;height:170px}
 .ans{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
 .ans:hover:not(.locked){border-color:var(--accent);transform:translateY(-3px) scale(1.015);box-shadow:0 8px 22px #0005}
 .ans:hover:not(.locked) .ans-key{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1568,12 +1566,11 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
-        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative">
+        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
           <img id="qImage" src="" alt="Question image" style="width:100%;height:auto;max-height:min(500px,40vh);object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
-          <div class="img-magnifier-glass" id="qImageMagGlass"></div>
         </div>
         <!-- Inline feedback shown inside the card after answer/timeout -->
-        <div id="qCardFeedback" style="visibility:hidden;margin-top:22px;text-align:center;min-height:100px">
+        <div id="qCardFeedback" style="display:none;margin-top:22px;text-align:center">
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
             <span id="fbIcon"></span>
             <span class="fb-title" id="fbTitle"></span>
@@ -1870,12 +1867,11 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
-          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative">
+          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
             <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:min(500px,40vh);object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
-            <div class="img-magnifier-glass" id="mpQImageMagGlass"></div>
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
-          <div id="mpQCardFeedback" style="visibility:hidden;margin-top:22px;text-align:center;min-height:100px">
+          <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
             <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               <span id="mpFbIcon"></span>
               <span class="fb-title" id="mpFbTitle"></span>
@@ -5608,7 +5604,7 @@ function checkAnswer(userInput,qData){
 async function loadQuestion(){
   answered=false;
   clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
-  document.getElementById('qCardFeedback').style.visibility='hidden';
+  document.getElementById('qCardFeedback').style.display='none';
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
@@ -5756,7 +5752,7 @@ function startSoloAutoNext(){
 function showFeedback(correct,correctAns,userAns,override){
   if(correct)sfxCorrect();else sfxWrong();
   // Show inline card feedback section
-  const fb=document.getElementById('qCardFeedback');fb.style.visibility='visible';
+  const fb=document.getElementById('qCardFeedback');fb.style.display='block';
   document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   document.getElementById('fbTitle').textContent=override||(correct?'Correct!':'Wrong!');
   const ya=document.getElementById('fbYourAns');
@@ -6636,38 +6632,6 @@ function confirmTimeLimit(){
 
 // Exponential scoring with 5s flat grace period at full points
 // After 5s, points drop exponentially from 10 down to 3 over the remaining time
-// ── Image magnifier (hover loupe, desktop only — mouse events never fire on touch) ──
-// Bound once to the persistent #qImage/#mpQImage elements; only their `src`
-// changes per-question, so this never needs to be re-attached per question.
-function initImageMagnifier(imgId,glassId,zoomFactor){
-  const img=document.getElementById(imgId);
-  const glass=document.getElementById(glassId);
-  if(!img||!glass)return;
-  const glassSize=glass.offsetWidth||170;
-  function move(e){
-    const rect=img.getBoundingClientRect();
-    if(rect.width===0||rect.height===0)return;
-    const x=e.clientX-rect.left;
-    const y=e.clientY-rect.top;
-    if(x<0||y<0||x>rect.width||y>rect.height){glass.style.display='none';return;}
-    glass.style.display='block';
-    glass.style.left=(x-glassSize/2)+'px';
-    glass.style.top=(y-glassSize/2)+'px';
-    glass.style.backgroundImage=`url('${img.src}')`;
-    glass.style.backgroundSize=(rect.width*zoomFactor)+'px '+(rect.height*zoomFactor)+'px';
-    glass.style.backgroundPosition=`-${x*zoomFactor-glassSize/2}px -${y*zoomFactor-glassSize/2}px`;
-  }
-  img.addEventListener('mousemove',move);
-  img.addEventListener('mouseenter',move);
-  img.addEventListener('mouseleave',()=>{glass.style.display='none';});
-}
-function _initAllImageMagnifiers(){
-  initImageMagnifier('qImage','qImageMagGlass',2.2);
-  initImageMagnifier('mpQImage','mpQImageMagGlass',2.2);
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_initAllImageMagnifiers,{once:true});
-else _initAllImageMagnifiers();
-
 function calcSpeedPoints(elapsed,limit){
   const grace=5;
   if(elapsed<=grace) return 10;
@@ -7358,7 +7322,7 @@ function rtSubscribe(lobbyId){
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
     mpSnapshotScores();
-    document.getElementById('mpQCardFeedback').style.visibility='hidden';
+    document.getElementById('mpQCardFeedback').style.display='none';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
     document.getElementById('mpQuestionText').style.display='none';
@@ -7442,7 +7406,7 @@ function rtSubscribe(lobbyId){
     if(isHost)return;
     currentQData=payload.qData;qIndex=payload.qIndex;
     document.getElementById('mpQLoading').style.display='none';
-    document.getElementById('mpQCardFeedback').style.visibility='hidden';
+    document.getElementById('mpQCardFeedback').style.display='none';
     renderMPHUD();
     srStartReveal(payload.qData,payload.startTime);
   });
@@ -7487,7 +7451,7 @@ function rtSubscribe(lobbyId){
     mpFlagsThisQuestion=new Set();
     mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);
-    document.getElementById('mpQCardFeedback').style.visibility='hidden';
+    document.getElementById('mpQCardFeedback').style.display='none';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpQLoading').style.display='flex';
@@ -7772,7 +7736,7 @@ function rtSubscribe(lobbyId){
     // the host to advance to the next round naturally.
     if(lobbyMode==='slowreveal'){
       document.getElementById('mpQLoading').style.display='none';
-      document.getElementById('mpQCardFeedback').style.visibility='hidden';
+      document.getElementById('mpQCardFeedback').style.display='none';
       document.getElementById('mpAnswersGrid').innerHTML='';
       const qt=document.getElementById('mpQuestionText');
       if(qt){
@@ -8162,7 +8126,7 @@ function mpResetQuestionCard(){
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQuestionText').innerHTML='';
   document.getElementById('mpAnswersGrid').innerHTML='';
-  document.getElementById('mpQCardFeedback').style.visibility='hidden';
+  document.getElementById('mpQCardFeedback').style.display='none';
   document.getElementById('mpQLoading').style.display='flex';
   const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
   if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
@@ -10053,7 +10017,7 @@ async function mpQuitGame(){
 
 function mpShowQuestion(qData,hpFuse){
   answered=false;
-  document.getElementById('mpQCardFeedback').style.visibility='hidden';
+  document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
   document.getElementById('mpQuestionText').innerHTML=(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   const mpImgWrap=document.getElementById('mpQImageWrap');
@@ -10354,7 +10318,7 @@ function mpTimeOut(){
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
-  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset flag state for this question
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
@@ -10424,7 +10388,7 @@ async function mpLoadQuestion(){
   mpWrongAttempts={}; // clear wrong attempts for new question
   hpTypingText={};
   const hpBannerEl=document.getElementById('hpTurnBanner');if(hpBannerEl)hpBannerEl.style.display='none';
-  document.getElementById('mpQCardFeedback').style.visibility='hidden';
+  document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
@@ -10662,7 +10626,7 @@ function srStartReveal(qData,startTime){
   const textEl=document.getElementById('mpQuestionText');
   textEl.style.display='block';
   document.getElementById('mpQLoading').style.display='none';
-  document.getElementById('mpQCardFeedback').style.visibility='hidden';
+  document.getElementById('mpQCardFeedback').style.display='none';
   const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(qCard)qCard.classList.remove('answered');
@@ -10975,7 +10939,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
 
 function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   buzzRatio=buzzRatio||0;
-  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(correct&&qCard)qCard.classList.add('answered');
   document.getElementById('mpFbIcon').innerHTML=correct
@@ -11033,7 +10997,7 @@ function srBroadcastRoundEnd(correctAns){
 }
 
 function srRoundEnd(winner,correctAns){
-  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   document.getElementById('mpFbIcon').innerHTML='<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   document.getElementById('mpFbTitle').textContent='No one got it!';
   document.getElementById('mpFbPts').textContent='';
