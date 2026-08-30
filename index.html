@@ -1712,7 +1712,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               <div class="gs-topic" id="gsTopicPane">
                 <div class="gs-topic-scene-note" id="gsTopicSceneNote" style="display:none">
                   <i class="ti ti-info-circle"></i>
-                  <span>Guess the Scene always plays <strong>General Anime</strong> — every anime has at least 25 screenshots in the pool.</span>
+                  <span id="gsTopicSceneNoteText"></span>
                 </div>
                 <div class="gs-topic-subtabs">
                   <button class="gs-subtab" data-sub="general" onclick="gsTopicSubSwitch('general')">🌐 General<span class="gs-subtab-badge" id="gsSubBadgeGeneral" style="display:none"></span></button>
@@ -2446,7 +2446,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       <!-- Guess the Scene hint: shown because the topic-selection step is skipped for this format -->
       <div id="gsSceneHint" style="display:none;align-items:flex-start;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--muted);line-height:1.5">
         <i class="ti ti-info-circle" style="font-size:14px;color:var(--accent);flex-shrink:0;margin-top:1px"></i>
-        <span>Pulling from <strong style="color:var(--text)">General Anime</strong> — every anime has at least 25 screenshots to guess from.</span>
+        <span id="gsSceneHintText"></span>
       </div>
 
       <!-- Questions panel (question count for Classic; lives for Survival; target score for Score Race) -->
@@ -3512,6 +3512,8 @@ const TEXT_REGISTRY=[
   {key:'lb_empty',group:'Empty States',label:'Leaderboard — no scores yet',default:'No scores yet. Be the first!',multiline:false},
   {key:'lobby_browse_empty_title',group:'Empty States',label:'Lobby browser — no open lobbies (title)',default:'😴 No open lobbies right now.',multiline:false},
   {key:'lobby_browse_empty_sub',group:'Empty States',label:'Lobby browser — no open lobbies (subtext)',default:'Create one and share the code with friends!',multiline:false},
+  {key:'scene_hint_solo',group:'Game Settings',label:'Guess the Scene hint (solo game settings)',default:'Pulling from General Anime. Every anime has at least 25 screenshots to guess from.',multiline:true},
+  {key:'scene_hint_lobby',group:'Game Settings',label:'Guess the Scene hint (multiplayer topic lock)',default:'Guess the Scene always plays General Anime. Every anime has at least 25 screenshots in the pool.',multiline:true},
 ];
 let siteTextConfig={}; // populated from Supabase; keyed by TEXT_REGISTRY[].key -> string override
 function getSiteText(key){
@@ -6528,7 +6530,13 @@ function showTimeLimitPicker(mode,fromLobby){
   switchGameSettingsTab('questions');
   updateGsSummary();
   const sceneHint=document.getElementById('gsSceneHint');
-  if(sceneHint)sceneHint.style.display=selectedFormat==='scene'?'flex':'none';
+  if(sceneHint){
+    sceneHint.style.display=selectedFormat==='scene'?'flex':'none';
+    if(selectedFormat==='scene'){
+      const hintText=document.getElementById('gsSceneHintText');
+      if(hintText)hintText.textContent=getSiteText('scene_hint_solo');
+    }
+  }
   document.getElementById('timeLimitModal').style.display='flex';
   applyTheme();
 }
@@ -9238,7 +9246,13 @@ function gsSyncUI(){
   const topicSceneNote=document.getElementById('gsTopicSceneNote');
   const isSceneFmt=lobbyFormat==='scene';
   if(topicPane)topicPane.classList.toggle('scene-locked',isSceneFmt);
-  if(topicSceneNote)topicSceneNote.style.display=isSceneFmt?'flex':'none';
+  if(topicSceneNote){
+    topicSceneNote.style.display=isSceneFmt?'flex':'none';
+    if(isSceneFmt){
+      const noteText=document.getElementById('gsTopicSceneNoteText');
+      if(noteText)noteText.textContent=getSiteText('scene_hint_lobby');
+    }
+  }
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const fmtRowE={mc:'📝',type:'⌨️',scene:'🎬',char:'🎭','char-mc':'🎭'},modeRowE={classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
@@ -13247,7 +13261,7 @@ function renderAdminContentPanel(){
   if(!wrap)return;
   const cardGroups=[...new Set(CARD_REGISTRY.map(c=>c.group))];
   const cardTabKeys=new Set(CARD_REGISTRY.flatMap(reg=>[_htpKeyFor(reg),_soloKeyFor(reg)].filter(Boolean)));
-  const settingsKeys=new Set(['voiding_info_body','htp_topic_general']);
+  const settingsKeys=new Set(['voiding_info_body','htp_topic_general','scene_hint_solo','scene_hint_lobby']);
   const pageGroups=[...new Set(TEXT_REGISTRY.filter(t=>!cardTabKeys.has(t.key)&&!settingsKeys.has(t.key)).map(t=>t.group))];
   wrap.innerHTML=`<div style="font-size:13px;color:var(--muted);line-height:1.6">Edit what each Format/Mode card shows — its brief blurb, its "How to Play" description, and (for solo-playable modes) its Rules popup — right where each one appears. Switch tabs on a card to jump between them; the preview on the left follows along. Hit <b>Save All</b> at the bottom when you're happy with your changes.</div>`
     +cardGroups.map(g=>`<div style="display:flex;flex-direction:column;gap:12px">
@@ -13475,6 +13489,20 @@ function buildGameSettingsPreview(){
         <div id="pv_htp_topic_general" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
       </div>
     </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:9px 11px">
+      <i class="ti ti-info-circle" style="font-size:14px;color:var(--accent);flex-shrink:0;margin-top:1px"></i>
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:2px">Scene hint — solo game settings</div>
+        <div id="pv_scene_hint_solo" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:9px 11px">
+      <i class="ti ti-info-circle" style="font-size:14px;color:var(--accent);flex-shrink:0;margin-top:1px"></i>
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:2px">Scene hint — multiplayer topic lock</div>
+        <div id="pv_scene_hint_lobby" style="font-size:12px;color:var(--muted);line-height:1.6"></div>
+      </div>
+    </div>
   </div>`;
 }
 function buildPagePreview(g){
@@ -13509,6 +13537,8 @@ function _initPagePreviews(){
   const lbs=document.getElementById('pv_lobby_browse_sub');if(lbs)lbs.textContent=getSiteText('lobby_browse_empty_sub');
   const vb=document.getElementById('pv_voiding_info_body');if(vb)vb.textContent=getSiteText('voiding_info_body');
   const tg=document.getElementById('pv_htp_topic_general');if(tg)tg.textContent=getSiteText('htp_topic_general');
+  const shs=document.getElementById('pv_scene_hint_solo');if(shs)shs.textContent=getSiteText('scene_hint_solo');
+  const shl=document.getElementById('pv_scene_hint_lobby');if(shl)shl.textContent=getSiteText('scene_hint_lobby');
   CARD_REGISTRY.forEach(reg=>_refreshCardPreview(reg.key));
 }
 function _updatePagePreview(key,val){
@@ -13521,6 +13551,8 @@ function _updatePagePreview(key,val){
   else if(key==='lobby_browse_empty_sub'){const el=document.getElementById('pv_lobby_browse_sub');if(el)el.textContent=val;}
   else if(key==='voiding_info_body'){const el=document.getElementById('pv_voiding_info_body');if(el)el.textContent=val;}
   else if(key==='htp_topic_general'){const el=document.getElementById('pv_htp_topic_general');if(el)el.textContent=val;}
+  else if(key==='scene_hint_solo'){const el=document.getElementById('pv_scene_hint_solo');if(el)el.textContent=val;}
+  else if(key==='scene_hint_lobby'){const el=document.getElementById('pv_scene_hint_lobby');if(el)el.textContent=val;}
 }
 // ── Bottom "Save All" bar shared by every field in this tab (Cards' Card/How
 // to Play/Solo Rules tabs, Game Settings, and Page Copy) ──
