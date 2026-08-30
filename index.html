@@ -636,6 +636,10 @@ h1 .hi{color:var(--accent)}
 .gs-pane[data-pane="format"].active,.gs-pane[data-pane="mode"].active,.gs-pane[data-pane="topic"].active{display:flex;flex-direction:column;flex:1}
 .gs-pane[data-pane="format"] .gs-grid,.gs-pane[data-pane="mode"] .gs-grid,.gs-pane[data-pane="topic"] .gs-grid{flex:1;grid-auto-rows:1fr}
 .gs-topic{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+.gs-topic.scene-locked .gs-topic-subtabs,.gs-topic.scene-locked .gs-topic-content{pointer-events:none;opacity:.45;filter:grayscale(.4)}
+.gs-topic-scene-note{display:flex;align-items:flex-start;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--muted);line-height:1.5}
+.gs-topic-scene-note i{font-size:14px;color:var(--accent);flex-shrink:0;margin-top:1px}
+.gs-topic-scene-note strong{color:var(--text)}
 .gs-topic-subtabs{display:flex;gap:4px;background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;padding:4px}
 .gs-subtab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;background:none;border:none;border-radius:9px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:var(--muted);transition:background .15s,color .15s;white-space:nowrap}
 .gs-subtab:hover{color:var(--text)}
@@ -1705,7 +1709,11 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
               </div>
             </div>
             <div class="gs-pane" data-pane="topic">
-              <div class="gs-topic">
+              <div class="gs-topic" id="gsTopicPane">
+                <div class="gs-topic-scene-note" id="gsTopicSceneNote" style="display:none">
+                  <i class="ti ti-info-circle"></i>
+                  <span>Guess the Scene always plays <strong>General Anime</strong> — every anime has at least 25 screenshots in the pool.</span>
+                </div>
                 <div class="gs-topic-subtabs">
                   <button class="gs-subtab" data-sub="general" onclick="gsTopicSubSwitch('general')">🌐 General<span class="gs-subtab-badge" id="gsSubBadgeGeneral" style="display:none"></span></button>
                   <button class="gs-subtab" data-sub="anime" onclick="gsTopicSubSwitch('anime')">🎬 Anime<span class="gs-subtab-badge" id="gsSubBadgeAnime" style="display:none"></span></button>
@@ -2433,6 +2441,12 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <i class="ti ti-clock" style="font-size:12px"></i>
           <span id="gsSummaryTimer">20s / question</span>
         </div>
+      </div>
+
+      <!-- Guess the Scene hint: shown because the topic-selection step is skipped for this format -->
+      <div id="gsSceneHint" style="display:none;align-items:flex-start;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--muted);line-height:1.5">
+        <i class="ti ti-info-circle" style="font-size:14px;color:var(--accent);flex-shrink:0;margin-top:1px"></i>
+        <span>Pulling from <strong style="color:var(--text)">General Anime</strong> — every anime has at least 25 screenshots to guess from.</span>
       </div>
 
       <!-- Questions panel (question count for Classic; lives for Survival; target score for Score Race) -->
@@ -4984,8 +4998,15 @@ function selectSoloMode(mode){
   selectedTopics=[];isGeneralSelected=false;
   updateGeneralUI();
   clearTopicSearch();
-  loadTopicsFromSupabase();
-  goStep('topic');
+  if(selectedFormat==='scene'){
+    // Guess the Scene always draws from General Anime, so there's nothing to pick —
+    // skip the topic step and go straight to game settings.
+    isGeneralSelected=true;
+    showTimeLimitPicker(mode);
+  } else {
+    loadTopicsFromSupabase();
+    goStep('topic');
+  }
 }
 
 // ── TOPIC SELECTION ───────────────────────────────────────────
@@ -6506,6 +6527,8 @@ function showTimeLimitPicker(mode,fromLobby){
   // Always start on Questions tab
   switchGameSettingsTab('questions');
   updateGsSummary();
+  const sceneHint=document.getElementById('gsSceneHint');
+  if(sceneHint)sceneHint.style.display=selectedFormat==='scene'?'flex':'none';
   document.getElementById('timeLimitModal').style.display='flex';
   applyTheme();
 }
@@ -9211,6 +9234,11 @@ function gsSyncUI(){
   document.getElementById('gsTargetSection').style.display=isSR?'block':'none';
   document.getElementById('gsRaceTargetSection').style.display=isRace?'block':'none';
   gsRenderTopic();
+  const topicPane=document.getElementById('gsTopicPane');
+  const topicSceneNote=document.getElementById('gsTopicSceneNote');
+  const isSceneFmt=lobbyFormat==='scene';
+  if(topicPane)topicPane.classList.toggle('scene-locked',isSceneFmt);
+  if(topicSceneNote)topicSceneNote.style.display=isSceneFmt?'flex':'none';
   // Row summaries shown on each collapsed accordion head
   const setTxt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const fmtRowE={mc:'📝',type:'⌨️',scene:'🎬',char:'🎭','char-mc':'🎭'},modeRowE={classic:'🎮',race:'🏁',survival:'❤️',potato:'🥔',slowreveal:'👁️'},modeRowName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'};
@@ -9264,6 +9292,10 @@ function gsSetFormat(f){
   if(f==='char'){openCharFmtModal('lobby');return;}
   lobbyFormat=f;selectedFormat=f;
   pruneEmptyLobbyTopics();
+  if(f==='scene'){
+    // Guess the Scene has no per-anime topic pool yet, so it always plays General Anime.
+    lobbyIsGeneral=true;lobbyTopics=[];lobbyShelvedTopics=[];gsTopicSub='general';
+  }
   gsAfterChange();
 }
 function gsSetMode(m){if(isCardLocked('mode',m))return;if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
