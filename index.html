@@ -243,14 +243,8 @@ h1 .hi{color:var(--accent)}
 .q-loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
 @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
 .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* ── Image zoom (tap-to-enlarge question image) ─────────────── */
-.zoom-noscroll{overflow:hidden}
-.img-zoom-badge{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;pointer-events:none;backdrop-filter:blur(4px);opacity:0;transition:opacity .15s}
-.img-zoom-wrap:hover .img-zoom-badge{opacity:1}
-@media(hover:none){.img-zoom-wrap .img-zoom-badge{opacity:1}}
-#imageZoomOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.86);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:16px 16px 150px;flex-direction:column}
-#imageZoomOverlay img{max-width:96vw;max-height:80vh;object-fit:contain;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.answers.zoom-answer-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:1000;width:calc(100% - 36px);max-width:560px;grid-template-columns:1fr;background:var(--bg2);border:1px solid var(--card-border);border-radius:16px;padding:14px 16px;box-shadow:0 -10px 34px rgba(0,0,0,.35);backdrop-filter:blur(10px)}
+/* ── Image magnifier (hover loupe over the question image, desktop only) ── */
+.img-magnifier-glass{display:none;position:absolute;pointer-events:none;border-radius:50%;border:3px solid var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.4);background-repeat:no-repeat;z-index:5;width:170px;height:170px}
 .ans{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
 .ans:hover:not(.locked){border-color:var(--accent);transform:translateY(-3px) scale(1.015);box-shadow:0 8px 22px #0005}
 .ans:hover:not(.locked) .ans-key{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1574,12 +1568,12 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
-        <div id="qImageWrap" class="img-zoom-wrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;cursor:zoom-in" onclick="openImageZoom(document.getElementById('qImage').src,'answersGrid')">
-          <img id="qImage" src="" alt="Question image" style="width:100%;height:auto;max-height:500px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
-          <span class="img-zoom-badge"><i class="ti ti-arrows-diagonal"></i></span>
+        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative">
+          <img id="qImage" src="" alt="Question image" style="width:100%;height:auto;max-height:min(500px,40vh);object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+          <div class="img-magnifier-glass" id="qImageMagGlass"></div>
         </div>
         <!-- Inline feedback shown inside the card after answer/timeout -->
-        <div id="qCardFeedback" style="display:none;margin-top:22px;text-align:center">
+        <div id="qCardFeedback" style="visibility:hidden;margin-top:22px;text-align:center;min-height:100px">
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
             <span id="fbIcon"></span>
             <span class="fb-title" id="fbTitle"></span>
@@ -1876,12 +1870,12 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
-          <div id="mpQImageWrap" class="img-zoom-wrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;cursor:zoom-in" onclick="openImageZoom(document.getElementById('mpQImage').src,'mpAnswersGrid')">
-            <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:500px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
-            <span class="img-zoom-badge"><i class="ti ti-arrows-diagonal"></i></span>
+          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative">
+            <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:min(500px,40vh);object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+            <div class="img-magnifier-glass" id="mpQImageMagGlass"></div>
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
-          <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
+          <div id="mpQCardFeedback" style="visibility:hidden;margin-top:22px;text-align:center;min-height:100px">
             <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               <span id="mpFbIcon"></span>
               <span class="fb-title" id="mpFbTitle"></span>
@@ -2512,15 +2506,6 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       </button>
 
     </div>
-  </div>
-
-  <!-- IMAGE ZOOM OVERLAY (tap-to-enlarge question image; answer controls stay usable, pinned to the bottom) -->
-  <div id="imageZoomOverlay" onclick="if(event.target===this)closeImageZoom()">
-    <button onclick="closeImageZoom()" aria-label="Close" style="position:absolute;top:18px;right:18px;background:rgba(255,255,255,.12);border:none;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">
-      <i class="ti ti-x"></i>
-    </button>
-    <img id="imageZoomDisplay" src="" alt="Enlarged question image">
-    <div style="color:rgba(255,255,255,.55);font-size:11px;font-weight:700;margin-top:14px;letter-spacing:.02em">Tap outside or press Esc to close</div>
   </div>
 
   <!-- GUEST DISCONNECT MODAL -->
@@ -4585,7 +4570,6 @@ async function uploadGuestPfp(blob){
 }
 
 function goStep(name){
-  closeImageZoom();
   if(name!=='admin'){const b=document.getElementById('adminContentSaveBar');if(b)b.style.display='none';}
   clearInterval(timerInterval);clearInterval(dailyTimerInterval);
   clearInterval(soloAutoNextInterval);clearInterval(mpAutoNextInterval);
@@ -5623,9 +5607,8 @@ function checkAnswer(userInput,qData){
 }
 async function loadQuestion(){
   answered=false;
-  closeImageZoom();
   clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
-  document.getElementById('qCardFeedback').style.display='none';
+  document.getElementById('qCardFeedback').style.visibility='hidden';
   document.getElementById('answersGrid').innerHTML='';
   document.getElementById('questionText').style.display='none';
   document.getElementById('qLoading').style.display='flex';
@@ -5771,10 +5754,9 @@ function startSoloAutoNext(){
 }
 
 function showFeedback(correct,correctAns,userAns,override){
-  closeImageZoom();
   if(correct)sfxCorrect();else sfxWrong();
   // Show inline card feedback section
-  const fb=document.getElementById('qCardFeedback');fb.style.display='block';
+  const fb=document.getElementById('qCardFeedback');fb.style.visibility='visible';
   document.getElementById('fbIcon').innerHTML=correct?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>':'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   document.getElementById('fbTitle').textContent=override||(correct?'Correct!':'Wrong!');
   const ya=document.getElementById('fbYourAns');
@@ -6654,32 +6636,37 @@ function confirmTimeLimit(){
 
 // Exponential scoring with 5s flat grace period at full points
 // After 5s, points drop exponentially from 10 down to 3 over the remaining time
-// ── Image zoom (tap-to-enlarge question image) ─────────────────
-// Enlarges the question image in a full-screen overlay. Rather than moving
-// the live answer input into the overlay (which would need per-mode logic
-// for Classic/Race/Survival/Hot Potato/Slow Reveal), we just pin the
-// existing answers container to the bottom of the screen via a CSS class —
-// same DOM node, same listeners, so every mode keeps working untouched.
-let zoomAnswersEl=null;
-function openImageZoom(imgSrc,answersGridId){
-  if(!imgSrc)return;
-  const overlay=document.getElementById('imageZoomOverlay');
-  const img=document.getElementById('imageZoomDisplay');
-  img.src=imgSrc;
-  overlay.style.display='flex';
-  document.body.classList.add('zoom-noscroll');
-  zoomAnswersEl=document.getElementById(answersGridId);
-  if(zoomAnswersEl)zoomAnswersEl.classList.add('zoom-answer-bar');
+// ── Image magnifier (hover loupe, desktop only — mouse events never fire on touch) ──
+// Bound once to the persistent #qImage/#mpQImage elements; only their `src`
+// changes per-question, so this never needs to be re-attached per question.
+function initImageMagnifier(imgId,glassId,zoomFactor){
+  const img=document.getElementById(imgId);
+  const glass=document.getElementById(glassId);
+  if(!img||!glass)return;
+  const glassSize=glass.offsetWidth||170;
+  function move(e){
+    const rect=img.getBoundingClientRect();
+    if(rect.width===0||rect.height===0)return;
+    const x=e.clientX-rect.left;
+    const y=e.clientY-rect.top;
+    if(x<0||y<0||x>rect.width||y>rect.height){glass.style.display='none';return;}
+    glass.style.display='block';
+    glass.style.left=(x-glassSize/2)+'px';
+    glass.style.top=(y-glassSize/2)+'px';
+    glass.style.backgroundImage=`url('${img.src}')`;
+    glass.style.backgroundSize=(rect.width*zoomFactor)+'px '+(rect.height*zoomFactor)+'px';
+    glass.style.backgroundPosition=`-${x*zoomFactor-glassSize/2}px -${y*zoomFactor-glassSize/2}px`;
+  }
+  img.addEventListener('mousemove',move);
+  img.addEventListener('mouseenter',move);
+  img.addEventListener('mouseleave',()=>{glass.style.display='none';});
 }
-function closeImageZoom(){
-  const overlay=document.getElementById('imageZoomOverlay');
-  if(overlay.style.display==='none'||!overlay.style.display)return;
-  overlay.style.display='none';
-  document.body.classList.remove('zoom-noscroll');
-  if(zoomAnswersEl)zoomAnswersEl.classList.remove('zoom-answer-bar');
-  zoomAnswersEl=null;
+function _initAllImageMagnifiers(){
+  initImageMagnifier('qImage','qImageMagGlass',2.2);
+  initImageMagnifier('mpQImage','mpQImageMagGlass',2.2);
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImageZoom();});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_initAllImageMagnifiers,{once:true});
+else _initAllImageMagnifiers();
 
 function calcSpeedPoints(elapsed,limit){
   const grace=5;
@@ -7371,7 +7358,7 @@ function rtSubscribe(lobbyId){
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
     mpSnapshotScores();
-    document.getElementById('mpQCardFeedback').style.display='none';
+    document.getElementById('mpQCardFeedback').style.visibility='hidden';
     const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
     const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
     document.getElementById('mpQuestionText').style.display='none';
@@ -7455,7 +7442,7 @@ function rtSubscribe(lobbyId){
     if(isHost)return;
     currentQData=payload.qData;qIndex=payload.qIndex;
     document.getElementById('mpQLoading').style.display='none';
-    document.getElementById('mpQCardFeedback').style.display='none';
+    document.getElementById('mpQCardFeedback').style.visibility='hidden';
     renderMPHUD();
     srStartReveal(payload.qData,payload.startTime);
   });
@@ -7500,7 +7487,7 @@ function rtSubscribe(lobbyId){
     mpFlagsThisQuestion=new Set();
     mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);
-    document.getElementById('mpQCardFeedback').style.display='none';
+    document.getElementById('mpQCardFeedback').style.visibility='hidden';
     document.getElementById('mpAnswersGrid').innerHTML='';
     document.getElementById('mpQuestionText').style.display='none';
     document.getElementById('mpQLoading').style.display='flex';
@@ -7785,7 +7772,7 @@ function rtSubscribe(lobbyId){
     // the host to advance to the next round naturally.
     if(lobbyMode==='slowreveal'){
       document.getElementById('mpQLoading').style.display='none';
-      document.getElementById('mpQCardFeedback').style.display='none';
+      document.getElementById('mpQCardFeedback').style.visibility='hidden';
       document.getElementById('mpAnswersGrid').innerHTML='';
       const qt=document.getElementById('mpQuestionText');
       if(qt){
@@ -8175,7 +8162,7 @@ function mpResetQuestionCard(){
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQuestionText').innerHTML='';
   document.getElementById('mpAnswersGrid').innerHTML='';
-  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpQCardFeedback').style.visibility='hidden';
   document.getElementById('mpQLoading').style.display='flex';
   const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
   if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
@@ -10066,8 +10053,7 @@ async function mpQuitGame(){
 
 function mpShowQuestion(qData,hpFuse){
   answered=false;
-  closeImageZoom();
-  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpQCardFeedback').style.visibility='hidden';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
   document.getElementById('mpQuestionText').innerHTML=(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   const mpImgWrap=document.getElementById('mpQImageWrap');
@@ -10367,9 +10353,8 @@ function mpTimeOut(){
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
-  closeImageZoom();
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
-  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
   // Show report button, reset flag state for this question
   const rw=document.getElementById('mpReportWrap');if(rw)rw.style.display='block';
   const rd=document.getElementById('mpReportDrop');if(rd)rd.classList.remove('open');
@@ -10439,7 +10424,7 @@ async function mpLoadQuestion(){
   mpWrongAttempts={}; // clear wrong attempts for new question
   hpTypingText={};
   const hpBannerEl=document.getElementById('hpTurnBanner');if(hpBannerEl)hpBannerEl.style.display='none';
-  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpQCardFeedback').style.visibility='hidden';
   const mpRwLQ=document.getElementById('mpReportWrap');if(mpRwLQ)mpRwLQ.style.display='none';
   document.getElementById('mpAnswersGrid').innerHTML='';
   document.getElementById('mpQuestionText').style.display='none';
@@ -10677,7 +10662,7 @@ function srStartReveal(qData,startTime){
   const textEl=document.getElementById('mpQuestionText');
   textEl.style.display='block';
   document.getElementById('mpQLoading').style.display='none';
-  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpQCardFeedback').style.visibility='hidden';
   const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(qCard)qCard.classList.remove('answered');
@@ -10990,7 +10975,7 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
 
 function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   buzzRatio=buzzRatio||0;
-  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
   const qCard=document.querySelector('#page-mp-quiz .q-card');
   if(correct&&qCard)qCard.classList.add('answered');
   document.getElementById('mpFbIcon').innerHTML=correct
@@ -11048,7 +11033,7 @@ function srBroadcastRoundEnd(correctAns){
 }
 
 function srRoundEnd(winner,correctAns){
-  const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
+  const fb=document.getElementById('mpQCardFeedback');fb.style.visibility='visible';
   document.getElementById('mpFbIcon').innerHTML='<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   document.getElementById('mpFbTitle').textContent='No one got it!';
   document.getElementById('mpFbPts').textContent='';
