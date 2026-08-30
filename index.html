@@ -243,6 +243,12 @@ h1 .hi{color:var(--accent)}
 .q-loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
 @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
 .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* ── Image zoom (tap-to-enlarge question image) ─────────────── */
+.zoom-noscroll{overflow:hidden}
+.img-zoom-badge{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;pointer-events:none;backdrop-filter:blur(4px)}
+#imageZoomOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:24px;flex-direction:column}
+#imageZoomOverlay img{max-width:min(90vw,640px);max-height:min(68vh,640px);object-fit:contain;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.answers.zoom-answer-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:1000;width:calc(100% - 36px);max-width:560px;grid-template-columns:1fr;background:var(--bg2);border:1px solid var(--card-border);border-radius:16px;padding:14px 16px;box-shadow:0 -10px 34px rgba(0,0,0,.35);backdrop-filter:blur(10px)}
 .ans{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
 .ans:hover:not(.locked){border-color:var(--accent);transform:translateY(-3px) scale(1.015);box-shadow:0 8px 22px #0005}
 .ans:hover:not(.locked) .ans-key{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1566,8 +1572,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div class="q-loading" id="qLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
           <div class="q-text" id="questionText" style="display:none"></div>
         </div>
-        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
+        <div id="qImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;cursor:zoom-in" onclick="openImageZoom(document.getElementById('qImage').src,'answersGrid')">
           <img id="qImage" src="" alt="Question image" style="width:100%;height:auto;max-height:280px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+          <span class="img-zoom-badge"><i class="ti ti-zoom-in"></i></span>
         </div>
         <!-- Inline feedback shown inside the card after answer/timeout -->
         <div id="qCardFeedback" style="display:none;margin-top:22px;text-align:center">
@@ -1867,8 +1874,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
-          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
+          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;cursor:zoom-in" onclick="openImageZoom(document.getElementById('mpQImage').src,'mpAnswersGrid')">
             <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:280px;object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+            <span class="img-zoom-badge"><i class="ti ti-zoom-in"></i></span>
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
           <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
@@ -2502,6 +2510,15 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
       </button>
 
     </div>
+  </div>
+
+  <!-- IMAGE ZOOM OVERLAY (tap-to-enlarge question image; answer controls stay usable, pinned to the bottom) -->
+  <div id="imageZoomOverlay" onclick="if(event.target===this)closeImageZoom()">
+    <button onclick="closeImageZoom()" aria-label="Close" style="position:absolute;top:18px;right:18px;background:rgba(255,255,255,.12);border:none;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">
+      <i class="ti ti-x"></i>
+    </button>
+    <img id="imageZoomDisplay" src="" alt="Enlarged question image">
+    <div style="color:rgba(255,255,255,.55);font-size:11px;font-weight:700;margin-top:14px;letter-spacing:.02em">Tap outside or press Esc to close</div>
   </div>
 
   <!-- GUEST DISCONNECT MODAL -->
@@ -4566,6 +4583,7 @@ async function uploadGuestPfp(blob){
 }
 
 function goStep(name){
+  closeImageZoom();
   if(name!=='admin'){const b=document.getElementById('adminContentSaveBar');if(b)b.style.display='none';}
   clearInterval(timerInterval);clearInterval(dailyTimerInterval);
   clearInterval(soloAutoNextInterval);clearInterval(mpAutoNextInterval);
@@ -5603,6 +5621,7 @@ function checkAnswer(userInput,qData){
 }
 async function loadQuestion(){
   answered=false;
+  closeImageZoom();
   clearInterval(soloAutoNextInterval);soloAutoNextPaused=false;
   document.getElementById('qCardFeedback').style.display='none';
   document.getElementById('answersGrid').innerHTML='';
@@ -5750,6 +5769,7 @@ function startSoloAutoNext(){
 }
 
 function showFeedback(correct,correctAns,userAns,override){
+  closeImageZoom();
   if(correct)sfxCorrect();else sfxWrong();
   // Show inline card feedback section
   const fb=document.getElementById('qCardFeedback');fb.style.display='block';
@@ -6632,6 +6652,33 @@ function confirmTimeLimit(){
 
 // Exponential scoring with 5s flat grace period at full points
 // After 5s, points drop exponentially from 10 down to 3 over the remaining time
+// ── Image zoom (tap-to-enlarge question image) ─────────────────
+// Enlarges the question image in a full-screen overlay. Rather than moving
+// the live answer input into the overlay (which would need per-mode logic
+// for Classic/Race/Survival/Hot Potato/Slow Reveal), we just pin the
+// existing answers container to the bottom of the screen via a CSS class —
+// same DOM node, same listeners, so every mode keeps working untouched.
+let zoomAnswersEl=null;
+function openImageZoom(imgSrc,answersGridId){
+  if(!imgSrc)return;
+  const overlay=document.getElementById('imageZoomOverlay');
+  const img=document.getElementById('imageZoomDisplay');
+  img.src=imgSrc;
+  overlay.style.display='flex';
+  document.body.classList.add('zoom-noscroll');
+  zoomAnswersEl=document.getElementById(answersGridId);
+  if(zoomAnswersEl)zoomAnswersEl.classList.add('zoom-answer-bar');
+}
+function closeImageZoom(){
+  const overlay=document.getElementById('imageZoomOverlay');
+  if(overlay.style.display==='none'||!overlay.style.display)return;
+  overlay.style.display='none';
+  document.body.classList.remove('zoom-noscroll');
+  if(zoomAnswersEl)zoomAnswersEl.classList.remove('zoom-answer-bar');
+  zoomAnswersEl=null;
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImageZoom();});
+
 function calcSpeedPoints(elapsed,limit){
   const grace=5;
   if(elapsed<=grace) return 10;
@@ -10017,6 +10064,7 @@ async function mpQuitGame(){
 
 function mpShowQuestion(qData,hpFuse){
   answered=false;
+  closeImageZoom();
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
   document.getElementById('mpQuestionText').innerHTML=(qData.question||'Question unavailable')+fallbackHintHTML(qData);
@@ -10317,6 +10365,7 @@ function mpTimeOut(){
 }
 
 function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
+  closeImageZoom();
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset flag state for this question
