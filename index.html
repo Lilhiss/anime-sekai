@@ -8136,7 +8136,8 @@ function mpResetQuestionCard(){
 
 async function mpHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
-  const qData=await fetchQuestion();
+  const qData=prefetchedQuestion||await fetchQuestion();
+  prefetchedQuestion=null;
   currentQData=qData;
   const hpFuse=lobbyMode==='potato'?(hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):null; // host generates fuse so all clients sync
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
@@ -8216,6 +8217,14 @@ function mpStartAutoNext(onDone,isLastQuestion){
   mpCancelBackup(mpActiveAutoNextBackupId);
   mpAutoNextPaused=false;
   let t=5,fired=false;
+  // Kick off the next question's fetch now, in parallel with the 5s countdown,
+  // instead of waiting until it ends. Host-only since only the host actually
+  // fetches/broadcasts questions. Skipped when this is the last question (no
+  // "next" to prefetch) and for Slow Reveal, which has its own separate
+  // host-fetch path (srHostFetchAndBroadcast) that doesn't consult this.
+  if(isHost&&!isLastQuestion&&lobbyMode!=='slowreveal'){
+    fetchQuestion().then(q=>{prefetchedQuestion=q});
+  }
   // onDone only actually does anything on the host's client (it broadcasts the next
   // step) — so a backgrounded host stalling here freezes the game exactly like a
   // stalled fuse would. See mpFuseWorker declaration for why the Worker backup is
