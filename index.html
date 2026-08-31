@@ -3425,6 +3425,12 @@ try{const _ct=JSON.parse(localStorage.getItem('as_theme')||'null');if(_ct){if(_c
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
+// Tracks which qIndex `answered` actually applies to. Needed because a mid-game
+// rejoin re-renders the live question via mpShowQuestion(), which unconditionally
+// resets answered=false — without this, a player who already answered correctly
+// before disconnecting could answer the same question again on rejoin and be
+// credited twice. See the game_state_snapshot handler for how this is used.
+let answeredQIndex=-1;
 let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
 let selectedQuestionLimit=10;
 let soloRaceTarget=100; // solo Score Race target score (50/75/100/150/custom)
@@ -7832,11 +7838,37 @@ function rtSubscribe(lobbyId){
     if(!payload.currentQData)return; // no question data — nothing to show
     currentQData=payload.currentQData;
 
+    // Did we already answer THIS question before disconnecting? answered/answeredQIndex
+    // are plain JS globals that survive a same-tab quit+rejoin (mpQuitGame never resets
+    // them), so if they still point at the qIndex we're about to redisplay, this player
+    // already banked their points for it. Capture that BEFORE calling mpShowQuestion()
+    // below, since mpShowQuestion() unconditionally resets answered=false to build a
+    // fresh, clickable answer grid — without this guard a rejoining player could answer
+    // the same question a second time and be credited points twice.
+    const alreadyAnsweredThisQ=(answered&&answeredQIndex===payload.qIndex);
+
     // Override questionStartTime so the local timer starts mid-flight.
     // mpShowQuestion() calls questionStartTime=Date.now() internally, which would
     // reset to 100 %.  We patch it back immediately after so the bar reflects reality.
     const snapRemaining=typeof payload.snapRemainingTime==='number'?payload.snapRemainingTime:raceTimeLimit;
     mpShowQuestion(currentQData, lobbyMode==='potato'?snapRemaining:null);
+
+    if(alreadyAnsweredThisQ){
+      // Re-lock: block another submission and swap the freshly-built clickable
+      // grid/input for a plain "already answered" reveal instead of letting the
+      // player interact with a question they've already scored.
+      answered=true;answeredQIndex=payload.qIndex;
+      mpCancelBackup(mpActiveFuseBackupId);
+      document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
+      const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
+      const rjSubmitBtn=document.getElementById('mpTypeSubmitBtn');if(rjSubmitBtn)rjSubmitBtn.disabled=true;
+      const rjCorrectAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
+      const mpQCardRJ=document.querySelector('#page-mp-quiz .q-card');if(mpQCardRJ)mpQCardRJ.classList.add('answered');
+      const mpQTextRJ=document.getElementById('mpQuestionText');
+      if(mpQTextRJ){
+        mpQTextRJ.innerHTML=`<div class="q-answer-reveal">${rjCorrectAns}</div>${fallbackHintHTML(currentQData)}<div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">✅ You already answered this question</div>`;
+      }
+    }
 
     // Back-calculate questionStartTime so the draining interval sees the right elapsed time.
     // mpShowQuestion set questionStartTime=Date.now(), so we subtract the already-elapsed portion.
@@ -10280,7 +10312,7 @@ function mpShowQuestion(qData,hpFuse){
 function mpAnswerMC(idx,el,qData){
   if(answered)return;
   if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
-  answered=true;
+  answered=true;answeredQIndex=qIndex;
   mpCancelBackup(mpActiveFuseBackupId);
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const correct=idx===qData.answer;
@@ -10324,7 +10356,7 @@ function mpCheckTypeAnswer(){
     return;
   }
   // Correct answer — lock and finalise
-  answered=true;
+  answered=true;answeredQIndex=qIndex;
   mpCancelBackup(mpActiveFuseBackupId);
   input.disabled=true;input.classList.add('correct-input');
   document.getElementById('mpTypeSubmitBtn').disabled=true;
@@ -10349,7 +10381,7 @@ function mpCheckTypeAnswer(){
 }
 
 function mpTimeOut(){
-  if(answered)return;answered=true;
+  if(answered)return;answered=true;answeredQIndex=qIndex;
   clearInterval(timerInterval);
   clearInterval(mpAutoNextInterval); // cancel any in-progress auto-next from all-answered path
   mpCancelBackup(mpActiveAutoNextBackupId);
