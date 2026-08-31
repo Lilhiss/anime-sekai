@@ -2,6 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Force browsers to revalidate this file on every load instead of serving a stale
+       cached copy after a deploy. This file has no build step and no filename hashing,
+       so without this, a deployed fix can sit invisible behind a cached old version —
+       exactly what happened debugging the lobby-start fix. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anime Sekai Quiz</title>
   <!-- Apply the saved theme before first paint to avoid a flash of the default theme -->
