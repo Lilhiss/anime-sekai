@@ -243,6 +243,11 @@ h1 .hi{color:var(--accent)}
 .q-loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
 @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
 .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* ── Slow Reveal image fog (Guess the Scene): JS drives --rx/--ry/--r1/--r2 ── */
+#mpQImageFog{
+  mask-image:radial-gradient(circle at var(--rx,50%) var(--ry,50%),transparent 0,transparent var(--r1,0px),black var(--r2,0px),black 100%);
+  -webkit-mask-image:radial-gradient(circle at var(--rx,50%) var(--ry,50%),transparent 0,transparent var(--r1,0px),black var(--r2,0px),black 100%);
+}
 .ans{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
 .ans:hover:not(.locked){border-color:var(--accent);transform:translateY(-3px) scale(1.015);box-shadow:0 8px 22px #0005}
 .ans:hover:not(.locked) .ans-key{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1867,8 +1872,9 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <div class="q-loading" id="mpQLoading"><div class="spinner"></div><div class="q-loading-text">Generating question<span class="q-loading-dots"></span></div></div>
             <div class="q-text" id="mpQuestionText" style="display:none"></div>
           </div>
-          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center">
+          <div id="mpQImageWrap" style="display:none;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative">
             <img id="mpQImage" src="" alt="Question image" style="width:100%;height:auto;max-height:min(500px,40vh);object-fit:contain;display:block" onerror="this.parentElement.style.display='none'">
+            <img id="mpQImageFog" src="" alt="" aria-hidden="true" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:blur(26px) brightness(.4) saturate(1.1)">
           </div>
           <!-- Inline feedback shown inside the card after answer/timeout -->
           <div id="mpQCardFeedback" style="display:none;margin-top:22px;text-align:center">
@@ -7408,7 +7414,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQLoading').style.display='none';
     document.getElementById('mpQCardFeedback').style.display='none';
     renderMPHUD();
-    srStartReveal(payload.qData,payload.startTime);
+    srStartReveal(payload.qData,payload.startTime,payload.revealPoint);
   });
   rtChannel.on('broadcast',{event:'sr_buzz'},({payload})=>{
     if(!isHost)return;
@@ -9197,10 +9203,10 @@ function gsSyncUI(){
   const srCard=document.querySelector('#gsModeGrid [data-mode="slowreveal"]');
   if(srCard){
     const srAdminLocked=isCardLocked('mode','slowreveal');
-    const srLocked=srAdminLocked||lobbyFormat!=='type';
+    const srLocked=srAdminLocked||(lobbyFormat!=='type'&&lobbyFormat!=='scene');
     srCard.classList.toggle('locked',srLocked);
     const srDescEl=srCard.querySelector('.gs-bc-desc');
-    if(srDescEl)srDescEl.textContent=srAdminLocked?'🔒 Coming soon':srLocked?'🔒 Type the Answer only':getCardConfig('mode_slowreveal').desc;
+    if(srDescEl)srDescEl.textContent=srAdminLocked?'🔒 Coming soon':srLocked?'🔒 Type Answer or Guess the Scene only':getCardConfig('mode_slowreveal').desc;
   }
   const hpCard=document.querySelector('#gsModeGrid [data-mode="potato"]');
   if(hpCard){
@@ -9263,7 +9269,7 @@ function gsSyncUI(){
   gsRenderAcc();
 }
 function gsAfterChange(){
-  if(lobbyMode==='slowreveal'&&lobbyFormat!=='type'){lobbyMode='race';selectedMode='race';}
+  if(lobbyMode==='slowreveal'&&lobbyFormat!=='type'&&lobbyFormat!=='scene'){lobbyMode='race';selectedMode='race';}
   if(lobbyMode==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat)){lobbyMode='race';selectedMode='race';}
   gsSyncUI();gsUpdateHostLabel();broadcastLobbySettings(true);
 }
@@ -9312,7 +9318,7 @@ function gsSetFormat(f){
   }
   gsAfterChange();
 }
-function gsSetMode(m){if(isCardLocked('mode',m))return;if(m==='slowreveal'&&lobbyFormat!=='type')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
+function gsSetMode(m){if(isCardLocked('mode',m))return;if(m==='slowreveal'&&lobbyFormat!=='type'&&lobbyFormat!=='scene')return;if(m==='potato'&&!HP_ALLOWED_FORMATS.includes(lobbyFormat))return;lobbyMode=m;selectedMode=m;if(m==='slowreveal'&&!srTargetScore)srTargetScore=10;gsAfterChange();}
 function gsSetQuestions(n){selectedQuestionLimit=n;gsAfterChange();}
 function gsSetLives(n){
   selectedLives=n;
@@ -10603,33 +10609,48 @@ async function srHostFetchAndBroadcast(){
   const qData=await fetchQuestion();
   currentQData=qData;
   const startTime=Date.now()+500;
-  rtChannel.send({type:'broadcast',event:'sr_question',payload:{qData,qIndex,startTime}});
-  srStartReveal(qData,startTime);
+  // Guess the Scene reveals the image from a random point instead of revealing
+  // text — pick it once on the host and broadcast it so every client's circle
+  // starts from the exact same spot.
+  const revealPoint=selectedFormat==='scene'?{rx:Math.random()*100,ry:Math.random()*100}:null;
+  rtChannel.send({type:'broadcast',event:'sr_question',payload:{qData,qIndex,startTime,revealPoint}});
+  srStartReveal(qData,startTime,revealPoint);
 }
 
-function srStartReveal(qData,startTime){
+function srStartReveal(qData,startTime,revealPoint){
   srClearReveal();
   srBuzzedPlayer=null;
   srLockedPlayers=[];
   srBuzzTimeLeft=0;
   srRoundActive=true;
+  srChars=[];
+  srCharIndex=0;
+  answered=false;
+  currentQData=qData;
+  document.getElementById('mpQLoading').style.display='none';
+  document.getElementById('mpQCardFeedback').style.display='none';
+  const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
+  const qCard=document.querySelector('#page-mp-quiz .q-card');
+  if(qCard)qCard.classList.remove('answered');
+  const textEl=document.getElementById('mpQuestionText');
+  textEl.style.display='block';
+
+  if(selectedFormat==='scene'){
+    // Guess the Scene: the image itself is what gets revealed, not the question
+    // text — show the (short, static) prompt immediately and animate the fog
+    // layer instead. See srStartImageReveal.
+    textEl.innerHTML=(qData.question||'')+fallbackHintHTML(qData);
+    srStartImageReveal(qData,startTime,revealPoint);
+    srRenderBuzzArea();
+    return;
+  }
+
   // Build flat chars array from only the characters that will have spans —
   // spaces between words are rendered as text nodes (the ' ' in the join below),
   // never as spans, so they must NOT appear in srChars.  If srChars included
   // spaces the interval would call getElementById('src'+N) for a space, get null,
   // and the while-loop would silently burn through every remaining index in a
   // single tick, making the entire question appear at once.
-  srChars=[];
-  srCharIndex=0;
-  answered=false;
-  currentQData=qData;
-  const textEl=document.getElementById('mpQuestionText');
-  textEl.style.display='block';
-  document.getElementById('mpQLoading').style.display='none';
-  document.getElementById('mpQCardFeedback').style.display='none';
-  const mpRw=document.getElementById('mpReportWrap');if(mpRw)mpRw.style.display='none';
-  const qCard=document.querySelector('#page-mp-quiz .q-card');
-  if(qCard)qCard.classList.remove('answered');
   // Wrap each word in an inline-block span so the browser wraps at word boundaries,
   // then split chars within each word into individual spans for the fade-in reveal.
   // charIdx counts only span-backed characters so it stays in sync with srChars.
@@ -10692,6 +10713,68 @@ function srStartReveal(qData,startTime){
       if(isHost)srStartPostRevealTimer();
     }
   },30);
+}
+
+// ── Slow Reveal for Guess the Scene: circular fog reveal instead of text ──
+let srImgRevealInterval=null;
+let srImgRevealFrozen=false;
+let srImgRevealDone=false; // true once the fog has fully cleared for the current round
+let srImgRevealElapsedAtFreeze=0; // ms of reveal progress banked when a buzz froze it
+let srImgRevealEffectiveStart=null; // the timestamp currently driving the reveal math (initial or resumed)
+const SR_IMG_REVEAL_DURATION=9000; // ms for the fog to fully clear, mirrors the pacing of a typical text reveal
+const SR_IMG_FEATHER_PX=60; // width of the soft edge band between revealed and fogged
+// Runs (or resumes) the reveal loop against a given "effective" start time — used
+// both for the initial reveal and for resuming after a wrong buzz, so the timing
+// math only lives in one place.
+function srRunImageReveal(effectiveStartTime){
+  const wrap=document.getElementById('mpQImageWrap');
+  const fogImg=document.getElementById('mpQImageFog');
+  if(!wrap||!fogImg)return;
+  const maxRadius=Math.hypot(wrap.clientWidth,wrap.clientHeight)||400;
+  srImgRevealFrozen=false;
+  srImgRevealEffectiveStart=effectiveStartTime;
+  const tick=()=>{
+    if(srImgRevealFrozen)return;
+    const elapsed=Date.now()-effectiveStartTime;
+    const pct=Math.max(0,Math.min(1,elapsed/SR_IMG_REVEAL_DURATION));
+    const r1=pct*maxRadius;
+    const r2=Math.min(maxRadius,r1+SR_IMG_FEATHER_PX);
+    fogImg.style.setProperty('--r1',r1+'px');
+    fogImg.style.setProperty('--r2',r2+'px');
+    if(pct>=1){
+      srImgRevealDone=true;
+      clearInterval(srImgRevealInterval);srImgRevealInterval=null;
+      if(isHost)srStartPostRevealTimer();
+    }
+  };
+  tick();
+  srImgRevealInterval=setInterval(tick,30);
+}
+function srStartImageReveal(qData,startTime,revealPoint){
+  const wrap=document.getElementById('mpQImageWrap');
+  const baseImg=document.getElementById('mpQImage');
+  const fogImg=document.getElementById('mpQImageFog');
+  if(!wrap||!baseImg||!fogImg||!qData.media_url){if(wrap)wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  baseImg.onload=null;baseImg.onerror=null;baseImg.style.visibility='visible';
+  baseImg.src=qData.media_url;
+  fogImg.src=qData.media_url;
+  fogImg.style.display='block';
+  const rx=revealPoint?revealPoint.rx:50;
+  const ry=revealPoint?revealPoint.ry:50;
+  fogImg.style.setProperty('--rx',rx+'%');
+  fogImg.style.setProperty('--ry',ry+'%');
+  srImgRevealDone=false;
+  srRunImageReveal(startTime);
+}
+// Immediately clears the fog so the full image is visible — used when a
+// correct buzz or a round-end reveals the answer before the timed fog finished.
+function srRevealImageFully(){
+  clearInterval(srImgRevealInterval);srImgRevealInterval=null;
+  srImgRevealFrozen=false;
+  srImgRevealDone=true;
+  const fogImg=document.getElementById('mpQImageFog');
+  if(fogImg)fogImg.style.display='none';
 }
 
 const SR_POST_REVEAL_TIME=10; // seconds players have to answer after full reveal
@@ -10796,6 +10879,11 @@ function srApplyBuzzGranted(name,wordIndex){
   srBuzzedPlayer=name;
   srBuzzRatio=srChars.length>0?Math.min(1,wordIndex/srChars.length):0;
   clearInterval(srRevealInterval);srRevealInterval=null;
+  if(srImgRevealInterval){clearInterval(srImgRevealInterval);srImgRevealInterval=null;}
+  if(selectedFormat==='scene'&&srImgRevealEffectiveStart&&!srImgRevealDone){
+    srImgRevealElapsedAtFreeze=Date.now()-srImgRevealEffectiveStart;
+  }
+  srImgRevealFrozen=true;
   for(let i=0;i<Math.min(wordIndex,srChars.length);i++){
     const el=document.getElementById('src'+i);
     if(el)el.classList.add('visible');
@@ -10933,6 +11021,12 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
         }
       },30);
     }
+    // Guess the Scene has no srChars to check, so it needs its own "was the
+    // reveal still going when this buzz happened" guard — same reasoning as
+    // the text branch just above, just driven by srImgRevealDone instead.
+    if(selectedFormat==='scene'&&!srImgRevealDone){
+      srRunImageReveal(Date.now()-srImgRevealElapsedAtFreeze);
+    }
     srRenderBuzzArea();
   }
 }
@@ -10946,7 +11040,9 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
     ?'<i class="ti ti-circle-check" style="color:#4ade80;font-size:20px"></i>'
     :'<i class="ti ti-circle-x" style="color:#f87171;font-size:20px"></i>';
   const isMe=name===currentUser;
-  const buzzLabel=correct?(buzzRatio<=0.3?'Lightning read!':buzzRatio<=0.6?'Early buzz!':'Good read!'):'';
+  // No "Lightning read!" style label for Guess the Scene yet — keep it to a
+  // plain correct/incorrect result for now.
+  const buzzLabel=(correct&&selectedFormat!=='scene')?(buzzRatio<=0.3?'Lightning read!':buzzRatio<=0.6?'Early buzz!':'Good read!'):'';
   document.getElementById('mpFbTitle').textContent=correct
     ?(isMe?'Correct!':name+' got it!')
     :timedOut?(isMe?"Time's up. Locked out!":name+' ran out of time!')
@@ -10976,6 +11072,7 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
   // "no one got it" path) where all players see the reveal together with no stakes.
   if(correct){
     srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
+    if(selectedFormat==='scene')srRevealImageFully();
     const mpQText=document.getElementById('mpQuestionText');
     const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
     mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}${fallbackHintHTML(currentQData)}`;
@@ -11003,6 +11100,7 @@ function srRoundEnd(winner,correctAns){
   document.getElementById('mpFbPts').textContent='';
   const ya=document.getElementById('mpFbYourAns');ya.style.display='none';
   const mpSubEl=document.getElementById('mpFbSubmittedBy');if(mpSubEl)mpSubEl.style.display='none';
+  if(selectedFormat==='scene')srRevealImageFully();
   srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
   const mpQText=document.getElementById('mpQuestionText');
   const ans=correctAns||(currentQData?.options?currentQData.options[currentQData.answer]:currentQData?.answer)||'?';
@@ -11031,6 +11129,13 @@ function srRoundEnd(winner,correctAns){
 
 function srClearReveal(){
   clearInterval(srRevealInterval);srRevealInterval=null;
+  clearInterval(srImgRevealInterval);srImgRevealInterval=null;
+  srImgRevealFrozen=false;
+  srImgRevealDone=false;
+  srImgRevealElapsedAtFreeze=0;
+  srImgRevealEffectiveStart=null;
+  const fogImg=document.getElementById('mpQImageFog');
+  if(fogImg){fogImg.style.display='none';fogImg.src='';}
   clearInterval(srBuzzCountdown);srBuzzCountdown=null;
   clearInterval(srPostRevealTimer);srPostRevealTimer=null;
   clearInterval(mpAutoNextInterval);mpAutoNextInterval=null;
