@@ -7537,7 +7537,7 @@ function rtSubscribe(lobbyId){
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
-  rtChannel.on('broadcast',{event:'host_transferred'},({payload})=>{
+  rtChannel.on('broadcast',{event:'host_transferred'},async({payload})=>{
     lobbyPlayers.forEach(p=>{p.isHost=(p.name===payload.newHost);});
     // Always hide the pause banner — transfer resolves the grace period regardless of reason
     hideHostPauseBanner();
@@ -7546,12 +7546,16 @@ function rtSubscribe(lobbyId){
       // Resume the timer from wherever the outgoing host was — not a fresh 10 min.
       const inherited=typeof payload.remainingSeconds==='number'&&payload.remainingSeconds>0
         ?payload.remainingSeconds:null;
-      // Update expires_at in DB so future refreshes read the correct time.
+      // Update expires_at in DB so future refreshes read the correct time. Must use a real
+      // session token here, not the raw anon key — see rtSetLobbyStatus for why: if the
+      // lobbies UPDATE policy checks auth.uid() = host_id, the anon key silently resolves
+      // to no rows affected instead of erroring, leaving the DB expiry stale.
       if(inherited&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
         const newExpiry=new Date(Date.now()+inherited*1000).toISOString();
+        const token=await rtGetAuthToken();
         fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
           method:'PATCH',
-          headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+          headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify({expires_at:newExpiry})
         }).catch(()=>{});
       }
@@ -10611,7 +10615,7 @@ function mpReturnToLobby(){
   goStep('lobby-room');
 }
 
-function mpEndGame(){
+async function mpEndGame(){
   srClearReveal();
   document.body.classList.remove('hp-my-turn');
   clearInterval(timerInterval);clearInterval(mpAutoNextInterval);
@@ -10620,9 +10624,13 @@ function mpEndGame(){
   lobbyInGame=false;
   lobbyExpiresAt=new Date(Date.now()+LOBBY_TTL*1000).toISOString();
   if(isHost&&!SUPABASE_URL.includes('YOUR_PROJECT')&&lobbyCode){
+    // Real session token, not the raw anon key — see rtSetLobbyStatus for why: with an
+    // auth.uid() = host_id RLS policy, the anon key silently resolves to zero rows
+    // updated instead of erroring, leaving the lobby stuck at its mid-game status.
+    const token=await rtGetAuthToken();
     fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
       method:'PATCH',
-      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify({expires_at:lobbyExpiresAt,status:'waiting'})
     }).catch(()=>{});
   }
