@@ -8616,7 +8616,11 @@ async function joinLobby(){
   function lockBtn(){if(joinBtn){joinBtn.disabled=true;joinBtn.innerHTML='<i class="ti ti-loader-2" style="font-size:14px;animation:spin .8s linear infinite"></i>';}}
   function resetBtn(){if(joinBtn){joinBtn.disabled=false;joinBtn.innerHTML=origHTML;joinBtn.style.opacity='';joinBtn.style.cursor='';}}
   lockBtn();
-  // Pre-check: fetch lobby and player count before attempting to join
+  // Pre-check: fetch lobby and player count before attempting to join.
+  // Must accept 'active' here too, mirroring rtJoinLobby's own lookup below —
+  // this pre-check ran before rtJoinLobby was ever called, so its old
+  // status==='waiting' gate was silently rejecting mid-countdown joins before
+  // rtJoinLobby's race-check ever got a chance to run.
   try{
     const lobbyRes=await fetch(
       SUPABASE_URL+'/rest/v1/lobbies?select=id,mode,status&code=eq.'+encodeURIComponent(code)+'&limit=1',
@@ -8624,7 +8628,7 @@ async function joinLobby(){
     );
     const lobbyRows=await lobbyRes.json();
     const lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
-    if(!lobby||lobby.status!=='waiting'){resetBtn();showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return;}
+    if(!lobby||(lobby.status!=='waiting'&&lobby.status!=='active')){resetBtn();showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found. It may not exist or may have already ended.');return;}
     const countRes=await fetch(
       SUPABASE_URL+'/rest/v1/lobby_players?select=user_id&lobby_id=eq.'+lobby.id,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}}
@@ -9644,14 +9648,27 @@ function startLobbyGame(){
 }
 
 async function rtSetLobbyStatus(status){
-  // Updates lobby status — 'active' hides it from the public list, 'finished' marks it done
+  // Updates lobby status — 'active' hides it from the public list, 'finished' marks it done.
+  // Must use a real session token here, not the raw anon key: every other write to this
+  // table (create, delete, host-transfer) authenticates with rtGetAuthToken(), which
+  // suggests lobbies' UPDATE policy checks auth.uid() = host_id. Authenticating with the
+  // bare anon key resolves auth.uid() to null, so RLS silently filters the PATCH down to
+  // zero affected rows — no error thrown, nothing to catch — and the lobby stays stuck at
+  // 'waiting' in the DB forever while the host's local countdown runs as if it had started.
+  // Using return=representation (instead of minimal) lets us detect that zero-rows case,
+  // since a 0-row RLS filter still comes back as a normal 200/204, not a 4xx.
   if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode)return;
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${lobbyCode}`,{
+    const token=await rtGetAuthToken();
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
       method:'PATCH',
-      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=representation'},
       body:JSON.stringify({status})
     });
+    const rows=res.ok?await res.json().catch(()=>[]):[];
+    if(!Array.isArray(rows)||!rows.length){
+      console.warn('rtSetLobbyStatus: PATCH affected 0 rows (likely rejected by RLS) — status='+status,res.status);
+    }
   }catch(e){console.warn('rtSetLobbyStatus failed:',e);}
 }
 
