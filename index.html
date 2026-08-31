@@ -7065,9 +7065,16 @@ async function rtRejoinActiveLobby(code){
       rtChannel.send({type:'broadcast',event:'player_rejoined',payload:{name:currentUser,userId:uid}});
     }
   }catch(e){}
-  // Navigate straight to the quiz page (not the lobby room)
+  // Discard any stale question left over from before the disconnect — without this,
+  // the old question's markup (still sitting in the DOM/currentQData from the last
+  // render) flashes on screen for a moment before the snapshot below replaces it.
+  currentQData=null;
   lobbyInGame=true;
   goStep('mp-quiz');
+  document.getElementById('mpQCardFeedback').style.display='none';
+  document.getElementById('mpAnswersGrid').innerHTML='';
+  document.getElementById('mpQuestionText').style.display='none';
+  document.getElementById('mpQLoading').style.display='flex';
   renderMPHUD();
   renderMPScoreboard();
   showLobbyToast('🔄 Reconnected! Waiting for current question…','info');
@@ -7728,11 +7735,17 @@ function rtSubscribe(lobbyId){
   // ── STATE SNAPSHOT (Step 4) ────────────────────────────────────────────────
   // A client that just rejoined mid-game (rtRejoinActiveLobby) or was just
   // elected host (startHostGracePeriod) sends request_game_state to ask for
-  // a full picture of the current question and all mode variables.  Only the
-  // host responds — mirroring the existing if(isHost) pattern throughout.
+  // a full picture of the current question and all mode variables. Any client
+  // that currently has the live question loaded can answer — not only the
+  // self-perceived host. This matters when the HOST is the one rejoining: their
+  // own lobby_players row can still say is_host=true (e.g. they reconnected
+  // within the grace window, before any election ran), so their local isHost
+  // flips true on rejoin — but their currentQData was just wiped by the reload,
+  // and every other client's isHost is false, so nobody would ever answer a
+  // host-gated request. Gating on "do I actually have the data" instead fixes
+  // that deadlock while still working for the ordinary non-host rejoin case.
   rtChannel.on('broadcast',{event:'request_game_state'},({payload})=>{
-    if(!isHost)return;
-    if(!currentQData)return; // no question showing yet — rejoiner will wait for next_question
+    if(!currentQData)return; // we don't have a live question ourselves — can't help
     // Compute how much time is left on the current question so the rejoining
     // client's timer bar reflects reality rather than resetting to 100 %.
     const snapRemainingTime=Math.max(0,timeLeft);
@@ -7771,9 +7784,13 @@ function rtSubscribe(lobbyId){
   // In that case, drop the client into a visible spectator state rather than
   // half-rendering a broken question.
   rtChannel.on('broadcast',{event:'game_state_snapshot'},({payload})=>{
-    // Ignore if we are already the host (we sent this ourselves, or became host
-    // between sending the request and receiving the echo).
-    if(isHost)return;
+    // Ignore only if we're host AND already have a live question (we sent this
+    // ourselves, or became host between sending the request and receiving the
+    // echo). A rejoining original host can still be isHost=true with no
+    // currentQData yet (see the request_game_state handler above) — that case
+    // must fall through and apply the snapshot like any other rejoiner, or
+    // they'd be stuck staring at the loading spinner forever.
+    if(isHost&&currentQData)return;
 
     // Apply all mode/topic/scoring fields
     if(payload.selectedFormat)  { selectedFormat=payload.selectedFormat;  lobbyFormat=payload.selectedFormat; }
