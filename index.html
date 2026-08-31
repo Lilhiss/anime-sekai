@@ -913,6 +913,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .lobby-expiry-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .lobby-expiry-timer{font-family:'Lilita One',cursive;font-size:28px;color:#fb923c;flex-shrink:0;letter-spacing:.02em;min-width:52px;text-align:right;line-height:1}
 .lobby-expiry-timer.urgent{color:#f87171;animation:pulseIcon .6s ease-in-out infinite}
+.lobby-active-banner{display:none;align-items:center;gap:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:14px;padding:13px 16px;backdrop-filter:blur(10px)}
+.lobby-active-banner.visible{display:flex}
+.lobby-active-icon{font-size:20px;flex-shrink:0}
+.lobby-active-text{flex:1;min-width:0}
+.lobby-active-label{font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.05em;text-transform:uppercase}
+.lobby-active-sub{font-size:11px;color:var(--muted);margin-top:2px}
 @keyframes hpLifeLost{0%{transform:scale(1.5);opacity:1}60%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
 .hp-life-lost{animation:hpLifeLost .45s cubic-bezier(.36,.07,.19,.97) both}
 @keyframes hpMissFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
@@ -1662,6 +1668,17 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
           <div class="lobby-expiry-sub">Start the game before the lobby expires</div>
         </div>
         <div class="lobby-expiry-timer" id="lobbyExpiryTimerDisplay">1:00</div>
+      </div>
+      <!-- Shown only if this client is still in the lobby room after the DB row flips to
+           'active' without a game_started broadcast having arrived (a dropped realtime
+           event) — gives a stuck player a manual way into the game. -->
+      <div class="lobby-active-banner slide-in" id="lobbyActiveBanner">
+        <div class="lobby-active-icon">🎮</div>
+        <div class="lobby-active-text">
+          <div class="lobby-active-label">Game already started</div>
+          <div class="lobby-active-sub">You can still jump in and play</div>
+        </div>
+        <button class="primary-btn" id="lobbyActiveJoinBtn" onclick="enterActiveLobbyGame()" style="flex-shrink:0"><i class="ti ti-player-play" style="font-size:14px"></i> Join Game</button>
       </div>
       <!-- Hidden legacy settings refs (existing live-sync + render code targets these ids) -->
       <div id="lobbySettingsBox" style="display:none">
@@ -6837,14 +6854,21 @@ async function rtJoinLobby(code){
   }catch(e){}
   let lobby=null;
   try{
+    // Accept 'active' here too, not just 'waiting'. rtSetLobbyStatus('active') fires
+    // the instant the host clicks Start Game — well before the countdown animation
+    // finishes — so a lobby is 'active' for the entire multi-second countdown, not
+    // just the brief in-flight window the race-check below was built for. Filtering
+    // to 'waiting' only meant anyone trying to join during that whole window got
+    // bounced here with "already started" and never reached the race-check, which is
+    // the only code that knows how to route a joiner into a lobby that's already live.
     const lobbyRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobbies?select=*&code=eq.${encodeURIComponent(code)}&status=eq.waiting&limit=1`,
+      `${SUPABASE_URL}/rest/v1/lobbies?select=*&code=eq.${encodeURIComponent(code)}&status=in.(waiting,active)&limit=1`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
     );
     const lobbyRows=await lobbyRes.json();
     lobby=Array.isArray(lobbyRows)?lobbyRows[0]:null;
   }catch(e){}
-  if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found or game already started.');return false;}
+  if(!lobby){showErr('lobbyJoinErr','lobbyJoinErrMsg','Lobby not found. It may not exist or may have already ended.');return false;}
   lobbyExpiresAt=lobby.expires_at||null;
   lobbyInGame=false;
   // Block rejoining — check sessionStorage first (race-safe), then DB kicked_players array
@@ -6881,15 +6905,14 @@ async function rtJoinLobby(code){
     });
     if(!joinRes.ok && joinRes.status !== 409){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
-  // Race check: rtJoinLobby makes several sequential awaited requests above
-  // (session, auth token, profile upsert, the status='waiting' lobby lookup,
-  // player-count check, this insert). If the host clicks Start Game partway
-  // through — after our status check already passed but before we've
-  // subscribed to realtime below — the one-shot game_started broadcast fires
-  // and is gone before we're listening for it, permanently. Re-check status
-  // right now, with our lobby_players row already inserted, and if it's
-  // flipped to active, route through the same path used for reconnecting
-  // mid-game instead of landing in a lobby room that'll never advance.
+  // Status check: the lookup above now accepts 'active' lobbies too, so this
+  // covers two cases at once — (a) the lobby was already active when we looked
+  // it up (the common case: joining mid-countdown), and (b) it flipped to active
+  // during the several sequential awaited requests above (session, auth token,
+  // profile upsert, player-count check, this insert) — the original narrow race.
+  // Either way, the one-shot game_started broadcast already fired and is gone,
+  // so route through the same path used for reconnecting mid-game instead of
+  // landing in a lobby room that'll never advance.
   try{
     const raceCheck=await fetch(
       `${SUPABASE_URL}/rest/v1/lobbies?select=status&id=eq.${lobby.id}&limit=1`,
@@ -7093,8 +7116,17 @@ function rtSubscribe(lobbyId){
   // Also listen for changes on the lobbies row itself (e.g. updated_at bumped by the
   // refresh-cleanup IIFE) so remaining clients re-fetch players even when the
   // lobby_players DELETE event is silently dropped by Supabase Realtime.
-  rtChannel.on('postgres_changes',{event:'UPDATE',schema:'public',table:'lobbies',filter:`id=eq.${lobbyId}`},async()=>{
+  rtChannel.on('postgres_changes',{event:'UPDATE',schema:'public',table:'lobbies',filter:`id=eq.${lobbyId}`},async(payload)=>{
     await rtRefreshPlayers(lobbyId);
+    // Fallback for a dropped game_started broadcast: Supabase Realtime is already known
+    // to silently drop one-shot events under load (see the lobby_players DELETE handling
+    // elsewhere in this file). If we're still parked on the lobby room when the row
+    // flips to 'active', the countdown broadcast never reached us — surface a manual
+    // way in rather than leaving the player stranded with no signal the game is live.
+    if(!isHost&&!lobbyInGame&&payload?.new?.status==='active'){
+      const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
+      if(inLobby)showLobbyActiveBanner();
+    }
   });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
     console.log('lobby_players change detected');
@@ -8720,6 +8752,20 @@ function hideLobbyExpiryBanner(){
   if(banner)banner.classList.remove('visible');
 }
 
+function showLobbyActiveBanner(){
+  const banner=document.getElementById('lobbyActiveBanner');
+  if(banner)banner.classList.add('visible');
+}
+function hideLobbyActiveBanner(){
+  const banner=document.getElementById('lobbyActiveBanner');
+  if(banner)banner.classList.remove('visible');
+}
+// Manual escape hatch for the "stuck in lobby room" banner above.
+function enterActiveLobbyGame(){
+  hideLobbyActiveBanner();
+  rtRejoinActiveLobby(lobbyCode);
+}
+
 function showLobbyExpiredModal(){
   const sub=document.getElementById('lobbyExpiredSub');
   const btn=document.getElementById('lobbyExpiredBtn');
@@ -9028,6 +9074,7 @@ async function checkForActiveGameRejoin(){
 
 function renderLobbyRoom(){
   if(typeof hideJoiningOverlay==='function')hideJoiningOverlay();
+  hideLobbyActiveBanner();
   document.getElementById('lobbyCodeDisplay').textContent=lobbyName||lobbyCode;
   document.getElementById('lobbyCodeBig').textContent=lobbyCode;
   // Update visibility badge
