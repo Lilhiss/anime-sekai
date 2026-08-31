@@ -6881,6 +6881,25 @@ async function rtJoinLobby(code){
     });
     if(!joinRes.ok && joinRes.status !== 409){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
   }catch(e){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not join. Please try again.');return false;}
+  // Race check: rtJoinLobby makes several sequential awaited requests above
+  // (session, auth token, profile upsert, the status='waiting' lobby lookup,
+  // player-count check, this insert). If the host clicks Start Game partway
+  // through — after our status check already passed but before we've
+  // subscribed to realtime below — the one-shot game_started broadcast fires
+  // and is gone before we're listening for it, permanently. Re-check status
+  // right now, with our lobby_players row already inserted, and if it's
+  // flipped to active, route through the same path used for reconnecting
+  // mid-game instead of landing in a lobby room that'll never advance.
+  try{
+    const raceCheck=await fetch(
+      `${SUPABASE_URL}/rest/v1/lobbies?select=status&id=eq.${lobby.id}&limit=1`,
+      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+    );
+    const raceRows=await raceCheck.json();
+    if(Array.isArray(raceRows)&&raceRows[0]?.status==='active'){
+      return await rtRejoinActiveLobby(code);
+    }
+  }catch(e){}
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
@@ -8729,7 +8748,7 @@ function showLobbyToast(msg,type='warning'){
   setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity .4s';setTimeout(()=>toast.remove(),400);},(type==='danger'?4000:6000));
 }
 const fmtEmoji={mc:'📋',type:'⌨️',scene:'🎬',char:'👤','char-mc':'👤'};
-const modeEmoji={race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
+const modeEmoji={classic:'🎮',race:'⚡',survival:'❤️',potato:'🥔',slowreveal:'👁️'};
 
 // ── HOST GRACE PERIOD HELPERS (Step 3) ───────────────────────────────────────
 const HOST_GRACE_SECONDS=20;
@@ -8924,7 +8943,7 @@ async function loadPublicLobbies(silent=false){
           <div class="lobby-list-host">${lobby.lobby_name || (lobby.host_username ? lobby.host_username+"'s Lobby" : lobby.code)}</div>
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]||'🎮'} ${fmtName}</span>
-            <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
+            <span class="lobby-list-badge">${modeEmoji[mode]||'🎮'} ${modeName}</span>
             ${goalBadge}
             ${timeBadge}
           </div>
@@ -9689,7 +9708,7 @@ function patchLobbyListCard(lobby) {
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="lobby-list-badge">${fmtEmoji[fmt]||'🎮'} ${fmtName}</span>
-      <span class="lobby-list-badge">${modeEmoji[mode]} ${modeName}</span>
+      <span class="lobby-list-badge">${modeEmoji[mode]||'🎮'} ${modeName}</span>
       ${goalBadge}
       ${timeBadge}`;
   }
