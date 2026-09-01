@@ -3431,6 +3431,13 @@ let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
 // before disconnecting could answer the same question again on rejoin and be
 // credited twice. See the game_state_snapshot handler for how this is used.
 let answeredQIndex=-1;
+// Mirrors lobbies.current_q_index in the database for Score Race mode — kept
+// separate from qIndex (the client's own "which round are we on" bookkeeping,
+// used for history/UI) because the two only need to agree at the moment of
+// calling mp_advance_question, not throughout the whole round. Updated only
+// from RPC results, never incremented locally, so it's always exactly what
+// the server said, regardless of how many rounds this client has seen.
+let mpDbQIndex=0;
 let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pendingLobbyAfterTimeLimit=false;
 let selectedQuestionLimit=10;
 let soloRaceTarget=100; // solo Score Race target score (50/75/100/150/custom)
@@ -6795,6 +6802,49 @@ async function rtGetAuthToken(){
   return SUPABASE_ANON;
 }
 
+// ── Server-authoritative game state (Score Race mode) ───────────────────────
+// mp_advance_question / mp_submit_answer live in Postgres, not in any one
+// player's browser tab — see the migration notes. Any connected client can
+// safely call these; the functions themselves handle concurrency (only the
+// first caller for a given question actually advances it) and identity
+// (a player can only submit for themselves) instead of trusting the client.
+async function mpRpc(name,body){
+  const token=await rtGetAuthToken();
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
+    method:'POST',
+    headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!res.ok)return null;
+  try{return await res.json();}catch(e){return null;}
+}
+// mp_advance_question needs a specific topic (type+value), not the whole
+// pool the lobby was configured with — mirrors the per-question random pick
+// that fetchQuestion() does client-side from selectedTopics.
+// Swaps a freshly-built clickable question card for a locked "already answered"
+// reveal. Used by both rejoin paths (the broadcast snapshot handler, and the
+// DB-direct read below) whenever a reconnecting player already has a recorded
+// answer for the question currently on screen — mpShowQuestion() always builds
+// a fresh interactive grid, so this runs right after it to override that.
+function mpLockAlreadyAnsweredUI(qIdx){
+  answered=true;answeredQIndex=qIdx;
+  mpCancelBackup(mpActiveFuseBackupId);
+  document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
+  const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
+  const rjSubmitBtn=document.getElementById('mpTypeSubmitBtn');if(rjSubmitBtn)rjSubmitBtn.disabled=true;
+  const rjCorrectAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
+  const mpQCardRJ=document.querySelector('#page-mp-quiz .q-card');if(mpQCardRJ)mpQCardRJ.classList.add('answered');
+  const mpQTextRJ=document.getElementById('mpQuestionText');
+  if(mpQTextRJ){
+    mpQTextRJ.innerHTML=`<div class="q-answer-reveal">${rjCorrectAns}</div>${fallbackHintHTML(currentQData)}<div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">✅ You already answered this question</div>`;
+  }
+}
+function mpPickTopicForRace(){
+  if(!lobbyTopics||!lobbyTopics.length)return{type:null,value:null};
+  const t=lobbyTopics[Math.floor(Math.random()*lobbyTopics.length)];
+  return{type:t.type||null,value:t.name||null};
+}
+
 async function rtCreateLobby(){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){
@@ -7083,9 +7133,41 @@ async function rtRejoinActiveLobby(code){
   document.getElementById('mpQLoading').style.display='flex';
   renderMPHUD();
   renderMPScoreboard();
+
+  // Score Race (excluding char-mc, not yet DB-authoritative — see mpHostFetchAndBroadcast)
+  // can skip the peer broadcast round-trip entirely: the live question, when it started,
+  // and whether THIS player already answered it all live in the database now, so a
+  // rejoining client just reads them directly. No dependency on any other browser tab —
+  // host or not — being alive to answer a request_game_state broadcast.
+  if(selectedMode==='race'&&selectedFormat!=='char-mc'&&lobby.current_question){
+    mpDbQIndex=lobby.current_q_index;
+    currentQData=lobby.current_question;
+    let alreadyAnswered=false;
+    try{
+      const ansRes=await fetch(
+        `${SUPABASE_URL}/rest/v1/question_answers?select=q_index&lobby_id=eq.${lobby.id}&user_id=eq.${encodeURIComponent(uid)}&q_index=eq.${lobby.current_q_index}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+      );
+      const ansRows=await ansRes.json();
+      alreadyAnswered=Array.isArray(ansRows)&&ansRows.length>0;
+    }catch(e){}
+    const elapsed=lobby.question_started_at?Math.max(0,(Date.now()-new Date(lobby.question_started_at).getTime())/1000):0;
+    const qTimeLimit=lobby.question_time_limit||raceTimeLimit;
+    const remaining=Math.max(0,qTimeLimit-elapsed);
+    document.getElementById('mpQLoading').style.display='none';
+    mpShowQuestion(currentQData,null);
+    // mpShowQuestion just stamped questionStartTime=now() — patch it back so the
+    // timer bar reflects how much of this question's window is actually left.
+    questionStartTime=Date.now()-elapsed*1000;
+    timeLeft=remaining;
+    if(alreadyAnswered||remaining<=0)mpLockAlreadyAnsweredUI(lobby.current_q_index);
+    showLobbyToast('🔄 Reconnected!','success');
+    return true;
+  }
+
   showLobbyToast('🔄 Reconnected! Waiting for current question…','info');
-  // Request a game-state snapshot from the host (Step 4 will handle the response;
-  // for now the broadcast is sent so it's ready to be received once Step 4 lands)
+  // Request a game-state snapshot from the host — still used for every mode/format
+  // that isn't DB-authoritative yet (see the branch above for Score Race).
   setTimeout(()=>{
     if(rtChannel)rtChannel.send({type:'broadcast',event:'request_game_state',payload:{userId:uid,username:currentUser}});
   },800);
@@ -7245,7 +7327,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -7270,6 +7352,10 @@ function rtSubscribe(lobbyId){
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     currentQData=payload.qData;qIndex=payload.qIndex;
+    // Learn the database's question counter too — only the host calls mp_advance_question
+    // (inside mpHostFetchAndBroadcast), so every other client needs this passed along in
+    // order to call mp_submit_answer against the right question later.
+    if(payload.dbQIndex!=null)mpDbQIndex=payload.dbQIndex;
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
@@ -7539,14 +7625,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+    qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -7853,22 +7939,7 @@ function rtSubscribe(lobbyId){
     const snapRemaining=typeof payload.snapRemainingTime==='number'?payload.snapRemainingTime:raceTimeLimit;
     mpShowQuestion(currentQData, lobbyMode==='potato'?snapRemaining:null);
 
-    if(alreadyAnsweredThisQ){
-      // Re-lock: block another submission and swap the freshly-built clickable
-      // grid/input for a plain "already answered" reveal instead of letting the
-      // player interact with a question they've already scored.
-      answered=true;answeredQIndex=payload.qIndex;
-      mpCancelBackup(mpActiveFuseBackupId);
-      document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
-      const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
-      const rjSubmitBtn=document.getElementById('mpTypeSubmitBtn');if(rjSubmitBtn)rjSubmitBtn.disabled=true;
-      const rjCorrectAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
-      const mpQCardRJ=document.querySelector('#page-mp-quiz .q-card');if(mpQCardRJ)mpQCardRJ.classList.add('answered');
-      const mpQTextRJ=document.getElementById('mpQuestionText');
-      if(mpQTextRJ){
-        mpQTextRJ.innerHTML=`<div class="q-answer-reveal">${rjCorrectAns}</div>${fallbackHintHTML(currentQData)}<div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">✅ You already answered this question</div>`;
-      }
-    }
+    if(alreadyAnsweredThisQ)mpLockAlreadyAnsweredUI(payload.qIndex);
 
     // Back-calculate questionStartTime so the draining interval sees the right elapsed time.
     // mpShowQuestion set questionStartTime=Date.now(), so we subtract the already-elapsed portion.
@@ -8247,11 +8318,37 @@ function mpResetQuestionCard(){
 
 async function mpHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
-  const qData=prefetchedQuestion||await fetchQuestion();
+  let qData=null;
+  // Score Race draws its question from the database (mp_advance_question) instead
+  // of picking one client-side, so the question is durable — a client that
+  // rejoins later can read it straight off the lobbies row instead of needing
+  // the question broadcast to have arrived. char-mc isn't ported to the DB
+  // function yet (its distractor-based option building is still client-only),
+  // so it keeps using the legacy path for now.
+  if(selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId){
+    const topic=mpPickTopicForRace();
+    const excludeIds=quizHistory.map(h=>h.id).filter(Boolean);
+    const result=await mpRpc('mp_advance_question',{
+      p_lobby_id:currentLobbyId,
+      p_expected_q_index:mpDbQIndex,
+      p_format:selectedFormat,
+      p_topic_type:topic.type,
+      p_topic_value:topic.value,
+      p_time_limit:Math.round(raceTimeLimit),
+      p_exclude_ids:excludeIds
+    });
+    if(result&&result.current_question){
+      mpDbQIndex=result.q_index;
+      qData=result.current_question;
+    }
+    // If the RPC failed outright (network hiccup, misconfigured lobby, etc.)
+    // fall through to the legacy client-side pick below so the game doesn't stall.
+  }
+  if(!qData)qData=prefetchedQuestion||await fetchQuestion();
   prefetchedQuestion=null;
   currentQData=qData;
   const hpFuse=lobbyMode==='potato'?(hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):null; // host generates fuse so all clients sync
-  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
+  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse,dbQIndex:mpDbQIndex}});
   // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
   mpShowQuestion(qData,hpFuse);renderMPHUD();
@@ -8317,7 +8414,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+  score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -9678,7 +9775,7 @@ function startLobbyGame(){
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -10309,21 +10406,45 @@ function mpShowQuestion(qData,hpFuse){
   }
 }
 
-function mpAnswerMC(idx,el,qData){
+async function mpAnswerMC(idx,el,qData){
   if(answered)return;
   if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
   answered=true;answeredQIndex=qIndex;
   mpCancelBackup(mpActiveFuseBackupId);
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
-  const correct=idx===qData.answer;
-  const mpElapsed=(Date.now()-questionStartTime)/1000;
-  const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
-  if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
+  // Score Race (excluding char-mc, not yet ported — see mpHostFetchAndBroadcast) scores
+  // through the database: mp_submit_answer both decides correctness and is the only
+  // thing allowed to touch this player's score/lives row, so a second submission for
+  // the same question (e.g. a rejoin trying to double-dip) is a guaranteed no-op rather
+  // than something a client-side flag has to get right on every code path.
+  const useServerAuthority=selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId;
+  let correct,mpPts;
+  if(useServerAuthority){
+    const result=await mpRpc('mp_submit_answer',{
+      p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
+      p_mode:selectedMode,p_choice_idx:idx,p_choice_text:null
+    });
+    if(result&&result.accepted){
+      correct=result.correct;mpPts=result.points;
+      if(correct)score=result.new_score;else if(result.new_lives!=null)lives=result.new_lives;
+    }else{
+      // Server refused (already answered / stale question / request failed) — don't
+      // touch score or lives locally, just resolve the UI using the question data
+      // we already have so the player isn't left staring at a locked screen.
+      correct=idx===qData.answer;mpPts=0;
+    }
+  }else{
+    correct=idx===qData.answer;
+    const mpElapsed=(Date.now()-questionStartTime)/1000;
+    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+    if(correct)score+=mpPts;else lives--;
+  }
+  if(correct){el.classList.add('correct');lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
   mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
 }
 
-function mpCheckTypeAnswer(){
+async function mpCheckTypeAnswer(){
   if(answered)return;
   if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
   const input=document.getElementById('mpTypeInput');
@@ -10371,10 +10492,32 @@ function mpCheckTypeAnswer(){
     mpShowFeedback(true,correctAns,userAns,null,active.name,false,hpPeekNextPlayer()?.name);
     renderMPHUD();
   } else {
-    // Non-HP: only reaches here on a correct answer (wrong answers return early above)
-    const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-    const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
-    score+=mpTaPts;lastPtsEarned=mpTaPts;
+    // Non-HP: only reaches here on a correct answer (wrong answers return early above).
+    // Same server-authority pattern as mpAnswerMC — the retry loop above stays fully
+    // client-side (checking every keystroke against the DB would be wasteful), but the
+    // single winning submission goes through mp_submit_answer for the actual scoring
+    // and the double-answer guard.
+    const useServerAuthority=selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId;
+    let mpTaPts;
+    if(useServerAuthority){
+      const result=await mpRpc('mp_submit_answer',{
+        p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
+        p_mode:selectedMode,p_choice_idx:null,p_choice_text:userAns
+      });
+      if(result&&result.accepted){
+        mpTaPts=result.points;
+        score=result.new_score;
+      }else{
+        // Already answered / stale question / request failed — don't touch score,
+        // just resolve the UI so the player isn't stuck looking locked with no feedback.
+        mpTaPts=0;
+      }
+    }else{
+      const mpTaElapsed=(Date.now()-questionStartTime)/1000;
+      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+      score+=mpTaPts;
+    }
+    lastPtsEarned=mpTaPts;
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
   }
@@ -10655,7 +10798,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+  qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
