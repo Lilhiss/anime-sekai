@@ -7299,7 +7299,32 @@ async function rtRejoinActiveLobby(code){
     // timer bar reflects how much of this question's window is actually left.
     questionStartTime=Date.now()-elapsed*1000;
     timeLeft=remaining;
-    if(alreadyAnswered||remaining<=0)mpLockAlreadyAnsweredUI(lobby.current_q_index);
+    if(alreadyAnswered){
+      mpLockAlreadyAnsweredUI(lobby.current_q_index);
+    }else if(remaining<=0){
+      // The question's timer fully expired while we were disconnected — this is NOT
+      // "you already answered" (mpLockAlreadyAnsweredUI's message used to claim that
+      // regardless, which is exactly what produced the misleading "already answered"
+      // lock on rejoin). More importantly: nobody was ever going to advance this game.
+      // Only the host calls mpHostFetchAndBroadcast()/mp_advance_question — normally
+      // triggered by mpTimeOut() on whichever client is watching when the timer hits
+      // zero. If the host is the one who disconnected, there was no client left to
+      // notice the timeout at all, so the lobby sat frozen the entire time they were
+      // gone with no path to unstick itself. Since isHost above was just set from the
+      // DB row (not assumed), if we're rejoining as the host we can safely trigger the
+      // exact same advance call the normal 'next_question' handler makes.
+      answered=true;answeredQIndex=lobby.current_q_index;
+      document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
+      const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
+      const rjSubmitBtn=document.getElementById('mpTypeSubmitBtn');if(rjSubmitBtn)rjSubmitBtn.disabled=true;
+      const mpQCardTO=document.querySelector('#page-mp-quiz .q-card');if(mpQCardTO)mpQCardTO.classList.add('answered');
+      const mpQTextTO=document.getElementById('mpQuestionText');
+      if(mpQTextTO){
+        const toCorrectAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
+        mpQTextTO.innerHTML=`<div class="q-answer-reveal">${toCorrectAns}</div>${fallbackHintHTML(currentQData)}<div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">⏱️ Time ran out on this one${isHost?' — catching up…':''}</div>`;
+      }
+      if(isHost)mpHostFetchAndBroadcast();
+    }
     showLobbyToast('🔄 Reconnected!','success');
     return true;
   }
