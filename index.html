@@ -1094,6 +1094,24 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 .admin-card-cb{position:absolute;top:14px;right:16px;width:18px;height:18px;accent-color:var(--accent);cursor:pointer;display:none}
 .bulk-mode .admin-card-cb{display:block}
 .admin-q-card.bulk-selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--card-bg))}
+/* Dev Tools panel */
+.dev-card{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px 16px}
+.dev-card-title{font-family:'Lilita One',cursive;font-size:15px;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.dev-kv{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--faint)}
+.dev-kv:last-child{border-bottom:none}
+.dev-kv>span{color:var(--muted);font-weight:700;flex-shrink:0}
+.dev-kv>code,.dev-table code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--text);background:var(--bg3);padding:2px 7px;border-radius:5px;word-break:break-all;text-align:right}
+.dev-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.dev-table th{text-align:left;color:var(--muted);font-weight:800;padding:6px 8px;border-bottom:1px solid var(--border2)}
+.dev-table td{padding:6px 8px;border-bottom:1px solid var(--faint);vertical-align:top}
+.dev-log-wrap{max-height:360px;overflow-y:auto;border:1px solid var(--border2);border-radius:10px;background:var(--bg)}
+.dev-log-row{display:flex;gap:9px;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--faint);font-family:ui-monospace,Menlo,monospace;align-items:baseline}
+.dev-log-row:last-child{border-bottom:none}
+.dev-log-dir-in{color:#4ade80;font-weight:800;flex-shrink:0}
+.dev-log-dir-out{color:#60a5fa;font-weight:800;flex-shrink:0}
+.dev-log-ts{color:var(--muted);flex-shrink:0}
+.dev-log-event{color:var(--accent);font-weight:700;flex-shrink:0}
+.dev-log-payload{color:var(--text);opacity:.85;word-break:break-all}
 /* difficulty inline dropdown */
 .diff-inline{font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid var(--border2);color:var(--muted);background:var(--bg3);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none}
 .diff-inline:hover,.diff-inline:focus{border-color:var(--accent);color:var(--accent)}
@@ -2261,6 +2279,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
             <button class="admin-more-item" id="adminSecRomanize" onclick="_pickAdminMore('romanize')"><i class="ti ti-language" style="font-size:15px"></i> Romanize</button>
             <button class="admin-more-item" id="adminSecLeaks" onclick="_pickAdminMore('leaks')"><i class="ti ti-eye-off" style="font-size:15px"></i> Answer Leaks</button>
             <button class="admin-more-item" id="adminSecMessages" onclick="_pickAdminMore('messages')"><i class="ti ti-mail" style="font-size:15px"></i> Messages <span class="admin-tab-count" id="adminCountMessages" style="display:none"></span></button>
+            <button class="admin-more-item" id="adminSecDevtools" onclick="_pickAdminMore('devtools')"><i class="ti ti-bug" style="font-size:15px"></i> Dev Tools <span class="admin-tab-count" id="adminCountDevErrors" style="display:none"></span></button>
           </div>
         </div>
       </div>
@@ -2338,6 +2357,7 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
         <div id="leaksResults" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
       <div id="adminMessages" class="slide-in" style="display:none;flex-direction:column;gap:14px"></div>
+      <div id="adminDevtools" class="slide-in" style="display:none;flex-direction:column;gap:14px"></div>
       <div id="adminCharLib" class="slide-in" style="display:none;flex-direction:column;gap:16px">
         <!-- Toolbar -->
         <div class="char-lib-toolbar">
@@ -3116,6 +3136,62 @@ body.hp-my-turn::before{content:'';position:fixed;inset:0;pointer-events:none;z-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ── DEV TOOLS: in-app error capture ─────────────────────────────────────────
+// Installed as early as possible (top of the first inline script, right after
+// supabase-js has loaded) so it catches uncaught errors / rejections / failed
+// fetches from as much of the page's lifetime as feasible, not just ones that
+// happen after the admin panel first opens. Purely observational: never
+// swallows an error or changes fetch behavior, just mirrors it into a buffer
+// the Dev Tools panel can render. Safe if the panel is never opened — it's
+// just an array in memory, capped, until someone looks at it.
+const DEV_ERROR_LOG_MAX=200;
+let devErrorLog=[]; // {ts,type:'jserror'|'promise'|'fetch',message,detail}
+let devErrorLogPaused=false;
+function _devLogError(entry){
+  if(devErrorLogPaused)return;
+  devErrorLog.push(entry);
+  if(devErrorLog.length>DEV_ERROR_LOG_MAX)devErrorLog.shift();
+  try{
+    const badge=document.getElementById('adminCountDevErrors');
+    if(badge){badge.textContent=devErrorLog.length>=DEV_ERROR_LOG_MAX?`${DEV_ERROR_LOG_MAX}+`:String(devErrorLog.length);badge.style.display='inline-flex';}
+    if(typeof adminSection!=='undefined'&&adminSection==='devtools')_renderDevErrorLog();
+  }catch(e){}
+}
+window.addEventListener('error',function(e){
+  try{
+    _devLogError({ts:Date.now(),type:'jserror',message:e.message||'Uncaught error',detail:(e.error&&e.error.stack)?e.error.stack:`${e.filename||'?'}:${e.lineno||'?'}:${e.colno||'?'}`});
+  }catch(err){}
+});
+window.addEventListener('unhandledrejection',function(e){
+  try{
+    const r=e.reason;
+    const message=(r&&r.message)?r.message:(typeof r==='string'?r:'Unhandled promise rejection');
+    const detail=(r&&r.stack)?r.stack:(()=>{try{return JSON.stringify(r);}catch(_){return String(r);}})();
+    _devLogError({ts:Date.now(),type:'promise',message,detail});
+  }catch(err){}
+});
+(function(){
+  const _devOrigFetch=window.fetch?window.fetch.bind(window):null;
+  if(!_devOrigFetch)return;
+  window.fetch=async function(...args){
+    let url='',method='GET';
+    try{
+      const first=args[0];
+      url=(typeof first==='string')?first:(first&&first.url)||'';
+      method=(args[1]&&args[1].method)||(first&&first.method)||'GET';
+    }catch(e){}
+    try{
+      const res=await _devOrigFetch(...args);
+      if(!res.ok){
+        _devLogError({ts:Date.now(),type:'fetch',message:`${method} ${url} → ${res.status} ${res.statusText||''}`.trim(),detail:`HTTP ${res.status}`});
+      }
+      return res;
+    }catch(err){
+      _devLogError({ts:Date.now(),type:'fetch',message:`${method} ${url} → network error`,detail:(err&&err.message)||String(err)});
+      throw err;
+    }
+  };
+})();
 // ── SUPABASE CONFIG ───────────────────────────────────────────
 // Replace these two values with your own from supabase.com
 // Project Settings → API → Project URL and anon public key
@@ -3421,6 +3497,12 @@ if(document.readyState==='loading'){
 
 <script>
 let isDark=true,currentColor='midnight',currentUser=null,currentUserId=null,isGuest=false,currentEmail=null,guestSessionId=null;
+// Dev Tools build banner: this project has no build step (see Cache-Control comment in <head>),
+// so there's no CI to auto-inject a real git SHA into the deployed file. BUILD_TAG is hand-stamped
+// here on each delivery as a lightweight stand-in for a commit hash. The deploy timestamp shown
+// next to it is NOT hand-maintained — it's fetched live from this file's own HTTP Last-Modified
+// header, so it always reflects the actual last deploy regardless of whether BUILD_TAG was bumped.
+const DEV_BUILD_TAG='2026-09-02.1';
 try{const _ct=JSON.parse(localStorage.getItem('as_theme')||'null');if(_ct){if(_ct.color)currentColor=_ct.color;if(typeof _ct.dark==='boolean')isDark=_ct.dark;}}catch(e){}
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
@@ -4966,9 +5048,11 @@ let pendingInviteCode=null;
 function showJoiningOverlay(){const o=document.getElementById('joiningOverlay');if(o)o.style.display='flex';}
 function hideJoiningOverlay(){const o=document.getElementById('joiningOverlay');if(o)o.style.display='none';}
 (function(){
-  const code=new URLSearchParams(window.location.search).get('lobby');
+  const _params=new URLSearchParams(window.location.search);
+  const code=_params.get('lobby');
   if(!code)return;
   pendingInviteCode=code.toUpperCase();
+  window._devTestGuestName=_params.get('testGuest')||null; // dev-tools multi-tab harness: captured before URL is cleaned below
   // Clean the URL so a refresh doesn't re-trigger the invite
   try{history.replaceState({},'',window.location.pathname);}catch(e){}
   const go=async()=>{
@@ -4988,7 +5072,35 @@ function hideJoiningOverlay(){const o=document.getElementById('joiningOverlay');
   else document.addEventListener('DOMContentLoaded',go);
 })();
 
-function selectFormat(fmt){selectedFormat=fmt;goStep('mode')}
+// ── DEV TOOLS: multi-tab test harness auto-join ──────────────
+// A window opened by the Dev Tools "Launch test players" button carries
+// ?lobby=CODE&testGuest=NAME (captured above before the URL gets cleaned).
+// The invite-link handler above already queues the join via pendingInviteCode;
+// here we just wait for the guest-name screen to appear and drive it
+// automatically, so each spawned window needs zero manual interaction.
+// Real window.open() windows get genuinely fresh sessionStorage (unlike
+// Ctrl/Cmd+click "duplicate tab"), so each one is a real, separate anonymous
+// identity — exactly like real separate players, not a simulation of one.
+if(window._devTestGuestName){
+  let _devJoinTries=0;
+  const _devJoinPoll=setInterval(()=>{
+    _devJoinTries++;
+    const onAuthGuest=document.getElementById('page-auth')?.classList.contains('active')&&document.getElementById('authGuest')?.style.display==='block';
+    if(onAuthGuest){
+      clearInterval(_devJoinPoll);
+      const gn=document.getElementById('guestName');
+      if(gn){gn.value=window._devTestGuestName;submitGuest();}
+    } else if(_devJoinTries>60){
+      clearInterval(_devJoinPoll); // ~9s safety cutoff — give up quietly, manual entry still works
+    }
+  },150);
+  document.addEventListener('DOMContentLoaded',()=>{
+    const badge=document.createElement('div');
+    badge.textContent='🧪 '+window._devTestGuestName;
+    badge.style.cssText='position:fixed;top:6px;left:6px;z-index:99999;background:#000000cc;color:#4ade80;font:800 11px ui-monospace,Menlo,monospace;padding:4px 9px;border-radius:8px;pointer-events:none;letter-spacing:.3px';
+    document.body.appendChild(badge);
+  });
+}
 let charFmtContext='solo'; // 'solo' | 'lobby'
 function openCharFmtModal(ctx){
   charFmtContext=ctx||'solo';
@@ -6809,14 +6921,26 @@ async function rtGetAuthToken(){
 // first caller for a given question actually advances it) and identity
 // (a player can only submit for themselves) instead of trusting the client.
 async function mpRpc(name,body){
+  const _t0=Date.now();
   const token=await rtGetAuthToken();
   const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
     method:'POST',
     headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
-  if(!res.ok)return null;
-  try{return await res.json();}catch(e){return null;}
+  if(!res.ok){
+    let errBody=null;try{errBody=await res.json();}catch(e){}
+    try{_devTraceRpc(name,body,{ok:false,status:res.status,json:errBody,ms:Date.now()-_t0});}catch(e){}
+    return null;
+  }
+  try{
+    const json=await res.json();
+    try{_devTraceRpc(name,body,{ok:true,status:res.status,json,ms:Date.now()-_t0});}catch(e){}
+    return json;
+  }catch(e){
+    try{_devTraceRpc(name,body,{ok:true,status:res.status,json:null,parseError:String(e),ms:Date.now()-_t0});}catch(e2){}
+    return null;
+  }
 }
 // mp_advance_question needs a specific topic (type+value), not the whole
 // pool the lobby was configured with — mirrors the per-question random pick
@@ -7139,7 +7263,7 @@ async function rtRejoinActiveLobby(code){
   // and whether THIS player already answered it all live in the database now, so a
   // rejoining client just reads them directly. No dependency on any other browser tab —
   // host or not — being alive to answer a request_game_state broadcast.
-  if(selectedMode==='race'&&selectedFormat!=='char-mc'&&lobby.current_question){
+  if(selectedMode==='race'&&_devUseServerAuthority(selectedFormat)&&lobby.current_question){
     mpDbQIndex=lobby.current_q_index;
     currentQData=lobby.current_question;
     let alreadyAnswered=false;
@@ -7215,6 +7339,7 @@ function rtSubscribe(lobbyId){
   _rtVisibilityAbort=new AbortController();
   const _rtSignal={signal:_rtVisibilityAbort.signal};
   rtChannel=sb.channel(`lobby:${lobbyCode}`,{config:{broadcast:{self:true}}});
+  _devInstrumentChannel(rtChannel,lobbyId); // dev-tools: log every broadcast in/out for the admin Dev Tools panel
   // Also listen for changes on the lobbies row itself (e.g. updated_at bumped by the
   // refresh-cleanup IIFE) so remaining clients re-fetch players even when the
   // lobby_players DELETE event is silently dropped by Supabase Realtime.
@@ -8325,7 +8450,7 @@ async function mpHostFetchAndBroadcast(){
   // the question broadcast to have arrived. char-mc isn't ported to the DB
   // function yet (its distractor-based option building is still client-only),
   // so it keeps using the legacy path for now.
-  if(selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId){
+  if(selectedMode==='race'&&_devUseServerAuthority(selectedFormat)&&currentLobbyId){
     const topic=mpPickTopicForRace();
     const excludeIds=quizHistory.map(h=>h.id).filter(Boolean);
     const result=await mpRpc('mp_advance_question',{
@@ -10417,7 +10542,7 @@ async function mpAnswerMC(idx,el,qData){
   // thing allowed to touch this player's score/lives row, so a second submission for
   // the same question (e.g. a rejoin trying to double-dip) is a guaranteed no-op rather
   // than something a client-side flag has to get right on every code path.
-  const useServerAuthority=selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId;
+  const useServerAuthority=selectedMode==='race'&&_devUseServerAuthority(selectedFormat)&&currentLobbyId;
   let correct,mpPts;
   if(useServerAuthority){
     const result=await mpRpc('mp_submit_answer',{
@@ -10497,7 +10622,7 @@ async function mpCheckTypeAnswer(){
     // client-side (checking every keystroke against the DB would be wasteful), but the
     // single winning submission goes through mp_submit_answer for the actual scoring
     // and the double-answer guard.
-    const useServerAuthority=selectedMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId;
+    const useServerAuthority=selectedMode==='race'&&_devUseServerAuthority(selectedFormat)&&currentLobbyId;
     let mpTaPts;
     if(useServerAuthority){
       const result=await mpRpc('mp_submit_answer',{
@@ -11355,7 +11480,8 @@ const ADMIN_SECTION_INFO={
   suggestions:{icon:'💡',title:'Suggestions',desc:'Review topic suggestions submitted by players.'},
   romanize:{icon:'🈂️',title:'Romanize',desc:'Find and fix non-romanized character names and aliases.'},
   leaks:{icon:'🕵️',title:'Answer Leaks',desc:'Find questions that accidentally give away the answer in their own wording.'},
-  messages:{icon:'✉️',title:'Messages',desc:'Contact messages sent by players via the footer form.'}
+  messages:{icon:'✉️',title:'Messages',desc:'Contact messages sent by players via the footer form.'},
+  devtools:{icon:'🛠️',title:'Dev Tools',desc:'Live session identity, presence roster, and realtime broadcast log — for debugging multiplayer state issues.'}
 };
 function toggleAdminSearchClear(){const v=document.getElementById('adminSearchInput')?.value;const btn=document.getElementById('adminSearchClear');if(btn)btn.style.display=v?'block':'none';}
 function toggleAdminTopicClear(){const v=document.getElementById('adminTopicFilter')?.value;const btn=document.getElementById('adminTopicClear');if(btn)btn.style.display=v?'block':'none';}
@@ -11756,7 +11882,8 @@ async function switchAdminSection(section){
   document.getElementById('adminSecRomanize').classList.toggle('active',section==='romanize');
   document.getElementById('adminSecLeaks').classList.toggle('active',section==='leaks');
   document.getElementById('adminSecMessages').classList.toggle('active',section==='messages');
-  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='leaks'||section==='messages');
+  document.getElementById('adminSecDevtools').classList.toggle('active',section==='devtools');
+  document.getElementById('adminSecMore').classList.toggle('active',section==='suggestions'||section==='romanize'||section==='leaks'||section==='messages'||section==='devtools');
   document.getElementById('adminMoreMenu').classList.remove('open');
   document.getElementById('adminReviewTabs').style.display=section==='review'?'flex':'none';
   if(section!=='review'){const pt=document.getElementById('adminPendingTopics');if(pt)pt.style.display='none';}
@@ -11769,9 +11896,11 @@ async function switchAdminSection(section){
   document.getElementById('adminLeaks').style.display=section==='leaks'?'flex':'none';
   document.getElementById('adminCharLib').style.display=section==='charlib'?'flex':'none';
   document.getElementById('adminMessages').style.display=section==='messages'?'flex':'none';
-  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='content'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages')?'none':'flex';
+  document.getElementById('adminDevtools').style.display=section==='devtools'?'flex':'none';
+  document.getElementById('adminQuestionList').style.display=(section==='coverage'||section==='import'||section==='content'||section==='suggestions'||section==='romanize'||section==='leaks'||section==='charlib'||section==='messages'||section==='devtools')?'none':'flex';
   const pager=document.getElementById('adminBrowsePager');if(pager)pager.style.display=section==='browse'?'':'none';
   _syncContentSaveBar();
+  if(section!=='devtools')_devStopAutoRefresh();
   await renderAdminSection();
 }
 async function switchAdminTab(tab){
@@ -11789,8 +11918,589 @@ async function renderAdminSection(){
   if(adminSection==='charlib')return fetchCharLibrary();
   if(adminSection==='messages')return fetchAdminMessages();
   if(adminSection==='content')return renderAdminContentPanel();
+  if(adminSection==='devtools')return renderAdminDevtools();
   if(adminSection==='import'||adminSection==='romanize'||adminSection==='leaks')return;
   return fetchReviewTab();
+}
+
+// ── DEV TOOLS: session identity, presence roster, realtime broadcast log ──
+// Instrumentation lives in _devInstrumentChannel(), called once right after
+// rtChannel is created in rtSubscribe(). It wraps channel.on()/channel.send()
+// so every broadcast event in or out gets logged, without needing to touch
+// each of the ~30 individual rtChannel.on('broadcast',...) handlers already
+// in the file. Purely observational — never alters payloads or control flow.
+const DEV_LOG_MAX=300;
+let devBroadcastLog=[]; // {ts, dir:'in'|'out', event, payload, lobbyId}
+let devLogPaused=false;
+let _devAutoRefreshTimer=null;
+let _devInspectorCode=null;
+let _devInspectorTimer=null;
+const DEV_RPC_TRACE_MAX=200;
+let devRpcTrace=[]; // {ts,name,body,ok,status,json,error,parseError,ms}
+let devRpcTracePaused=false;
+
+// ── DEV TOOLS: DB-authoritative vs legacy path override, per format ────────
+// The four call sites that decide whether Score Race scoring/advancing goes
+// through the DB-authoritative RPCs (mp_advance_question / mp_submit_answer)
+// or the older client-side path all shared the same inline condition:
+//   selectedMode==='race' && selectedFormat!=='char-mc' && <lobby context>
+// _devUseServerAuthority() centralizes that decision so an admin override can
+// actually change live behavior instead of just reporting on it. 'auto' keeps
+// the shipped default (every format except char-mc, which isn't ported to
+// the DB function yet). 'db' / 'legacy' force one path regardless of format —
+// useful for isolating whether a bug lives in the DB path or the legacy path,
+// or for a quick rollback if the DB path misbehaves in production.
+let devFormatOverride={};
+try{devFormatOverride=JSON.parse(localStorage.getItem('as_dev_format_override')||'{}')||{};}catch(e){devFormatOverride={};}
+function _devSaveFormatOverride(){try{localStorage.setItem('as_dev_format_override',JSON.stringify(devFormatOverride));}catch(e){}}
+function _devUseServerAuthority(format){
+  const ov=devFormatOverride[format];
+  if(ov==='legacy')return false;
+  if(ov==='db')return true;
+  return format!=='char-mc'; // shipped default
+}
+function _devSetFormatOverride(format,mode){
+  if(mode==='auto')delete devFormatOverride[format];
+  else devFormatOverride[format]=mode;
+  _devSaveFormatOverride();
+  renderAdminDevtools();
+}
+
+function _devInstrumentChannel(channel,lobbyId){
+  if(!channel||channel._devInstrumented)return;
+  channel._devInstrumented=true;
+  const origOn=channel.on.bind(channel);
+  channel.on=function(type,filter,callback){
+    if(type==='broadcast'&&typeof callback==='function'){
+      const wrapped=function(msg){
+        try{_devLogPush('in',(filter&&filter.event)||'?',msg&&msg.payload,lobbyId);}catch(e){}
+        return callback(msg);
+      };
+      return origOn(type,filter,wrapped);
+    }
+    return origOn(type,filter,callback);
+  };
+  const origSend=channel.send.bind(channel);
+  channel.send=function(msg){
+    if(msg&&msg.type==='broadcast'){
+      try{_devLogPush('out',msg.event,msg.payload,lobbyId);}catch(e){}
+    }
+    return origSend(msg);
+  };
+}
+function _devLogPush(dir,event,payload,lobbyId){
+  if(devLogPaused)return;
+  devBroadcastLog.push({ts:Date.now(),dir,event,payload,lobbyId});
+  if(devBroadcastLog.length>DEV_LOG_MAX)devBroadcastLog.shift();
+  if(adminSection==='devtools')_renderDevBroadcastLog();
+}
+function _devClearLog(){devBroadcastLog=[];_renderDevBroadcastLog();}
+function _devTogglePause(){
+  devLogPaused=!devLogPaused;
+  const btn=document.getElementById('devLogPauseBtn');
+  if(btn)btn.innerHTML=devLogPaused?'<i class="ti ti-player-play" style="font-size:13px"></i> Resume':'<i class="ti ti-player-pause" style="font-size:13px"></i> Pause';
+}
+function _devClearErrorLog(){
+  devErrorLog=[];
+  const badge=document.getElementById('adminCountDevErrors');
+  if(badge)badge.style.display='none';
+  _renderDevErrorLog();
+}
+function _devToggleErrorLogPause(){
+  devErrorLogPaused=!devErrorLogPaused;
+  const btn=document.getElementById('devErrorPauseBtn');
+  if(btn)btn.innerHTML=devErrorLogPaused?'<i class="ti ti-player-play" style="font-size:13px"></i> Resume':'<i class="ti ti-player-pause" style="font-size:13px"></i> Pause';
+}
+function _devGetStorageOrigin(){
+  try{
+    const key='sb-'+new URL(SUPABASE_URL).hostname.split('.')[0]+'-auth-token';
+    if(sessionStorage.getItem(key))return {label:'sessionStorage (per-tab — expected for guests)',ok:true};
+    if(localStorage.getItem(key))return {label:'localStorage (shared across tabs in this browser)',ok:false};
+    return {label:'no auth token found in either storage',ok:null};
+  }catch(e){return {label:'unable to read (storage blocked)',ok:null};}
+}
+function _devEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// Reads this file's own HTTP Last-Modified header via a no-store HEAD request, so the
+// "Deployed" timestamp in the Dev Tools build banner reflects the real last deploy rather
+// than a hand-maintained value that could silently go stale.
+async function _devFetchDeployInfo(){
+  const el=document.getElementById('devDeployedAt');
+  if(!el)return;
+  try{
+    const res=await fetch(location.pathname,{method:'HEAD',cache:'no-store'});
+    const lm=res.headers.get('last-modified');
+    if(!lm){el.textContent='unavailable (host did not send Last-Modified)';return;}
+    const d=new Date(lm);
+    const secsAgo=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
+    let ago;
+    if(secsAgo<60)ago=`${secsAgo}s ago`;
+    else if(secsAgo<3600)ago=`${Math.floor(secsAgo/60)}m ago`;
+    else if(secsAgo<86400)ago=`${Math.floor(secsAgo/3600)}h ago`;
+    else ago=`${Math.floor(secsAgo/86400)}d ago`;
+    el.textContent=`${d.toLocaleString()} (${ago})`;
+  }catch(e){
+    if(el)el.textContent='unavailable (fetch failed — '+(e?.message||'unknown error')+')';
+  }
+}
+function _devLaunchTestPlayers(){
+  const status=document.getElementById('devHarnessStatus');
+  const code=(document.getElementById('devHarnessCode')?.value||'').trim().toUpperCase();
+  if(!code){if(status)status.innerHTML='<span style="color:#f87171">Enter a lobby code first.</span>';return;}
+  const prefix=(document.getElementById('devHarnessPrefix')?.value||'').trim()||'Tester';
+  let n=parseInt(document.getElementById('devHarnessCount')?.value,10)||2;
+  n=Math.max(1,Math.min(6,n));
+  const base=`${location.origin}${location.pathname}`;
+  const stamp=Date.now().toString().slice(-4); // keeps names unique across repeated launches in the same session
+  let opened=0;
+  for(let i=1;i<=n;i++){
+    const name=`${prefix}${i}_${stamp}`;
+    const url=`${base}?lobby=${encodeURIComponent(code)}&testGuest=${encodeURIComponent(name)}`;
+    const w=window.open(url,'_blank','noopener');
+    if(w)opened++;
+  }
+  if(status){
+    if(opened<n){
+      status.innerHTML=`<span style="color:#f87171">Only ${opened}/${n} window(s) opened — your browser likely blocked the rest as popups. Allow popups for this site and try again.</span>`;
+    }else{
+      status.innerHTML=`<span style="color:#4ade80">Opened ${opened} test window${opened>1?'s':''} joining lobby ${_devEsc(code)} as ${_devEsc(prefix)}1${opened>1?`–${opened}`:''}_${stamp}.</span>`;
+    }
+  }
+}
+async function renderAdminDevtools(){
+  const el=document.getElementById('adminDevtools');
+  if(!el)return;
+  el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px">Loading…</div>';
+  let authUid=null;
+  try{const{data}=await sb.auth.getSession();authUid=data?.session?.user?.id||null;}catch(e){}
+  const storage=_devGetStorageOrigin();
+  const matchOk=!!authUid&&authUid===currentUserId;
+  const buildHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title"><i class="ti ti-git-commit" style="font-size:16px;color:var(--accent)"></i> Build &amp; Deploy</div>
+      <div class="dev-kv"><span>Build tag</span><code>${_devEsc(DEV_BUILD_TAG)}</code></div>
+      <div class="dev-kv"><span>Deployed</span><code id="devDeployedAt">checking…</code></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">This project has no build step, so there's no real git commit hash to read at runtime. <b>Build tag</b> is hand-stamped in source on each delivery. <b>Deployed</b> is fetched live from this file's own HTTP <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">Last-Modified</code> header, so it's always accurate even if the tag above isn't bumped.</div>
+    </div>`;
+  const idHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title"><i class="ti ti-id-badge-2" style="font-size:16px;color:var(--accent)"></i> Session Identity</div>
+      <div class="dev-kv"><span>currentUserId (client var)</span><code>${_devEsc(currentUserId)||'—'}</code></div>
+      <div class="dev-kv"><span>auth.uid() (live session)</span><code>${_devEsc(authUid)||'—'}</code></div>
+      <div class="dev-kv"><span>Match</span><code style="color:${authUid?(matchOk?'#4ade80':'#f87171'):'var(--muted)'}">${authUid?(matchOk?'✅ match':'⚠️ mismatch'):'—'}</code></div>
+      <div class="dev-kv"><span>Username</span><code>${_devEsc(currentUser)||'—'}</code></div>
+      <div class="dev-kv"><span>Guest?</span><code>${isGuest?'yes':'no'}</code></div>
+      <div class="dev-kv"><span>Auth token storage</span><code style="color:${storage.ok===false?'#f87171':storage.ok===true?'#4ade80':'var(--text)'}">${_devEsc(storage.label)}</code></div>
+      <div class="dev-kv"><span>Current lobby code</span><code>${(typeof lobbyCode!=='undefined'&&lobbyCode)?_devEsc(lobbyCode):'not in a lobby'}</code></div>
+      <div class="dev-kv"><span>Realtime channel</span><code>${rtChannel?'connected':'none'}</code></div>
+    </div>`;
+  const harnessHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title"><i class="ti ti-users-group" style="font-size:16px;color:var(--accent)"></i> Multi-Tab Test Harness</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Opens real separate browser windows via <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">window.open()</code> that auto-join a lobby as guests. Each window gets genuinely fresh <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">sessionStorage</code> — a real, separate anonymous identity, unlike duplicating a tab (Ctrl/Cmd+click), which copies session storage and causes identity collisions.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="devHarnessCode" placeholder="Lobby code" value="${(typeof lobbyCode!=='undefined'&&lobbyCode)?_devEsc(lobbyCode):''}" style="width:110px;text-transform:uppercase;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 10px;border-radius:8px">
+        <input id="devHarnessPrefix" placeholder="Name prefix" value="Tester" style="width:100px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 10px;border-radius:8px">
+        <input id="devHarnessCount" type="number" min="1" max="6" value="2" style="width:64px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 10px;border-radius:8px">
+        <button onclick="_devLaunchTestPlayers()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-player-play" style="font-size:14px"></i> Launch test players</button>
+      </div>
+      <div id="devHarnessStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+    </div>`;
+  const inspectorHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title"><i class="ti ti-search" style="font-size:16px;color:var(--accent)"></i> Lobby State Inspector</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Reads the live <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">lobbies</code>, <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">lobby_players</code>, and <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">question_answers</code> rows for any lobby code, straight from the database via an admin-only RPC — no need to write SQL by hand.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="devInspectCode" placeholder="Lobby code" value="${_devEsc(_devInspectorCode||(typeof lobbyCode!=='undefined'&&lobbyCode?lobbyCode:''))}" style="width:110px;text-transform:uppercase;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 10px;border-radius:8px" onkeydown="if(event.key==='Enter')_devInspectLobby()">
+        <button onclick="_devInspectLobby()" style="background:var(--accent-soft);border:1px solid var(--border2);color:var(--accent);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:8px;cursor:pointer">Inspect</button>
+        <button onclick="_devStopInspector()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 16px;border-radius:8px;cursor:pointer">Stop</button>
+        <span style="font-size:11px;color:var(--muted)">${_devInspectorCode?'auto-refreshing every 2.5s':''}</span>
+      </div>
+      <div id="devInspectorResult" style="margin-top:12px;display:flex;flex-direction:column;gap:12px"></div>
+    </div>`;
+  const dashboardHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span><i class="ti ti-layout-dashboard" style="font-size:16px;color:var(--accent)"></i> Lobby Dashboard</span>
+        <span style="display:flex;gap:8px">
+          <button onclick="_devRefreshLobbyDashboard()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-refresh" style="font-size:13px"></i> Refresh</button>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Most recent 50 lobbies, straight from the database. <b>Force cleanup</b> deletes a lobby immediately (players + answers cascade with it) instead of waiting on the cron job.</div>
+      <div id="devLobbyDashboardBody"></div>
+    </div>`;
+  const presenceHtml=`<div class="dev-card"><div class="dev-card-title"><i class="ti ti-users" style="font-size:16px;color:var(--accent)"></i> Live Presence Roster</div><div id="devPresenceBody"></div></div>`;
+  const logHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span><i class="ti ti-radar-2" style="font-size:16px;color:var(--accent)"></i> Realtime Broadcast Log</span>
+        <span style="display:flex;gap:8px">
+          <button id="devLogPauseBtn" onclick="_devTogglePause()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-player-pause" style="font-size:13px"></i> Pause</button>
+          <button onclick="_devClearLog()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-trash" style="font-size:13px"></i> Clear</button>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Logs every broadcast sent/received on the active lobby channel. <span style="color:#60a5fa;font-weight:800">OUT</span> = this client sent it. <span style="color:#4ade80;font-weight:800">IN</span> = this client received it (includes its own sends, since the channel is configured with <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">broadcast.self=true</code>).</div>
+      <div class="dev-log-wrap" id="devLogWrap"></div>
+    </div>`;
+  const rpcTraceHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span><i class="ti ti-database-cog" style="font-size:16px;color:var(--accent)"></i> RPC Call Tracer</span>
+        <span style="display:flex;gap:8px">
+          <button id="devRpcPauseBtn" onclick="_devToggleRpcTracePause()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-player-pause" style="font-size:13px"></i> Pause</button>
+          <button onclick="_devClearRpcTrace()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-trash" style="font-size:13px"></i> Clear</button>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Logs every <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">mpRpc()</code> call — <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">mp_advance_question</code> / <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">mp_submit_answer</code> — with params, timing, and a plain-language verdict on whether it succeeded, was rejected by a DB guard, or silently fell back to the legacy client-side path.</div>
+      <div class="dev-log-wrap" id="devRpcTraceWrap"></div>
+    </div>`;
+  const featureFlagHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title"><i class="ti ti-toggle-right" style="font-size:16px;color:var(--accent)"></i> Score Race Path Override</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Forces Score Race to use the DB-authoritative RPCs (<code style="background:var(--bg3);padding:1px 5px;border-radius:4px">mp_advance_question</code> / <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">mp_submit_answer</code>) or the legacy client-side path, per question format — regardless of the shipped default. <b>Auto</b> is the shipped behavior (every format except Name the Character (MC), which isn't ported to the DB path yet). Saved to this browser's localStorage, so it persists across reloads until changed back — this is a debug override, not a per-player setting.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${Object.keys(fmtLabels).map(fmt=>{
+          const current=devFormatOverride[fmt]||'auto';
+          const effective=_devUseServerAuthority(fmt);
+          const btn=(mode,label)=>`<button onclick="_devSetFormatOverride('${fmt}','${mode}')" style="font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;padding:5px 10px;border-radius:7px;cursor:pointer;border:1px solid ${current===mode?'var(--accent)':'var(--border2)'};background:${current===mode?'var(--accent-soft)':'var(--bg3)'};color:${current===mode?'var(--accent)':'var(--text)'}">${label}</button>`;
+          return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--faint)">
+            <span style="font-size:13px;font-weight:700;min-width:170px">${_devEsc(fmtLabels[fmt])}</span>
+            <span style="display:flex;gap:6px">${btn('auto','Auto')}${btn('db','Force DB')}${btn('legacy','Force Legacy')}</span>
+            <span style="font-size:11px;color:${effective?'#4ade80':'var(--muted)'};margin-left:auto">${effective?'▶ DB-authoritative':'▶ legacy client-side'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  const errorLogHtml=`
+    <div class="dev-card">
+      <div class="dev-card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span><i class="ti ti-alert-triangle" style="font-size:16px;color:var(--accent)"></i> Error Capture</span>
+        <span style="display:flex;gap:8px">
+          <button id="devErrorPauseBtn" onclick="_devToggleErrorLogPause()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">${devErrorLogPaused?'<i class="ti ti-player-play" style="font-size:13px"></i> Resume':'<i class="ti ti-player-pause" style="font-size:13px"></i> Pause'}</button>
+          <button onclick="_devClearErrorLog()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-trash" style="font-size:13px"></i> Clear</button>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Captures uncaught JS errors, unhandled promise rejections, and failed <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">fetch()</code> calls (network errors or non-2xx responses) anywhere on the page this session — newest first. Installed at page load, so it's already running before you open this panel.</div>
+      <div class="dev-log-wrap" id="devErrorWrap"></div>
+    </div>`;
+  el.innerHTML=`${buildHtml}${idHtml}${featureFlagHtml}${harnessHtml}${inspectorHtml}${dashboardHtml}${presenceHtml}${logHtml}${rpcTraceHtml}${errorLogHtml}`;
+  _renderDevBroadcastLog();
+  _renderDevRpcTrace();
+  _renderDevErrorLog();
+  _devRefreshLobbyDashboard();
+  _devRefreshPresence();
+  _devFetchDeployInfo();
+  if(_devInspectorCode)_devRunInspector();
+  _devStopAutoRefresh();
+  const devErrBadge=document.getElementById('adminCountDevErrors');
+  if(devErrBadge)devErrBadge.style.display='none';
+  // Lightweight refresh only — re-renders presence, not the whole panel, so
+  // typing in the harness/inspector inputs above doesn't get wiped mid-edit.
+  _devAutoRefreshTimer=setInterval(()=>{if(adminSection==='devtools')_devRefreshPresence();},4000);
+}
+function _devRefreshPresence(){
+  const el=document.getElementById('devPresenceBody');
+  if(!el)return;
+  if(!rtChannel){
+    el.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:6px 0">Not currently connected to a lobby realtime channel — join or host a lobby first.</div>`;
+    return;
+  }
+  let state={};
+  try{state=rtChannel.presenceState()||{};}catch(e){}
+  const rows=[];const seen={};
+  Object.entries(state).forEach(([key,arr])=>{
+    (arr||[]).forEach(p=>{rows.push({key,userId:p.userId,username:p.username});seen[p.userId]=(seen[p.userId]||0)+1;});
+  });
+  if(!rows.length){
+    el.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:6px 0">No presence entries yet.</div>`;
+    return;
+  }
+  let html=`<table class="dev-table"><thead><tr><th>Presence key</th><th>user_id</th><th>username</th><th></th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const dup=seen[r.userId]>1;
+    html+=`<tr${dup?' style="background:#f8717120"':''}><td><code>${_devEsc(r.key).slice(0,12)}…</code></td><td><code>${_devEsc(r.userId)}</code></td><td>${_devEsc(r.username)||'—'}</td><td style="color:#f87171;font-weight:800;font-size:11px">${dup?'⚠️ DUPLICATE':''}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  const dupCount=Object.values(seen).filter(c=>c>1).length;
+  if(dupCount>0){
+    html+=`<div style="margin-top:10px;padding:10px 12px;background:#f8717120;border:1px solid #f87171;border-radius:8px;font-size:13px;color:#f87171"><b>⚠️ Same user_id on ${dupCount} separate connection${dupCount>1?'s':''}.</b> Usually means two tabs share one anonymous session — commonly caused by opening the 2nd tab via "Duplicate Tab" instead of a fresh tab/window/incognito.</div>`;
+  }
+  el.innerHTML=html;
+}
+function _devStopAutoRefresh(){
+  if(_devAutoRefreshTimer){clearInterval(_devAutoRefreshTimer);_devAutoRefreshTimer=null;}
+  if(_devInspectorTimer){clearInterval(_devInspectorTimer);_devInspectorTimer=null;}
+}
+
+// ── Lobby State Inspector: admin-only read of lobbies/lobby_players/question_answers ──
+async function _devRpc(name,body){
+  try{
+    const token=await rtGetAuthToken();
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    let data=null;
+    try{data=await res.json();}catch(e){}
+    return {ok:res.ok,status:res.status,data};
+  }catch(e){
+    return {ok:false,status:0,data:null,error:String(e)};
+  }
+}
+function _devInspectLobby(){
+  const input=document.getElementById('devInspectCode');
+  const code=(input?.value||'').trim().toUpperCase();
+  if(!code){
+    const out=document.getElementById('devInspectorResult');
+    if(out)out.innerHTML='<div style="color:#f87171;font-size:13px">Enter a lobby code.</div>';
+    return;
+  }
+  _devInspectorCode=code;
+  clearInterval(_devInspectorTimer);
+  _devInspectorTimer=setInterval(()=>{if(adminSection==='devtools'&&_devInspectorCode)_devRunInspector();},2500);
+  renderAdminDevtools(); // rebuilds the shell once (user-triggered, not a timer tick) and kicks off the first fetch
+}
+function _devStopInspector(){
+  _devInspectorCode=null;
+  clearInterval(_devInspectorTimer);_devInspectorTimer=null;
+  renderAdminDevtools();
+}
+async function _devRunInspector(){
+  const out=document.getElementById('devInspectorResult');
+  if(!out||!_devInspectorCode)return;
+  const {ok,status,data,error}=await _devRpc('admin_lobby_inspector',{p_code:_devInspectorCode});
+  if(!ok){
+    out.innerHTML=`<div style="color:#f87171;font-size:13px">Request failed (status ${status}${error?': '+_devEsc(error):''}). Make sure you're signed in as an admin.</div>`;
+    return;
+  }
+  if(!data||data.found===false){
+    out.innerHTML=`<div style="color:var(--muted);font-size:13px">No lobby found with code "${_devEsc(_devInspectorCode)}".</div>`;
+    return;
+  }
+  const l=data.lobby||{};
+  const players=data.players||[];
+  const answers=data.answers||[];
+  const nameById={};players.forEach(p=>{nameById[p.user_id]=p.username;});
+  const fields=[
+    ['status',l.status],['mode',l.mode],['format',l.format],
+    ['current_q_index',l.current_q_index],['question_started_at',l.question_started_at],
+    ['question_time_limit',l.question_time_limit],['target_score',l.target_score],
+    ['game_over',String(!!l.game_over)],
+    ['winner_user_id',l.winner_user_id?(nameById[l.winner_user_id]||l.winner_user_id):null],
+    ['host_id',l.host_id],['expires_at',l.expires_at],['created_at',l.created_at]
+  ];
+  let html=`<div class="dev-card"><div class="dev-card-title" style="margin-bottom:6px"><i class="ti ti-door" style="font-size:15px;color:var(--accent)"></i> lobbies row</div>`;
+  fields.forEach(([k,v])=>{
+    html+=`<div class="dev-kv"><span>${k}</span><code>${(v===null||v===undefined||v==='')?'—':_devEsc(v)}</code></div>`;
+  });
+  if(l.current_question){
+    let cq=JSON.stringify(l.current_question);
+    if(cq.length>300)cq=cq.slice(0,300)+'…';
+    html+=`<div class="dev-kv" style="align-items:flex-start"><span>current_question</span><code style="max-width:68%;white-space:normal">${_devEsc(cq)}</code></div>`;
+  }
+  html+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <button onclick="_devForceAdvanceLobby('${l.id}')" style="background:#facc1520;border:1px solid #facc15;color:#facc15;font-size:12px;font-weight:800;padding:7px 12px;border-radius:8px;cursor:pointer">⏭ Force advance question</button>
+    <button onclick="_devResetLobby('${l.id}')" style="background:#60a5fa20;border:1px solid #60a5fa;color:#60a5fa;font-size:12px;font-weight:800;padding:7px 12px;border-radius:8px;cursor:pointer">↺ Reset to waiting room</button>
+  </div>`;
+  html+='</div>';
+  html+=`<div class="dev-card"><div class="dev-card-title" style="margin-bottom:6px"><i class="ti ti-users" style="font-size:15px;color:var(--accent)"></i> lobby_players (${players.length})</div>`;
+  if(!players.length){
+    html+='<div style="color:var(--muted);font-size:13px">No players yet.</div>';
+  }else{
+    html+='<table class="dev-table"><thead><tr><th>Username</th><th>user_id</th><th>Host</th><th>Score</th><th>Lives</th><th>Elim</th><th>Conn</th><th>Last seen</th><th></th></tr></thead><tbody>';
+    players.forEach(p=>{
+      html+=`<tr><td>${_devEsc(p.username)}</td><td><code>${_devEsc(p.user_id)}</code></td><td>${p.is_host?'👑':''}</td><td>${p.score}</td><td>${p.lives}</td><td>${p.eliminated?'✔':''}</td><td>${p.connected?'🟢':'🔴'}</td><td style="font-size:11px">${p.last_seen?new Date(p.last_seen).toLocaleTimeString():'—'}</td><td><button onclick="_devKickPlayer('${l.id}','${p.user_id}','${_devEsc(p.username)}')" style="background:#f8717120;border:1px solid #f87171;color:#f87171;font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;white-space:nowrap">Kick</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  html+=`<div class="dev-card"><div class="dev-card-title" style="margin-bottom:6px"><i class="ti ti-list-check" style="font-size:15px;color:var(--accent)"></i> question_answers (${answers.length})</div>`;
+  if(!answers.length){
+    html+='<div style="color:var(--muted);font-size:13px">No answers recorded yet.</div>';
+  }else{
+    html+='<table class="dev-table"><thead><tr><th>Q#</th><th>Player</th><th>Correct</th><th>Points</th><th>Choice</th><th>Answered at</th></tr></thead><tbody>';
+    answers.forEach(a=>{
+      html+=`<tr><td>${a.q_index}</td><td>${_devEsc(nameById[a.user_id]||a.user_id)}</td><td>${a.correct?'✅':'❌'}</td><td>${a.points}</td><td>${_devEsc(a.choice)||'—'}</td><td style="font-size:11px">${a.answered_at?new Date(a.answered_at).toLocaleTimeString():'—'}</td></tr>`;
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  out.innerHTML=html;
+}
+
+// ── Force actions: unstick / reset / kick, acting on the currently-inspected lobby ──
+async function _devForceAdvanceLobby(lobbyId){
+  if(!confirm('Force-advance this lobby past its current question? Clients will need to trigger the next question themselves afterward (e.g. rejoin) — this just clears the stuck state.'))return;
+  const {ok,data,status,error}=await _devRpc('admin_force_advance_lobby',{p_lobby_id:lobbyId});
+  if(!ok||!data||!data.ok)alert(`Force-advance failed${status?` (status ${status})`:''}${error?': '+error:''}.`);
+  if(_devInspectorCode)_devRunInspector();
+}
+async function _devResetLobby(lobbyId){
+  if(!confirm("Reset this lobby back to the waiting room? This zeroes every player's score/lives, clears the current question, and wipes recorded answers for this lobby. Can't be undone."))return;
+  const {ok,data,status,error}=await _devRpc('admin_reset_lobby',{p_lobby_id:lobbyId});
+  if(!ok||!data||!data.ok)alert(`Reset failed${status?` (status ${status})`:''}${error?': '+error:''}.`);
+  if(_devInspectorCode)_devRunInspector();
+}
+async function _devKickPlayer(lobbyId,userId,username){
+  if(!confirm(`Kick ${username} from this lobby? They won't be able to rejoin (added to kicked_players).`))return;
+  const {ok,data,status,error}=await _devRpc('admin_kick_player',{p_lobby_id:lobbyId,p_user_id:userId});
+  if(!ok||!data||!data.ok)alert(`Kick failed${status?` (status ${status})`:''}${error?': '+error:''}.`);
+  if(_devInspectorCode)_devRunInspector();
+}
+
+// ── Lobby Dashboard: list + force-cleanup, admin_list_lobbies / admin_delete_lobby ──
+async function _devRefreshLobbyDashboard(){
+  const el=document.getElementById('devLobbyDashboardBody');
+  if(!el)return;
+  el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0">Loading…</div>';
+  const {ok,status,data,error}=await _devRpc('admin_list_lobbies',{p_limit:50});
+  if(!ok){
+    el.innerHTML=`<div style="color:#f87171;font-size:13px">Request failed (status ${status}${error?': '+_devEsc(error):''}). Make sure you're signed in as an admin.</div>`;
+    return;
+  }
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px">No lobbies found.</div>';
+    return;
+  }
+  let html='<table class="dev-table"><thead><tr><th>Code</th><th>Status</th><th>Mode/Fmt</th><th>Host</th><th>Players</th><th>Expires</th><th>Created</th><th></th></tr></thead><tbody>';
+  const now=Date.now();
+  rows.forEach(l=>{
+    const expired=l.expires_at&&new Date(l.expires_at).getTime()<now;
+    html+=`<tr>
+      <td><code>${_devEsc(l.code)}</code></td>
+      <td>${_devEsc(l.status)}${l.game_over?' 🏁':''}</td>
+      <td style="font-size:11px">${_devEsc(l.mode)}/${_devEsc(l.format)}</td>
+      <td>${_devEsc(l.host_username)||'—'}</td>
+      <td>${l.player_count}</td>
+      <td style="font-size:11px;color:${expired?'#f87171':'var(--text)'}">${l.expires_at?new Date(l.expires_at).toLocaleTimeString():'—'}${expired?' (expired)':''}</td>
+      <td style="font-size:11px">${l.created_at?new Date(l.created_at).toLocaleTimeString():'—'}</td>
+      <td><button onclick="_devForceDeleteLobby('${l.id}','${_devEsc(l.code)}')" style="background:#f8717120;border:1px solid #f87171;color:#f87171;font-size:11px;font-weight:800;padding:5px 9px;border-radius:7px;cursor:pointer;white-space:nowrap">Force cleanup</button></td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+async function _devForceDeleteLobby(lobbyId,code){
+  if(!confirm(`Delete lobby ${code} right now? This removes it and all its players/answers immediately — can't be undone.`))return;
+  const {ok,status,data,error}=await _devRpc('admin_delete_lobby',{p_lobby_id:lobbyId});
+  if(!ok||!data||!data.deleted){
+    alert(`Failed to delete lobby ${code}${status?` (status ${status})`:''}${error?': '+error:''}.`);
+  }
+  _devRefreshLobbyDashboard();
+}
+
+function _devTraceRpc(name,body,meta){
+  if(devRpcTracePaused)return;
+  devRpcTrace.push({ts:Date.now(),name,body,...meta});
+  if(devRpcTrace.length>DEV_RPC_TRACE_MAX)devRpcTrace.shift();
+  if(adminSection==='devtools')_renderDevRpcTrace();
+}
+function _devClearRpcTrace(){devRpcTrace=[];_renderDevRpcTrace();}
+function _devToggleRpcTracePause(){
+  devRpcTracePaused=!devRpcTracePaused;
+  const btn=document.getElementById('devRpcPauseBtn');
+  if(btn)btn.innerHTML=devRpcTracePaused?'<i class="ti ti-player-play" style="font-size:13px"></i> Resume':'<i class="ti ti-player-pause" style="font-size:13px"></i> Pause';
+}
+// Turns a raw RPC response into a one-line, color-coded verdict specific to
+// the two known Score Race functions, so "did it fall back to the legacy
+// client-side path" is readable at a glance instead of requiring the admin
+// to parse the jsonb by eye. Unrecognized RPC names get a generic verdict.
+function _devRpcVerdict(entry){
+  const j=entry.json;
+  if(!entry.ok){
+    return {color:'#f87171',text:`❌ HTTP ${entry.status}${j&&j.message?': '+j.message:''} — mpRpc() returns null, caller falls back to the legacy path`};
+  }
+  if(entry.parseError){
+    return {color:'#f87171',text:'❌ response was not valid JSON — mpRpc() returns null, caller falls back'};
+  }
+  if(!j){
+    return {color:'#f87171',text:'❌ empty response'};
+  }
+  if(entry.name==='mp_advance_question'){
+    if(j.advanced===true)return {color:'#4ade80',text:`✅ advanced → q_index ${j.q_index}`};
+    if(j.reason==='already_advanced')return {color:'#60a5fa',text:`↪️ another client already advanced it — reused q_index ${j.q_index} (not a fallback, this is the optimistic-concurrency guard working as intended)`};
+    return {color:'#f87171',text:`❌ did not advance: ${j.reason||'unknown reason'} — caller falls back to legacy fetchQuestion()`};
+  }
+  if(entry.name==='mp_submit_answer'){
+    if(j.accepted===true)return {color:'#4ade80',text:`✅ accepted — correct=${j.correct}, +${j.points}pts${j.new_score!=null?`, new_score=${j.new_score}`:''}${j.new_lives!=null?`, new_lives=${j.new_lives}`:''}`};
+    if(j.reason==='already_answered')return {color:'#facc15',text:`⚠️ already_answered (no-op, DB PK guard) — was originally correct=${j.correct}, ${j.points}pts`};
+    if(j.reason==='stale_question')return {color:'#facc15',text:`⚠️ stale_question — lobby has moved on to q_index ${j.q_index}`};
+    return {color:'#f87171',text:`❌ rejected: ${j.reason||'unknown reason'}`};
+  }
+  return {color:'#4ade80',text:'✅ ok'};
+}
+function _renderDevRpcTrace(){
+  const wrap=document.getElementById('devRpcTraceWrap');
+  if(!wrap)return;
+  if(!devRpcTrace.length){
+    wrap.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">No RPC calls traced yet this session.</div>';
+    return;
+  }
+  const atBottom=wrap.scrollTop+wrap.clientHeight>=wrap.scrollHeight-20;
+  wrap.innerHTML=devRpcTrace.map(e=>{
+    const t=new Date(e.ts);
+    const ts=t.toLocaleTimeString(undefined,{hour12:false})+'.'+String(t.getMilliseconds()).padStart(3,'0');
+    const v=_devRpcVerdict(e);
+    let bodyStr='';try{bodyStr=JSON.stringify(e.body);}catch(err){bodyStr=String(e.body);}
+    if(bodyStr.length>160)bodyStr=bodyStr.slice(0,160)+'…';
+    let jsonStr='';try{jsonStr=JSON.stringify(e.json);}catch(err){jsonStr=String(e.json);}
+    if(jsonStr.length>200)jsonStr=jsonStr.slice(0,200)+'…';
+    return `<div class="dev-log-row" style="flex-direction:column;align-items:stretch;gap:3px">
+      <div style="display:flex;gap:9px;align-items:baseline">
+        <span class="dev-log-ts">${ts}</span>
+        <span class="dev-log-event">${_devEsc(e.name)}</span>
+        <span style="color:var(--muted)">${e.ms}ms</span>
+      </div>
+      <div style="color:${v.color};font-weight:700">${v.text}</div>
+      <div style="color:var(--muted);opacity:.8;font-size:11px">params: ${_devEsc(bodyStr)}</div>
+      <div style="color:var(--text);opacity:.7;font-size:11px">raw: ${_devEsc(jsonStr)}</div>
+    </div>`;
+  }).join('');
+  if(atBottom)wrap.scrollTop=wrap.scrollHeight;
+}
+
+function _renderDevBroadcastLog(){
+  const wrap=document.getElementById('devLogWrap');
+  if(!wrap)return;
+  if(!devBroadcastLog.length){
+    wrap.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">No broadcasts logged yet this session.</div>';
+    return;
+  }
+  const atBottom=wrap.scrollTop+wrap.clientHeight>=wrap.scrollHeight-20;
+  wrap.innerHTML=devBroadcastLog.map(e=>{
+    const t=new Date(e.ts);
+    const ts=t.toLocaleTimeString(undefined,{hour12:false})+'.'+String(t.getMilliseconds()).padStart(3,'0');
+    let payloadStr='';
+    try{payloadStr=JSON.stringify(e.payload);}catch(err){payloadStr=String(e.payload);}
+    if(payloadStr&&payloadStr.length>200)payloadStr=payloadStr.slice(0,200)+'…';
+    return `<div class="dev-log-row"><span class="dev-log-ts">${ts}</span><span class="${e.dir==='in'?'dev-log-dir-in':'dev-log-dir-out'}">${e.dir==='in'?'IN':'OUT'}</span><span class="dev-log-event">${_devEsc(e.event)}</span><span class="dev-log-payload">${_devEsc(payloadStr)}</span></div>`;
+  }).join('');
+  if(atBottom)wrap.scrollTop=wrap.scrollHeight;
+}
+const DEV_ERROR_TYPE_LABEL={jserror:{label:'JS',color:'#f87171'},promise:{label:'PROMISE',color:'#fbbf24'},fetch:{label:'FETCH',color:'#60a5fa'}};
+function _renderDevErrorLog(){
+  const wrap=document.getElementById('devErrorWrap');
+  if(!wrap)return;
+  if(!devErrorLog.length){
+    wrap.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">No uncaught errors, rejections, or failed fetches this session. 🎉</div>';
+    return;
+  }
+  wrap.innerHTML=devErrorLog.slice().reverse().map(e=>{
+    const t=new Date(e.ts);
+    const ts=t.toLocaleTimeString(undefined,{hour12:false})+'.'+String(t.getMilliseconds()).padStart(3,'0');
+    const tag=DEV_ERROR_TYPE_LABEL[e.type]||{label:e.type.toUpperCase(),color:'var(--muted)'};
+    let detail=e.detail||'';
+    if(detail.length>400)detail=detail.slice(0,400)+'…';
+    return `<div class="dev-log-row" style="align-items:flex-start;flex-direction:column;gap:2px">
+      <div style="display:flex;gap:9px;align-items:baseline;width:100%">
+        <span class="dev-log-ts">${ts}</span>
+        <span style="font-weight:800;flex-shrink:0;color:${tag.color}">${tag.label}</span>
+        <span class="dev-log-payload" style="color:var(--text);opacity:1;font-weight:700">${_devEsc(e.message)}</span>
+      </div>
+      ${detail?`<div class="dev-log-payload" style="padding-left:0;white-space:pre-wrap">${_devEsc(detail)}</div>`:''}
+    </div>`;
+  }).join('');
 }
 // Pure render — called after fetchAdminBrowse() populates adminBrowseRows/adminBrowseTotal
 function renderAdminBrowseFromCache(){
