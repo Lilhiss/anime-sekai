@@ -3197,10 +3197,23 @@ window.addEventListener('unhandledrejection',function(e){
 // Project Settings → API → Project URL and anon public key
 const SUPABASE_URL  = 'https://ispagvwuxgbzzycdxdfx.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcGFndnd1eGdienp5Y2R4ZGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTcwMDksImV4cCI6MjA5NDQ3MzAwOX0.COahnEHqu4R-_OBAJX1J-4qGk_Lo04SWKfNBfkYCTn0';
+// Dev Tools multi-tab harness isolation — must be captured synchronously, here,
+// before anonSafeStorage/createClient run below. A window opened by "Launch test
+// players" carries ?testGuest=NAME. Real (non-anonymous) sessions are persisted in
+// localStorage (see anonSafeStorage), and localStorage IS shared across every
+// same-origin window.open() window — unlike sessionStorage, which is genuinely
+// per-window. Without this, a harness window launched while the admin is signed
+// into a real account boots up already authenticated as that admin account (reads
+// it straight out of shared localStorage) instead of ever reaching the guest-name
+// screen — the join-poll below then just quietly times out waiting for a screen
+// that was never going to appear. Namespacing the storage key for these windows
+// means they can never see the real session key at all, guest or not.
+const _devHarnessGuestName=(()=>{try{return new URLSearchParams(location.search).get('testGuest');}catch(e){return null;}})();
 // Custom storage that never saves anonymous sessions to localStorage
 // This prevents guest play from blocking real sign-in on the next visit
 const anonSafeStorage = {
   getItem: (key) => {
+    if(_devHarnessGuestName)key='devtest:'+key;
     try{
       // Check sessionStorage first for anon sessions (survives refresh, not tab close)
       const sess = sessionStorage.getItem(key);
@@ -3216,6 +3229,7 @@ const anonSafeStorage = {
     }catch(e){ return null; }
   },
   setItem: (key, value) => {
+    if(_devHarnessGuestName)key='devtest:'+key;
     try{
       const parsed = JSON.parse(value);
       if(parsed?.user?.is_anonymous === true){
@@ -3227,6 +3241,7 @@ const anonSafeStorage = {
     }catch(e){ localStorage.setItem(key, value); }
   },
   removeItem: (key) => {
+    if(_devHarnessGuestName)key='devtest:'+key;
     try{ localStorage.removeItem(key); }catch(e){}
     try{ sessionStorage.removeItem(key); }catch(e){}
   }
