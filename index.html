@@ -7299,20 +7299,31 @@ async function rtRejoinActiveLobby(code){
     // timer bar reflects how much of this question's window is actually left.
     questionStartTime=Date.now()-elapsed*1000;
     timeLeft=remaining;
+    // How far past the question's natural end we are. remaining above is clamped to
+    // >=0 (it's just used for the timer bar), so it can't tell "just expired" apart
+    // from "expired ages ago" — this can go negative (question still running).
+    const overrun=elapsed-qTimeLimit;
+    // The normal flow already has an in-built ~5s "Next in..." wrap-up window
+    // (mpStartAutoNext) after a question naturally ends, during which a perfectly
+    // healthy, still-connected client is expected to be mid-countdown. A reconnect
+    // landing in that window is routine (WiFi blip, phone backgrounding, tab refresh)
+    // and does NOT mean the lobby is abandoned — it happens on every question. Only
+    // treat this as "genuinely stuck, nobody was ever going to advance it" once we're
+    // well past that window; otherwise just render normally and let whichever client
+    // is actually driving mpStartAutoNext finish its own countdown undisturbed.
+    const MP_RECONNECT_STUCK_GRACE_S=12;
     if(alreadyAnswered){
       mpLockAlreadyAnsweredUI(lobby.current_q_index);
-    }else if(remaining<=0){
-      // The question's timer fully expired while we were disconnected — this is NOT
-      // "you already answered" (mpLockAlreadyAnsweredUI's message used to claim that
-      // regardless, which is exactly what produced the misleading "already answered"
-      // lock on rejoin). More importantly: nobody was ever going to advance this game.
-      // Only the host calls mpHostFetchAndBroadcast()/mp_advance_question — normally
-      // triggered by mpTimeOut() on whichever client is watching when the timer hits
-      // zero. If the host is the one who disconnected, there was no client left to
-      // notice the timeout at all, so the lobby sat frozen the entire time they were
-      // gone with no path to unstick itself. Since isHost above was just set from the
-      // DB row (not assumed), if we're rejoining as the host we can safely trigger the
-      // exact same advance call the normal 'next_question' handler makes.
+    }else if(overrun>=MP_RECONNECT_STUCK_GRACE_S){
+      // Comfortably past the normal wrap-up window — this question's timer expired
+      // long enough ago that any client which was going to run the normal
+      // mpStartAutoNext→advance sequence already would have. This is NOT "you
+      // already answered" (the old mpLockAlreadyAnsweredUI message used to claim
+      // that regardless, which is what produced the misleading "already answered"
+      // lock on rejoin) — show the true reason instead. And since isHost above was
+      // read from the DB row (not assumed), if we're rejoining as the host, we can
+      // safely trigger the same advance call the normal 'next_question' handler
+      // makes — nothing else was going to.
       answered=true;answeredQIndex=lobby.current_q_index;
       document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
       const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
@@ -7372,6 +7383,31 @@ async function disconnectRejoin(){
 }
 
 let _rtVisibilityAbort=null;
+// Lightweight recovery for a client stuck on the "Generating question" spinner
+// because it never received the one-shot 'question' broadcast for the first
+// question of a Score Race (DB-authoritative) game — see the lobbies UPDATE
+// listener in rtSubscribe() below for how this gets triggered. Deliberately NOT
+// reusing rtRejoinActiveLobby here: that function assumes a genuine disconnect
+// and broadcasts player_reconnected/player_rejoined, which would misleadingly
+// tell everyone else this player "rejoined" when they were actually here the
+// whole time, just staring at a spinner. This just renders the question that's
+// already sitting in the lobby row we were handed — no reconnect machinery.
+function mpSelfHealMissingQuestion(lobbyRow){
+  if(currentQData)return; // already recovered by the time this ran — e.g. the original broadcast arrived late
+  mpDbQIndex=lobbyRow.current_q_index;
+  currentQData=lobbyRow.current_question;
+  const elapsed=lobbyRow.question_started_at?Math.max(0,(Date.now()-new Date(lobbyRow.question_started_at).getTime())/1000):0;
+  const qTimeLimit=lobbyRow.question_time_limit||raceTimeLimit;
+  const remaining=Math.max(0,qTimeLimit-elapsed);
+  const qLoadingEl=document.getElementById('mpQLoading');
+  if(qLoadingEl)qLoadingEl.style.display='none';
+  mpShowQuestion(currentQData,null);
+  // mpShowQuestion just stamped questionStartTime=now() — patch it back so the
+  // timer bar reflects how much of this question's window is actually left,
+  // same fix applied on the rejoin path for the same reason.
+  questionStartTime=Date.now()-elapsed*1000;
+  timeLeft=remaining;
+}
 function rtSubscribe(lobbyId){
   if(rtChannel)rtChannel.unsubscribe();
   // Cancel any visibilitychange listeners from a previous session
@@ -7393,6 +7429,22 @@ function rtSubscribe(lobbyId){
     if(!isHost&&!lobbyInGame&&payload?.new?.status==='active'){
       const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
       if(inLobby)showLobbyActiveBanner();
+    }
+    // Fallback for a dropped first-question broadcast — same root cause as the
+    // game_started case above, one step later. Score Race's DB-authoritative path is
+    // the only mode/format combo that persists current_question onto the lobbies row
+    // at all (everything else is broadcast-only with no DB fallback available), so
+    // this can only ever help that path — same boundary as _devUseServerAuthority()
+    // elsewhere. A freshly-joined client's realtime subscription can lose the
+    // one-shot 'question' broadcast the host sends right after game start, leaving
+    // them stuck on the "Generating question" spinner forever with no broadcast left
+    // to wait for. This listener is already watching the row for other reasons, so
+    // once current_question shows up and we're sitting on the quiz page with nothing
+    // rendered yet, self-heal directly from the row instead.
+    if(lobbyInGame&&!currentQData&&payload?.new?.current_question){
+      const onQuizPage=document.getElementById('page-mp-quiz')?.classList.contains('active');
+      const spinnerUp=document.getElementById('mpQLoading')?.style.display!=='none';
+      if(onQuizPage&&spinnerUp)mpSelfHealMissingQuestion(payload.new);
     }
   });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
