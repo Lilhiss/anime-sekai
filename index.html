@@ -7320,10 +7320,7 @@ async function rtRejoinActiveLobby(code){
       // mpStartAutoNext→advance sequence already would have. This is NOT "you
       // already answered" (the old mpLockAlreadyAnsweredUI message used to claim
       // that regardless, which is what produced the misleading "already answered"
-      // lock on rejoin) — show the true reason instead. And since isHost above was
-      // read from the DB row (not assumed), if we're rejoining as the host, we can
-      // safely trigger the same advance call the normal 'next_question' handler
-      // makes — nothing else was going to.
+      // lock on rejoin) — show the true reason instead.
       answered=true;answeredQIndex=lobby.current_q_index;
       document.querySelectorAll('#mpAnswersGrid .ans').forEach(a=>a.classList.add('locked'));
       const rjInput=document.getElementById('mpTypeInput');if(rjInput)rjInput.disabled=true;
@@ -7334,8 +7331,15 @@ async function rtRejoinActiveLobby(code){
         const toCorrectAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
         mpQTextTO.innerHTML=`<div class="q-answer-reveal">${toCorrectAns}</div>${fallbackHintHTML(currentQData)}<div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">⏱️ Time ran out on this one${isHost?' — catching up…':''}</div>`;
       }
-      if(isHost)mpHostFetchAndBroadcast();
     }
+    // Nudge the game forward if it looks abandoned — deliberately OUTSIDE and
+    // independent of the alreadyAnswered/overrun branching above. Whether THIS
+    // player already answered says nothing about whether anyone was left to
+    // advance the game after they left — a host who answered correctly and then
+    // quit is exactly the original bug scenario: their own answer being recorded
+    // doesn't mean the lobby didn't sit frozen the whole time they were gone.
+    // isHost above was read from the DB row, not assumed, so this is safe.
+    if(isHost&&overrun>=MP_RECONNECT_STUCK_GRACE_S)mpHostFetchAndBroadcast();
     showLobbyToast('🔄 Reconnected!','success');
     return true;
   }
@@ -7407,6 +7411,34 @@ function mpSelfHealMissingQuestion(lobbyRow){
   // same fix applied on the rejoin path for the same reason.
   questionStartTime=Date.now()-elapsed*1000;
   timeLeft=remaining;
+}
+// Poll-based backstop for the same problem mpSelfHealMissingQuestion targets, for
+// when even THAT doesn't arrive in time. postgres_changes events travel over the
+// same realtime connection as broadcasts — a client whose channel subscription
+// hasn't fully settled yet can miss the 'question' broadcast AND the lobbies-row
+// UPDATE for the identical reason (both are one-shot realtime deliveries), so
+// neither one alone can fully close this race. This checks the database directly
+// over plain REST, independent of realtime delivery entirely, on a short delay so
+// it does nothing in the normal case where the question already arrived on time.
+function mpPollForMissingQuestion(attempt){
+  attempt=attempt||1;
+  const MP_MISSING_Q_POLL_MAX=6; // ~12s of polling before giving up
+  setTimeout(async()=>{
+    if(currentQData)return; // recovered already — broadcast, postgres_changes, or an earlier poll got there first
+    if(!document.getElementById('page-mp-quiz')?.classList.contains('active'))return; // navigated away
+    if(!currentLobbyId)return;
+    try{
+      const token=await rtGetAuthToken();
+      const res=await fetch(
+        `${SUPABASE_URL}/rest/v1/lobbies?select=current_question,current_q_index,question_started_at,question_time_limit&id=eq.${currentLobbyId}&limit=1`,
+        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+      );
+      const rows=await res.json();
+      const row=Array.isArray(rows)?rows[0]:null;
+      if(row?.current_question){mpSelfHealMissingQuestion(row);return;}
+    }catch(e){}
+    if(attempt<MP_MISSING_Q_POLL_MAX)mpPollForMissingQuestion(attempt+1);
+  },2000);
 }
 function rtSubscribe(lobbyId){
   if(rtChannel)rtChannel.unsubscribe();
@@ -7564,7 +7596,7 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     // Non-hosts: show countdown while still on lobby page, transition when done
     const hpFirstHolder=payload.mode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
-    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();},hpFirstHolder);
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();mpPollForMissingQuestion();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
