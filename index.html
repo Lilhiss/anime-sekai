@@ -3442,6 +3442,12 @@ let raceTimeLimit=20,pendingMode='race',questionStartTime=0,lastPtsEarned=0,pend
 let selectedQuestionLimit=10;
 let soloRaceTarget=100; // solo Score Race target score (50/75/100/150/custom)
 let quizHistory=[],currentQData=null,prefetchedQuestion=null;
+// Holds the in-flight Promise from an early mp_advance_question call, not just its
+// resolved value — so mpHostFetchAndBroadcast can `await` it whether it's already
+// resolved or still pending, rather than risking a second RPC call racing the first
+// (the RPC is a real mutation, unlike fetchQuestion(), so it can't just be re-fired
+// as a harmless fallback the way prefetchedQuestion's read-only pick can).
+let prefetchedRpcPromise=null;
 let reportedQuestionIds=new Set(); // tracks IDs flagged in-game or via recap
 // Hot Potato per-player round history — one entry per round, tagged with whichever
 // player was actively holding the potato that round. Kept separate from quizHistory
@@ -7252,7 +7258,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -7546,14 +7552,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+    qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -8262,16 +8268,29 @@ async function mpHostFetchAndBroadcast(){
   const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
   let qData,hpFuse=null;
   if(useRpc){
-    const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
-    const{data,error}=await sb.rpc('mp_advance_question',{
-      p_lobby_id:currentLobbyId,
-      p_expected_q_index:mpDbQIndex,
-      p_format:selectedFormat,
-      p_topic_type:topic?topic.type:null,
-      p_topic_value:topic?topic.name:null,
-      p_exclude_ids:quizHistory.map(h=>h.id).filter(id=>id!=null),
-      p_time_limit:raceTimeLimit
-    });
+    let data,error;
+    if(prefetchedRpcPromise){
+      // mpStartAutoNext already fired this during the 5s "Next in..." pause —
+      // await the same promise (whether it's already resolved or still in
+      // flight) instead of firing a second call, since this is a real
+      // mutation, not a re-fireable read like the legacy fetchQuestion() path.
+      ({data,error}=await prefetchedRpcPromise);
+      prefetchedRpcPromise=null;
+    } else {
+      // No prefetch available — first question of the game, or the auto-next
+      // pause was skipped for some reason. Falls back to a live call here,
+      // same as before this prefetch existed.
+      const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+      ({data,error}=await sb.rpc('mp_advance_question',{
+        p_lobby_id:currentLobbyId,
+        p_expected_q_index:mpDbQIndex,
+        p_format:selectedFormat,
+        p_topic_type:topic?topic.type:null,
+        p_topic_value:topic?topic.name:null,
+        p_exclude_ids:quizHistory.map(h=>h.id).filter(id=>id!=null),
+        p_time_limit:raceTimeLimit
+      }));
+    }
     if(error||!data||(!data.advanced&&data.reason!=='already_advanced')){
       // Couldn't reach the server or it rejected the call outright (not just
       // "someone already advanced it") — fall back to the old local pick so the
@@ -8358,7 +8377,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+  score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -8375,7 +8394,21 @@ function mpStartAutoNext(onDone,isLastQuestion){
   // "next" to prefetch) and for Slow Reveal, which has its own separate
   // host-fetch path (srHostFetchAndBroadcast) that doesn't consult this.
   if(isHost&&!isLastQuestion&&lobbyMode!=='slowreveal'){
-    fetchQuestion().then(q=>{prefetchedQuestion=q});
+    const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+    if(useRpc){
+      const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+      prefetchedRpcPromise=sb.rpc('mp_advance_question',{
+        p_lobby_id:currentLobbyId,
+        p_expected_q_index:mpDbQIndex,
+        p_format:selectedFormat,
+        p_topic_type:topic?topic.type:null,
+        p_topic_value:topic?topic.name:null,
+        p_exclude_ids:quizHistory.map(h=>h.id).filter(id=>id!=null),
+        p_time_limit:raceTimeLimit
+      });
+    } else {
+      fetchQuestion().then(q=>{prefetchedQuestion=q});
+    }
   }
   // onDone only actually does anything on the host's client (it broadcasts the next
   // step) — so a backgrounded host stalling here freezes the game exactly like a
@@ -9711,15 +9744,16 @@ function gsTab(name){
   broadcastLobbySettings(true);
 }
 // Settings are now inline in the lobby room (no modal).
-function startLobbyGame(){
+async function startLobbyGame(){
   if(!isHost)return;
   lobbyInGame=true;
   clearLobbyTimer();
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
-  lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  const startingLives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;
+  lobbyPlayers.forEach(p=>{p.score=0;p.lives=startingLives;p.eliminated=false;});
+  score=0;lives=startingLives;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -9730,11 +9764,36 @@ function startLobbyGame(){
   }
   mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;mpPlayerFlagWindows={};
   mpSnapshotScores();
+  // A rematch reuses this same lobby row rather than creating a fresh one, so
+  // Supabase-side progression state (current_q_index/current_question/etc.),
+  // scores (mp_submit_answer increments rather than sets), and question_answers
+  // rows all carry over from the previous game unless explicitly cleared here.
+  // Awaited before anything below reads that state, so the very first
+  // mp_advance_question call of a new game never mistakes leftover state from
+  // the last one for "already advanced".
+  const{error:resetError}=await sb.rpc('mp_reset_lobby_progression',{p_lobby_id:currentLobbyId,p_starting_lives:startingLives});
+  if(resetError)console.error('mp_reset_lobby_progression failed — proceeding anyway, same risk as before this existed:',resetError);
   rtSetLobbyStatus('active');
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx,hpTurnOrder,showTyping:lobbyShowTyping}});
+    // Kick off the first question now, in parallel with the 3-2-1 countdown below,
+    // same reasoning as mpStartAutoNext's mid-game prefetch — the round trip
+    // overlaps a pause the player's already looking at instead of blocking on a
+    // "Generating Question..." spinner right as the quiz screen appears.
+    if((lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc'&&!resetError){
+      const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+      prefetchedRpcPromise=sb.rpc('mp_advance_question',{
+        p_lobby_id:currentLobbyId,
+        p_expected_q_index:mpDbQIndex,
+        p_format:selectedFormat,
+        p_topic_type:topic?topic.type:null,
+        p_topic_value:topic?topic.name:null,
+        p_exclude_ids:[],
+        p_time_limit:raceTimeLimit
+      });
+    }
     // Show the countdown while still on the lobby page, then transition to mp-quiz
     // once it finishes. This prevents the quiz UI from flashing behind the overlay.
     const hpFirstHolder=lobbyMode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
@@ -10424,10 +10483,11 @@ async function mpCheckTypeAnswer(){
   // Correct answer — lock and finalise
   answered=true;answeredQIndex=qIndex;
   mpCancelBackup(mpActiveFuseBackupId);
-  input.disabled=true;input.classList.add('correct-input');
+  input.disabled=true;
   document.getElementById('mpTypeSubmitBtn').disabled=true;
   const hint=document.getElementById('mpTypeWrongHint');if(hint)hint.style.display='none';
   if(isHP){
+    input.classList.add('correct-input');
     const active=hpActivePlayer();
     document.body.classList.remove('hp-my-turn');
     // Only a correct answer reaches here; life-loss on wrong answers happens in mpTimeOut
@@ -10462,6 +10522,7 @@ async function mpCheckTypeAnswer(){
       const mpTaElapsed=(Date.now()-questionStartTime)/1000;
       mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
     }
+    input.classList.add('correct-input');
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
@@ -10743,7 +10804,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+  qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
