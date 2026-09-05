@@ -3425,6 +3425,13 @@ try{const _ct=JSON.parse(localStorage.getItem('as_theme')||'null');if(_ct){if(_c
 let selectedFormat='mc',selectedMode='race';
 let selectedDifficulty='easy';
 let score=0,lives=3,qIndex=0,timerInterval=null,timeLeft=20,answered=false;
+// Mirrors lobbies.current_q_index in Supabase for RPC-driven multiplayer modes
+// (Race/Classic/Survival, non-char-mc). Kept separate from qIndex — which stays
+// purely local round bookkeeping for UI/history/caps — because mpDbQIndex is
+// NEVER incremented locally; it's only ever set from an mp_advance_question or
+// mp_submit_answer response, so it's always exactly what the server says,
+// regardless of when/how qIndex gets bumped by the various trigger call sites.
+let mpDbQIndex=0;
 // Tracks which qIndex `answered` actually applies to. Needed because a mid-game
 // rejoin re-renders the live question via mpShowQuestion(), which unconditionally
 // resets answered=false — without this, a player who already answered correctly
@@ -7245,7 +7252,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -7539,14 +7546,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+    qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -8247,10 +8254,44 @@ function mpResetQuestionCard(){
 
 async function mpHostFetchAndBroadcast(){
   document.getElementById('mpQLoading').style.display='flex';
-  const qData=prefetchedQuestion||await fetchQuestion();
+  // Race/Classic/Survival share a timer-or-all-answered shape that maps onto one
+  // idempotent RPC. char-mc is excluded even in those modes — its MC options are
+  // built from AniList/Jikan distractors client-side, which the RPC's question
+  // snapshot has no way to carry. Hot Potato/Slow Reveal stay on the legacy path
+  // entirely — turn-order/buzz-in progression is a different shape, handled separately.
+  const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+  let qData,hpFuse=null;
+  if(useRpc){
+    const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+    const{data,error}=await sb.rpc('mp_advance_question',{
+      p_lobby_id:currentLobbyId,
+      p_expected_q_index:mpDbQIndex,
+      p_format:selectedFormat,
+      p_topic_type:topic?topic.type:null,
+      p_topic_value:topic?topic.name:null,
+      p_exclude_ids:quizHistory.map(h=>h.id).filter(id=>id!=null),
+      p_time_limit:raceTimeLimit
+    });
+    if(error||!data||(!data.advanced&&data.reason!=='already_advanced')){
+      // Couldn't reach the server or it rejected the call outright (not just
+      // "someone already advanced it") — fall back to the old local pick so the
+      // game doesn't stall. This is the one remaining client-trusted path for
+      // this step; a network blip here shouldn't be able to freeze the lobby.
+      console.error('mp_advance_question failed, falling back to local pick:',error||data);
+      qData=prefetchedQuestion||await fetchQuestion();
+    } else {
+      // Either we advanced it, or the server tells us someone/something else
+      // already did — either way this response is the real current state, so
+      // adopt it rather than trusting our own guess.
+      mpDbQIndex=data.q_index;
+      qData=data.current_question;
+    }
+  } else {
+    qData=prefetchedQuestion||await fetchQuestion();
+    hpFuse=lobbyMode==='potato'?(hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):null; // host generates fuse so all clients sync
+  }
   prefetchedQuestion=null;
   currentQData=qData;
-  const hpFuse=lobbyMode==='potato'?(hpFuseMin+Math.random()*(hpFuseMax-hpFuseMin)):null; // host generates fuse so all clients sync
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
   // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
@@ -8317,7 +8358,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+  score=0;lives=3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -9678,7 +9719,7 @@ function startLobbyGame(){
   // Sync topic state so fetchQuestion() uses the lobby's chosen topics, not stale solo state
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;p.eliminated=false;});
-  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -10309,26 +10350,51 @@ function mpShowQuestion(qData,hpFuse){
   }
 }
 
-function mpAnswerMC(idx,el,qData){
+async function mpAnswerMC(idx,el,qData){
   if(answered)return;
   if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
   answered=true;answeredQIndex=qIndex;
   mpCancelBackup(mpActiveFuseBackupId);
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
-  const correct=idx===qData.answer;
-  const mpElapsed=(Date.now()-questionStartTime)/1000;
-  const mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+  const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+  let correct,mpPts;
+  if(useRpc){
+    const{data,error}=await sb.rpc('mp_submit_answer',{
+      p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
+      p_choice_idx:idx,p_choice_text:null,p_mode:lobbyMode
+    });
+    if(!error&&data&&(data.accepted||data.reason==='already_answered')){
+      correct=data.correct;mpPts=data.points;
+    } else {
+      // Couldn't reach the server — fall back to local scoring rather than
+      // stalling the player's own feedback on a network blip.
+      console.error('mp_submit_answer failed, scoring locally:',error||data);
+      correct=idx===qData.answer;
+      const mpElapsed=(Date.now()-questionStartTime)/1000;
+      mpPts=lobbyMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
+    }
+  } else {
+    correct=idx===qData.answer;
+    const mpElapsed=(Date.now()-questionStartTime)/1000;
+    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+  }
   if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
   mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
 }
 
-function mpCheckTypeAnswer(){
+async function mpCheckTypeAnswer(){
   if(answered)return;
   if(mpTiebreakerPlayers.length>0&&!mpTiebreakerPlayers.includes(currentUser))return; // blocked in tiebreaker
   const input=document.getElementById('mpTypeInput');
   if(!input||!input.value.trim())return;
   const userAns=input.value.trim();
+  // Local check first, same as before — this is what gates the free-retry UX
+  // below (wrong guesses never touch the server at all, matching current
+  // behaviour). mp_submit_answer only ever gets called once we're about to
+  // accept and lock in an answer, since question_answers allows exactly one
+  // submission per player per question — calling it on every wrong keystroke
+  // would permanently record the first wrong guess and break retries.
   const correct=checkAnswer(userAns,currentQData);
   const isHP=lobbyMode==='potato';
   if(!correct){
@@ -10372,8 +10438,30 @@ function mpCheckTypeAnswer(){
     renderMPHUD();
   } else {
     // Non-HP: only reaches here on a correct answer (wrong answers return early above)
-    const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-    const mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+    const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+    let mpTaPts;
+    if(useRpc){
+      const{data,error}=await sb.rpc('mp_submit_answer',{
+        p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
+        p_choice_idx:null,p_choice_text:userAns,p_mode:lobbyMode
+      });
+      if(!error&&data&&(data.accepted||data.reason==='already_answered')){
+        mpTaPts=data.points;
+        // Server disagreeing with our local check here would mean the two
+        // normalizers have drifted apart — extremely unlikely since the RPC
+        // uses the same mp_normalize_answer/mp_deromanize_answer/mp_name_order_key
+        // helpers, but the server is the one that actually pays out points,
+        // so its verdict is what's shown, not our local one.
+        if(!data.correct)console.error('mp_submit_answer disagreed with local checkAnswer() — normalizer drift?',data);
+      } else {
+        console.error('mp_submit_answer failed, scoring locally:',error||data);
+        const mpTaElapsed=(Date.now()-questionStartTime)/1000;
+        mpTaPts=lobbyMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
+      }
+    } else {
+      const mpTaElapsed=(Date.now()-questionStartTime)/1000;
+      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+    }
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
     mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
@@ -10655,7 +10743,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+  qIndex=0;mpDbQIndex=0;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
