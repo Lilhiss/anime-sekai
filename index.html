@@ -10436,30 +10436,42 @@ async function mpAnswerMC(idx,el,qData){
   mpCancelBackup(mpActiveFuseBackupId);
   const allAns=document.querySelectorAll('#mpAnswersGrid .ans');allAns.forEach(a=>a.classList.add('locked'));
   const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
-  let correct,mpPts;
+  // Correctness is knowable the instant we know which option was picked — a plain
+  // index compare against the same question snapshot the server has, with none of
+  // the normalization ambiguity a typed answer carries. Reveal it immediately
+  // instead of waiting on the mp_submit_answer round trip; only the authoritative
+  // point value (and the score sync/broadcast that depends on it) waits below.
+  const correct=idx===qData.answer;
+  if(correct){el.classList.add('correct');if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');}
+  quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
+  mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx],null,null,false,null,true);
+  renderMPHUD();
+  let mpPts;
   if(useRpc){
     const{data,error}=await sb.rpc('mp_submit_answer',{
       p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
       p_choice_idx:idx,p_choice_text:null,p_mode:lobbyMode
     });
     if(!error&&data&&(data.accepted||data.reason==='already_answered')){
-      correct=data.correct;mpPts=data.points;
+      mpPts=data.points;
+      // A disagreement here would mean the client is holding a stale question the
+      // server has already moved past — genuinely rare (see mpDbQIndex/stale_question
+      // handling) rather than a normalization issue like the typed-answer case.
+      if(data.correct!==correct)console.error('mp_submit_answer disagreed with local MC check — stale question?',data);
     } else {
       // Couldn't reach the server — fall back to local scoring rather than
-      // stalling the player's own feedback on a network blip.
+      // stalling the score sync on a network blip. The reveal already fired.
       console.error('mp_submit_answer failed, scoring locally:',error||data);
-      correct=idx===qData.answer;
       const mpElapsed=(Date.now()-questionStartTime)/1000;
       mpPts=lobbyMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
     }
   } else {
-    correct=idx===qData.answer;
     const mpElapsed=(Date.now()-questionStartTime)/1000;
     mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
   }
-  if(correct){el.classList.add('correct');score+=mpPts;lastPtsEarned=mpPts;if(lobbyMode==='potato')document.body.classList.remove('hp-my-turn');}else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
-  quizHistory[quizHistory.length-1].userAns=qData.options[idx];quizHistory[quizHistory.length-1].correct=correct;
-  mpShowFeedback(correct,qData.options[qData.answer],qData.options[idx]);renderMPHUD();
+  if(correct){score+=mpPts;lastPtsEarned=mpPts;}else{lives--;lastPtsEarned=0;}
+  mpSyncFeedbackScore(correct,qData.options[idx]);
+  renderMPHUD();
 }
 
 async function mpCheckTypeAnswer(){
@@ -10517,8 +10529,15 @@ async function mpCheckTypeAnswer(){
     mpShowFeedback(true,correctAns,userAns,null,active.name,false,hpPeekNextPlayer()?.name);
     renderMPHUD();
   } else {
-    // Non-HP: only reaches here on a correct answer (wrong answers return early above)
+    // Non-HP: only reaches here on a correct answer (wrong answers return early above).
+    // checkAnswer() above has already settled correctness — the JS and SQL normalizers
+    // were verified to match on 2026-09-09, so reveal instantly and let the RPC below
+    // settle only the authoritative point value and score sync, same as mpAnswerMC.
     const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+    input.classList.add('correct-input');
+    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
+    mpShowFeedback(true,currentQData.answer,userAns,null,null,false,null,true);
+    renderMPHUD();
     let mpTaPts;
     if(useRpc){
       const{data,error}=await sb.rpc('mp_submit_answer',{
@@ -10528,12 +10547,13 @@ async function mpCheckTypeAnswer(){
       if(!error&&data&&(data.accepted||data.reason==='already_answered')){
         mpTaPts=data.points;
         // Server disagreeing with our local check here would mean the two
-        // normalizers have drifted apart — extremely unlikely since the RPC
-        // uses the same mp_normalize_answer/mp_deromanize_answer/mp_name_order_key
-        // helpers, but the server is the one that actually pays out points,
-        // so its verdict is what's shown, not our local one.
+        // normalizers have drifted apart since the 2026-09-09 verification —
+        // the server is the one that actually pays out points, so its verdict
+        // decides the score even though the reveal already fired.
         if(!data.correct)console.error('mp_submit_answer disagreed with local checkAnswer() — normalizer drift?',data);
       } else {
+        // Couldn't reach the server — fall back to local scoring rather than
+        // stalling the score sync on a network blip. The reveal already fired.
         console.error('mp_submit_answer failed, scoring locally:',error||data);
         const mpTaElapsed=(Date.now()-questionStartTime)/1000;
         mpTaPts=lobbyMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
@@ -10542,10 +10562,9 @@ async function mpCheckTypeAnswer(){
       const mpTaElapsed=(Date.now()-questionStartTime)/1000;
       mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
     }
-    input.classList.add('correct-input');
     score+=mpTaPts;lastPtsEarned=mpTaPts;
-    quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
-    mpShowFeedback(true,currentQData.answer,userAns);renderMPHUD();
+    mpSyncFeedbackScore(true,userAns);
+    renderMPHUD();
   }
 }
 
@@ -10637,7 +10656,7 @@ function mpTimeOut(){
   }
 }
 
-function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName){
+function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,nextPlayerName,deferScore){
   if(!playerName||playerName===currentUser){correct?sfxCorrect():sfxWrong();}
   const fb=document.getElementById('mpQCardFeedback');fb.style.display='block';
   // Show report button, reset flag state for this question
@@ -10657,13 +10676,14 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   const ya=document.getElementById('mpFbYourAns');
   if(!correct&&userAns&&userAns!=='(timed out)'&&userAns!==correctAns){ya.textContent='Answer given: '+userAns;ya.style.display='block';}else{ya.style.display='none';}
   const isHP=lobbyMode==='potato';
-  const mpPtsLabel=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
-  const nextLabel=nextPlayerName?` Next up: ${nextPlayerName} 🥔`:'';
-  document.getElementById('mpFbPts').textContent=
-    isHP&&correct?`Potato passes!${nextLabel}`:
-    isHP?`Lost a life, potato passes!${nextLabel}`:
-    correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'}: ${mpPtsLabel}`:
-    '';
+  // deferScore: the correct/wrong reveal above is already firing off a locally-known
+  // verdict (MC index compare, or a typed answer that already passed local checkAnswer()),
+  // ahead of the mp_submit_answer round trip that decides the real point value. Show a
+  // placeholder here instead of a stale lastPtsEarned from the previous question — the
+  // real label (and the score sync/broadcast below) land once mpSyncFeedbackScore runs.
+  document.getElementById('mpFbPts').textContent=deferScore
+    ?(correct&&lobbyMode==='race'?'Scoring…':'')
+    :mpFeedbackPtsLabel(correct,isHP,nextPlayerName);
   const mpSubEl=document.getElementById('mpFbSubmittedBy');
   // Reveal answer in the question card; submitted_by shown there instead of feedback bar
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
@@ -10674,6 +10694,29 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   if(mpSubEl)mpSubEl.style.display='none';
   applyTheme();
   if(remote)return; // just displaying someone else's already-resolved answer — nothing of ours to sync or broadcast
+  if(deferScore)return; // caller will call mpSyncFeedbackScore once mp_submit_answer resolves
+  mpSyncFeedbackScore(correct,userAns,nextPlayerName);
+}
+
+// Shared label text for the feedback banner's points line — used both for an
+// immediate (non-deferred) reveal and by mpSyncFeedbackScore once a deferred
+// reveal's authoritative point value comes back from the server.
+function mpFeedbackPtsLabel(correct,isHP,nextPlayerName){
+  const mpPtsLabel=lastPtsEarned===10?'Perfect! ⚡':lastPtsEarned>=7?'Fast! 🔥':lastPtsEarned>=5?'Good 👍':lastPtsEarned>=4?'Nice try ⏱️':'Just in time ⏱️';
+  const nextLabel=nextPlayerName?` Next up: ${nextPlayerName} 🥔`:'';
+  return isHP&&correct?`Potato passes!${nextLabel}`:
+    isHP?`Lost a life, potato passes!${nextLabel}`:
+    correct&&lobbyMode==='race'?`+${lastPtsEarned} point${lastPtsEarned===1?'':'s'}: ${mpPtsLabel}`:
+    '';
+}
+
+// Fills in the authoritative point label and performs the score/lives sync +
+// broadcast that mpShowFeedback does immediately for a normal (non-deferred)
+// call. Called once mp_submit_answer resolves for an answer whose visual
+// reveal already fired instantly via mpShowFeedback(...,true).
+function mpSyncFeedbackScore(correct,userAns,nextPlayerName){
+  const isHP=lobbyMode==='potato';
+  document.getElementById('mpFbPts').textContent=mpFeedbackPtsLabel(correct,isHP,nextPlayerName);
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
   // In HP the authoritative lives count is on the lobbyPlayers entry (active.lives was
@@ -10681,7 +10724,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   // would broadcast the wrong (starting) value if used.
   const broadcastLives=isHP?(me?.lives??lives):lives;
   const broadcastElim=isHP?(me?.eliminated||false):(me?.eliminated||false);
-  if(me){me.score=score;me.roundAnswered=true;me.roundCorrect=answered&&quizHistory[quizHistory.length-1]?.correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
+  if(me){me.score=score;me.roundAnswered=true;me.roundCorrect=correct;me.roundPts=lastPtsEarned||0;me.roundElapsed=Math.round((Date.now()-questionStartTime)/100)/10;}
   if(!isHP&&me){me.lives=lives;}
   if(me&&rtChannel){
     rtChannel.send({type:'broadcast',event:'answer_submitted',payload:{name:currentUser,score:me.score,lives:broadcastLives,eliminated:broadcastElim,roundAnswered:true,roundCorrect:me.roundCorrect,roundPts:me.roundPts,roundElapsed:me.roundElapsed,hpNextPlayer:nextPlayerName||null,hpUserAns:isHP?userAns:undefined}});
