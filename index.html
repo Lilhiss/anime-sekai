@@ -6772,17 +6772,6 @@ async function flagQuestion(){
 // ── SUPABASE REALTIME ─────────────────────────────────────────
 let rtChannel=null;
 let isHost=false;
-// Step 2: any client can now reach the win-condition check inside mpStartAutoNext's
-// onDone (see the answer_submitted handler), not just the host. This per-client flag
-// stops a single tab from sending game_ended more than once if that check is reached
-// again before the game actually ends. Reset alongside the other per-game state below.
-let mpGameEndedSent=false;
-function mpSendGameEndedOnce(){
-  if(mpGameEndedSent)return;
-  mpGameEndedSent=true;
-  if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
-  else mpEndGame();
-}
 let mpAutoNextInterval=null;
 let mpAutoNextPaused=false;
 let mpWrongAttempts={}; // {playerName: lastWrongAttemptString} — cleared each question
@@ -7276,7 +7265,7 @@ function rtSubscribe(lobbyId){
     lobbyPlayers=payload.players;
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
-    score=0;lives=3;qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     prefetchedQuestion=null;currentQData=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
@@ -7299,19 +7288,9 @@ function rtSubscribe(lobbyId){
     mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
-    // Step 2: any client can now be the one who advanced and broadcast this (not just
-    // the host), so the skip-my-own-echo check has to key off who actually sent it,
-    // not off isHost — we already called mpShowQuestion directly ourselves in
-    // mpHostFetchAndBroadcast when we're the sender.
-    if(payload.senderId===currentUserId)return;
-    // A listening client (didn't call the RPC itself this round) previously kept its
-    // stale roundAnswered/mpDbQIndex from the round it just left — the very next
-    // answer_submitted broadcast for the NEW round would then look like "everyone's
-    // answered" again, firing a false early advance. Reset round UI and adopt the
-    // sender's dbQIndex (server truth) here too, same as the RPC caller does for itself.
-    mpResetRoundUI();
+    if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
+    console.log('[DEBUG] non-host received question broadcast, qIndex='+payload.qIndex+' q='+(payload.qData&&payload.qData.question));
     currentQData=payload.qData;qIndex=payload.qIndex;
-    if(payload.dbQIndex!=null)mpDbQIndex=payload.dbQIndex;
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
@@ -7373,14 +7352,9 @@ function rtSubscribe(lobbyId){
         }
       }
     }
-    // Step 2: Race/Classic/Survival (non char-mc) no longer need the host's tab to notice
-    // all-answered and drive the advance — every client sees the same synced roundAnswered
-    // state via this same answer_submitted broadcast, so every client runs this check and,
-    // for those three modes, can act on it directly. Hot Potato/Slow Reveal/char-mc stay
-    // host-exclusive here — deferred, see handoff doc.
-    const isHP=lobbyMode==='potato';
-    const useRpcAdvance=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc'&&!isHP;
-    if(isHost||useRpcAdvance){
+    // Host checks if all active players have answered — if so, advance early
+    if(isHost){
+      const isHP=lobbyMode==='potato';
       // Note: even if this answer wipes out the last surviving player, we don't end the
       // game right here — the answer still needs to be revealed and the normal 5s
       // "Wrapping up…" pause needs to play first. The actual end-game broadcast happens
@@ -7402,49 +7376,55 @@ function rtSubscribe(lobbyId){
         const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
         const _isLastQ=_survivalWipedAN||(!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN);
         mpStartAutoNext(()=>{
-          if(!useRpcAdvance&&!isHost)return; // legacy path (HP/Slow Reveal/char-mc) stays host-exclusive
+          if(!isHost)return;
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
           // Now that the reveal + wrap-up pause has played, actually end the game if every
           // non-quit survival player is eliminated.
           if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
-            mpSendGameEndedOnce();return;
+            if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+            else mpEndGame();return;
           }
           if(isHP){
             const _hpTotal=hpTurnOrder.length||lobbyPlayers.length;
             hpActiveIdx=(hpActiveIdx+1)%_hpTotal;
             const remaining=hpActivePlayers();
             if(remaining.length<=1){
-              mpSendGameEndedOnce();return;
+              if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+              else mpEndGame();return;
             }
           } else {
-            if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}mpSendGameEndedOnce();return;}}
+            if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
           }
           qIndex++;
           const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){mpSendGameEndedOnce();return;}
-          if(useRpcAdvance){
-            // No next_question round-trip needed here: every client already independently
-            // detected the round ended, so each resets its own round UI locally and calls
-            // mp_advance_question directly. The RPC's row lock decides the real winner;
-            // mpHostFetchAndBroadcast only broadcasts onward when this call was the one
-            // that actually advanced, so callers that lost the race stay quiet instead of
-            // re-flooding the channel with duplicate question broadcasts.
-            mpResetRoundUI();
-            mpHostFetchAndBroadcast();
-          } else if(rtChannel){
-            rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});
-          } else {
-            mpLoadQuestion();
-          }
+          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+          else{mpLoadQuestion();}
         },_isLastQ);
       }
     }
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
+    console.log('[DEBUG] next_question received, isHost='+isHost+' qIndex='+payload.qIndex);
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
-    mpResetRoundUI();
+    lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
+    mpWrongAttempts={};hpTypingText={};
+    // Reset flag state for new question
+    mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
+    clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
+    mpSnapshotScores();
+    document.getElementById('mpQCardFeedback').style.display='none';
+    const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
+    const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
+    document.getElementById('mpQuestionText').style.display='none';
+    document.getElementById('mpAnswersGrid').innerHTML='';
+    document.getElementById('mpQLoading').style.display='flex';
+    const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
+    if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
+    const mpQCard=document.querySelector('#page-mp-quiz .q-card');
+    if(mpQCard)mpQCard.classList.remove('answered');
     if(isHost)mpHostFetchAndBroadcast();
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
@@ -7581,14 +7561,14 @@ function rtSubscribe(lobbyId){
     document.getElementById('mpCountdownCancelBtn').style.display='none';
     // Reset state and return to lobby room to wait for the host's next start
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-    score=0;lives=3;qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+    score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
     goStep('lobby-room');
   });
   rtChannel.on('broadcast',{event:'return_to_lobby'},()=>{
     if(isHost)return; // host navigated itself in mpReturnToLobby
     lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
     score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-    qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+    qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
     stopHeartbeat();startHeartbeat();
     goStep('lobby-room');
   });
@@ -8287,27 +8267,6 @@ function mpResetQuestionCard(){
   if(mpQCard)mpQCard.classList.remove('answered');
 }
 
-// Extracted from the next_question broadcast handler (Step 2) so the direct,
-// no-broadcast advance path used by Race/Classic/Survival can reuse the exact same
-// per-question UI/state reset instead of duplicating it.
-function mpResetRoundUI(){
-  lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-  mpWrongAttempts={};hpTypingText={};
-  // Reset flag state for new question
-  mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
-  clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
-  mpSnapshotScores();
-  document.getElementById('mpQCardFeedback').style.display='none';
-  const mpRwNQ=document.getElementById('mpReportWrap');if(mpRwNQ)mpRwNQ.style.display='none';
-  const mpAnNQ=document.getElementById('mpAutoNext');if(mpAnNQ)mpAnNQ.textContent='';
-  document.getElementById('mpQuestionText').style.display='none';
-  document.getElementById('mpAnswersGrid').innerHTML='';
-  document.getElementById('mpQLoading').style.display='flex';
-  const _mpIw=document.getElementById('mpQImageWrap');const _mpIe=document.getElementById('mpQImage');
-  if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
-  const mpQCard=document.querySelector('#page-mp-quiz .q-card');
-  if(mpQCard)mpQCard.classList.remove('answered');
-}
 async function mpHostFetchAndBroadcast(){
   // Race/Classic/Survival share a timer-or-all-answered shape that maps onto one
   // idempotent RPC. char-mc is excluded even in those modes — its MC options are
@@ -8315,13 +8274,7 @@ async function mpHostFetchAndBroadcast(){
   // snapshot has no way to carry. Hot Potato/Slow Reveal stay on the legacy path
   // entirely — turn-order/buzz-in progression is a different shape, handled separately.
   const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
-  // Step 2: with any client now allowed to call this (not just the host), a caller that
-  // loses the RPC's row-lock race still gets the true current_question back and shows it
-  // to itself below, but must NOT also re-broadcast it — otherwise N simultaneous callers
-  // means N duplicate question broadcasts. Defaults true for the legacy (non-RPC) path,
-  // which stays host-exclusive same as before, and for the RPC network-failure fallback
-  // below, where we can't be sure anyone else succeeded either.
-  let qData,hpFuse=null,shouldBroadcast=true;
+  let qData,hpFuse=null;
   if(useRpc){
     let data,error;
     if(prefetchedRpcResult){
@@ -8367,7 +8320,6 @@ async function mpHostFetchAndBroadcast(){
       // adopt it rather than trusting our own guess.
       mpDbQIndex=data.q_index;
       qData=data.current_question;
-      shouldBroadcast=!!data.advanced;
     }
   } else {
     if(!prefetchedQuestion)document.getElementById('mpQLoading').style.display='flex';
@@ -8376,13 +8328,9 @@ async function mpHostFetchAndBroadcast(){
   }
   prefetchedQuestion=null;
   currentQData=qData;
-  if(shouldBroadcast){
-    // dbQIndex carries the server-truth q_index (mpDbQIndex) alongside the payload — the
-    // sender's local `qIndex` alone isn't reliable for this (see mpDbQIndex vs qIndex note),
-    // and listening clients need the real value too, not just the client that called the RPC.
-    rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,dbQIndex:mpDbQIndex,hpFuse,senderId:currentUserId}});
-  }
-  // Supabase does not echo broadcasts to the sender — the caller must show the question itself
+  console.log('[DEBUG] host broadcasting question, qIndex='+qIndex+' mpDbQIndex='+mpDbQIndex+' q='+(qData&&qData.question));
+  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
+  // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
   mpShowQuestion(qData,hpFuse);renderMPHUD();
 }
@@ -8447,7 +8395,7 @@ function mpCancelCountdown(){
   }
   // Reset lobby state so the host can make changes and start again
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=3;p.eliminated=false;});
-  score=0;lives=3;qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
+  score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
   srClearReveal();
   rtSetLobbyStatus('waiting');
   goStep('lobby-room');
@@ -8458,6 +8406,7 @@ function mpCancelCountdown(){
 // synchronously first, so a completed prefetch never has to go through an await
 // at all — see prefetchedRpcResult's declaration for why that distinction matters).
 function mpPrefetchNextQuestion(excludeIds){
+  console.log('[DEBUG] prefetch firing, mpDbQIndex='+mpDbQIndex);
   const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
   const p=sb.rpc('mp_advance_question',{
     p_lobby_id:currentLobbyId,
@@ -8471,6 +8420,7 @@ function mpPrefetchNextQuestion(excludeIds){
   prefetchedRpcPromise=p;
   prefetchedRpcResult=null;
   p.then(result=>{
+    console.log('[DEBUG] prefetch resolved, stale='+(prefetchedRpcPromise!==p)+' result=',result);
     // Guard against a stale/superseded prefetch overwriting a newer one —
     // only apply this if it's still the one currently in flight.
     if(prefetchedRpcPromise===p)prefetchedRpcResult=result;
@@ -9837,7 +9787,7 @@ async function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   const startingLives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=startingLives;p.eliminated=false;});
-  score=0;lives=startingLives;qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=startingLives;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
@@ -10922,7 +10872,7 @@ function mpReturnToLobby(){
   // Reset player state for a fresh game
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;p.eliminated=false;p.quit=false;});
   score=0;lives=lobbyMode==='potato'?hpLives:lobbyMode==='survival'?selectedLives:3;
-  qIndex=0;mpDbQIndex=0;mpGameEndedSent=false;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
+  qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;
   // Host broadcasts so all clients navigate back together
   if(isHost&&rtChannel){
     rtChannel.send({type:'broadcast',event:'return_to_lobby',payload:{}});
