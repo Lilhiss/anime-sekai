@@ -7304,7 +7304,14 @@ function rtSubscribe(lobbyId){
     // not off isHost — we already called mpShowQuestion directly ourselves in
     // mpHostFetchAndBroadcast when we're the sender.
     if(payload.senderId===currentUserId)return;
+    // A listening client (didn't call the RPC itself this round) previously kept its
+    // stale roundAnswered/mpDbQIndex from the round it just left — the very next
+    // answer_submitted broadcast for the NEW round would then look like "everyone's
+    // answered" again, firing a false early advance. Reset round UI and adopt the
+    // sender's dbQIndex (server truth) here too, same as the RPC caller does for itself.
+    mpResetRoundUI();
     currentQData=payload.qData;qIndex=payload.qIndex;
+    if(payload.dbQIndex!=null)mpDbQIndex=payload.dbQIndex;
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
@@ -8370,7 +8377,10 @@ async function mpHostFetchAndBroadcast(){
   prefetchedQuestion=null;
   currentQData=qData;
   if(shouldBroadcast){
-    rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse,senderId:currentUserId}});
+    // dbQIndex carries the server-truth q_index (mpDbQIndex) alongside the payload — the
+    // sender's local `qIndex` alone isn't reliable for this (see mpDbQIndex vs qIndex note),
+    // and listening clients need the real value too, not just the client that called the RPC.
+    rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,dbQIndex:mpDbQIndex,hpFuse,senderId:currentUserId}});
   }
   // Supabase does not echo broadcasts to the sender — the caller must show the question itself
   document.getElementById('mpQLoading').style.display='none';
