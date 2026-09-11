@@ -6774,6 +6774,14 @@ let rtChannel=null;
 let isHost=false;
 let mpAutoNextInterval=null;
 let mpAutoNextPaused=false;
+// Guards mpStartAutoNext against being triggered twice for the same qIndex.
+// Two independent paths can call it: Hot Potato's own answer_submitted broadcast
+// check (unchanged — HP isn't on mp_submit_answer/round_resolved_at yet), and the
+// postgres_changes round_resolved_at check for Race/Classic/Survival. Neither path
+// can ever fire for the other's mode (a lobby is one mode), but each still needs
+// protecting against firing more than once for its own mode — e.g. a duplicate or
+// out-of-order postgres_changes delivery for the same row.
+let mpAutoNextFiredForQ=null;
 let mpWrongAttempts={}; // {playerName: lastWrongAttemptString} — cleared each question
 let hpPrevLives={}; // {playerName: livesCount} — used to detect life-loss for animation
 let hpTypingText={}; // {playerName: currentDraftString} — live keystrokes from potato holder
@@ -7167,6 +7175,52 @@ function rtSubscribe(lobbyId){
       const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
       if(inLobby)showLobbyActiveBanner();
     }
+    // Server-authoritative round resolution for Race/Classic/Survival (everything
+    // except Hot Potato, which stays on its own answer_submitted-broadcast path —
+    // see that handler for why). mp_submit_answer stamps round_resolved_at, inside
+    // its own locked transaction, the moment it records whichever answer turns out
+    // to be the last one needed — a fact decided once by the database, not
+    // reconstructed independently by each client from a stream of broadcasts that
+    // can arrive duplicated, out of order, or (with broadcast:{self:true}) echoed
+    // back to their own sender. rtRefreshPlayers just ran above, so lobbyPlayers'
+    // `eliminated` reflects the server's own bookkeeping, not a client guess.
+    if(isHost&&lobbyMode!=='potato'&&lobbyInGame&&payload?.new?.round_resolved_at&&mpAutoNextFiredForQ!==qIndex){
+      mpAutoNextFiredForQ=qIndex;
+      clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
+      mpCancelBackup(mpActiveFuseBackupId);
+      // If this was the last life of the last surviving player, treat it like the final
+      // question so the auto-next label reads "Wrapping up…" instead of a numeric countdown.
+      const _survivalWiped=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
+      const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
+      const _isLastQ=_survivalWiped||(lobbyMode!=='race'&&(qIndex+1)>=_capAN);
+      mpStartAutoNext(()=>{
+        if(!isHost)return;
+        // Record rolling window — question resolved normally (not voided)
+        lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
+        // Now that the reveal + wrap-up pause has played, actually end the game if every
+        // non-quit survival player is eliminated.
+        if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
+          if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+          else mpEndGame();return;
+        }
+        if(selectedMode==='race'){
+          const winner=mpCheckRaceWin();
+          if(winner!==null){
+            if(winner==='tiebreaker'){mpStartTiebreaker();return;}
+            if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+            else mpEndGame();return;
+          }
+        }
+        qIndex++;
+        const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
+        if(lobbyMode!=='race'&&qIndex>=_survivalCap){
+          if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
+          else mpEndGame();return;
+        }
+        if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
+        else{mpLoadQuestion();}
+      },_isLastQ);
+    }
   });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
     console.log('lobby_players change detected');
@@ -7266,7 +7320,7 @@ function rtSubscribe(lobbyId){
     selectedTopics=payload.topics||[];isGeneralSelected=payload.isGeneral??true;
     lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
     score=0;lives=3;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);
-    prefetchedQuestion=null;currentQData=null;
+    prefetchedQuestion=null;currentQData=null;mpAutoNextFiredForQ=null;
     hpActiveIdx=payload.hpActiveIdx??0;
     hpTurnOrder=Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length?payload.hpTurnOrder:lobbyPlayers.map(p=>p.name);
     mpWrongAttempts={};mpTiebreakerPlayers=[];
@@ -7352,56 +7406,42 @@ function rtSubscribe(lobbyId){
         }
       }
     }
-    // Host checks if all active players have answered — if so, advance early
-    if(isHost){
-      const isHP=lobbyMode==='potato';
-      // Note: even if this answer wipes out the last surviving player, we don't end the
-      // game right here — the answer still needs to be revealed and the normal 5s
-      // "Wrapping up…" pause needs to play first. The actual end-game broadcast happens
-      // inside the mpStartAutoNext onDone callback below, once that pause completes.
-      const activePlayers=isHP
-        ?[hpActivePlayer()]  // HP: only the active player needs to answer
-        :lobbyPlayers.filter(lp=>!lp.eliminated&&!lp.quit);
+    // Host checks if all active players have answered — if so, advance early.
+    // Hot Potato only: HP doesn't call mp_submit_answer yet (it's not wired to
+    // the RPC path at all — see useRpc in mpStartAutoNext), so it has no
+    // round_resolved_at to key off and stays on this broadcast-driven check for
+    // now. Race/Classic/Survival used to be decided here too, by counting
+    // roundAnswered flags off the answer_submitted stream — that's the exact
+    // "conclusion N different clients each try to reach by counting broadcasts"
+    // pattern the migration replaces. That trigger now lives in the
+    // postgres_changes listener on `lobbies`, keyed off round_resolved_at,
+    // which mp_submit_answer stamps once, atomically, in the database.
+    if(isHost&&lobbyMode==='potato'){
+      const activePlayers=[hpActivePlayer()]; // HP: only the active player needs to answer
       const allAnswered=activePlayers.length>0&&activePlayers.every(lp=>lp.roundAnswered);
-      // For HP misses, mpTimeOut already owns the advance path (it set roundAnswered via the
-      // answer_submitted broadcast but handles auto-next itself). Only trigger the early-advance
-      // here for HP on a CORRECT answer — misses must not fire a second mpStartAutoNext.
-      const isHPMiss=isHP&&payload.name===hpActivePlayer().name&&!payload.roundCorrect;
-      // If this was the last life of the last surviving player, treat it like the final
-      // question so the auto-next label reads "Wrapping up…" instead of a numeric countdown.
-      const _survivalWipedAN=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
-      if((allAnswered||_survivalWipedAN)&&!isHPMiss){
+      // mpTimeOut already owns the advance path on a miss (it set roundAnswered via the
+      // answer_submitted broadcast but handles auto-next itself). Only trigger the
+      // early-advance here on a CORRECT answer — misses must not fire a second mpStartAutoNext.
+      const isHPMiss=payload.name===hpActivePlayer().name&&!payload.roundCorrect;
+      if(allAnswered&&!isHPMiss&&mpAutoNextFiredForQ!==qIndex){
+        mpAutoNextFiredForQ=qIndex;
         clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
         mpCancelBackup(mpActiveFuseBackupId);
-        const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-        const _isLastQ=_survivalWipedAN||(!isHP&&lobbyMode!=='race'&&(qIndex+1)>=_capAN);
         mpStartAutoNext(()=>{
           if(!isHost)return;
           // Record rolling window — question resolved normally (not voided)
           lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
-          // Now that the reveal + wrap-up pause has played, actually end the game if every
-          // non-quit survival player is eliminated.
-          if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
+          const _hpTotal=hpTurnOrder.length||lobbyPlayers.length;
+          hpActiveIdx=(hpActiveIdx+1)%_hpTotal;
+          const remaining=hpActivePlayers();
+          if(remaining.length<=1){
             if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
             else mpEndGame();return;
           }
-          if(isHP){
-            const _hpTotal=hpTurnOrder.length||lobbyPlayers.length;
-            hpActiveIdx=(hpActiveIdx+1)%_hpTotal;
-            const remaining=hpActivePlayers();
-            if(remaining.length<=1){
-              if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
-              else mpEndGame();return;
-            }
-          } else {
-            if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
-          }
           qIndex++;
-          const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
-        },_isLastQ);
+        },false); // HP has no fixed question cap the way Race/Classic/Survival do, so never "last question"
       }
     }
   });
@@ -7410,7 +7450,7 @@ function rtSubscribe(lobbyId){
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
-    mpWrongAttempts={};hpTypingText={};
+    mpWrongAttempts={};hpTypingText={};mpAutoNextFiredForQ=null;
     // Reset flag state for new question
     mpFlagsThisQuestion=new Set();mpFlagWindowOpen=false;
     clearTimeout(mpFlagWindowTimer);mpFlagWindowTimer=null;
@@ -9787,7 +9827,7 @@ async function startLobbyGame(){
   selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
   const startingLives=lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:3;
   lobbyPlayers.forEach(p=>{p.score=0;p.lives=startingLives;p.eliminated=false;});
-  score=0;lives=startingLives;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
+  score=0;lives=startingLives;qIndex=0;mpDbQIndex=0;prefetchedRpcPromise=null;prefetchedRpcResult=null;answered=false;quizHistory=[];hpHistory=[];mpCancelBackup(mpActiveFuseBackupId);mpCancelBackup(mpActiveAutoNextBackupId);prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();mpAutoNextFiredForQ=null;
   hpActiveIdx=0;mpTiebreakerPlayers=[];hpTurnOrder=[];
   // In Hot Potato, shuffle the full player list once into hpTurnOrder so the
   // turn sequence is consistent across all clients and isn't just lobby join order
