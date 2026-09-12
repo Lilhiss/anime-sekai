@@ -7166,6 +7166,18 @@ function rtSubscribe(lobbyId){
   // lobby_players DELETE event is silently dropped by Supabase Realtime.
   rtChannel.on('postgres_changes',{event:'UPDATE',schema:'public',table:'lobbies',filter:`id=eq.${lobbyId}`},async(payload)=>{
     await rtRefreshPlayers(lobbyId);
+    // Non-host: sync mpDbQIndex straight from the database, independent of the
+    // host's question broadcast (see that handler for the broadcast-side sync,
+    // which stays primary since it's what actually carries the question data
+    // itself). This is a second, independent source for the index specifically —
+    // a dropped or delayed broadcast can no longer leave mpDbQIndex stuck at a
+    // stale value, since the client reads it here regardless of whether the
+    // broadcast ever arrives. Only ever moves forward: current_q_index is
+    // monotonic within a game, so a stray earlier-numbered UPDATE (e.g. a
+    // reconnect re-delivering an old row state) can't walk it backward.
+    if(!isHost&&typeof payload?.new?.current_q_index==='number'&&payload.new.current_q_index>mpDbQIndex){
+      mpDbQIndex=payload.new.current_q_index;
+    }
     // Fallback for a dropped game_started broadcast: Supabase Realtime is already known
     // to silently drop one-shot events under load (see the lobby_players DELETE handling
     // elsewhere in this file). If we're still parked on the lobby room when the row
@@ -7350,6 +7362,15 @@ function rtSubscribe(lobbyId){
     if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     console.log('[DEBUG] non-host received question broadcast, qIndex='+payload.qIndex+' q='+(payload.qData&&payload.qData.question));
     currentQData=payload.qData;qIndex=payload.qIndex;
+    // mpDbQIndex was previously never updated on non-host clients at all — it stayed
+    // at its initial 0 for the entire game, so every non-host mp_submit_answer call
+    // was rejected as stale_question starting from the very first question (DB's
+    // current_q_index jumps from 0 to 1 as soon as that first question is set). This
+    // was invisible before this migration because the old broadcast-driven trigger
+    // never checked whether mp_submit_answer actually succeeded — it advanced off
+    // roundAnswered flags regardless, and the "scoring locally" fallback silently
+    // covered for the RPC failing on every question, for every non-host player.
+    if(typeof payload.mpDbQIndex==='number')mpDbQIndex=payload.mpDbQIndex;
     mpShowQuestion(payload.qData,payload.hpFuse);renderMPHUD();
   });
   rtChannel.on('broadcast',{event:'wrong_attempt'},({payload})=>{
@@ -8396,7 +8417,7 @@ async function mpHostFetchAndBroadcast(){
   prefetchedQuestion=null;
   currentQData=qData;
   console.log('[DEBUG] host broadcasting question, qIndex='+qIndex+' mpDbQIndex='+mpDbQIndex+' q='+(qData&&qData.question));
-  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse}});
+  rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse,mpDbQIndex}});
   // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
   mpShowQuestion(qData,hpFuse);renderMPHUD();
