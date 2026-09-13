@@ -6782,6 +6782,12 @@ let mpAutoNextPaused=false;
 // protecting against firing more than once for its own mode — e.g. a duplicate or
 // out-of-order postgres_changes delivery for the same row.
 let mpAutoNextFiredForQ=null;
+// Set immediately before this client sends its own 'question' broadcast (RPC-advance
+// path only — see the postgres_changes round-resolved handler). Since broadcast:{self:true}
+// echoes it straight back, the 'question' handler checks this to skip re-processing its
+// own send rather than assuming only the host ever sends one, now that any client can win
+// the advance race. Cleared the moment that echo is seen.
+let mpOwnQuestionBroadcastPending=false;
 let mpWrongAttempts={}; // {playerName: lastWrongAttemptString} — cleared each question
 let hpPrevLives={}; // {playerName: livesCount} — used to detect life-loss for animation
 let hpTypingText={}; // {playerName: currentDraftString} — live keystrokes from potato holder
@@ -7166,16 +7172,20 @@ function rtSubscribe(lobbyId){
   // lobby_players DELETE event is silently dropped by Supabase Realtime.
   rtChannel.on('postgres_changes',{event:'UPDATE',schema:'public',table:'lobbies',filter:`id=eq.${lobbyId}`},async(payload)=>{
     await rtRefreshPlayers(lobbyId);
-    // Non-host: sync mpDbQIndex straight from the database, independent of the
-    // host's question broadcast (see that handler for the broadcast-side sync,
-    // which stays primary since it's what actually carries the question data
-    // itself). This is a second, independent source for the index specifically —
-    // a dropped or delayed broadcast can no longer leave mpDbQIndex stuck at a
-    // stale value, since the client reads it here regardless of whether the
-    // broadcast ever arrives. Only ever moves forward: current_q_index is
-    // monotonic within a game, so a stray earlier-numbered UPDATE (e.g. a
-    // reconnect re-delivering an old row state) can't walk it backward.
-    if(!isHost&&typeof payload?.new?.current_q_index==='number'&&payload.new.current_q_index>mpDbQIndex){
+    // Sync mpDbQIndex straight from the database, independent of the question
+    // broadcast (see that handler for the broadcast-side sync, which stays primary
+    // since it's what actually carries the question data itself). This is a
+    // second, independent source for the index specifically — a dropped or
+    // delayed broadcast can no longer leave mpDbQIndex stuck at a stale value,
+    // since the client reads it here regardless of whether the broadcast ever
+    // arrives. Applies to every client, including the host: now that any client
+    // can win the mp_advance_question race, a host that loses a round's race
+    // never gets its own {advanced:true} response to update mpDbQIndex from, so
+    // it needs this fallback exactly as much as a non-host does. Only ever moves
+    // forward: current_q_index is monotonic within a game, so a stray
+    // earlier-numbered UPDATE (e.g. a reconnect re-delivering an old row state)
+    // can't walk it backward.
+    if(typeof payload?.new?.current_q_index==='number'&&payload.new.current_q_index>mpDbQIndex){
       mpDbQIndex=payload.new.current_q_index;
     }
     // Fallback for a dropped game_started broadcast: Supabase Realtime is already known
@@ -7201,7 +7211,16 @@ function rtSubscribe(lobbyId){
     // their own sender. rtRefreshPlayers just ran above, so lobbyPlayers'
     // `eliminated` reflects the server's own bookkeeping, not a client guess.
     const _pgcUseRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
-    if(isHost&&_pgcUseRpc&&lobbyInGame&&payload?.new?.round_resolved_at&&mpAutoNextFiredForQ!==qIndex){
+    // Any client may now be the one that actually advances the round — not just the
+    // host. mp_advance_question's row lock + p_expected_q_index check means every
+    // client that reaches this branch can safely call it concurrently: exactly one
+    // gets {advanced:true}, everyone else gets back {advanced:false,reason:'already_advanced'}
+    // with the identical authoritative current_question. Win-check, elimination-check,
+    // and every broadcast below are gated on that advanced:true response — not on
+    // isHost — so exactly one client (whichever wins the race) is ever responsible
+    // for this round's next_question/question/game_ended broadcasts, same single-sender
+    // guarantee the old isHost gate gave, just decided by the DB instead of a fixed role.
+    if(_pgcUseRpc&&lobbyInGame&&payload?.new?.round_resolved_at&&mpAutoNextFiredForQ!==qIndex){
       mpAutoNextFiredForQ=qIndex;
       clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
       mpCancelBackup(mpActiveFuseBackupId);
@@ -7210,9 +7229,43 @@ function rtSubscribe(lobbyId){
       const _survivalWiped=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
       const _capAN=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
       const _isLastQ=_survivalWiped||(lobbyMode!=='race'&&(qIndex+1)>=_capAN);
-      mpStartAutoNext(()=>{
-        if(!isHost)return;
-        // Record rolling window — question resolved normally (not voided)
+      mpStartAutoNext(async()=>{
+        // Race for the advance. Reuse a prefetch if mpStartAutoNext already kicked
+        // one off for us; otherwise call it live (network hiccup, or the prefetch
+        // hadn't started yet). p_expected_q_index is mpDbQIndex specifically —
+        // the DB's own index, not the locally-tracked qIndex — matching every
+        // other mp_advance_question call site in this file.
+        const _topicAN=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+        let data,error;
+        if(prefetchedRpcResult){
+          ({data,error}=prefetchedRpcResult);
+          prefetchedRpcPromise=null;prefetchedRpcResult=null;
+        } else if(prefetchedRpcPromise){
+          ({data,error}=await prefetchedRpcPromise);
+          prefetchedRpcPromise=null;prefetchedRpcResult=null;
+        } else {
+          ({data,error}=await sb.rpc('mp_advance_question',{
+            p_lobby_id:currentLobbyId,
+            p_expected_q_index:mpDbQIndex,
+            p_format:selectedFormat,
+            p_topic_type:_topicAN?_topicAN.type:null,
+            p_topic_value:_topicAN?_topicAN.name:null,
+            p_exclude_ids:quizHistory.map(h=>h.id).filter(id=>id!=null),
+            p_time_limit:raceTimeLimit
+          }));
+        }
+        if(error||!data||!data.advanced){
+          // We lost the race (or the call failed outright) — some other client is
+          // the one responsible for this round's broadcasts, not us. Deliberately
+          // no fallback here: a local-pick fallback only belongs to the single
+          // client actually advancing, and per this response that isn't us.
+          return;
+        }
+        mpDbQIndex=data.q_index;
+        // We won — we're now the one client responsible for this round's side
+        // effects. Recorded after winning, not before, so a losing client never
+        // mutates rolling-window / elimination bookkeeping for a round it wasn't
+        // asked to resolve.
         lobbyPlayers.forEach(p=>{mpRollingWindowRecord(p.name,mpFlagsThisQuestion.has(p.name)?'flagged':'null');});
         // Now that the reveal + wrap-up pause has played, actually end the game if every
         // non-quit survival player is eliminated.
@@ -7234,8 +7287,24 @@ function rtSubscribe(lobbyId){
           if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
           else mpEndGame();return;
         }
-        if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
-        else{mpLoadQuestion();}
+        currentQData=data.current_question;
+        if(rtChannel){
+          rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});
+          // We already have the winning RPC's question in hand — broadcast it now
+          // rather than letting the next_question handler's legacy
+          // if(isHost)mpHostFetchAndBroadcast() tail run: that path is reserved for
+          // Hot Potato/char-mc's client-side pick and would otherwise re-call
+          // mp_advance_question a second time with an already-stale
+          // p_expected_q_index (mpDbQIndex was just updated above), advancing the
+          // round twice. mpOwnQuestionBroadcastPending lets the question handler
+          // skip our own echo the same way the old isHost guard did.
+          mpOwnQuestionBroadcastPending=true;
+          rtChannel.send({type:'broadcast',event:'question',payload:{qData:currentQData,qIndex,hpFuse:null,mpDbQIndex}});
+          document.getElementById('mpQLoading').style.display='none';
+          mpShowQuestion(currentQData,null);renderMPHUD();
+        } else {
+          mpLoadQuestion();
+        }
       },_isLastQ);
     }
   });
@@ -7359,7 +7428,10 @@ function rtSubscribe(lobbyId){
     mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();},hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
-    if(isHost)return; // host already called mpShowQuestion directly in mpHostFetchAndBroadcast
+    // Whichever client just won the round-advance race (host or not) already
+    // rendered this locally at the send site — see mpOwnQuestionBroadcastPending.
+    if(mpOwnQuestionBroadcastPending){mpOwnQuestionBroadcastPending=false;return;}
+    if(isHost)return; // Hot Potato/char-mc legacy path: host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     console.log('[DEBUG] non-host received question broadcast, qIndex='+payload.qIndex+' q='+(payload.qData&&payload.qData.question));
     currentQData=payload.qData;qIndex=payload.qIndex;
     // mpDbQIndex was previously never updated on non-host clients at all — it stayed
@@ -7513,7 +7585,16 @@ function rtSubscribe(lobbyId){
     if(_mpIw){_mpIw.style.display='none';}if(_mpIe){_mpIe.onload=null;_mpIe.onerror=null;_mpIe.src='';}
     const mpQCard=document.querySelector('#page-mp-quiz .q-card');
     if(mpQCard)mpQCard.classList.remove('answered');
-    if(isHost)mpHostFetchAndBroadcast();
+    // RPC-eligible modes (Race/Classic/Survival, non-char-mc) are fully handled by
+    // whichever client won the mp_advance_question race — it already has the new
+    // question and broadcasts it immediately after this event (see the
+    // postgres_changes round-resolved handler). Calling mpHostFetchAndBroadcast
+    // here for those modes would re-call the RPC a second time with an
+    // already-stale expected index and silently double-advance the round. Hot
+    // Potato and char-mc never reach that RPC path at all and still rely on this
+    // host-only re-fetch exactly as before.
+    const _useRpcNQ=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+    if(isHost&&!_useRpcNQ)mpHostFetchAndBroadcast();
   });
   rtChannel.on('broadcast',{event:'show_auto_next'},({payload})=>{
     if(isHost)return; // host already runs its own countdown
@@ -8520,22 +8601,28 @@ function mpStartAutoNext(onDone,isLastQuestion){
   mpAutoNextPaused=false;
   let t=5,fired=false;
   // Kick off the next question's fetch now, in parallel with the 5s countdown,
-  // instead of waiting until it ends. Host-only since only the host actually
-  // fetches/broadcasts questions. Skipped when this is the last question (no
+  // instead of waiting until it ends. Skipped when this is the last question (no
   // "next" to prefetch) and for Slow Reveal, which has its own separate
   // host-fetch path (srHostFetchAndBroadcast) that doesn't consult this.
-  if(isHost&&!isLastQuestion&&lobbyMode!=='slowreveal'){
+  if(!isLastQuestion&&lobbyMode!=='slowreveal'){
     const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
     if(useRpc){
+      // Any client may win the advance race (see the postgres_changes
+      // round-resolved handler), so every client prefetches here — the RPC's own
+      // row lock decides the single winner regardless of who called it first.
       mpPrefetchNextQuestion(quizHistory.map(h=>h.id).filter(id=>id!=null));
-    } else {
+    } else if(isHost){
+      // Hot Potato/char-mc still pick client-side and stay host-only, unchanged.
       fetchQuestion().then(q=>{prefetchedQuestion=q});
     }
   }
-  // onDone only actually does anything on the host's client (it broadcasts the next
-  // step) — so a backgrounded host stalling here freezes the game exactly like a
-  // stalled fuse would. See mpFuseWorker declaration for why the Worker backup is
-  // immune to that. fireOnce() guards against both paths ever firing.
+  // For Hot Potato/char-mc, onDone only actually does anything on the host's
+  // client (it broadcasts the next step) — so a backgrounded host stalling here
+  // freezes the game exactly like a stalled fuse would. For RPC-eligible modes,
+  // onDone races every client for the advance instead, so no single client
+  // stalling here can freeze the round. See mpFuseWorker declaration for why the
+  // Worker backup is immune to that either way. fireOnce() guards against both
+  // paths ever firing.
   const fireOnce=()=>{
     if(fired)return;fired=true;
     mpCancelBackup(mpActiveAutoNextBackupId);
