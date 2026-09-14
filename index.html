@@ -7396,6 +7396,8 @@ function rtSubscribe(lobbyId){
     if(p){p.avatar=null;p.hasPfp=false;renderLobbyRoom();}
   });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
+    window._dbgGameStartedRecv=(window._dbgGameStartedRecv||0)+1;
+    console.log('[DBG] game_started RECV #'+window._dbgGameStartedRecv+' at',new Date().toISOString(),'isHost=',isHost,'lobbyInGame(before)=',lobbyInGame);
     // Host already ran this setup in startLobbyGame() and self:true would echo it back
     // with an empty onDone, clobbering the real mpHostFetchAndBroadcast callback
     if(isHost)return;
@@ -7432,7 +7434,9 @@ function rtSubscribe(lobbyId){
     // rendered this locally at the send site — see mpOwnQuestionBroadcastPending.
     if(mpOwnQuestionBroadcastPending){mpOwnQuestionBroadcastPending=false;return;}
     if(isHost)return; // Hot Potato/char-mc legacy path: host already called mpShowQuestion directly in mpHostFetchAndBroadcast
+    window._dbgQuestionRecv=(window._dbgQuestionRecv||0)+1;
     console.log('[DEBUG] non-host received question broadcast, qIndex='+payload.qIndex+' q='+(payload.qData&&payload.qData.question));
+    console.log('[DBG] question RECV #'+window._dbgQuestionRecv+' at',new Date().toISOString());
     currentQData=payload.qData;qIndex=payload.qIndex;
     // mpDbQIndex was previously never updated on non-host clients at all — it stayed
     // at its initial 0 for the entire game, so every non-host mp_submit_answer call
@@ -7566,7 +7570,9 @@ function rtSubscribe(lobbyId){
     }
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
+    window._dbgNextQRecv=(window._dbgNextQRecv||0)+1;
     console.log('[DEBUG] next_question received, isHost='+isHost+' qIndex='+payload.qIndex);
+    console.log('[DBG] next_question RECV #'+window._dbgNextQRecv+' at',new Date().toISOString());
     hpActiveIdx=payload.hpActiveIdx||0;qIndex=payload.qIndex;
     mpTiebreakerPlayers=payload.mpTiebreakerPlayers||[];
     lobbyPlayers.forEach(p=>{p.roundAnswered=false;p.roundCorrect=false;p.roundPts=0;p.roundElapsed=0;});
@@ -7942,6 +7948,8 @@ function rtSubscribe(lobbyId){
   // host-gated request. Gating on "do I actually have the data" instead fixes
   // that deadlock while still working for the ordinary non-host rejoin case.
   rtChannel.on('broadcast',{event:'request_game_state'},({payload})=>{
+    window._dbgReqGameStateRecv=(window._dbgReqGameStateRecv||0)+1;
+    console.log('[DBG] request_game_state RECV #'+window._dbgReqGameStateRecv+' at',new Date().toISOString(),'haveCurrentQData=',!!currentQData);
     if(!currentQData)return; // we don't have a live question ourselves — can't help
     // Compute how much time is left on the current question so the rejoining
     // client's timer bar reflects reality rather than resetting to 100 %.
@@ -7981,6 +7989,8 @@ function rtSubscribe(lobbyId){
   // In that case, drop the client into a visible spectator state rather than
   // half-rendering a broken question.
   rtChannel.on('broadcast',{event:'game_state_snapshot'},({payload})=>{
+    window._dbgSnapshotRecv=(window._dbgSnapshotRecv||0)+1;
+    console.log('[DBG] game_state_snapshot RECV #'+window._dbgSnapshotRecv+' at',new Date().toISOString(),'isHost=',isHost,'haveCurrentQData=',!!currentQData,'willIgnore=',(isHost&&!!currentQData));
     // Ignore only if we're host AND already have a live question (we sent this
     // ourselves, or became host between sending the request and receiving the
     // echo). A rejoining original host can still be isHost=true with no
@@ -8425,6 +8435,7 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
 }
 
 function mpResetQuestionCard(){
+  console.log('[DBG] mpResetQuestionCard called at',new Date().toISOString(),'timerInterval(before)=',timerInterval,'qIndex=',qIndex,'mpDbQIndex=',mpDbQIndex);
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQuestionText').innerHTML='';
   document.getElementById('mpAnswersGrid').innerHTML='';
@@ -9986,6 +9997,8 @@ async function startLobbyGame(){
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
+    window._dbgGameStartedSent=(window._dbgGameStartedSent||0)+1;
+    console.log('[DBG] game_started SEND #'+window._dbgGameStartedSent+' at',new Date().toISOString(),'lobby',currentLobbyId);
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx,hpTurnOrder,showTyping:lobbyShowTyping}});
     // Kick off the first question now, in parallel with the 3-2-1 countdown below,
     // same reasoning as mpStartAutoNext's mid-game prefetch — the round trip
