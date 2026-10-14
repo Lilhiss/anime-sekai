@@ -5261,9 +5261,9 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
         <div class="pf-pitch-h">Keep what you just played.</div>
         <div class="pf-pitch-s">Everything behind this is what your profile fills in once it can remember you. Free, just a name and a password.</div>
         <div class="pf-pitch-list">
-          <div><span><i class="ti ti-calendar-event"></i></span><div><b>Your Daily Quiz streak</b><em>the week only counts if it remembers</em></div></div>
-          <div><span><i class="ti ti-trophy"></i></span><div><b>Your multiplayer record</b><em>wins and podiums, across every lobby</em></div></div>
-          <div><span><i class="ti ti-heart"></i></span><div><b>Your favourite topics</b><em>worked out from what you actually play</em></div></div>
+          <div><span><i class="ti ti-calendar-event"></i></span><div><b>Your Daily Quiz streak</b><em>kept on your account, on any device</em></div></div>
+          <div><span><i class="ti ti-chart-bar"></i></span><div><b>Every game you play</b><em>games, accuracy, perfect runs and your recent results</em></div></div>
+          <div><span><i class="ti ti-user-circle"></i></span><div><b>Your picture and colours</b><em>the same look every time you sign in</em></div></div>
           <div><span><i class="ti ti-id-badge-2"></i></span><div><b>A card other players can see</b><em>tap your name in any lobby</em></div></div>
         </div>
         <div class="pf-pitch-cta"><button onclick="goStep('auth');showAuthMode('register')"><i class="ti ti-user-plus"></i> CREATE ACCOUNT</button><span>Have one? <a onclick="goStep('auth');showAuthMode('signin')">Sign in</a></span></div>
@@ -6614,7 +6614,8 @@ sb.auth.onAuthStateChange(async (event, session) => {
       totalGames    = parseInt(profile.total_games) || 0;
       bestScore     = parseInt(profile.best_score)  || 0;
       totalCorrect  = parseInt(profile.total_correct)|| 0;
-      totalAnswered = parseInt(profile.total_addressed)||0;
+      totalAnswered = parseInt(profile.total_answered)||0;
+      perfectGames  = parseInt(profile.perfect_games) ||0;
       allHistory = await sbLoadHistory(currentUserId);
       // Restore avatar
       if(profile.avatar_url){
@@ -6763,7 +6764,7 @@ function mpCancelBackup(id){
 }
 let mpActiveFuseBackupId=null; // token for the currently-scheduled fuse backup, so it can be cancelled the instant a round resolves
 let mpActiveAutoNextBackupId=null; // same idea, for the 5s "wrapping up" pause between rounds (see mpStartAutoNext)
-let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0;
+let totalGames=0,bestScore=0,totalCorrect=0,totalAnswered=0,currentStreak=0,perfectGames=0;
 let allHistory=[];
 
 const accentHex={meadow:'#F6C98E',midnight:'#a78bfa',blossom:'#f472b6',abyss:'#38bdf8',inferno:'#fb923c',jade:'#4ade80',arcane:'#e879f9',obsidian:'#96C7FF'};
@@ -7209,7 +7210,7 @@ async function confirmSignOut(){
   guestForget();
   profileColorKey='auto';try{localStorage.removeItem('as_pf_color');}catch(e){}
   currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;currentEmail=null;
-  totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
+  totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;perfectGames=0;
   allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
   prefetchedQuestion=null;currentQData=null;
   clearInterval(timerInterval);
@@ -7271,7 +7272,7 @@ async function deleteAccount(){
     try{await sb.auth.setSession({access_token:'',refresh_token:''});}catch(_){}
     try{localStorage.removeItem('sb-'+new URL(SUPABASE_URL).hostname.split('.')[0]+'-auth-token');}catch(_){}
     currentUser=null;currentUserId=null;isGuest=false;currentPfp=null;
-    totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;
+    totalGames=0;bestScore=0;totalCorrect=0;totalAnswered=0;currentStreak=0;perfectGames=0;
     allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;
     clearInterval(timerInterval);
@@ -7739,7 +7740,8 @@ async function savePfp(){
       // Guests have no DB row — persist to sessionStorage for the session
       try{localStorage.setItem('guest_pfp',JSON.stringify(currentPfp));}catch(e){}guestSave();
     } else if(currentUserId){
-      sb.from('profiles').update({avatar_url:'preset:'+currentPfp.value}).eq('id',currentUserId).catch(()=>{});
+      // Query builders have no .catch (it threw before sending); .then() sends the update
+      sb.from('profiles').update({avatar_url:'preset:'+currentPfp.value}).eq('id',currentUserId).then(()=>{},()=>{});
     }
     afterPfpSave();
     return;
@@ -8165,7 +8167,7 @@ function auShowCreated(){
   try{
     if(guestPendingPfp&&guestPendingPfp.type==='preset'){
       currentPfp={type:'preset',value:guestPendingPfp.value};
-      if(currentUserId&&typeof sb!=='undefined')sb.from('profiles').update({avatar_url:'preset:'+guestPendingPfp.value}).eq('id',currentUserId).catch(()=>{});
+      if(currentUserId&&typeof sb!=='undefined')sb.from('profiles').update({avatar_url:'preset:'+guestPendingPfp.value}).eq('id',currentUserId).then(()=>{},()=>{});
     }
   }catch(e){}
   showAuthMode('created');
@@ -8316,6 +8318,7 @@ async function submitSignin(){
     bestScore     =parseInt(profile?.best_score)    ||0;
     totalCorrect  =parseInt(profile?.total_correct) ||0;
     totalAnswered =parseInt(profile?.total_answered)||0;
+    perfectGames  =parseInt(profile?.perfect_games) ||0;
     allHistory=await withTimeout(sbLoadHistory(user.id)).catch(()=>allHistory||[]);
     if(profile?.avatar_url){
       if(profile.avatar_url.startsWith('preset:')){currentPfp={type:'preset',value:profile.avatar_url.slice(7)};}
@@ -8933,9 +8936,11 @@ async function dailySyncFromServer(){
     const since=new Date(Date.now()-120*86400000);
     const sinceKey=since.getFullYear()+'-'+String(since.getMonth()+1).padStart(2,'0')+'-'+String(since.getDate()).padStart(2,'0');
     const {data,error}=await withTimeout(sb.from('daily_scores').select('day,correct,total,points,time_ms').eq('user_id',currentUserId).gte('day',sinceKey),4000);
-    if(error||!Array.isArray(data))return;
-    data.forEach(r=>{const k='daily_'+r.day;if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify({correct:r.correct,total:r.total,points:r.points,ms:r.time_ms}));});
-  }catch(e){}
+    if(error||!Array.isArray(data))return 0;
+    let added=0;
+    data.forEach(r=>{const k='daily_'+r.day;if(!localStorage.getItem(k)){localStorage.setItem(k,JSON.stringify({correct:r.correct,total:r.total,points:r.points,ms:r.time_ms}));added++;}});
+    return added;
+  }catch(e){return 0;}
 }
 async function openDailyQuiz(){
   clearInterval(dailyTimerInterval);dailyAnswered=true;clearTimeout(window._dailyCdT);
@@ -9754,7 +9759,7 @@ function endQuiz(){
   const total=quizHistory.length;
   totalCorrect+=correct;totalAnswered+=total;
   if(score>bestScore)bestScore=score;
-  if(correct===total&&total>0)currentStreak++;else currentStreak=0;
+  if(correct===total&&total>0){currentStreak++;perfectGames++;}else currentStreak=0;
   // Add to history
   const rank=getRank(score);
   allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
@@ -20475,7 +20480,7 @@ body.on-profile nav,body.on-profile footer{display:none}
 #page-profile .pf-online{display:inline-flex;align-items:center;gap:6px;font:900 9px 'Nunito',sans-serif;color:#4ade80;letter-spacing:.1em}
 #page-profile .pf-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
 #page-profile .pf-since{font-size:12px;font-weight:800;color:var(--muted)}
-#page-profile .pf-name{font-family:'Lilita One',cursive;font-size:clamp(48px,6.4vw,92px);line-height:1;margin-top:8px;text-shadow:6px 6px 0 var(--bg);overflow-wrap:anywhere}
+#page-profile .pf-name{font-family:'Lilita One',cursive;font-size:clamp(48px,6.4vw,92px);line-height:1;margin-top:8px;text-shadow:6px 6px 0 var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
 #page-profile .pf-badge{margin-top:16px;display:inline-flex;align-items:center;gap:12px}
 #page-profile .pf-badge-ic{width:34px;height:34px;border-radius:9px;background:#4ade80;color:#0b0a14;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 18px #4ade8066;font-size:19px}
 #page-profile .pf-badge-t{font:900 10px 'Nunito',sans-serif;letter-spacing:.14em;color:#4ade80}
@@ -20669,6 +20674,16 @@ function pfToggleMenu(e){e.stopPropagation();document.getElementById('pfMenu')?.
 document.addEventListener('click',()=>document.getElementById('pfMenu')?.classList.remove('open'));
 
 function pEl0(){return document.getElementById('pfPod');}
+/* Long names stay on one line: step the font down until it fits (ellipsis only below 28px) */
+function pfFitName(){
+  const el=document.getElementById('pfName');if(!el||!el.offsetParent)return;
+  el.style.fontSize='';let fs=parseFloat(getComputedStyle(el).fontSize);
+  // scrollWidth rounds to whole pixels and misses sub-pixel overflow, so measure the text itself
+  const rg=document.createRange();rg.selectNodeContents(el);
+  const room=()=>el.clientWidth-parseFloat(getComputedStyle(el).paddingRight||0);
+  while(rg.getBoundingClientRect().width>room()&&fs>28){fs-=2;el.style.fontSize=fs+'px';}
+}
+window.addEventListener('resize',()=>{if(document.getElementById('page-profile')?.classList.contains('active'))pfFitName();});
 function renderProfile(){
   const user=currentUser||'Guest';
   const me=!isGuest&&!!currentUser;
@@ -20678,7 +20693,7 @@ function renderProfile(){
   document.getElementById('page-profile').classList.toggle('is-guest',!me);
   if(pfp){av.style.background=pfp.bg;av.innerHTML='<img src="'+pfEsc(pfp.src)+'" alt="" style="object-fit:'+(pfp.preset?'contain':'cover')+'" onerror="this.remove()">';}
   else{av.style.background='';av.textContent=user[0].toUpperCase();}
-  document.getElementById('pfName').textContent=user;
+  document.getElementById('pfName').textContent=user;pfFitName();
   document.getElementById('pfOnline').textContent=me?'ONLINE NOW':'GUEST · THIS SESSION ONLY';
   document.querySelector('#page-profile .pf-online').style.color=me?'':'#fb923c';
   document.querySelector('#page-profile .pf-dot').style.cssText=me?'':'background:#fb923c;box-shadow:0 0 8px #fb923c';
@@ -20687,7 +20702,11 @@ function renderProfile(){
   document.getElementById('pfActions').innerHTML=!me?'':me
     ?'<button class="pf-btn pri" onclick="openEditProfile()"><i class="ti ti-pencil"></i> EDIT PROFILE</button><button class="pf-btn" onclick="pfToggleMenu(event)"><i class="ti ti-settings"></i> ACCOUNT SETTINGS</button><div class="pf-menu" id="pfMenu" onclick="event.stopPropagation()"><button onclick="this.parentNode.classList.remove(\'open\');signOut()"><i class="ti ti-logout"></i> Sign out</button><button class="danger" onclick="this.parentNode.classList.remove(\'open\');openDeleteAccount()"><i class="ti ti-trash"></i> Delete account</button></div>'
     :'<button class="pf-btn pri" onclick="goStep(\'auth\');showAuthMode(\'register\')"><i class="ti ti-user-plus"></i> CREATE ACCOUNT</button><button class="pf-btn" onclick="goStep(\'auth\');showAuthMode(\'signin\')"><i class="ti ti-login"></i> SIGN IN</button>';
-  const perfect=allHistory.filter(g=>g.total>0&&g.correct===g.total).length;
+  // perfectGames comes from user_stats (every game); the recent list only holds the last 10
+  const perfect=Math.max(perfectGames||0,allHistory.filter(g=>g.total>0&&g.correct===g.total).length);
+  // Pull this account's saved Daily days once, so the streak and week row match other devices
+  if(me&&window._pfDailySyncedFor!==currentUserId){window._pfDailySyncedFor=currentUserId;
+    dailySyncFromServer().then(n=>{if(n&&document.getElementById('page-profile')?.classList.contains('active'))renderProfile();});}
   animateCount('pfGames',totalGames,'');
   document.getElementById('pfPerfect').textContent='⭐ '+perfect;
   document.getElementById('pfAnswered').textContent=(totalAnswered||0).toLocaleString();
