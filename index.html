@@ -5820,7 +5820,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
         <div class="entry-card" style="padding:16px 18px;flex-direction:row;align-items:center;gap:14px;text-align:left;cursor:pointer" onclick="closePlayAgainModal();goStep('mode')">
           <div class="entry-card-icon" style="width:42px;height:42px;flex-shrink:0;font-size:18px"><i class="ti ti-adjustments"></i></div>
           <div>
-            <div class="entry-card-title" style="font-size:14px">Change Topic / Difficulty</div>
+            <div class="entry-card-title" style="font-size:14px">Change Topic</div>
             <div class="entry-card-desc" style="font-size:11px;margin-top:2px">Keep the format, pick a new topic</div>
           </div>
           <i class="ti ti-chevron-right" style="font-size:16px;color:var(--border2);margin-left:auto;flex-shrink:0"></i>
@@ -6487,10 +6487,12 @@ async function sbLoadProfile(userId){
 
 async function sbSaveGame(userId, gameData){
   try{
+    // RLS requires auth.uid() = user_id, so this must carry the player's session token, not the anon key
+    const token=await rtGetAuthToken();
     const res=await fetch(`${SUPABASE_URL}/rest/v1/games`,{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
+        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
         'Content-Type':'application/json','Prefer':'return=minimal'
       },
       body:JSON.stringify({
@@ -8710,8 +8712,9 @@ async function loadTopicsFromSupabase(){
       fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url,poster_urls&status=eq.approved`,_th)
         .then(r=>r.ok?r:fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url&status=eq.approved`,_th))
         .then(r=>r.ok?r:fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type&status=eq.approved`,_th)),
-      fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
+      // Counts are grouped server-side; fetching every question row here hit the API's 5,000-row cap
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/question_counts`,
+        {method:'POST',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},body:'{}'})
     ]);
     if(!topicsRes.ok) throw new Error('Failed to load topics');
     const topicsData=await topicsRes.json();
@@ -8726,7 +8729,7 @@ async function loadTopicsFromSupabase(){
       (qData||[]).forEach(row=>{
         if(!row.topic_value)return;
         if(!countMap[row.topic_value])countMap[row.topic_value]={};
-        countMap[row.topic_value][row.format]=(countMap[row.topic_value][row.format]||0)+1;
+        countMap[row.topic_value][row.format]=(countMap[row.topic_value][row.format]||0)+Number(row.n||0);
       });
     }
     const animeSet=new Map();
@@ -8855,7 +8858,9 @@ function proceedFromTopic(){
 }
 
 
+let soloRunId=0;
 function startQuiz(mode){
+  soloRunId++;
   selectedMode=mode;score=0;lives=mode==='survival'?selectedLives:3;qIndex=0;answered=false;quizHistory=[];prefetchedQuestion=null;currentQData=null;reportedQuestionIds=new Set();
   if(mode==='race'){
     // Solo Score Race: unlimited questions until target score is reached
@@ -9434,11 +9439,7 @@ function guestAddSeen(id){
 async function sbGetQuestion(format,topic){
   if(SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    // Build topic filter — General Anime has no filter so it draws from all 600 questions
-    let topicFilter='';
-    if(topic.type==='anime')topicFilter=`&topic_type=eq.anime&topic_value=eq.${encodeURIComponent(topic.value)}`;
-    else if(topic.type==='genre')topicFilter=`&topic_type=eq.genre&topic_value=eq.${encodeURIComponent(topic.value)}`;
-    // else: general — no filter, full pool
+    // topic.type is 'anime' / 'genre' for a picked topic, or 'all' for General Anime (full pool)
     // Collect ids of questions already shown this session (by id, not text —
     // multiple distinct char questions can share generic question text, so
     // text-based dedup was letting the same row get re-picked).
@@ -9461,41 +9462,20 @@ async function sbGetQuestion(format,topic){
     // Build exclusion filter
     const excludeFilter=seenIds.length?`&id=not.in.(${seenIds.join(',')})`:'';
     */
-    const excludeFilter='';
-    // Fetch a pool of unseen questions and pick one client-side at random.
-    // PostgREST does not support order=random() so shuffling is done here instead.
-    const poolLimit=500;
-    const qRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}${excludeFilter}&limit=${poolLimit}`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
+    // pick_question (SQL function) draws one random row from the whole pool server-side,
+    // skipping questions already shown this run; once they're all used it only avoids
+    // repeating the last one. Fetching a 500-row pool here used to cap the draw at the
+    // same first 500 rows and cost ~300 KB per question.
+    const exclude=[...seenIds];
+    if(lastId&&exclude[exclude.length-1]!==lastId){exclude.splice(exclude.indexOf(lastId),1);exclude.push(lastId);}
+    const qRes=await fetch(`${SUPABASE_URL}/rest/v1/rpc/pick_question`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},
+      body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude})
+    });
     const data=await qRes.json();
-    if(!Array.isArray(data)||!data.length){
-      // All questions seen — reset guest list and retry without exclusions
-      if(!currentUserId)localStorage.removeItem('guest_seen_ids');
-      const retryRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/questions?select=*&format=eq.${encodeURIComponent(format)}&report_count=lt.3&status=eq.approved${topicFilter}&limit=${poolLimit}`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-      );
-      const retryData=await retryRes.json();
-      if(!Array.isArray(retryData)||!retryData.length)return null;
-      let retryPool=retryData;
-      if(retryPool.length>1){
-        const noImmediate=retryPool.filter(q=>q.id!==lastId);
-        if(noImmediate.length)retryPool=noImmediate;
-      }
-      const row=retryPool[Math.floor(Math.random()*retryPool.length)];
-      return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
-    }
-    const unseen=data.filter(q=>!seenIds.has(q.id));
-    let pool=unseen.length?unseen:data;
-    // If every question in the pool has been seen, at least avoid repeating
-    // the question that was *just* shown (unless it's the only one left)
-    if(!unseen.length&&pool.length>1){
-      const noImmediate=pool.filter(q=>q.id!==lastId);
-      if(noImmediate.length)pool=noImmediate;
-    }
-    const row=pool[Math.floor(Math.random()*pool.length)];
+    if(!Array.isArray(data)||!data.length)return null;
+    const row=data[0];
     return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
   }catch(e){return null}
 }
@@ -9541,12 +9521,14 @@ async function loadQuestion(){
   const qCard=document.querySelector('#page-quiz .q-card');
   if(qCard){qCard.classList.remove('type-mode','shake','answered');}
   renderHUD();
+  const run=soloRunId;
   const qData=prefetchedQuestion||await fetchQuestion();
-  // Bail if the player navigated away from the solo quiz page while this was loading
-  if(!document.getElementById('page-quiz')?.classList.contains('active'))return;
+  // Bail if the player navigated away from the solo quiz page, or started a new run, while this was loading
+  if(run!==soloRunId||!document.getElementById('page-quiz')?.classList.contains('active'))return;
   prefetchedQuestion=null;currentQData=qData;
   showQuestion(qData);
-  fetchQuestion().then(q=>{prefetchedQuestion=q});
+  // A prefetch that lands after a new run started belongs to the old run's format/topic — drop it
+  fetchQuestion().then(q=>{if(run===soloRunId)prefetchedQuestion=q});
 }
 /* §7: which of the three arrangements this question uses. Scene and character only
    claim their layout when an image actually arrives — a scene question whose still
@@ -9740,6 +9722,9 @@ function showFeedback(correct,correctAns,userAns,override){
 }
 
 function nextQuestion(){
+  // Only advance from an answered question on the live quiz page — a double-click on NEXT
+  // (or NEXT racing the auto-advance) would otherwise skip a question or end the quiz twice
+  if(!answered||!document.getElementById('page-quiz')?.classList.contains('active'))return;
   clearInterval(soloAutoNextInterval);
   qIndex++;
   if(selectedMode==='survival'&&lives<=0){endQuiz();return}
@@ -9763,8 +9748,8 @@ function endQuiz(){
   // Add to history
   const rank=getRank(score);
   allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
-  // Save to Supabase if logged in
-  if(currentUserId){
+  // Save to Supabase if logged in (guests have no profile row, so their games can't be stored)
+  if(currentUserId&&!isGuest){
     sbSaveGame(currentUserId,{
       format:selectedFormat,mode:selectedMode,score,correct,total,livesLeft:lives
     });
@@ -9844,9 +9829,8 @@ function toggleRecap(){
   document.getElementById('recapToggleBtn').innerHTML=recapOpen?'<i class="ti ti-chevron-up" style="font-size:13px"></i> Hide':'<i class="ti ti-chevron-down" style="font-size:13px"></i> Show';
 }
 function showPlayAgainModal(){
-  const diffLabel={easy:'Easy',normal:'Normal',hard:'Hard'}[selectedDifficulty]||'Easy';
   const topicLabel=isGeneralSelected||!selectedTopics.length?'General Anime':selectedTopics.map(t=>t.name).join(', ');
-  document.getElementById('playAgainSettingsSummary').textContent=`${fmtLabels[selectedFormat]} · ${topicLabel} · ${diffLabel}`;
+  document.getElementById('playAgainSettingsSummary').textContent=`${fmtLabels[selectedFormat]} · ${topicLabel}`;
   document.getElementById('playAgainModal').style.display='flex';
   applyTheme();
 }
@@ -10553,7 +10537,8 @@ function updateSoundUI(){
 
 function recordAnswerStat(id,wasCorrect){
   if(!id||typeof sb==='undefined'||!sb||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  try{const p=sb.rpc('record_answer',{q_id:id,was_correct:!!wasCorrect});if(p&&p.catch)p.catch(()=>{});}catch(e){}
+  // Supabase query builders only send when .then() is called (they have no .catch), so fire it explicitly
+  try{sb.rpc('record_answer',{q_id:id,was_correct:!!wasCorrect}).then(()=>{},()=>{});}catch(e){}
 }
 function launchConfetti(){
   sfxWin();
