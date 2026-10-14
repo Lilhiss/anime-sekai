@@ -8904,14 +8904,13 @@ async function loadDailyQuestions(){
   const rng=_dailyRng(_dailyHash(dailyDateKey()));
   if(!SUPABASE_URL.includes('YOUR_PROJECT')){
     try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=id&format=eq.mc&status=eq.approved&report_count=lt.3&order=id.asc`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
-      const pool=await r.json();
-      if(Array.isArray(pool)&&pool.length>=DAILY_COUNT){
-        const ids=_dailyShuffle(pool.map(p=>p.id),rng).slice(0,DAILY_COUNT);
-        const r2=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=*&id=in.(${ids.join(',')})`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
-        const rows=await r2.json();const byId={};(rows||[]).forEach(row=>byId[row.id]=row);
-        const out=ids.map(id=>byId[id]).filter(Boolean).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]},rng));
-        if(out.length>=DAILY_COUNT)return out;
+      // daily_questions() picks the day's set once and stores it (daily_sets), so the set
+      // can't reshuffle when questions are approved, reported or removed later in the day
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/daily_questions`,{method:'POST',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},body:JSON.stringify({p_day:dailyDateKey()})});
+      const rows=await r.json();
+      if(Array.isArray(rows)&&rows.length){
+        // Options are still shuffled with the date seed, so everyone sees the same order
+        return rows.slice(0,DAILY_COUNT).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]},rng));
       }
     }catch(e){}
   }
@@ -8924,8 +8923,23 @@ const dailyProgKey=()=>'dailyprog_'+dailyDateKey();
 function dailyProgGet(){try{return JSON.parse(localStorage.getItem(dailyProgKey())||'null');}catch(e){return null;}}
 function dailyProgSave(extra){try{localStorage.setItem(dailyProgKey(),JSON.stringify(Object.assign({idx:dailyIdx,correct:dailyCorrect,picks:dailyPicks,times:dailyTimes,streak:window.dailyStreak||0},extra||{})));}catch(e){}}
 function dailyProgClear(){try{localStorage.removeItem(dailyProgKey());}catch(e){}}
+/* Signed-in players: copy their saved daily_scores days into the daily_<date> keys this
+   browser uses, so "already played today" and the streak follow the account across devices.
+   Guests stay browser-only. Per-question picks aren't stored server-side, so synced days
+   show "?" squares, which showDailyResult already handles. */
+async function dailySyncFromServer(){
+  if(!currentUserId||isGuest||typeof sb==='undefined'||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{
+    const since=new Date(Date.now()-120*86400000);
+    const sinceKey=since.getFullYear()+'-'+String(since.getMonth()+1).padStart(2,'0')+'-'+String(since.getDate()).padStart(2,'0');
+    const {data,error}=await withTimeout(sb.from('daily_scores').select('day,correct,total,points,time_ms').eq('user_id',currentUserId).gte('day',sinceKey),4000);
+    if(error||!Array.isArray(data))return;
+    data.forEach(r=>{const k='daily_'+r.day;if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify({correct:r.correct,total:r.total,points:r.points,ms:r.time_ms}));});
+  }catch(e){}
+}
 async function openDailyQuiz(){
   clearInterval(dailyTimerInterval);dailyAnswered=true;clearTimeout(window._dailyCdT);
+  await dailySyncFromServer();
   const key=dailyDateKey();
   let done=null;try{done=JSON.parse(localStorage.getItem('daily_'+key)||'null');}catch(e){}
   if(done){showDailyResult(done.correct,done.total,done.picks||[],true);return;}
@@ -9102,12 +9116,8 @@ async function dailyLoadLb(){
       if(mine&&!today.some(r=>r.me)){today.push(mine);today.sort((x,y)=>y.points-x.points||(x.time_ms??Infinity)-(y.time_ms??Infinity));}
       if(mine&&!streaks.some(r=>r.me)){streaks.push(mine);streaks.sort((x,y)=>y.streak-x.streak);}}
   }}catch(e){}
-  if(!live){ /* sample rows until the daily_scores table exists */
-    const S=[['kurozaki',781,61300,8,41],['nyanko.exe',766,70900,8,12],['lumen',742,58200,7,27],['saitama_fan',715,88600,8,6],['rin',688,64100,7,19],['hollowpoint',640,92400,7,3],['mochi',602,101800,6,58],['tsubasa',560,97200,6,9]];
-    const PS=(typeof PFP_PRESETS!=='undefined'?PFP_PRESETS:[]);
-    const base=S.map(([username,points,time_ms,correct,streak],i)=>({username,points,time_ms,correct,streak,avatar_url:PS.length&&i%3!==2?'preset:'+PS[(i*2)%PS.length].id:null}));
-    today=base.slice();streaks=base.slice();if(mine){today.push(mine);streaks.push(mine);}
-    today.sort((x,y)=>y.points-x.points||(x.time_ms??Infinity)-(y.time_ms??Infinity));streaks.sort((x,y)=>y.streak-x.streak);}
+  if(!live){ /* leaderboard couldn't load: show just your own row, never made-up players */
+    today=mine?[mine]:[];streaks=mine?[mine]:[];}
   _dailyLbData={today,streaks,live};dailyRenderLb();
 }
 function dailyLbTab(t){_dailyLbTab=t;document.querySelectorAll('.dr-lb-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.lb===t));dailyRenderLb();}
@@ -9128,7 +9138,7 @@ function dailyRenderLb(){
   const empty='<div class="dr-lb-foot">No one has finished today\'s set yet.</div>';
   A.innerHTML=_dailyLbData.today.length?_dailyLbData.today.map((r,i)=>row(r,i,false)).join(''):empty;
   B.innerHTML=_dailyLbData.streaks.length?_dailyLbData.streaks.map((r,i)=>row(r,i,true)).join(''):empty;
-  ft.textContent=_dailyLbData.live?'':'Sample players shown until the leaderboard goes live.';ft.style.display=_dailyLbData.live?'none':'';
+  ft.textContent=_dailyLbData.live?'':'Couldn\'t load the leaderboard right now. Try again in a moment.';ft.style.display=_dailyLbData.live?'none':'';
 }
 function showDailyResult(correct,total,picks,already){
   goStep('daily-result');dailyLoadLb();
