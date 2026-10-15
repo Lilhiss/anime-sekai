@@ -11348,7 +11348,7 @@ function rtSubscribe(lobbyId){
           }
           qIndex++;
           const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap&&mpClassicShouldEnd()){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
         },_isLastQ);
@@ -12466,17 +12466,21 @@ async function mpRpcAdvanceAndBroadcast(){
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
+      // Tiebreakers ride on the question we just advanced to: set mpTiebreakerPlayers and
+      // fall through to the normal broadcast below. (mpStartTiebreaker only sends
+      // next_question, and in this RPC path nobody would then fetch the question.)
+      mpTiebreakerPlayers=[];
       if(selectedMode==='race'){
         const winner=mpCheckRaceWin();
-        if(winner!==null){
-          if(winner==='tiebreaker'){mpStartTiebreaker();return;}
+        if(winner==='tiebreaker')mpTiebreakerPlayers=mpTopTiedPlayers();
+        else if(winner!==null){
           if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
           else mpEndGame();return;
         }
       }
       qIndex++;
       const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-      if(lobbyMode!=='race'&&qIndex>=_survivalCap){
+      if(lobbyMode!=='race'&&qIndex>=_survivalCap&&mpClassicShouldEnd()){
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
@@ -14766,6 +14770,11 @@ async function mpQuitGame(){
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'player_quit',payload:{name:currentUser}});
   }
+  // If everyone still playing has already answered, our leaving completes the round:
+  // let the server resolve it now instead of the others waiting out the clock.
+  if(currentLobbyId&&currentUserId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{await sb.rpc('mp_check_round',{p_lobby_id:currentLobbyId});}catch(e){}
+  }
   if(rtChannel){rtChannel.unsubscribe();rtChannel=null;}
   goStep('multiplayer');
 }
@@ -14819,6 +14828,11 @@ function mpShowQuestion(qData,hpFuse){
     msg.style.cssText='text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:10px';
     msg.innerHTML=`<div style="font-size:32px">⚔️</div><div style="font-family:\'Lilita One\',cursive;font-size:16px;color:var(--text)">Tiebreaker Round</div><div>${names} are tied. Watching them duel it out…</div>`;
     grid.appendChild(msg);
+    // Record a pass for this round so the server can resolve it as soon as the tied
+    // players answer, instead of waiting out the timer for spectators who never will.
+    if((lobbyMode==='race'||lobbyMode==='classic')&&selectedFormat!=='char-mc'&&currentLobbyId&&currentUserId){
+      sb.rpc('mp_submit_answer',{p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,p_choice_idx:-1,p_choice_text:null,p_mode:'pass'}).then(()=>{},()=>{});
+    }
   } else {
     (qData.options||[]).forEach((opt,i)=>{
       const d=document.createElement('div');d.className='ans';
@@ -15053,7 +15067,22 @@ async function mpCheckTypeAnswer(){
 }
 
 function mpTimeOut(){
-  if(answered)return;answered=true;answeredQIndex=qIndex;
+  if(answered){
+    // Time's up but we'd already answered. Normally the round resolves when everyone has
+    // answered; if someone left or froze mid-question that never happens, so the clock
+    // running out must still move the game on. mp_advance_question picks a single winner,
+    // so it's safe for every client to try.
+    const _useRpcAT=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
+    if(_useRpcAT&&mpAutoNextFiredForQ!==qIndex&&document.getElementById('page-mp-quiz')?.classList.contains('active')){
+      mpAutoNextFiredForQ=qIndex;
+      clearInterval(timerInterval);
+      const _capAT=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
+      const _wipedAT=selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated);
+      mpStartAutoNext(mpRpcAdvanceAndBroadcast,_wipedAT||(lobbyMode!=='race'&&(qIndex+1)>=_capAT));
+    }
+    return;
+  }
+  answered=true;answeredQIndex=qIndex;
   clearInterval(timerInterval);
   clearInterval(mpAutoNextInterval); // cancel any in-progress auto-next from all-answered path
   mpCancelBackup(mpActiveAutoNextBackupId);
@@ -15139,7 +15168,7 @@ function mpTimeOut(){
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
       qIndex++;
-      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit&&mpClassicShouldEnd()){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
       else{mpLoadQuestion();}
     },_isLastQTO);
@@ -15354,6 +15383,23 @@ function mpCheckRaceWin(){
   // Multiple players tied at the top — start a tiebreaker
   return 'tiebreaker';
 }
+// Names of the players (still in the game) tied for the top score; one name = clear leader.
+function mpTopTiedPlayers(){
+  const live=lobbyPlayers.filter(lp=>!lp.quit&&lp.connected!==false);
+  if(!live.length)return [];
+  const top=Math.max(...live.map(lp=>lp.score||0));
+  return live.filter(lp=>(lp.score||0)===top).map(lp=>lp.name);
+}
+// Classic ends after its question count, unless 2+ players share the top score: then the
+// tied players play extra rounds (others watch) until one of them pulls ahead.
+// Returns true when the game should end now; otherwise sets mpTiebreakerPlayers.
+function mpClassicShouldEnd(){
+  if(lobbyMode!=='classic')return true;
+  const tied=mpTopTiedPlayers();
+  if(tied.length<2)return true;
+  mpTiebreakerPlayers=tied;
+  return false;
+}
 function mpStartTiebreaker(){
   // Only the players tied at the top score play the tiebreaker
   const topScore=Math.max(...lobbyPlayers.filter(lp=>!lp.quit).map(lp=>lp.score));
@@ -15405,9 +15451,13 @@ async function mpEndGame(){
   const isSurvival=selectedMode==='survival';
   const isSR=lobbyMode==='slowreveal';
   const me=lobbyPlayers.find(p=>p.name===currentUser);if(me&&!isHP)me.score=score;
+  // Players who quit or dropped mid-game are tagged LEFT and ranked below everyone who
+  // stayed, so a leaver can never be crowned the winner.
+  const hasLeft=p=>!!p.quit||p.connected===false;
+  const leftLast=(a,b)=>(hasLeft(a)===hasLeft(b)?0:hasLeft(a)?1:-1);
   const sorted=isHP
-    ?[...lobbyPlayers].sort((a,b)=>(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
-    :[...lobbyPlayers].sort((a,b)=>b.score-a.score);
+    ?[...lobbyPlayers].sort((a,b)=>leftLast(a,b)||(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
+    :[...lobbyPlayers].sort((a,b)=>leftLast(a,b)||b.score-a.score);
   const winner=sorted[0];const iWon=winner.name===currentUser;
   const winnerAvatarHTML=getLobbyAvatarHTML(winner.avatar||null,winner.color,winner.name[0].toUpperCase(),80);
   const winnerAvatarStyled=winnerAvatarHTML.replace('class="lobby-player-avatar"','class="mp-winner-avatar"');
@@ -15430,7 +15480,8 @@ async function mpEndGame(){
     const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):(getRank(p.score).emoji+' '+getRank(p.score).title);
     const recapAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),36);
     const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar"','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':'')+'"');
-    row.innerHTML=`<div class="standing-pos">${i+1}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
+    const leftTag=hasLeft(p)&&!isMe?' <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:900;letter-spacing:.08em;vertical-align:middle;background:color-mix(in srgb,var(--text) 12%,transparent);color:var(--muted)">LEFT</span>':'';
+    row.innerHTML=`<div class="standing-pos">${i+1}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}${leftTag}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
   if(iWon)launchConfetti();
