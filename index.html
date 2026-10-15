@@ -14965,7 +14965,7 @@ async function mpAnswerMC(idx,el,qData){
     }
   } else {
     const mpElapsed=(Date.now()-questionStartTime)/1000;
-    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+    mpPts=mpScoringMode()==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10; // speed-scored in Classic tiebreaks too
   }
   if(correct){score+=mpPts;lastPtsEarned=mpPts;}else{lives--;lastPtsEarned=0;}
   mpSyncFeedbackScore(correct,qData.options[idx]);
@@ -15058,7 +15058,7 @@ async function mpCheckTypeAnswer(){
       }
     } else {
       const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+      mpTaPts=mpScoringMode()==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10; // speed-scored in Classic tiebreaks too
     }
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     mpSyncFeedbackScore(true,userAns);
