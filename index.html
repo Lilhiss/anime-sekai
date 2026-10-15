@@ -14784,6 +14784,24 @@ async function mpQuitGame(){
       await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({connected:false})});
     }catch(e){console.error('[mpQuitGame] error patching row',e);}
   }
+  // A quitting host keeps their row (connected=false) and so stayed "host": Hot Potato,
+  // Slow Reveal and char-mc froze, and nobody could start a rematch. Hand the role to the
+  // longest-waiting player who's still connected, the same way leaving the lobby does.
+  if(isHost&&currentLobbyId&&!SUPABASE_URL.includes('YOUR_PROJECT')){
+    try{
+      const token=await rtGetAuthToken();
+      const H={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'};
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${currentLobbyId}&user_id=neq.${currentUserId}&connected=not.is.false&order=joined_at.asc&limit=1`,{headers:H});
+      const next=(await r.json())?.[0];
+      if(next){
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}`,{method:'PATCH',headers:H,body:JSON.stringify({is_host:false})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${currentLobbyId}&user_id=eq.${next.user_id}`,{method:'PATCH',headers:H,body:JSON.stringify({is_host:true})});
+        await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${currentLobbyId}`,{method:'PATCH',headers:H,body:JSON.stringify({host_id:next.user_id,host_username:next.username})});
+        if(rtChannel)rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:next.username,reason:'left',originalHostName:currentUser,remainingSeconds:lobbyTimerSecondsLeft}});
+      }
+    }catch(e){console.error('[mpQuitGame] host handover failed',e);}
+    isHost=false;
+  }
   if(rtChannel){
     rtChannel.send({type:'broadcast',event:'player_quit',payload:{name:currentUser}});
   }
