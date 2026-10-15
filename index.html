@@ -5179,7 +5179,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
             <div class="win-avatar" id="winAvatar">?</div>
             <div class="win-badge" id="winBadge">YOUR RUN</div>
           </div>
-          <div class="res-name rank-title" id="rankTitle">True <span>Otaku</span></div>
+          <div class="res-name rank-title" id="rankTitle">Nice <span>run!</span></div>
           <div class="res-meta">
             <span class="res-sub rank-sub" id="rankSub"></span>
             <span class="res-dot"></span>
@@ -6956,14 +6956,6 @@ function modeCardClick(mode){
   selectSoloMode(mode);
 }
 const keys=['A','B','C','D'];
-const ranks=[
-  {min:0,max:19,emoji:'😅',title:'Casual Watcher',sub:"You've seen a few episodes here and there. Keep watching!"},
-  {min:20,max:39,emoji:'🌱',title:'Anime Newcomer',sub:"You're finding your footing. The journey has only just begun."},
-  {min:40,max:59,emoji:'⚔️',title:'Seasoned Fan',sub:"A solid performance! You've clearly spent time with your watch list."},
-  {min:60,max:79,emoji:'🌟',title:'Anime Enthusiast',sub:"Impressive knowledge! Your dedication is starting to show."},
-  {min:80,max:89,emoji:'🔥',title:'Anime Scholar',sub:"Outstanding! You have deep knowledge across the anime universe."},
-  {min:90,max:100,emoji:'🏆',title:'True Otaku',sub:"Incredible! You clearly live and breathe anime. The arena bows before you."},
-];
 
 function computeBadges(){
   const formatsPlayed=new Set(allHistory.map(h=>h.fmt));
@@ -8884,8 +8876,8 @@ function renderHUD(){
   const isSurvival=selectedMode==='survival';
   const isSoloRace=selectedMode==='race';
   const scoreEl=document.getElementById('scoreDisplay');
-  // In survival, replace the pts counter with a correct-answer count
-  scoreEl.textContent=isSurvival
+  // Points only mean something in Score Race (speed); Classic and Survival show a correct count
+  scoreEl.textContent=!isSoloRace
     ? quizHistory.filter(h=>h.correct).length+' correct'
     : score+' pts';
   // For solo Score Race, show progress toward target instead of Q count
@@ -9614,7 +9606,7 @@ function answerMC(idx,el,qData){
   const correct=idx===qData.answer;
   recordAnswerStat(qData.id,correct);
   const mcElapsed=(Date.now()-questionStartTime)/1000;
-  const mcPts=selectedMode==='race'?calcSpeedPoints(mcElapsed,raceTimeLimit):10;
+  const mcPts=selectedMode==='race'?calcSpeedPoints(mcElapsed,raceTimeLimit):1; // Classic/Survival: 1 per correct answer
   if(correct){el.classList.add('correct');score+=mcPts;lastPtsEarned=mcPts;}
   else{el.classList.add('wrong');allAns[qData.answer].classList.add('correct');lives--;lastPtsEarned=0;}
   quizHistory[quizHistory.length-1].userAns=qData.options[idx];
@@ -9652,7 +9644,7 @@ function checkTypeAnswer(){
   document.getElementById('typeSubmitBtn').disabled=true;
   const hint=document.getElementById('typeWrongHint');if(hint)hint.style.display='none';
   const taElapsed=(Date.now()-questionStartTime)/1000;
-  const taPts=selectedMode==='race'?calcSpeedPoints(taElapsed,raceTimeLimit):10;
+  const taPts=selectedMode==='race'?calcSpeedPoints(taElapsed,raceTimeLimit):1;
   score+=taPts;lastPtsEarned=taPts;
   quizHistory[quizHistory.length-1].userAns=userAns;
   quizHistory[quizHistory.length-1].correct=true;
@@ -9765,8 +9757,7 @@ function endQuiz(){
   if(score>bestScore)bestScore=score;
   if(correct===total&&total>0){currentStreak++;perfectGames++;}else currentStreak=0;
   // Add to history
-  const rank=getRank(score);
-  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,rank:rank.emoji,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
+  allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
   // Save to Supabase if logged in (guests have no profile row, so their games can't be stored)
   if(currentUserId&&!isGuest){
     sbSaveGame(currentUserId,{
@@ -9775,28 +9766,30 @@ function endQuiz(){
   }
   renderResults();goStep('results');
 }
-function getRank(s){return ranks.find(r=>s>=r.min&&s<=r.max)||ranks[0]}
 function renderResults(){
   const isSurvival=selectedMode==='survival';
   const isRace=selectedMode==='race';
   const correct=quizHistory.filter(h=>h.correct).length,total=quizHistory.length;
-  const rank=getRank(score);
-  document.getElementById('rankBadge').textContent=rank.emoji;
-  const words=rank.title.split(' ');const last=words.pop();
-  document.getElementById('rankTitle').innerHTML=words.join(' ')+(words.length?' ':'')+' <span>'+last+'</span>';
-  if(isRace){
-    document.getElementById('rankSub').textContent='Target reached in '+total+' questions! 🏁';
-  } else {
-    document.getElementById('rankSub').textContent=isSurvival?(lives>0?'You survived! 💪':'Eliminated. Better luck next time!'):(rank.sub);
-  }
-  // Survival: headline shows correct count, not pts
-  document.getElementById('scoreBig').textContent=isSurvival?correct:score;
+  const pct=total?correct/total:0;
+  // Headline by mode and accuracy (the old score-band rank titles were removed 2026-10-15);
+  // Classic reuses the Daily Quiz's verdict lines.
+  const verdict=pct>=1?'Flawless.':pct>=.875?'Sharp eye.':pct>=.625?'Solid round.':pct>=.375?'Half of them got you.':'Rough set.';
+  const title=isRace?'Target reached!':isSurvival?(lives>0?'You survived!':'Out of lives.'):verdict;
+  const words=title.split(' ');const last=words.pop();
+  document.getElementById('rankTitle').innerHTML=words.join(' ')+(words.length?' ':'')+'<span>'+last+'</span>';
+  document.getElementById('rankBadge').textContent=(isRace||(isSurvival&&lives>0)||pct>=1)?'🏆':pct>=.75?'🌟':'✨';
+  document.getElementById('rankSub').textContent=isRace
+    ?'Target reached in '+total+' questions! 🏁'
+    :isSurvival?(lives>0?'You made it to the end. 💪':'Better luck next time!')
+    :'Classic · '+(fmtLabels[selectedFormat]||'');
+  // Points only mean something in Score Race; Classic and Survival headline the correct count
+  document.getElementById('scoreBig').textContent=isRace?score:correct;
   const unitEl=document.querySelector('.score-display .score-unit');
-  if(unitEl)unitEl.textContent=isSurvival?'correct':' pts';
+  if(unitEl)unitEl.textContent=isRace?' pts':'correct';
   document.getElementById('statCorrect').textContent=correct+' / '+total;
-  document.getElementById('statAccuracy').textContent=(total?Math.round((correct/total)*100):0)+'%';
+  document.getElementById('statAccuracy').textContent=(total?Math.round(pct*100):0)+'%';
   document.getElementById('statLives').textContent=isSurvival?lives+' ❤️':'—';
-  buildRecap();if(!isSurvival&&score>=80)launchConfetti();if(isSurvival&&lives>0)launchConfetti();
+  buildRecap();if(isRace||(isSurvival?lives>0:pct>=.8))launchConfetti();
   document.getElementById('viewProfileWrap').style.display=(!currentUser||isGuest)?'none':'block';
   applyTheme();
 }
@@ -12742,7 +12735,7 @@ async function renderLb(){
     const color=accentHex[p.theme_color]||accentHex.midnight;
     const row=document.createElement('div');row.className='lb-row'+(rankClass?' '+rankClass:'');row.style.animationDelay=(i*40)+'ms';
     if(isMe)row.style.borderColor='var(--accent)';
-    row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games · ${getRank(p.best_score).emoji} ${getRank(p.best_score).title}</div></div><div class="lb-score">${p.best_score}</div>`;
+    row.innerHTML=`<div class="lb-rank ${rankClass}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div class="lb-avatar" style="background:${color};color:#fff">${p.username[0].toUpperCase()}</div><div class="lb-info"><div class="lb-name">${p.username}${isMe?' <span style="font-size:10px;color:var(--accent);font-weight:800">(you)</span>':''}</div><div class="lb-meta">${p.total_games} games</div></div><div class="lb-score">${p.best_score}</div>`;
     list.appendChild(row);
   });
   if(!data.length)list.innerHTML='<div class="lb-empty">'+_htmlEsc(getSiteText('lb_empty'))+'</div>';
@@ -14691,7 +14684,7 @@ function renderMPHUD(){
   // ── Standard HUD ─────────────────────────────────────────────
   const displayScore=isHP
     ?'🥔 Hot Potato'
-    :isSurvival
+    :(isSurvival||lobbyMode==='classic')
       ? quizHistory.filter(h=>h.correct).length+' correct'
       :isSR
         ? score+' / '+srTargetScore+' pts'
@@ -14731,7 +14724,7 @@ function renderMPScoreboard(){
     }
     const ansIcon=p.roundAnswered&&!hasQuit?`<span style="font-size:11px;margin-right:4px">${p.roundCorrect?'<i class="ti ti-circle-check" style="color:#4ade80"></i>':'<i class="ti ti-circle-x" style="color:#f87171"></i>'}</span>`:'';
     // Only show +pts round meta in race mode
-    const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s · +${p.roundPts}pts</div>`:'';
+    const roundMeta=p.roundAnswered&&!isHP&&!hasQuit&&!isSurvival?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${p.roundElapsed}s${lobbyMode==='classic'?'':' · +'+p.roundPts+'pts'}</div>`:'';
     const quitLabel=hasQuit?` <span style="font-size:10px;color:var(--muted)">🚪 left</span>`:'';
     // Draft treatment — offline ≠ quit: no strikethrough, since they may still rejoin.
     const offlineLabel=isOffline?` <span style="font-size:10px;color:var(--muted)" title="Disconnected (may still rejoin)"><i class="ti ti-wifi-off" style="font-size:10px"></i> offline</span>`:'';
@@ -14961,11 +14954,11 @@ async function mpAnswerMC(idx,el,qData){
       // stalling the score sync on a network blip. The reveal already fired.
       console.error('mp_submit_answer failed, scoring locally:',error||data);
       const mpElapsed=(Date.now()-questionStartTime)/1000;
-      mpPts=lobbyMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
+      mpPts=lobbyMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):1;
     }
   } else {
     const mpElapsed=(Date.now()-questionStartTime)/1000;
-    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):1;
   }
   if(correct){score+=mpPts;lastPtsEarned=mpPts;}else{lives--;lastPtsEarned=0;}
   mpSyncFeedbackScore(correct,qData.options[idx]);
@@ -15054,11 +15047,11 @@ async function mpCheckTypeAnswer(){
         // stalling the score sync on a network blip. The reveal already fired.
         console.error('mp_submit_answer failed, scoring locally:',error||data);
         const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-        mpTaPts=lobbyMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):lobbyMode==='survival'?1:10;
+        mpTaPts=lobbyMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):1;
       }
     } else {
       const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
+      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):1;
     }
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     mpSyncFeedbackScore(true,userAns);
@@ -15462,8 +15455,8 @@ async function mpEndGame(){
   document.getElementById('mpWinnerBadge').innerHTML=winnerAvatarStyled;
   {const rb=document.querySelector('#page-mp-results .mr-badge');if(rb)rb.textContent=isTie?'TIED':'WINNER';}
   document.getElementById('mpWinnerTitle').innerHTML=isTie?'It\'s a <span>Tie!</span>':iWon?'You <span>Win!</span>':`<span>${winner.name}</span> Wins!`;
-  {const wp=document.getElementById('mpWinnerPts'),wd=document.getElementById('mpWinnerDot');const showPts=!isHP;if(wp)wp.textContent=showPts?(winner.score||0).toLocaleString()+' pts':'';if(wd)wd.style.display=showPts?'':'none';}
   const isClassic=selectedMode==='classic';
+  {const wp=document.getElementById('mpWinnerPts'),wd=document.getElementById('mpWinnerDot');const showPts=!isHP;if(wp)wp.textContent=showPts?(winner.score||0).toLocaleString()+(isClassic?' correct':' pts'):'';if(wd)wd.style.display=showPts?'':'none';}
   const others=n=>n===1?'1 other player':n+' other players';
   document.getElementById('mpWinnerSub').textContent=isTie
     ?(iTied?'You tied for first with '+others(tied.length-1)+'. Nice work!':tied.map(p=>p.name).join(' & ')+' share first place.')
@@ -15483,8 +15476,8 @@ async function mpEndGame(){
       ?`<div style="display:flex;gap:3px;align-items:center">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div>`
       :isSurvival
       ?`<div style="display:flex;align-items:center;gap:6px"><div class="lb-score">${p.score} pts</div><div style="font-size:13px">${p.eliminated?'💀':'❤️'.repeat(p.lives)}</div></div>`
-      :`<div class="lb-score">${p.score} pts</div>`;
-    const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):(getRank(p.score).emoji+' '+getRank(p.score).title);
+      :`<div class="lb-score">${p.score} ${isClassic?'correct':'pts'}</div>`;
+    const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):'';
     const recapAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),36);
     const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar"','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':'')+'"');
     const leftTag=hasLeft(p)&&!isMe?' <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:900;letter-spacing:.08em;vertical-align:middle;background:color-mix(in srgb,var(--text) 12%,transparent);color:var(--muted)">LEFT</span>':'';
