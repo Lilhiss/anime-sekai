@@ -11188,7 +11188,14 @@ function rtSubscribe(lobbyId){
     if(rtChannel&&currentUser)rtChannel.send({type:'broadcast',event:'countdown_ready',payload:{name:currentUser}});
     // Non-hosts: show countdown while still on lobby page, transition when done
     const hpFirstHolder=payload.mode==='potato'?(hpTurnOrder[0]||lobbyPlayers[hpActiveIdx]?.name):null;
-    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();},hpFirstHolder);
+    mpShowCountdown(()=>{_origGoStep('mp-quiz');mpResetQuestionCard();renderMPHUD();
+      // The host fetches question 1. If it hasn't arrived shortly after the countdown
+      // (host dropped right at the start), fetch it ourselves: same one-winner RPC as
+      // every later question, so this never double-advances.
+      if((lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc'){
+        setTimeout(()=>{mpEnsureFirstQuestion().catch(()=>{});},1500);
+      }
+    },hpFirstHolder);
   });
   rtChannel.on('broadcast',{event:'question'},({payload})=>{
     // Whichever client just won the round-advance race (host or not) already
@@ -12502,6 +12509,23 @@ async function mpRpcAdvanceAndBroadcast(){
       } else {
         mpLoadQuestion();
       }
+}
+// Non-host fallback for question 1 (see the game_started countdown callback). Only acts
+// while nothing is on screen yet; adopts the existing question if the host already set it.
+async function mpEnsureFirstQuestion(){
+  if(!lobbyInGame||mpShownDbQIndex>0||!document.getElementById('page-mp-quiz')?.classList.contains('active'))return;
+  const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
+  const{data,error}=await sb.rpc('mp_advance_question',{
+    p_lobby_id:currentLobbyId,p_expected_q_index:0,p_format:selectedFormat,
+    p_topic_type:topic?topic.type:null,p_topic_value:topic?topic.name:null,
+    p_exclude_ids:[],p_time_limit:raceTimeLimit
+  });
+  if(error||!data||mpShownDbQIndex>0)return; // failed, or the host's broadcast landed meanwhile
+  if(!data.advanced&&data.reason!=='already_advanced')return;
+  mpDbQIndex=data.q_index;mpShownDbQIndex=mpDbQIndex;currentQData=data.current_question;
+  if(data.advanced&&rtChannel)rtChannel.send({type:'broadcast',event:'question',payload:{qData:currentQData,qIndex,hpFuse:null,mpDbQIndex}});
+  document.getElementById('mpQLoading').style.display='none';
+  mpShowQuestion(currentQData,null);renderMPHUD();
 }
 function mpPrefetchNextQuestion(excludeIds){
   console.log('[DEBUG] prefetch firing, mpDbQIndex='+mpDbQIndex);
