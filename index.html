@@ -14948,7 +14948,7 @@ async function mpAnswerMC(idx,el,qData){
   if(useRpc){
     const{data,error}=await sb.rpc('mp_submit_answer',{
       p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
-      p_choice_idx:idx,p_choice_text:null,p_mode:lobbyMode
+      p_choice_idx:idx,p_choice_text:null,p_mode:mpScoringMode()
     });
     if(!error&&data&&(data.accepted||data.reason==='already_answered')){
       mpPts=data.points;
@@ -15040,7 +15040,7 @@ async function mpCheckTypeAnswer(){
     if(useRpc){
       const{data,error}=await sb.rpc('mp_submit_answer',{
         p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
-        p_choice_idx:null,p_choice_text:userAns,p_mode:lobbyMode
+        p_choice_idx:null,p_choice_text:userAns,p_mode:mpScoringMode()
       });
       if(!error&&data&&(data.accepted||data.reason==='already_answered')){
         mpTaPts=data.points;
@@ -15390,6 +15390,9 @@ function mpTopTiedPlayers(){
   const top=Math.max(...live.map(lp=>lp.score||0));
   return live.filter(lp=>(lp.score||0)===top).map(lp=>lp.name);
 }
+// Scoring mode sent to mp_submit_answer. Classic tiebreak rounds score by speed like Score
+// Race; at a flat 10 points, two players who keep answering correctly would tie forever.
+function mpScoringMode(){return lobbyMode==='classic'&&mpTiebreakerPlayers.length>0?'race':lobbyMode;}
 // Classic ends after its question count, unless 2+ players share the top score: then the
 // tied players play extra rounds (others watch) until one of them pulls ahead.
 // Returns true when the game should end now; otherwise sets mpTiebreakerPlayers.
