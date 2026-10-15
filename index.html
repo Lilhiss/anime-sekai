@@ -11051,7 +11051,10 @@ function rtSubscribe(lobbyId){
     // isHost — so exactly one client (whichever wins the race) is ever responsible
     // for this round's next_question/question/game_ended broadcasts, same single-sender
     // guarantee the old isHost gate gave, just decided by the DB instead of a fixed role.
-    if(_pgcUseRpc&&lobbyInGame&&payload?.new?.round_resolved_at&&mpAutoNextFiredForQ!==qIndex){
+    // Only for the question actually on screen: a late resolution notice for a round
+    // we've already moved past would otherwise start a countdown that skips a question.
+    if(_pgcUseRpc&&lobbyInGame&&payload?.new?.round_resolved_at&&mpAutoNextFiredForQ!==qIndex
+       &&(typeof payload.new.current_q_index!=='number'||payload.new.current_q_index===mpShownDbQIndex)){
       mpAutoNextFiredForQ=qIndex;
       clearInterval(timerInterval); // stop the question timer early — leave the bar frozen wherever it was
       mpCancelBackup(mpActiveFuseBackupId);
@@ -11747,6 +11750,7 @@ function rtSubscribe(lobbyId){
     rtChannel.send({type:'broadcast',event:'game_state_snapshot',payload:{
       // Question
       qIndex,
+      mpDbQIndex, // the server's question index: without it a rejoiner's answer is rejected as stale
       currentQData,
       snapRemainingTime,
       // Format / mode / topic
@@ -11806,6 +11810,9 @@ function rtSubscribe(lobbyId){
     if(Array.isArray(payload.hpTurnOrder)&&payload.hpTurnOrder.length) hpTurnOrder=payload.hpTurnOrder;
     if(Array.isArray(payload.mpTiebreakerPlayers)) mpTiebreakerPlayers=payload.mpTiebreakerPlayers;
     if(payload.qIndex!=null)         qIndex=payload.qIndex;
+    // Server question index: mp_submit_answer rejects any other index as stale, so a rejoiner
+    // left on their pre-disconnect value had their answers dropped (and scored only locally).
+    if(typeof payload.mpDbQIndex==='number'&&payload.mpDbQIndex>=mpDbQIndex){mpDbQIndex=payload.mpDbQIndex;mpShownDbQIndex=payload.mpDbQIndex;}
 
     // Slow Reveal: we cannot reconstruct the character-reveal animation or buzz-in
     // state from a snapshot.  Show a spectator holding message instead and wait for
@@ -12413,7 +12420,11 @@ function mpCancelCountdown(){
 // at all — see prefetchedRpcResult's declaration for why that distinction matters).
 // Winner-takes-the-round advance for Race/Classic/Survival (non-char-mc). Used when
 // everyone has answered (round_resolved) and when the timer runs out.
-async function mpRpcAdvanceAndBroadcast(){
+async function mpRpcAdvanceAndBroadcast(advFrom){
+      // advFrom = the question this round resolved (see mpStartAutoNext). If a newer
+      // question is already on screen, someone else advanced: nothing to do.
+      if(typeof advFrom==='number'&&mpShownDbQIndex>advFrom)return;
+      const _expectedQ=typeof advFrom==='number'?advFrom:mpDbQIndex;
       // Survival wipe ends the game outright — no next question needed, so don't gate it
       // on winning the advance RPC (a failed/empty RPC used to leave everyone frozen).
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){
@@ -12439,7 +12450,7 @@ async function mpRpcAdvanceAndBroadcast(){
       } else {
         ({data,error}=await sb.rpc('mp_advance_question',{
           p_lobby_id:currentLobbyId,
-          p_expected_q_index:mpDbQIndex,
+          p_expected_q_index:_expectedQ,
           p_format:selectedFormat,
           p_topic_type:_topicAN?_topicAN.type:null,
           p_topic_value:_topicAN?_topicAN.name:null,
@@ -12553,6 +12564,10 @@ function mpStartAutoNext(onDone,isLastQuestion){
   mpCancelBackup(mpActiveAutoNextBackupId);
   mpAutoNextPaused=false;
   let t=5,fired=false;
+  // The question this pause is resolving, captured NOW. Reading mpDbQIndex when the
+  // countdown ends instead let a slower client, which had already heard another
+  // client's advance, ask to advance from the NEW index and skip a question.
+  const advFrom=mpShownDbQIndex;
   // Kick off the next question's fetch now, in parallel with the 5s countdown,
   // instead of waiting until it ends. Skipped when this is the last question (no
   // "next" to prefetch) and for Slow Reveal, which has its own separate
@@ -12578,7 +12593,7 @@ function mpStartAutoNext(onDone,isLastQuestion){
   const fireOnce=()=>{
     if(fired)return;fired=true;
     mpCancelBackup(mpActiveAutoNextBackupId);
-    onDone();
+    onDone(advFrom); // only mpRpcAdvanceAndBroadcast reads it; other callbacks ignore it
   };
   const el=document.getElementById('mpAutoNext');
   if(el)el.textContent=isLastQuestion?'Wrapping up…':`Next in ${t}s`;
