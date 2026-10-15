@@ -11348,7 +11348,7 @@ function rtSubscribe(lobbyId){
           }
           qIndex++;
           const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap&&mpClassicShouldEnd()){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+          if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=_survivalCap){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
           if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
           else{mpLoadQuestion();}
         },_isLastQ);
@@ -12480,7 +12480,7 @@ async function mpRpcAdvanceAndBroadcast(){
       }
       qIndex++;
       const _survivalCap=lobbyMode==='survival'?survivalQuestionLimit:selectedQuestionLimit;
-      if(lobbyMode!=='race'&&qIndex>=_survivalCap&&mpClassicShouldEnd()){
+      if(lobbyMode!=='race'&&qIndex>=_survivalCap){
         if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});
         else mpEndGame();return;
       }
@@ -14830,7 +14830,7 @@ function mpShowQuestion(qData,hpFuse){
     grid.appendChild(msg);
     // Record a pass for this round so the server can resolve it as soon as the tied
     // players answer, instead of waiting out the timer for spectators who never will.
-    if((lobbyMode==='race'||lobbyMode==='classic')&&selectedFormat!=='char-mc'&&currentLobbyId&&currentUserId){
+    if(lobbyMode==='race'&&selectedFormat!=='char-mc'&&currentLobbyId&&currentUserId){
       sb.rpc('mp_submit_answer',{p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,p_choice_idx:-1,p_choice_text:null,p_mode:'pass'}).then(()=>{},()=>{});
     }
   } else {
@@ -14948,7 +14948,7 @@ async function mpAnswerMC(idx,el,qData){
   if(useRpc){
     const{data,error}=await sb.rpc('mp_submit_answer',{
       p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
-      p_choice_idx:idx,p_choice_text:null,p_mode:mpScoringMode()
+      p_choice_idx:idx,p_choice_text:null,p_mode:lobbyMode
     });
     if(!error&&data&&(data.accepted||data.reason==='already_answered')){
       mpPts=data.points;
@@ -14965,7 +14965,7 @@ async function mpAnswerMC(idx,el,qData){
     }
   } else {
     const mpElapsed=(Date.now()-questionStartTime)/1000;
-    mpPts=mpScoringMode()==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10; // speed-scored in Classic tiebreaks too
+    mpPts=selectedMode==='race'?calcSpeedPoints(mpElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
   }
   if(correct){score+=mpPts;lastPtsEarned=mpPts;}else{lives--;lastPtsEarned=0;}
   mpSyncFeedbackScore(correct,qData.options[idx]);
@@ -15040,7 +15040,7 @@ async function mpCheckTypeAnswer(){
     if(useRpc){
       const{data,error}=await sb.rpc('mp_submit_answer',{
         p_lobby_id:currentLobbyId,p_user_id:currentUserId,p_q_index:mpDbQIndex,
-        p_choice_idx:null,p_choice_text:userAns,p_mode:mpScoringMode()
+        p_choice_idx:null,p_choice_text:userAns,p_mode:lobbyMode
       });
       if(!error&&data&&(data.accepted||data.reason==='already_answered')){
         mpTaPts=data.points;
@@ -15058,7 +15058,7 @@ async function mpCheckTypeAnswer(){
       }
     } else {
       const mpTaElapsed=(Date.now()-questionStartTime)/1000;
-      mpTaPts=mpScoringMode()==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10; // speed-scored in Classic tiebreaks too
+      mpTaPts=selectedMode==='race'?calcSpeedPoints(mpTaElapsed,raceTimeLimit):selectedMode==='survival'?1:10;
     }
     score+=mpTaPts;lastPtsEarned=mpTaPts;
     mpSyncFeedbackScore(true,userAns);
@@ -15168,7 +15168,7 @@ function mpTimeOut(){
       if(selectedMode==='survival'&&lobbyPlayers.filter(lp=>!lp.quit).every(lp=>lp.eliminated)){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(selectedMode==='race'){const winner=mpCheckRaceWin();if(winner!==null){if(winner==='tiebreaker'){mpStartTiebreaker();return;}if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}}
       qIndex++;
-      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit&&mpClassicShouldEnd()){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
+      if(lobbyMode!=='race'&&lobbyMode!=='potato'&&qIndex>=selectedQuestionLimit){if(rtChannel)rtChannel.send({type:'broadcast',event:'game_ended',payload:{players:lobbyPlayers}});else mpEndGame();return;}
       if(rtChannel){rtChannel.send({type:'broadcast',event:'next_question',payload:{qIndex,hpActiveIdx,mpTiebreakerPlayers}});}
       else{mpLoadQuestion();}
     },_isLastQTO);
@@ -15390,19 +15390,6 @@ function mpTopTiedPlayers(){
   const top=Math.max(...live.map(lp=>lp.score||0));
   return live.filter(lp=>(lp.score||0)===top).map(lp=>lp.name);
 }
-// Scoring mode sent to mp_submit_answer. Classic tiebreak rounds score by speed like Score
-// Race; at a flat 10 points, two players who keep answering correctly would tie forever.
-function mpScoringMode(){return lobbyMode==='classic'&&mpTiebreakerPlayers.length>0?'race':lobbyMode;}
-// Classic ends after its question count, unless 2+ players share the top score: then the
-// tied players play extra rounds (others watch) until one of them pulls ahead.
-// Returns true when the game should end now; otherwise sets mpTiebreakerPlayers.
-function mpClassicShouldEnd(){
-  if(lobbyMode!=='classic')return true;
-  const tied=mpTopTiedPlayers();
-  if(tied.length<2)return true;
-  mpTiebreakerPlayers=tied;
-  return false;
-}
 function mpStartTiebreaker(){
   // Only the players tied at the top score play the tiebreaker
   const topScore=Math.max(...lobbyPlayers.filter(lp=>!lp.quit).map(lp=>lp.score));
@@ -15461,18 +15448,35 @@ async function mpEndGame(){
   const sorted=isHP
     ?[...lobbyPlayers].sort((a,b)=>leftLast(a,b)||(b.eliminated===a.eliminated?0:a.eliminated?1:-1)||b.lives-a.lives)
     :[...lobbyPlayers].sort((a,b)=>leftLast(a,b)||b.score-a.score);
-  const winner=sorted[0];const iWon=winner.name===currentUser;
+  const winner=sorted[0];
+  // Modes with a set number of questions (Classic, Survival) can end level: a shared top
+  // score is a tie, not a win for whoever happens to sort first. Race/Slow Reveal end at a
+  // target (Race has its own tiebreaker) and Hot Potato on lives, so they never tie here.
+  const stayed=sorted.filter(p=>!hasLeft(p));
+  const tied=(!isHP&&!isSR&&lobbyMode!=='race'&&stayed.length>1&&stayed[1].score===stayed[0].score)
+    ?stayed.filter(p=>p.score===stayed[0].score):[];
+  const isTie=tied.length>1, iTied=isTie&&tied.some(p=>p.name===currentUser);
+  const iWon=!isTie&&winner.name===currentUser;
   const winnerAvatarHTML=getLobbyAvatarHTML(winner.avatar||null,winner.color,winner.name[0].toUpperCase(),80);
   const winnerAvatarStyled=winnerAvatarHTML.replace('class="lobby-player-avatar"','class="mp-winner-avatar"');
   document.getElementById('mpWinnerBadge').innerHTML=winnerAvatarStyled;
-  document.getElementById('mpWinnerTitle').innerHTML=iWon?'You <span>Win!</span>':`<span>${winner.name}</span> Wins!`;
+  {const rb=document.querySelector('#page-mp-results .mr-badge');if(rb)rb.textContent=isTie?'TIED':'WINNER';}
+  document.getElementById('mpWinnerTitle').innerHTML=isTie?'It\'s a <span>Tie!</span>':iWon?'You <span>Win!</span>':`<span>${winner.name}</span> Wins!`;
   {const wp=document.getElementById('mpWinnerPts'),wd=document.getElementById('mpWinnerDot');const showPts=!isHP;if(wp)wp.textContent=showPts?(winner.score||0).toLocaleString()+' pts':'';if(wd)wd.style.display=showPts?'':'none';}
   const isClassic=selectedMode==='classic';
-  document.getElementById('mpWinnerSub').textContent=iWon
+  const others=n=>n===1?'1 other player':n+' other players';
+  document.getElementById('mpWinnerSub').textContent=isTie
+    ?(iTied?'You tied for first with '+others(tied.length-1)+'. Nice work!':tied.map(p=>p.name).join(' & ')+' share first place.')
+    :iWon
     ?(isHP?'Last one standing. You survived the potato!':isSurvival?'Last one standing. Undefeated!':isSR?'First to '+srTargetScore+'. You buzzed in like a pro!':isClassic?'Most points at the end. Nice work!':'First to '+mpRaceTarget+' pts. Legendary run!')
     :'Better luck next time. Challenge them again!';
   const standings=document.getElementById('mpFinalStandings');standings.innerHTML='';
+  let prevPos=0;
   sorted.forEach((p,i)=>{
+    // Equal scores share a position (1, 1, 3) in tie-able modes; leavers always rank after
+    const prev=sorted[i-1];
+    const pos=(i>0&&!isHP&&!isSR&&lobbyMode!=='race'&&!hasLeft(p)&&!hasLeft(prev)&&prev.score===p.score)?prevPos:i+1;
+    prevPos=pos;
     const isMe=p.name===currentUser;
     const row=document.createElement('div');row.className='standing-row'+(isMe?' me':'');row.dataset.name=p.name;
     const rightCol=isHP
@@ -15484,10 +15488,10 @@ async function mpEndGame(){
     const recapAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),36);
     const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar"','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':'')+'"');
     const leftTag=hasLeft(p)&&!isMe?' <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:900;letter-spacing:.08em;vertical-align:middle;background:color-mix(in srgb,var(--text) 12%,transparent);color:var(--muted)">LEFT</span>':'';
-    row.innerHTML=`<div class="standing-pos">${i+1}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}${leftTag}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
+    row.innerHTML=`<div class="standing-pos">${pos}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}${leftTag}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
   });
-  if(iWon)launchConfetti();
+  if(iWon||iTied)launchConfetti();
   mpRecapPlayer=isHP?currentUser:null; // default HP recap to "my turns" each time results load
   renderMpRecap();
   _origGoStep('mp-results');applyTheme();
