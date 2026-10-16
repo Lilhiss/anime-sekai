@@ -294,11 +294,16 @@ void main(){
     return { home: () => tweenTo(0, 900), spinTo: (t, dur, done) => { if (reduced) { off = t; done && done(); } else tweenTo(t, dur, done); }, setOff: (v) => { tw = null; off = v; }, getCloud: () => cOff, setCloud: (v) => { cOff = v; }, setActive: (v) => { if (v && !active) actAt = performance.now() + (window._wtFlying ? 500 : 250); active = !!v; if (!active) { hover = 0; drag = null; } } };
   }
 
+  // Landing globe: this script loads right after the landing markup, so mount it straight away.
+  // #lzGlobeBall is a still of this exact first frame (globe-still.webp): it stays fully visible
+  // while the canvas fades in on top of it, then hides, so the handoff can't be seen.
+  const land = document.getElementById('lzGlobeGL');
+  if (land) window.sekaiLandGlobe = mount(land, { onReady: () => { const b = document.getElementById('lzGlobeBall'); if (b) { b.style.transition = 'opacity .2s .7s'; b.style.opacity = '0'; } } });
+
   function boot() {
-    const land = document.getElementById('lzGlobeGL'), wt = document.getElementById('wtGlobeGL'), tp = document.getElementById('wtPlanetGL');
-    if (!land && !wt && !tp) return;
+    const wt = document.getElementById('wtGlobeGL'), tp = document.getElementById('wtPlanetGL');
+    if (!wt && !tp) return;
     setTimeout(() => {
-      if (land) window.sekaiLandGlobe = mount(land, { onReady: () => { const b = document.getElementById('lzGlobeBall'); if (b) { b.style.transition = 'opacity .6s'; b.style.opacity = '0'; } } });
       if (tp) { const st = document.getElementById('wtStage'); window.sekaiTourGlobe = mount(tp, { interactive: true, maxPx: 2048, pinScale: (1 / 0.2417).toFixed(3), active: !!st && st.dataset.step === '6' }); }
       if (wt) window.sekaiWorldGlobe = mount(wt, { interactive: true });
     }, 60);

@@ -26,6 +26,7 @@
   <!-- Landing v2 / world: display face + the CJK sans the kana and UI type are set in -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="preload" as="image" href="assets/globe/globe-still.webp">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap">
 </head>
 <!-- on-landing from the start: the landing is the first page, so the old nav bar and footer never paint -->
@@ -3981,8 +3982,8 @@ body:has(#page-admin.active) #mainNav{display:none!important}
       <div style="position:absolute;left:50%;top:52.93%;width:calc(408px * var(--u));height:calc(408px * var(--u));transform:translate(-50%,calc(-100% + 48px * var(--u)));pointer-events:none;z-index:6">
         <div style="position:absolute;inset:-78%;border-radius:50%;filter:blur(calc(26px * var(--u)));background:radial-gradient(circle,#8FB4FF30 0%,#8FB4FF1c 26%,#8FB4FF0c 52%,transparent 80%)"></div>
         <div class="lz-globe-hit" role="button" tabindex="0" aria-label="Enter the world" onclick="enterWorld()" style="position:absolute;inset:10.6%;border-radius:50%;cursor:pointer;pointer-events:auto">
-          <!-- placeholder until the WebGL globe is ready; coloured like it so the swap is a fade, not a different globe -->
-          <div id="lzGlobeBall" style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 36% 28%,#9aa8ec 0%,#7380d0 26%,#5762b0 55%,#3d4690 82%);border:calc(3px * var(--u)) solid #c9d1ff;box-shadow:0 0 calc(90px * var(--u)) #8FB4FFaa,inset calc(-20px * var(--u)) calc(-30px * var(--u)) calc(64px * var(--u)) #262c66,inset calc(10px * var(--u)) calc(10px * var(--u)) 0 #dfe6ff40;pointer-events:none"></div>
+          <!-- still of the WebGL globe's first frame; shows until the live globe has faded in on top (see globe.js) -->
+          <div id="lzGlobeBall" style="position:absolute;inset:0;background:url(assets/globe/globe-still.webp) center/100% 100% no-repeat;pointer-events:none"></div>
           <div id="lzGlobeGL" style="position:absolute;inset:0;border-radius:50%;pointer-events:none"></div>
         </div>
       </div>
@@ -4054,6 +4055,8 @@ function lzAuthDone(){const b=document.getElementById('lzAuthBtn');if(b){b.class
   }catch(e){}
 })();
 </script>
+<!-- WebGL globe: loaded here (not at the end) so the landing globe mounts as early as possible -->
+<script src="assets/globe/globe.js" async></script>
 
 
 <script id="lz-chars-js">
@@ -22436,4 +22439,3 @@ c.addEventListener('pointermove',e=>{if(!m)return;P.x=+(m.x+(e.clientX-m.sx)/m.w
 c.addEventListener('wheel',e=>{if(!ed()||P.lock)return;e.preventDefault();P.s=+Math.max(.3,Math.min(4,P.s*(e.deltaY<0?1.05:.95))).toFixed(2);ap();save();},{passive:false});
 })();</script>
 
-<script src="assets/globe/globe.js" defer></script>
