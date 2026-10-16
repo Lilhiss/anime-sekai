@@ -3072,7 +3072,7 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
 #lobbyOptionsLock .lr-edit-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:qGlow 1s ease-in-out infinite;flex:none}
 </style>
 <style>
-/* LIBRARY — series/genre browser in the bold card style */
+/* LIBRARY — series browser in the bold card style */
 body.on-library .scene{height:100vh;overflow:hidden}
 body.on-library nav,body.on-library footer{display:none}
 .page#page-library{flex:1 1 0;min-height:0;padding:0;gap:0;align-items:stretch;justify-content:flex-start;overflow:hidden;color:#FFFEF0}
@@ -3085,12 +3085,6 @@ body.on-library nav,body.on-library footer{display:none}
 #page-library .lib-title{margin:0;font:400 clamp(34px,3.6vw,50px)/1.02 'Lilita One',cursive;color:#FFFEF0;text-shadow:4px 4px 0 #0d1236}
 #page-library .lib-sub{font:800 14px 'Nunito',sans-serif;color:#c3caf0}
 #page-library .lib-bar{flex:none;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 44px 16px}
-#page-library .lib-tabs{display:flex;gap:4px;background:#1f2657;border:3px solid #1f2657;border-radius:10px;padding:3px;box-shadow:4px 4px 0 #0d1236}
-#page-library .lib-tab{display:flex;align-items:center;gap:8px;border:0;background:none;color:#c3caf0;font:400 16px 'Lilita One',cursive;letter-spacing:.02em;padding:8px 16px;border-radius:7px;cursor:pointer}
-#page-library .lib-tab:hover{color:#FFFEF0}
-#page-library .lib-tab i{font-size:17px}
-#page-library .lib-tab b{font:900 11px 'Nunito',sans-serif;opacity:.75}
-#page-library .lib-tab.on{background:#FFFEF0;color:#1f2657}
 #page-library .lib-search{display:flex;align-items:center;gap:8px;width:min(380px,42vw);background:#FFFEF0;border:3px solid #1f2657;border-radius:10px;box-shadow:4px 4px 0 #0d1236;padding:0 6px 0 12px;color:#1f2657;cursor:text}
 #page-library .lib-search>i{font-size:18px;color:#3a4180}
 #page-library .lib-search input{flex:1;min-width:0;border:0;background:none;outline:none;font:800 15px 'Nunito',sans-serif;color:#1f2657;padding:10px 0}
@@ -3104,20 +3098,17 @@ body.on-library nav,body.on-library footer{display:none}
 #page-library .lib-card:hover,#page-library .lib-card:focus-visible{outline:none;transform:translate(-2px,-4px);box-shadow:8px 10px 0 #0d1236,0 0 0 3px #F6C98E}
 #page-library .lib-poster{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#BCD8FA;border-bottom:3px solid #1f2657}
 #page-library div.lib-poster{display:flex;align-items:center;justify-content:center;font-size:44px;color:#1f265744}
-#page-library .lib-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;aspect-ratio:4/3;background:radial-gradient(#1f26571c 1.3px,transparent 1.7px) 0 0/11px 11px,var(--c);border-bottom:3px solid #1f2657;color:#1f2657}
-#page-library .lib-art i{font-size:22px;opacity:.55}
-#page-library .lib-art b{font:400 44px/1 'Lilita One',cursive}
 #page-library .lib-cbody{flex:1;display:flex;flex-direction:column;gap:8px;padding:10px 11px 11px}
 #page-library .lib-name{font:400 16px/1.12 'Lilita One',cursive;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
 #page-library .lib-counts{margin-top:auto;display:flex;flex-wrap:wrap;gap:4px 9px}
 #page-library .lib-ct{display:inline-flex;align-items:center;gap:3px;font:900 11px 'Nunito',sans-serif;color:#3a4180}
 #page-library .lib-ct i{font-size:14px;color:#1f2657}
 #page-library .lib-card.empty{background-color:#e3e5f2;box-shadow:4px 4px 0 #0d1236aa}
-#page-library .lib-card.empty .lib-poster,#page-library .lib-card.empty .lib-art{filter:grayscale(1);opacity:.5}
+#page-library .lib-card.empty .lib-poster{filter:grayscale(1);opacity:.5}
 #page-library .lib-card.empty .lib-ct{color:#6a70a0}
 #page-library .lib-card.all{background-color:#F6A5B8}
-#page-library .lib-card.all .lib-art{aspect-ratio:3/4;background:radial-gradient(#1f26571c 1.3px,transparent 1.7px) 0 0/11px 11px,#F6A5B8}
-#page-library .lib-card.all .lib-art i{font-size:56px;opacity:1}
+#page-library .lib-card.all .lib-art{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:3/4;background:radial-gradient(#1f26571c 1.3px,transparent 1.7px) 0 0/11px 11px,#F6A5B8;border-bottom:3px solid #1f2657;color:#1f2657}
+#page-library .lib-card.all .lib-art i{font-size:56px}
 #page-library .lib-div{display:flex;align-items:center;gap:12px;max-width:1280px;margin:40px auto 18px;font:900 11px 'Nunito',sans-serif;letter-spacing:.2em;color:#c3caf0}
 #page-library .lib-div i{flex:1;height:2px;background:#46519a;border-radius:2px}
 #page-library .lib-foot{display:flex;justify-content:center;margin:40px auto 0}
@@ -3134,9 +3125,6 @@ body.on-library nav,body.on-library footer{display:none}
 #page-library .lib-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:2px solid #1f2657;background:#FFFEF0;color:#1f2657;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px}
 #page-library .lib-x:hover{background:#F6C98E}
 #page-library .lib-dposter{aspect-ratio:3/4;border:3px solid #1f2657;border-radius:6px;box-shadow:5px 5px 0 #1f2657;overflow:hidden;background:#BCD8FA;display:flex;align-items:center;justify-content:center;font:400 22px 'Lilita One',cursive;text-align:center;padding:0}
-#page-library .lib-dposter.art{flex-direction:column;gap:6px;background:radial-gradient(#1f26571c 1.3px,transparent 1.7px) 0 0/11px 11px,var(--c)}
-#page-library .lib-dposter.art b{font:400 92px/1 'Lilita One',cursive}
-#page-library .lib-dposter.art i{font-size:30px;opacity:.55}
 #page-library .lib-dmain{display:flex;flex-direction:column;gap:12px;min-width:0;padding-top:4px}
 #page-library .lib-deye{font:900 11px 'Nunito',sans-serif;letter-spacing:.22em;color:#3a4180}
 #page-library .lib-dname{font:400 34px/1.05 'Lilita One',cursive;padding-right:36px;text-wrap:balance}
@@ -4875,7 +4863,7 @@ function lzRenderChars(reroll){
    </div>
   </div>
 
-  <!-- LIBRARY — every series and genre with its question counts. A card opens a sheet
+  <!-- LIBRARY — every series with its question counts. A card opens a sheet
        that starts Solo with that topic already picked. Reached from the globe's Library
        island and the Notice Board. -->
   <div class="page" id="page-library">
@@ -4889,10 +4877,6 @@ function lzRenderChars(reroll){
         </div>
       </div>
       <div class="lib-bar">
-        <div class="lib-tabs" role="tablist">
-          <button class="lib-tab on" id="libTabAnime" role="tab" onclick="libSetTab('anime')"><i class="ti ti-device-tv"></i>Series <b id="libTabAnimeN"></b></button>
-          <button class="lib-tab" id="libTabGenre" role="tab" onclick="libSetTab('genre')"><i class="ti ti-category"></i>Genres <b id="libTabGenreN"></b></button>
-        </div>
         <label class="lib-search"><i class="ti ti-search"></i><input id="libSearch" type="text" placeholder="Search the library…" autocomplete="off" oninput="libRender()"><button id="libSearchX" type="button" onclick="libClearSearch()" aria-label="Clear search"><i class="ti ti-x"></i></button></label>
       </div>
       <div class="lib-scroll" id="libScroll"><div id="libBody"></div></div>
@@ -4902,7 +4886,7 @@ function lzRenderChars(reroll){
         <button class="lib-x" onclick="libClose()" aria-label="Close"><i class="ti ti-x"></i></button>
         <div class="lib-dposter" id="libDPoster"></div>
         <div class="lib-dmain">
-          <span class="lib-deye" id="libDEye"></span>
+          <span class="lib-deye">SERIES</span>
           <div class="lib-dname" id="libDName"></div>
           <div class="lib-dcounts" id="libDCounts"></div>
           <div class="lib-dnote" id="libDNote"></div>
@@ -22440,17 +22424,14 @@ paint();
 })();
 </script>
 <script>
-/* LIBRARY — browse every approved series and genre with its question counts.
-   Topics come from loadTopicsFromSupabase() (the same lists the Solo picker uses).
-   Playing a card presets the Solo setup screen (topic + a format that has questions)
+/* LIBRARY — browse every approved series with its question counts.
+   Topics come from loadTopicsFromSupabase() (the same list the Solo picker uses).
+   Playing a card presets the Solo setup screen (series + a format that has questions)
    and goes through choosePath('solo'), so the sign-in / guest gate still applies. */
-let libTab='anime', libPrev='landing', libLaunch=false, libLoading=false, libOpenKey=null;
-const LIB_COLORS=['#96C7FF','#F6C98E','#F6A5B8','#BCD8FA'];
+let libPrev='landing', libLoading=false, libOpenKey=null;
 const LIB_FMTS=[['mc','TEXT · CHOOSE','ti-abc','#96C7FF'],['type','TEXT · TYPE','ti-keyboard','#BCD8FA'],['scene','SCENE','ti-photo','#F6C98E'],['char','CHARACTERS','ti-user-square-rounded','#F6A5B8']];
-function libList(tab){return ((tab||libTab)==='anime'?animeTopics:genreTopics)||[];}
-function libFind(key){return animeTopics.concat(genreTopics).find(t=>t.key===key);}
+function libFind(key){return animeTopics.find(t=>t.key===key);}
 function libSum(t){const c=t&&t.counts||{};return (c.mc||0)+(c.type||0)+(c.scene||0)+(c.char||0);}
-function libColor(t){let h=0;for(const ch of t.name)h=(h*31+ch.charCodeAt(0))|0;return LIB_COLORS[Math.abs(h)%LIB_COLORS.length];}
 function libImg(u){return String(u).replace(/"/g,'%22').replace(/'/g,'%27');}
 
 function openLibrary(){
@@ -22465,37 +22446,24 @@ async function libEnter(){
   try{await loadTopicsFromSupabase();}finally{libLoading=false;}
   libRender();
 }
-function libSetTab(tab){
-  libTab=tab;
-  document.getElementById('libTabAnime').classList.toggle('on',tab==='anime');
-  document.getElementById('libTabGenre').classList.toggle('on',tab==='genre');
-  document.getElementById('libSearch').placeholder=tab==='anime'?'Search the library…':'Search genres…';
-  libRender();
-  document.getElementById('libScroll').scrollTop=0;
-}
 function libClearSearch(){const s=document.getElementById('libSearch');s.value='';libRender();s.focus();}
 
 function libCard(t){
   const n=libSum(t), c=t.counts||{}, e=_suEsc;
-  let art;
-  if(t.type==='genre')art='<span class="lib-art" style="--c:'+libColor(t)+'"><i class="ti ti-category"></i><b>'+e(t.name[0])+'</b></span>';
-  else if(t.posters&&t.posters[0])art='<img class="lib-poster" src="'+e(libImg(t.posters[0]))+'" alt="" loading="lazy" decoding="async">';
-  else art='<div class="lib-poster"><i class="ti ti-device-tv"></i></div>';
-  let counts;
-  if(!n)counts='<span class="lib-ct">No questions yet</span>';
-  else if(t.type==='genre')counts='<span class="lib-ct"><i class="ti ti-stack-2"></i>'+n.toLocaleString()+' questions</span>';
-  else counts=[[(c.mc||0)+(c.type||0),'ti-abc','Text'],[c.scene||0,'ti-photo','Scene'],[c.char||0,'ti-user-square-rounded','Characters']]
-    .filter(([v])=>v).map(([v,ic,l])=>'<span class="lib-ct" title="'+l+'"><i class="ti '+ic+'"></i>'+v+'</span>').join('');
+  const art=t.posters&&t.posters[0]
+    ? '<img class="lib-poster" src="'+e(libImg(t.posters[0]))+'" alt="" loading="lazy" decoding="async">'
+    : '<div class="lib-poster"><i class="ti ti-device-tv"></i></div>';
+  const counts=!n?'<span class="lib-ct">No questions yet</span>'
+    : [[(c.mc||0)+(c.type||0),'ti-abc','Text'],[c.scene||0,'ti-photo','Scene'],[c.char||0,'ti-user-square-rounded','Characters']]
+      .filter(([v])=>v).map(([v,ic,l])=>'<span class="lib-ct" title="'+l+'"><i class="ti '+ic+'"></i>'+v+'</span>').join('');
   return '<button class="lib-card'+(n?'':' empty')+'" onclick="libOpen(\''+t.key+'\')">'+art
     +'<span class="lib-cbody"><span class="lib-name">'+e(t.name)+'</span><span class="lib-counts">'+counts+'</span></span></button>';
 }
 function libRender(){
   const body=document.getElementById('libBody');
   if(!body)return;
-  const all=animeTopics.concat(genreTopics), total=all.reduce((a,t)=>a+libSum(t),0);
+  const total=animeTopics.reduce((a,t)=>a+libSum(t),0);
   document.getElementById('libSub').textContent=animeTopics.length?animeTopics.length+' series · '+total.toLocaleString()+' questions':' ';
-  document.getElementById('libTabAnimeN').textContent=animeTopics.length||'';
-  document.getElementById('libTabGenreN').textContent=genreTopics.length||'';
   const sIn=document.getElementById('libSearch'), q=(sIn.value||'').trim();
   sIn.parentElement.classList.toggle('has',!!q);
   if(!animeTopics.length){
@@ -22504,18 +22472,17 @@ function libRender(){
       : '<div class="lib-zero"><b>The library is closed</b><span>The series list didn\'t load. Check your connection and try again.</span><button class="lib-suggest" onclick="libEnter()"><i class="ti ti-refresh"></i>Try again</button></div>';
     return;
   }
-  const items=libList().filter(t=>t.name.toLowerCase().includes(q.toLowerCase()));
+  const items=animeTopics.filter(t=>t.name.toLowerCase().includes(q.toLowerCase()));
   const byName=(a,b)=>a.name.localeCompare(b.name);
   const has=items.filter(t=>libSum(t)>0).sort(byName), none=items.filter(t=>!libSum(t)).sort(byName);
-  const word=libTab==='anime'?'series':'genre';
   const suggest='<div class="lib-foot"><button class="lib-suggest" onclick="libSuggest()"><i class="ti ti-message-plus"></i>'
-    +(q?'Suggest “'+_suEsc(q)+'” as a new topic':'Missing a favorite? Suggest it')+'</button></div>';
+    +(q?'Suggest “'+_suEsc(q)+'” as a new series':'Missing a favorite? Suggest it')+'</button></div>';
   if(!items.length){
-    body.innerHTML='<div class="lib-zero"><b>No '+word+' called “'+_suEsc(q)+'”</b><span>Nobody has written questions for it yet. Suggest it and it goes on the writing list.</span></div>'+suggest;
+    body.innerHTML='<div class="lib-zero"><b>No series called “'+_suEsc(q)+'”</b><span>Nobody has written questions for it yet. Suggest it and it goes on the writing list.</span></div>'+suggest;
     return;
   }
   let html='';
-  if(libTab==='anime'&&!q)html+='<button class="lib-card all" onclick="libPlay(null)"><span class="lib-art"><i class="ti ti-stack-2"></i></span>'
+  if(!q)html+='<button class="lib-card all" onclick="libPlay(null)"><span class="lib-art"><i class="ti ti-stack-2"></i></span>'
     +'<span class="lib-cbody"><span class="lib-name">Everything</span><span class="lib-counts"><span class="lib-ct"><i class="ti ti-player-play"></i>Play the whole pool</span></span></span></button>';
   html+=has.map(libCard).join('');
   if(html)html='<div class="lib-grid">'+html+'</div>';
@@ -22527,12 +22494,10 @@ function libOpen(key){
   const t=libFind(key);
   if(!t)return;
   libOpenKey=key;
-  const n=libSum(t), c=t.counts||{}, genre=t.type==='genre';
+  const n=libSum(t), c=t.counts||{};
   const p=document.getElementById('libDPoster');
-  p.className='lib-dposter';p.removeAttribute('style');p.innerHTML='';
-  if(genre){p.className='lib-dposter art';p.style.setProperty('--c',libColor(t));p.innerHTML='<i class="ti ti-category"></i><b>'+_suEsc(t.name[0])+'</b>';}
-  else applyPoster(p,t);
-  document.getElementById('libDEye').textContent=genre?'GENRE':'SERIES';
+  p.removeAttribute('style');p.innerHTML='';
+  applyPoster(p,t);
   document.getElementById('libDName').textContent=t.name;
   document.getElementById('libDCounts').innerHTML=LIB_FMTS.map(([k,l,ic,col])=>{
     const v=c[k]||0;
@@ -22540,9 +22505,9 @@ function libOpen(key){
   }).join('');
   document.getElementById('libDNote').textContent=n
     ? n.toLocaleString()+' questions in all. Play picks a format that has questions; you can change it on the next screen.'
-    : 'Nobody has written questions for '+(genre?'this genre':'this series')+' yet. You could be the first.';
+    : 'Nobody has written questions for this series yet. You could be the first.';
   document.getElementById('libDActs').innerHTML=n
-    ? '<button class="lib-play" onclick="libPlay(\''+t.key+'\')"><i class="ti ti-player-play-filled" style="font-size:18px"></i>PLAY THIS '+(genre?'GENRE':'SERIES')+'</button>'
+    ? '<button class="lib-play" onclick="libPlay(\''+t.key+'\')"><i class="ti ti-player-play-filled" style="font-size:18px"></i>PLAY THIS SERIES</button>'
     : '<button class="lib-play alt" onclick="libClose();openSubmitQuestion()"><i class="ti ti-pencil-plus" style="font-size:18px"></i>SUBMIT A QUESTION</button>';
   document.getElementById('libSheet').classList.add('on');
   applyTheme();
@@ -22558,9 +22523,7 @@ function libPlay(key){
     else if(c.type){suFormat='text';suAnswerBy='type';}
     else if(c.char){suFormat='char';suAnswerBy='type';}
     else{suFormat='scene';suAnswerBy='type';}
-    suTab_=t.type==='genre'?'genre':'anime';
-  }else{selectedTopics=[];isGeneralSelected=true;suTab_='anime';}
-  libLaunch=true;
+  }else{selectedTopics=[];isGeneralSelected=true;}
   choosePath('solo');
 }
 function libSuggest(){
@@ -22574,11 +22537,6 @@ function libSuggest(){
   window.goStep=function(name){
     const cur=document.querySelector('.page.active'), curName=cur?cur.id.replace('page-',''):null;
     if(name==='library'&&curName&&curName!=='library'&&curName!=='auth')libPrev=curName;
-    /* the setup screen only lists genres right after a Library genre launch */
-    if(name==='setup'||name==='format'||name==='mode'||name==='topic'){
-      if(!libLaunch&&suTab_!=='anime'){suTab_='anime';selectedTopics=(selectedTopics||[]).filter(t=>t.type!=='genre');}
-      libLaunch=false;
-    }else if(name!=='auth')libLaunch=false;
     const r=_gs.apply(this,arguments);
     document.body.classList.toggle('on-library',name==='library');
     if(name==='library')libEnter();else libClose();
