@@ -25,7 +25,6 @@
     1: () => window.choosePath && choosePath('solo'),
     2: () => window.choosePath && choosePath('multiplayer'),
     3: () => window.openDailyQuiz && openDailyQuiz(),
-    4: () => window.goStep && goStep('leaderboard'),
     5: () => window.goProfile && goProfile(),
     6: () => window.openLibrary && openLibrary(),
     7: () => window.openCredits && openCredits(),
