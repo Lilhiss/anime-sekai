@@ -6262,7 +6262,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
       <div class="pf-ident">
         <div class="pf-status"><span class="pf-online"><span class="pf-dot"></span><span id="pfOnline">ONLINE NOW</span></span><span class="pf-since" id="pfSince"></span></div>
         <div class="pf-name" id="pfName">Player</div>
-        <div class="pf-guest-note">Stats disappear when you close the tab.</div>
+        <div class="pf-guest-note">Kept on this browser for 30 days after your last visit.</div>
         <div class="pf-badge" id="pfBadge" style="display:none">
           <span class="pf-badge-ic"><i class="ti ti-heart-handshake"></i></span>
           <div><div class="pf-badge-t">CONTRIBUTOR</div><div class="pf-badge-s" id="pfBadgeSub"></div></div>
@@ -6400,7 +6400,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
           <input type="file" id="pfpFileInput" accept="image/*" style="display:none" onchange="pfpFileSelected(event)">
           <div id="pfpGuestSessionNote" style="display:none;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:11px;color:var(--muted);line-height:1.5">
             <i class="ti ti-info-circle" style="font-size:15px;color:var(--accent);flex-shrink:0"></i>
-            <span>Your photo will only last this session. <a onclick="closePfpPicker();goStep('auth');showAuthMode('register')" style="color:var(--accent);font-weight:800;cursor:pointer">Create an account</a> to keep it.</span>
+            <span>Your photo stays on this browser. <a onclick="closePfpPicker();goStep('auth');showAuthMode('register')" style="color:var(--accent);font-weight:800;cursor:pointer">Create an account</a> to keep it everywhere.</span>
           </div>
           <div id="pfpUploadErr" style="margin-top:10px;display:none;font-size:12px;color:#f87171;font-weight:700;align-items:center;gap:5px"><i class="ti ti-alert-circle"></i> <span id="pfpUploadErrMsg"></span></div>
         </div>
@@ -21669,7 +21669,7 @@ function renderProfile(){
   if(pfp&&pfp.src){av.style.background=pfp.bg;av.innerHTML='<img src="'+pfEsc(pfp.src)+'" alt="" style="object-fit:'+(pfp.preset?'contain':'cover')+'" onerror="this.remove()">';}
   else{av.style.background=pfp&&pfp.preset?pfp.bg:'';av.textContent=user[0].toUpperCase();}
   document.getElementById('pfName').textContent=user;pfFitName();
-  document.getElementById('pfOnline').textContent=me?'ONLINE NOW':'GUEST · THIS SESSION ONLY';
+  document.getElementById('pfOnline').textContent=me?'ONLINE NOW':'GUEST · ON THIS BROWSER';
   document.querySelector('#page-profile .pf-online').style.color=me?'':'#fb923c';
   document.querySelector('#page-profile .pf-dot').style.cssText=me?'':'background:#fb923c;box-shadow:0 0 8px #fb923c';
   const since=document.getElementById('pfSince');since.textContent='';
