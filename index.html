@@ -4692,7 +4692,7 @@ function lzRenderChars(reroll){
         </div>
         <div style="display:flex;gap:20px;margin-top:6px">
           <div class="wt-card sm wt-rise" style="--c:#96C7FF;--r:-3deg;--d:.1s"><span class="wt-kj">一</span><i class="ti ti-device-tv" style="font-size:28px;color:#96C7FF"></i><span class="wt-h">One series</span><span class="wt-p">Pick a show and test how well you know it.</span></div>
-          <div class="wt-card sm wt-rise" style="--c:#F6C98E;--r:1deg;--d:.18s"><span class="wt-kj">類</span><i class="ti ti-category" style="font-size:28px;color:#F6C98E"></i><span class="wt-h">A genre</span><span class="wt-p">Shōnen, mecha, sports and more, all mixed together.</span></div>
+          <div class="wt-card sm wt-rise" style="--c:#F6C98E;--r:1deg;--d:.18s"><span class="wt-kj">混</span><i class="ti ti-arrows-shuffle" style="font-size:28px;color:#F6C98E"></i><span class="wt-h">A mix</span><span class="wt-p">Pick a few shows and play them together.</span></div>
           <div class="wt-card sm wt-rise" style="--c:#F6A5B8;--r:3deg;--d:.26s"><span class="wt-kj">全</span><i class="ti ti-stack-2" style="font-size:28px;color:#F6A5B8"></i><span class="wt-h">Everything</span><span class="wt-p">The general pool. Any series, any question.</span></div>
         </div>
         <span class="wt-chip wt-rise" style="--c:#BCD8FA;--d:.34s"><i class="ti ti-message-plus"></i><span>Missing a favorite? Suggest it from the Notice Board.</span></span>
@@ -5277,8 +5277,7 @@ function lzRenderChars(reroll){
         <!-- Search card with tabs -->
         <div class="topic-search-box" style="flex:1;gap:0;padding:0;overflow:hidden;min-height:220px">
           <div style="display:flex;border-bottom:1px solid var(--border2)">
-            <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')" style="flex:1;border-radius:0;padding:13px 0;border-right:1px solid var(--border2)">🎬 Anime</button>
-            <button class="topic-tab" id="tabGenre" onclick="switchTopicTab('genre')" style="flex:1;border-radius:0;padding:13px 0">📚 Genre</button>
+            <button class="topic-tab active" id="tabAnime" onclick="switchTopicTab('anime')" style="flex:1;border-radius:0;padding:13px 0">🎬 Anime</button>
           </div>
           <div style="padding:12px 14px;border-bottom:1px solid var(--border2)">
             <div class="topic-search-input-wrap" style="padding:9px 12px">
@@ -7048,7 +7047,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
           <button id="sqTabSuggest" onclick="sqSwitchTab('suggest')" style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border2);background:none;color:var(--muted);transition:all .2s"><i class="ti ti-bulb" style="font-size:13px"></i> Suggest a Topic</button>
         </div>
         <div id="sqTabQuestionSub" style="font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Think you've got a great trivia question? Submit it and it may appear in the quiz bank!</div>
-        <div id="sqTabSuggestSub" style="display:none;font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Want to see more questions on a specific anime or genre? Let us know and we'll add it to the list!</div>
+        <div id="sqTabSuggestSub" style="display:none;font-size:13px;color:var(--muted);padding-bottom:16px;border-bottom:1px solid var(--border)">Want to see more questions on a specific anime? Let us know and we'll add it to the list!</div>
       </div>
       <!-- Scrollable body — Question tab -->
       <div id="sqBodyQuestion" class="sq-scroll-body" style="flex:1;overflow-y:auto;padding:16px 28px;display:flex;flex-direction:column;gap:12px">
@@ -7078,8 +7077,8 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
           <div class="form-hint" style="margin-top:4px">Comma-separated alternate answers that should also be accepted.</div>
         </div>
         <div style="position:relative">
-          <label class="form-label">Anime / Genre</label>
-          <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Shonen general…" autocomplete="off" oninput="sqTopicInput()" onkeydown="sqTopicKeydown(event)" onfocus="sqTopicInput()" onblur="setTimeout(sqTopicHide,150)">
+          <label class="form-label">Anime</label>
+          <input class="form-input" id="sqTopic" type="text" placeholder="e.g. One Piece, Naruto…" autocomplete="off" oninput="sqTopicInput()" onkeydown="sqTopicKeydown(event)" onfocus="sqTopicInput()" onblur="setTimeout(sqTopicHide,150)">
           <div id="sqTopicDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1.5px solid var(--border2);border-radius:12px;z-index:999;overflow:hidden;box-shadow:0 8px 28px #0008;max-height:220px;overflow-y:auto"></div>
         </div>
         <!-- Image URL field -->
@@ -7096,9 +7095,9 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
       <!-- Scrollable body — Suggest tab -->
       <div id="sqBodySuggest" class="sq-scroll-body" style="display:none;flex:1;overflow-y:visible;padding:16px 28px;flex-direction:column;gap:12px">
         <div>
-          <label class="form-label">Anime or Genre</label>
+          <label class="form-label">Anime</label>
           <div style="position:relative">
-            <input class="form-input" id="sqSuggestTopic" type="text" placeholder="e.g. Bleach, Mecha, Blue Lock…" autocomplete="off" oninput="sqSuggestTopicInput()" onfocus="sqSuggestTopicInput()" onblur="setTimeout(sqSuggestTopicHide,150)" onkeydown="sqSuggestTopicKeydown(event)">
+            <input class="form-input" id="sqSuggestTopic" type="text" placeholder="e.g. Bleach, Blue Lock…" autocomplete="off" oninput="sqSuggestTopicInput()" onfocus="sqSuggestTopicInput()" onblur="setTimeout(sqSuggestTopicHide,150)" onkeydown="sqSuggestTopicKeydown(event)">
             <div id="sqSuggestTopicDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1.5px solid var(--border2);border-radius:12px;z-index:999;overflow:hidden;box-shadow:0 8px 28px #0008;max-height:220px;overflow-y:auto"></div>
           </div>
         </div>
@@ -9501,7 +9500,6 @@ function selectSoloMode(mode){
 // ── TOPIC SELECTION ───────────────────────────────────────────
 let selectedTopics=[];
 let isGeneralSelected=true;
-let currentTopicTab='anime';
 
 const animeEmojiMap={
   'one piece':'☠️','naruto':'🍥','dragon ball':'⭐','attack on titan':'⚔️','demon slayer':'🌊',
@@ -9512,15 +9510,8 @@ const animeEmojiMap={
   'steins;gate':'⏱️','your lie in april':'🎹','toradora':'🐯','haikyuu!!':'🏐',
   'black clover':'🍀','overlord':'💀','konosuba':'💥','fruits basket':'🍊',
 };
-const genreEmojiMap={
-  'shōnen':'🔥','shonen':'🔥','isekai':'🌀','shōjo':'🌸','shoujo':'🌸','seinen':'🎭',
-  'mecha':'🤖','slice of life':'🏡','romance':'💕','horror':'👻','sports':'🏆',
-  'fantasy':'🧙','sci-fi':'🚀','comedy':'😂','psychological':'🧠','action':'💥',
-  'adventure':'🗺️','mystery':'🔍',
-};
-
+/* Topics are anime series only (owner, 2026-10-16); genre rows in the topics table are ignored. */
 let animeTopics=[];
-let genreTopics=[];
 
 function posterList(row){const a=Array.isArray(row.poster_urls)?row.poster_urls.filter(Boolean):[];return a.length?a:(row.poster_url?[row.poster_url]:[]);}
 function applyPoster(el,t,idx){
@@ -9670,17 +9661,14 @@ async function loadTopicsFromSupabase(){
       });
     }
     const animeSet=new Map();
-    const genreSet=new Map();
     topicsData.forEach(row=>{
+      if(row.type!=='anime')return;
       const name=row.name;
       const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      const counts=countMap[name]||{};
-      if(row.type==='anime') animeSet.set(key,{key,emoji:'',name,type:'anime',counts,posters:posterList(row)});
-      else if(row.type==='genre') genreSet.set(key,{key,emoji:'',name,type:'genre',counts});
+      animeSet.set(key,{key,emoji:'',name,type:'anime',counts:countMap[name]||{},posters:posterList(row)});
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    console.log('loadTopicsFromSupabase: anime=',animeTopics.length,'genre=',genreTopics.length);
+    console.log('loadTopicsFromSupabase: anime=',animeTopics.length);
     renderTopicList();
   }catch(e){
     console.error('loadTopicsFromSupabase exception:',e);
@@ -9688,7 +9676,7 @@ async function loadTopicsFromSupabase(){
   }
 }
 
-function getTopicList(){return currentTopicTab==='anime'?animeTopics:genreTopics;}
+function getTopicList(){return animeTopics;}
 function cntFmtFor(fmt){return fmt==='char-mc'?'char':fmt;}
 
 function renderTopicList(filter=''){
@@ -9770,9 +9758,6 @@ function updateProceedBtn(){
 }
 
 function switchTopicTab(tab){
-  currentTopicTab=tab;
-  document.getElementById('tabAnime').classList.toggle('active',tab==='anime');
-  document.getElementById('tabGenre').classList.toggle('active',tab==='genre');
   document.getElementById('topicSearchInput').value='';
   document.getElementById('topicSearchClear').style.display='none';
   renderTopicList();
@@ -10388,7 +10373,7 @@ function guestAddSeen(id){
 async function sbGetQuestion(format,topic){
   if(SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   try{
-    // topic.type is 'anime' / 'genre' for a picked topic, or 'all' for General Anime (full pool)
+    // topic.type is 'anime' for a picked topic, or 'all' for General Anime (full pool)
     // Collect ids of questions already shown this session (by id, not text —
     // multiple distinct char questions can share generic question text, so
     // text-based dedup was letting the same row get re-picked).
@@ -10872,7 +10857,7 @@ async function sqLoadTopics(){
   if(SUPABASE_URL.includes('YOUR_PROJECT')){sqTopicCache=[];return;}
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=topic_value&status=eq.approved`,
+      `${SUPABASE_URL}/rest/v1/questions?select=topic_value&status=eq.approved&topic_type=eq.anime`,
       {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
     );
     const rows = await res.json();
@@ -11110,7 +11095,7 @@ async function submitTopicSuggestion(){
     return;
   }
   const topic=document.getElementById('sqSuggestTopic').value.trim();
-  if(!topic){showErr('sqSuggestErr','sqSuggestErrMsg','Please enter an anime or genre name.');return;}
+  if(!topic){showErr('sqSuggestErr','sqSuggestErrMsg','Please enter an anime name.');return;}
   const note=document.getElementById('sqSuggestNote').value.trim();
   _sqSuggestSubmitting=true;
   const btn=document.getElementById('sqSubmitBtn');
@@ -14676,7 +14661,7 @@ function gsAfterChange(){
 }
 function pruneEmptyLobbyTopics(){
   // If topic data hasn't loaded yet, we can't tell empty from unloaded — skip rather than risk a false prune.
-  if(!animeTopics.length&&!genreTopics.length)return;
+  if(!animeTopics.length)return;
   if(!lobbyTopics.length&&!lobbyShelvedTopics.length)return;
   const cntFmt=cntFmtFor(lobbyFormat);
   const seen=new Set();
@@ -14686,8 +14671,7 @@ function pruneEmptyLobbyTopics(){
   });
   const kept=[],shelved=[];
   candidates.forEach(t=>{
-    const list=t.type==='genre'?genreTopics:animeTopics;
-    const full=list.find(x=>x.key===t.key);
+    const full=animeTopics.find(x=>x.key===t.key);
     const cnt=full&&full.counts?full.counts[cntFmt]||0:0;
     if(cnt>0)kept.push(t);else shelved.push(t);
   });
@@ -15025,7 +15009,7 @@ function gsRenderModePane(){
 const GS_FMT_LABEL={mc:'TEXT',type:'TEXT',scene:'SCENE',char:'CHARACTERS','char-mc':'CHARACTERS'};
 const GS_FMT_ICON={mc:'ti-abc',type:'ti-abc',scene:'ti-photo',char:'ti-user-square-rounded','char-mc':'ti-user-square-rounded'};
 let gsHl=null;
-function gsAllTopics(){return (animeTopics||[]).concat(genreTopics||[]);}
+function gsAllTopics(){return animeTopics||[];}
 function gsCountOf(t,fmt){const k=cntFmtFor(fmt||lobbyFormat);return t&&t.counts?(t.counts[k]||0):0;}
 function gsPoolTotal(){
   const all=gsAllTopics();
@@ -15085,7 +15069,7 @@ function gsHighlight(key){
   document.querySelectorAll('#gsTopicList .tp-row').forEach(r=>r.classList.remove('hl'));
   applyPoster(document.getElementById('gsPoster'),t);
   document.getElementById('gsPvName').textContent=t.name;
-  document.getElementById('gsPvMeta').textContent=(t.type==='genre'?'Genre pool':'Series pool');
+  document.getElementById('gsPvMeta').textContent='Series pool';
   const lead=cntFmtFor(lobbyFormat), n=gsCountOf(t);
   const big=document.getElementById('gsPvBig');
   big.style.display='flex';
@@ -15170,7 +15154,7 @@ function lrUpdateStart(){
     :lobbyMode==='potato'?hpLives+(hpLives===1?' life':' lives')
     :selectedQuestionLimit+' questions';
   const clock=lobbyMode==='potato'?hpFuseMin+'–'+hpFuseMax+'s fuse':raceTimeLimit+'s';
-  const loaded=animeTopics.length||genreTopics.length;
+  const loaded=animeTopics.length;
   const empty=loaded&&gsPoolTotal()===0;
   const parts=[(fc?fc.e+' ':'')+(fc?fc.name:'—'),md.e+' '+md.name,topics,length,clock];
   sum.classList.toggle('blocked',!!empty);
@@ -15189,33 +15173,13 @@ function gsTopicToggle(key,emoji,name,type){
 }
 let _gsTopicsLoading=null;
 async function gsEnsureTopics(){
-  if(animeTopics.length||genreTopics.length)return;
+  if(animeTopics.length)return;
   if(!_gsTopicsLoading)_gsTopicsLoading=Promise.resolve(loadTopicsFromSupabase()).catch(()=>{}).finally(()=>{
     _gsTopicsLoading=null;
     gsRenderTopicList();
     if(typeof gsRenderPool==='function')try{gsRenderPool()}catch(e){}
   });
   return _gsTopicsLoading;
-}
-async function _gsEnsureTopicsLegacy(){
-  try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=topic_type,topic_value,format&status=eq.approved&report_count=lt.3`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
-    const data=await res.json();
-    const animeSet=new Map(),genreSet=new Map();
-    (data||[]).forEach(row=>{
-      if(!row.topic_value)return;
-      const name=row.topic_value,key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      if(row.topic_type==='anime'){
-        if(!animeSet.has(key))animeSet.set(key,{key,emoji:animeEmojiMap[name.toLowerCase()]||'🎌',name,type:'anime',counts:{}});
-        const t=animeSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
-      } else if(row.topic_type==='genre'){
-        if(!genreSet.has(key))genreSet.set(key,{key,emoji:genreEmojiMap[name.toLowerCase()]||'🎭',name,type:'genre',counts:{}});
-        const t=genreSet.get(key);t.counts[row.format]=(t.counts[row.format]||0)+1;
-      }
-    });
-    animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    genreTopics=[...genreSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-  }catch(e){}
 }
 function gsRenderAcc(){
   const t=gsActiveTab||'format';
@@ -15231,7 +15195,7 @@ function gsTab(name){
 // Settings are now inline in the lobby room (no modal).
 async function startLobbyGame(){
   if(!isHost)return;
-  if((animeTopics.length||genreTopics.length)&&gsPoolTotal()===0)return;
+  if(animeTopics.length&&gsPoolTotal()===0)return;
   lobbyInGame=true;
   clearLobbyTimer();
   selectedFormat=lobbyFormat;selectedMode=lobbyMode;
@@ -20660,7 +20624,7 @@ function lrRailTab(v){
 }
 /* which catalogue topic, if any, a message is asking for */
 function lrChatMatch(text){
-  const all=(typeof animeTopics!=='undefined'?animeTopics:[]).concat(typeof genreTopics!=='undefined'?genreTopics:[]);
+  const all=typeof animeTopics!=='undefined'?animeTopics:[];
   const t=String(text||'').toLowerCase();
   let best=null;
   all.forEach(x=>{const n=(x.name||'').toLowerCase();if(n&&t.includes(n)&&(!best||n.length>best.name.length))best=x;});
@@ -20950,11 +20914,11 @@ const SU_MODES=[
    desc:'No question limit — only lives. Every wrong answer or timeout costs one, and the run ends when the last one goes.',
    tags:[['ti-heart','LIVES AT STAKE'],['ti-infinity','NO QUESTION LIMIT']]}
 ];
-let suFormat='text', suAnswerBy='choose', suModeI=0, suTab_='anime', suHl=null, suPending=[];
+let suFormat='text', suAnswerBy='choose', suModeI=0, suHl=null, suPending=[];
 
 function _suEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function suMode(){return SU_MODES[suModeI];}
-function suTopics(){return (suTab_==='anime'?(typeof animeTopics!=='undefined'?animeTopics:[]):(typeof genreTopics!=='undefined'?genreTopics:[]))||[];}
+function suTopics(){return (typeof animeTopics!=='undefined'?animeTopics:[])||[];}
 function suAppFormat(f){const m=SU_FMT[f||suFormat];return (suAnswerBy==='choose'&&m.choose)?m.choose:m.type;}
 function suCountKey(f){const a=suAppFormat(f);return typeof cntFmtFor==='function'?cntFmtFor(a):a;}
 function suCountOf(t,f){const k=suCountKey(f);return t&&t.counts?(t.counts[k]||0):0;}
@@ -21148,7 +21112,7 @@ function suHighlight(key){
   document.querySelectorAll('#suList .pk-row').forEach(r=>r.classList.remove('hl'));
   applyPoster(document.getElementById('suPoster'),t);
   document.getElementById('suPvT').textContent=t.name;
-  document.getElementById('suPvS').textContent=(t.type||'anime')==='genre'?'Genre pool':'Series pool';
+  document.getElementById('suPvS').textContent='Series pool';
   const lead=suCountKey();
   const labels=[['mc','Text · MC'],['type','Text · TTA'],['scene','Scene'],['char','Characters']];
   document.getElementById('suPvCounts').innerHTML=labels.map(([k,l])=>{
