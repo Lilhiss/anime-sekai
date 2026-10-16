@@ -3483,21 +3483,6 @@ body:has(#lzMeMenu.open) .lz-pill.has-menu .lz-me-car{transform:rotate(180deg)}
 #editProfileModal>div:first-child [style*="height:1px;background:var(--border"],#signOutModal>div:first-child [style*="height:1px;background:var(--border"],#deleteAccountModal>div:first-child [style*="height:1px;background:var(--border"],#timeLimitModal>div:first-child [style*="height:1px;background:var(--border"],#playAgainModal>div:first-child [style*="height:1px;background:var(--border"],#aboutModal>div:first-child [style*="height:1px;background:var(--border"],#privacyModal>div:first-child [style*="height:1px;background:var(--border"],#termsModal>div:first-child [style*="height:1px;background:var(--border"],#submitSignInModal>div:first-child [style*="height:1px;background:var(--border"],#contactModal>div:first-child [style*="height:1px;background:var(--border"],#inboxModal>div:first-child [style*="height:1px;background:var(--border"],#adminUnlockModal>div:first-child [style*="height:1px;background:var(--border"],#adminPreviewModal>div:first-child [style*="height:1px;background:var(--border"],#adminEditModal>div:first-child [style*="height:1px;background:var(--border"],#charEditModal>div:first-child [style*="height:1px;background:var(--border"],#submitQModal>div:first-child [style*="height:1px;background:var(--border"],#lobbyNavModal>div:first-child [style*="height:1px;background:var(--border"],#transferHostModal>div:first-child [style*="height:1px;background:var(--border"],#howToPlayModal>div:first-child [style*="height:1px;background:var(--border"],#soloModeInfoModal>div:first-child [style*="height:1px;background:var(--border"],#voidingInfoModal>div:first-child [style*="height:1px;background:var(--border"],#addTopicModal>div:first-child [style*="height:1px;background:var(--border"],#covDeleteModal>div:first-child [style*="height:1px;background:var(--border"],#charFmtModal>div:first-child [style*="height:1px;background:var(--border"],.kicked-modal-overlay>div:first-child [style*="height:1px;background:var(--border"]{background:color-mix(in srgb,var(--text) 8%,transparent)!important}
 </style>
 <style>
-#palTest{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:2000;display:flex;align-items:center;gap:6px;padding:5px;border-radius:12px;background:color-mix(in srgb,var(--bg2) 94%,transparent);box-shadow:0 0 0 2px var(--border),0 10px 30px #0008;font:900 10px 'Nunito',sans-serif;letter-spacing:.08em;color:var(--muted)}
-#palTest .pt-body{display:flex;align-items:center;gap:6px}
-#palTest.min .pt-body{display:none}
-#palTest button{border:0;border-radius:7px;height:28px;min-width:28px;padding:0 8px;background:var(--bg3);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px}
-#palTest button:hover{background:var(--border)}
-#palTest .pt-min{background:linear-gradient(135deg,var(--accent),var(--aur2,var(--accent)));color:var(--bg)}
-#palTest .pt-l{padding:0 4px 0 2px}
-#palTest select{height:28px;border:0;border-radius:7px;background:var(--bg3);color:var(--text);font:800 12px 'Nunito',sans-serif;padding:0 8px;max-width:190px}
-#palTest .pt-sw{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:0 0 0 2px #ffffff33}
-#palTest .pt-seg{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:2px}
-#palTest .pt-seg button{background:none;color:var(--muted);height:24px;min-width:26px;padding:0 6px}
-#palTest .pt-seg button.on{background:var(--accent);color:var(--bg)}
-@media (max-width:640px){#palTest .pt-l{display:none}#palTest select{max-width:120px}}
-</style>
-<style>
 /* Dusk / Bright: the ground is a two-hue gradient; full-bleed pages let it through */
 html.pal-grad body{background:var(--pal-grad) fixed!important}
 html.pal-grad .scene,html.pal-grad .page#page-profile,html.pal-grad .page#page-results,html.pal-grad .page#page-mp-results,html.pal-grad #page-auth .au,html.pal-grad #page-landing,html.pal-grad .lz-stage{background:transparent!important}
@@ -21742,28 +21727,8 @@ function crReset(){
 (function(){const _c=window.checkAdminRole;if(typeof _c!=='function')return;window.checkAdminRole=async function(){const r=await _c.apply(this,arguments);if(typeof lzSyncAuth==='function')lzSyncAuth();return r;};})();
 </script>
 
-<!-- PALETTE TEST — live trial of the Color Lab shortlist. Remove once themes are locked. -->
-<div id="palTest" style="display:none">
-  <button class="pt-min" onclick="palMin()" title="Collapse"><i class="ti ti-palette"></i></button>
-  <div class="pt-body">
-    <span class="pt-l">PALETTE TEST</span>
-    <button onclick="palStep(-1)" aria-label="Previous"><i class="ti ti-chevron-left"></i></button>
-    <select id="palSel" onchange="palApply(this.value)"></select>
-    <button onclick="palStep(1)" aria-label="Next"><i class="ti ti-chevron-right"></i></button>
-    <span class="pt-sw" id="palSw"></span>
-    <div class="pt-seg" id="palDepth">
-      <button data-d="Night" onclick="palDepth('Night')" title="Night"><i class="ti ti-moon"></i></button>
-      <button data-d="Dusk" onclick="palDepth('Dusk')" title="Dusk"><i class="ti ti-sunset-2"></i></button>
-      <button data-d="Bright" onclick="palDepth('Bright')" title="Bright"><i class="ti ti-sun"></i></button>
-    </div>
-  </div>
-</div>
 <script>
-const PAL_FEATURED=[['Moonlight','#96C7FF','#b8a9ff'],['Emerald & Sapphire','#3b82f6','#34d399'],['Ethereal','#a78bfa','#f472b6'],['Honey & Violet','#fcd34d','#a78bfa'],['Sakura Night','#f9a8d4','#7dd3fc'],['Ember','#fb923c','#f43f5e'],['Peach Fizz','#fed7aa','#f9a8d4'],['Teal & Plum','#2dd4bf','#a855f7']];
-const PAL_MORE=[['Nebula','#c4b5fd','#fca5a5'],['Cotton Candy','#fbcfe8','#bfdbfe'],['Dusk','#93c5fd','#fdba74'],['Aurora','#86efac','#22d3ee'],['Amethyst & Gold','#a855f7','#fbbf24'],['Ruby & Rose Gold','#fdba74','#f43f5e']];
-const PAL_ALL=[...PAL_FEATURED,...PAL_MORE];
-const PAL_VARS=['--accent','--accent-soft','--bg','--bg2','--bg3','--border','--border2','--text','--muted','--faint','--orb1','--orb2','--orb3','--card-bg','--card-border','--aur2a','--aur2b','--aur2','--hover','--pal-grad','--pal-radial'];
-let palState={name:'',depth:'Night',min:false};
+/* Palette maths for the Dusk/Bright backgrounds (palVars), used by the depth code below. */
 function palHex(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16));}
 function palMix(a,b,t){const A=palHex(a),B=palHex(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 function palHsl(hex){let [r,g,b]=palHex(hex).map(v=>v/255);const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let hh=0,ss=0;const l=(mx+mn)/2;if(mx!==mn){const d=mx-mn;ss=l>.5?d/(2-mx-mn):d/(mx+mn);hh=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;hh*=60;}return [hh,ss,l];}
@@ -21784,36 +21749,6 @@ function palVars(L,S,depth){
     '--pal-grad':'linear-gradient(210deg,'+gL+' 0%,'+palMix(gL,gS,.5)+' 50%,'+gS+' 100%)',
     '--pal-radial':'radial-gradient(120% 95% at 50% 40%,'+palMix(gL,'#ffffff',.1)+' 0%,'+gL+' 28%,'+palMix(gL,gS,.55)+' 58%,'+gS+' 82%,'+palMix(gS,'#000000',.25)+' 100%)'};
 }
-function palApply(name){
-  palState.name=name;
-  const r=document.documentElement;
-  PAL_VARS.forEach(v=>r.style.removeProperty(v));
-  const p=r.getAttribute('data-color')==='meadow'?null:PAL_ALL.find(x=>x[0]===name);
-  if(p){
-    if(r.getAttribute('data-theme')!=='dark')r.setAttribute('data-theme','dark');
-    const vs=palVars(p[1],p[2],palState.depth);Object.entries(vs).forEach(([k,v])=>r.style.setProperty(k,v));
-    r.classList.toggle('pal-grad',palState.depth!=='Night');
-    document.getElementById('palSw').style.background='linear-gradient(135deg,'+p[1]+','+p[2]+')';
-  } else {r.classList.remove('pal-grad');document.getElementById('palSw').style.background='linear-gradient(135deg,var(--accent),var(--aur2,var(--accent)))';}
-  document.getElementById('palSel').value=name;
-  document.querySelectorAll('#palDepth button').forEach(b=>b.classList.toggle('on',b.dataset.d===palState.depth));
-  try{localStorage.setItem('pal_test',JSON.stringify(palState))}catch(e){}
-  if(document.getElementById('page-profile')?.classList.contains('active')&&typeof renderProfile==='function')renderProfile();
-  if(typeof lzSyncAuth==='function')lzSyncAuth();
-}
-function palDepth(d){palState.depth=d;palApply(palState.name);}
-function palStep(dir){const names=['',...PAL_ALL.map(p=>p[0])];let i=names.indexOf(palState.name);i=(i+dir+names.length)%names.length;palApply(names[i]);}
-function palMin(){palState.min=!palState.min;document.getElementById('palTest').classList.toggle('min',palState.min);try{localStorage.setItem('pal_test',JSON.stringify(palState))}catch(e){}}
-(function(){
-  const sel=document.getElementById('palSel');
-  const opt=p=>'<option value="'+p[0]+'">'+p[0]+'</option>';
-  sel.innerHTML='<option value="">Off (use theme)</option><optgroup label="Featured">'+PAL_FEATURED.map(opt).join('')+'</optgroup><optgroup label="More pairs">'+PAL_MORE.map(opt).join('')+'</optgroup>';
-  try{const s=JSON.parse(localStorage.getItem('pal_test')||'null');if(s)palState={...palState,...s};}catch(e){}
-  document.getElementById('palTest').classList.toggle('min',!!palState.min);
-  palApply(palState.name||'');
-  // re-assert after the app's own theme code runs
-  const _at=window.applyTheme;if(typeof _at==='function')window.applyTheme=function(){const r=_at.apply(this,arguments);if(palState.name){const p=PAL_ALL.find(x=>x[0]===palState.name);if(p){const vs=palVars(p[1],p[2],palState.depth);Object.entries(vs).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));}}return r;};
-})();
 </script>
 
 <script>
@@ -22161,8 +22096,6 @@ const DEPTHS=[['Twilight','ti-sparkles']]; // single sky — the picker UI is hi
 const VARS=['--accent','--accent-soft','--bg','--bg2','--bg3','--border','--border2','--text','--muted','--faint','--orb1','--orb2','--orb3','--card-bg','--card-border','--aur2a','--aur2b','--aur2','--hover','--pal-grad','--pal-radial'];
 let depth='Twilight';
 if(!DEPTHS.some(d=>d[0]===depth))depth='Twilight';
-const pt=document.getElementById('palTest');if(pt)pt.remove();
-try{palState.name='';}catch(e){}
 const icon=()=>DEPTHS.find(d=>d[0]===depth)[1];
 const menu=()=>'<div class="drop-section">Background</div>'+DEPTHS.map(([d,ic])=>'<button class="drop-row'+(d===depth?' active':'')+'" onclick="setDepth(\''+d+'\')"><div class="drop-row-left"><i class="ti '+ic+'" style="font-size:16px;width:18px"></i>'+d+'</div><i class="ti ti-check drop-check"></i></button>').join('');
 function syncUI(){
