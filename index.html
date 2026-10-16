@@ -4266,6 +4266,11 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
             <span class="au-h">Sign in</span>
             <span class="au-alt">No account? <a onclick="showAuthMode('register')">Create one</a></span>
           </div>
+          <!-- guests who've played: signing in to another account doesn't bring their games along -->
+          <div class="au-note" id="auGuestLeft" style="display:none">
+            <i class="ti ti-info-circle" style="font-size:16px;color:#fbbf24"></i>
+            <span>Signing in won't bring along the <b id="auGuestLeftN"></b> you played as <b id="auGuestLeftName"></b>. <a onclick="showAuthMode('register')">Create an account</a> instead to keep <span id="auGuestLeftIt">them</span>.</span>
+          </div>
           <div style="margin-top:20px">
             <div class="au-lbl">USERNAME</div>
             <div class="au-line"><i class="ti ti-user"></i><input id="siUser" type="text" placeholder="Username" autocomplete="off" oninput="clearErr('signinErr')"></div>
@@ -8086,6 +8091,13 @@ function showAuthMode(mode){
   if(m==='signin'){
     ['siUser','siPass'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.onkeydown=e=>{if(e.key==='Enter')submitSignin();}}});
     clearErr('signinErr');
+    const games=activeGuest?(parseInt(totalGames)||0):0;
+    show('auGuestLeft',games>0);
+    if(games>0){
+      document.getElementById('auGuestLeftN').textContent=games+(games===1?' game':' games');
+      document.getElementById('auGuestLeftName').textContent=currentUser;
+      document.getElementById('auGuestLeftIt').textContent=games===1?'it':'them';
+    }
   } else if(m==='register'){
     ['regUser','regPass','regPass2'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.onkeydown=e=>{if(e.key==='Enter')auSubmitRegister();}}});
     const av=document.getElementById('auRegAvail');if(av)av.textContent='';
