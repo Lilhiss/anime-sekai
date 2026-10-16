@@ -4318,7 +4318,6 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
             <div class="au-lbl">CONFIRM PASSWORD</div>
             <div class="au-line"><i class="ti ti-lock-check"></i><input id="regPass2" type="password" placeholder="••••••••" autocomplete="new-password" oninput="clearErr('regErr');auRegPass()"><i class="ti ti-check" id="auRegMatch" style="font-size:16px;color:#4ade80;visibility:hidden"></i></div>
           </div>
-          <input id="regEmail" type="hidden" value="">
           <div class="au-note">
             <i class="ti ti-key" style="font-size:16px;color:#fbbf24"></i>
             <span>No email, so there's no reset link. You'll get a one-time recovery code on the next screen — save it, it's the only way back in.</span>
@@ -6479,36 +6478,36 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else _bootSiteConfig();
 
 // ── SUPABASE AUTH ─────────────────────────────────────────────
-async function sbSignUp(username, password, email=''){
-  const meta = {username};
-  const { data, error } = await sb.auth.signUp({
-    email: email || `${username}@animesekai.guest`,
-    password,
-    options: { data: meta }
-  });
-  if(error) throw error;
-  if(data.user){
-    const storedEmail = email || `${username}@animesekai.guest`;
-    await sb.from('profiles').upsert({id: data.user.id, username, email: storedEmail}, {onConflict: 'id'});
+// Every account signs in with <username>@animesekai.guest (usernames can't be changed),
+// so the address comes straight from the username — no lookup, and no real emails kept.
+function sbAuthEmail(username){return `${String(username).trim().toLowerCase()}@animesekai.guest`;}
+
+// New accounts are made by upgrading this browser's guest (or a fresh one) in place:
+// same user id, so the guest's games, Daily scores and avatar stay with the account.
+async function sbCreateAccount(username, password){
+  const email=sbAuthEmail(username);
+  let {data:{session}}=await sb.auth.getSession();
+  let u=session?.user;
+  // A retry after a half-finished attempt already has the email set; otherwise start from a guest
+  if(!u||!(u.is_anonymous||u.email===email)){
+    const {data,error}=await sb.auth.signInAnonymously();
+    if(error)throw error;
+    u=data.user;
   }
-  if(!data.session) throw new Error('Account created! Please sign in.');
-  return data.user;
+  if(u.email!==email){
+    const {error}=await sb.auth.updateUser({email});
+    if(error)throw error;
+  }
+  const {error:pwErr}=await sb.auth.updateUser({password});
+  if(pwErr)throw pwErr;
+  const {error:nameErr}=await sb.rpc('finish_signup',{p_username:username});
+  if(nameErr)throw nameErr;
+  await sb.auth.refreshSession().catch(()=>{});
+  return u;
 }
 
 async function sbSignIn(username, password){
-  // Look up the stored auth email from profiles — it's the original
-  // username@animesekai.guest address created at signup and never changes
-  // in Supabase Auth, even if the user later renames their profile.
-  let authEmail=`${username}@animesekai.guest`; // fallback for legacy accounts
-  try{
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=email&username=ilike.${encodeURIComponent(username)}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const rows=await res.json();
-    if(Array.isArray(rows)&&rows[0]?.email){authEmail=rows[0].email;}
-  }catch(e){}
-  const{data,error}=await sb.auth.signInWithPassword({email:authEmail,password});
+  const{data,error}=await sb.auth.signInWithPassword({email:sbAuthEmail(username),password});
   if(error) throw error;
   return data.user;
 }
@@ -6524,14 +6523,14 @@ async function sbLoadProfile(userId){
     const [statsRes, profileRes]=await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,email,theme_color&id=eq.${userId}&limit=1`,
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,theme_color&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
     ]);
     const [statsRows, profileRows]=await Promise.all([statsRes.json(), profileRes.json()]);
     const stats=Array.isArray(statsRows)&&statsRows[0]?statsRows[0]:null;
     if(!stats)return null;
     const avatar_url=(Array.isArray(profileRows)&&profileRows[0]?.avatar_url)||null;
-    const email=(Array.isArray(profileRows)&&profileRows[0]?.email)||null;
+    const email=null; // emails are no longer kept on profiles
     const theme_color=(Array.isArray(profileRows)&&profileRows[0]?.theme_color)||null;
     if(userId===currentUserId||!currentUserId){profileColorKey=pfPair(theme_color)?theme_color:'auto';try{localStorage.setItem('as_pf_color',profileColorKey);}catch(e){}}
     return {...stats, avatar_url, email, theme_color};
@@ -6618,6 +6617,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         guestResolveName(g.name).then(n=>{if(n!==currentUser&&isGuest){currentUser=n;guestSave();updateNav();}});
         guestSave();
         try{updateNav();}catch(e){}
+        loadMyStats().catch(()=>{});
       }
       // If the user was in a lobby before the refresh, rejoin it automatically.
       const savedLobbyId = sessionStorage.getItem('current_lobby_id');
@@ -7258,7 +7258,7 @@ async function confirmSignOut(){
   clearInterval(timerInterval);
   // Clear all auth fields immediately on sign out so the next person
   // who opens the sign-in form never sees previous credentials
-  ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
+  ['siUser','siPass','regUser','regPass','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   updateNav();goStep('landing');
@@ -7344,7 +7344,7 @@ async function deleteAccount(){
     allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;
     clearInterval(timerInterval);
-    ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
+    ['siUser','siPass','regUser','regPass','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.value='';
     });
     closeDeleteAccount();
@@ -8090,6 +8090,13 @@ function showAuthMode(mode){
     const st=document.getElementById('auStrength');if(st)st.style.display='none';
     const mt=document.getElementById('auRegMatch');if(mt)mt.style.visibility='hidden';
     clearErr('regErr');
+    // A guest signing up keeps their avatar (and their games): start the form from it
+    if(isGuest&&currentUser){
+      const ru=document.getElementById('regUser');if(ru){ru.value=currentUser.replace(/#\d{4}$/,'');auRegUser();}
+      const list=(typeof PFP_PRESETS!=='undefined'?PFP_PRESETS:[]);
+      if(currentPfp&&currentPfp.type==='preset'){const i=list.findIndex(p=>p.id===currentPfp.value);if(i>=0)auPfpIdx.reg=i;}
+      else if(currentPfp&&currentPfp.type==='upload')guestPendingPfp={type:'upload',dataUrl:currentPfp.value};
+    }
   } else if(m==='forgot'){
     ['forgotUser','forgotCode','forgotPass'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.onkeydown=e=>{if(e.key==='Enter')submitRecovery();}}});
     show('auForgotForm',true);show('auForgotDone',false);
@@ -8178,12 +8185,13 @@ function auRegUser(){
   auAvailT=setTimeout(async()=>{
     try{
       if(SUPABASE_URL.includes('YOUR_PROJECT')){el.textContent='';return;}
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id&username=ilike.${encodeURIComponent(v)}&limit=1`,
-        {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}});
-      const rows=await r.json();
-      const taken=Array.isArray(rows)&&rows.length>0;
-      el.style.color=taken?'#f87171':'#4ade80';
-      el.innerHTML='<i class="ti ti-'+(taken?'x':'check')+'" style="font-size:12px"></i> '+(taken?'TAKEN':'AVAILABLE');
+      // Server check: format, name filter and taken (case-insensitive, exact)
+      const {data:prob,error}=await sb.rpc('username_available',{p_name:v});
+      if(error)throw error;
+      if((document.getElementById('regUser').value||'').trim()!==v)return; // typed on meanwhile
+      const taken=!!prob&&/taken/i.test(prob);
+      el.style.color=prob?'#f87171':'#4ade80';
+      el.innerHTML='<i class="ti ti-'+(prob?'x':'check')+'" style="font-size:12px"></i> '+(!prob?'AVAILABLE':taken?'TAKEN':'NOT ALLOWED');
     }catch(e){el.textContent='';}
   },420);
 }
@@ -8324,7 +8332,26 @@ function isCleanUsername(name){
 
 // Returning guests: the guest's name/pfp/session id live in localStorage under as_guest,
 // tied to the anonymous Supabase user id so a stale record never attaches to a new session.
-function guestSave(){try{if(isGuest&&currentUser)localStorage.setItem('as_guest',JSON.stringify({name:currentUser,uid:currentUserId||null,sid:guestSessionId,pfp:currentPfp||null,t:Date.now()}));}catch(e){}}
+let _guestPfpSynced;
+function guestSave(){
+  try{if(isGuest&&currentUser)localStorage.setItem('as_guest',JSON.stringify({name:currentUser,uid:currentUserId||null,sid:guestSessionId,pfp:currentPfp||null,t:Date.now()}));}catch(e){}
+  // Also keep the avatar on the guest's profile row, so it carries over when they make an account
+  // (data: URLs are the instant preview of an upload still in flight; the stored URL follows)
+  const v=!currentPfp?null:currentPfp.type==='preset'?'preset:'+currentPfp.value:(/^https?:/.test(currentPfp.value||'')?currentPfp.value:undefined);
+  if(isGuest&&currentUserId&&v!==undefined&&v!==_guestPfpSynced&&typeof sb!=='undefined'){
+    _guestPfpSynced=v;sb.from('profiles').update({avatar_url:v}).eq('id',currentUserId).then(()=>{},()=>{});
+  }
+}
+// Guests' games are stored under their guest id, same as accounts
+async function loadMyStats(){
+  if(!currentUserId)return;
+  const p=await sbLoadProfile(currentUserId);
+  if(!p)return;
+  totalGames=parseInt(p.total_games)||0;bestScore=parseInt(p.best_score)||0;
+  totalCorrect=parseInt(p.total_correct)||0;totalAnswered=parseInt(p.total_answered)||0;
+  perfectGames=parseInt(p.perfect_games)||0;
+  allHistory=await sbLoadHistory(currentUserId);
+}
 function guestLoad(){try{return JSON.parse(localStorage.getItem('as_guest')||'null');}catch(e){return null;}}
 function guestForget(){['as_guest','guest_pfp','guest_seen_ids'].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});}
 // If a registered player owns the name, the guest keeps it with a 4-digit tag: Naruto#4821
@@ -8399,6 +8426,7 @@ async function submitGuest(){
     }catch(e){}
   }
   guestSave();
+  loadMyStats().catch(()=>{}); // a returning guest's games are already on the server
   updateNav();afterAuth();
   btn.disabled=false;btn.innerHTML='ENTER THE ARENA <i class="ti ti-player-play" style="font-size:19px"></i>';
 }
@@ -8435,33 +8463,37 @@ async function submitSignin(){
 async function submitRegister(){
   const u=document.getElementById('regUser').value.trim();
   const p=document.getElementById('regPass').value;
-  const e=document.getElementById('regEmail').value.trim();
   if(u.length<3){showErr('regErr','regErrMsg','Username must be at least 3 characters.');return}
   if(/\s/.test(u)){showErr('regErr','regErrMsg','No spaces allowed.');return}
   if(!isCleanUsername(u)){showErr('regErr','regErrMsg','That username isn\'t allowed. Please choose a different one.');return}
   if(p.length<6){showErr('regErr','regErrMsg','Password must be at least 6 characters.');return}
-  if(e&&!e.includes('@')){showErr('regErr','regErrMsg','Please enter a valid email address.');return}
   const btn=document.getElementById('regSubmitBtn');
   btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:18px;animation:spin .8s linear infinite"></i> CREATING…';
   try{
-    // Pre-check username availability before hitting auth
-    const checkRes=await withTimeout(fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=id&username=ilike.${encodeURIComponent(u)}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    ));
-    const rows=await withTimeout(checkRes.json());
-    if(Array.isArray(rows)&&rows.length>0){
-      showErr('regErr','regErrMsg','That username is already taken. Please choose a different one.');
-      return;
-    }
-    const user=await withTimeout(sbSignUp(u,p,e),12000);
+    // Same rules the server enforces (format, name filter, taken)
+    const {data:prob,error:probErr}=await withTimeout(sb.rpc('username_available',{p_name:u}));
+    if(probErr)throw probErr;
+    if(prob){showErr('regErr','regErrMsg',prob);return;}
+    const wasGuest=isGuest;
+    const user=await withTimeout(sbCreateAccount(u,p),15000);
     currentUser=u;currentUserId=user?.id||null;isGuest=false;
+    if(wasGuest)guestForget(); // the guest record now belongs to the account
+    // The account keeps the guest's games: pull its stats from the server
+    const profile=await withTimeout(sbLoadProfile(currentUserId)).catch(()=>null);
+    if(profile){
+      totalGames=parseInt(profile.total_games)||0;bestScore=parseInt(profile.best_score)||0;
+      totalCorrect=parseInt(profile.total_correct)||0;totalAnswered=parseInt(profile.total_answered)||0;
+      perfectGames=parseInt(profile.perfect_games)||0;
+    }
+    allHistory=await withTimeout(sbLoadHistory(currentUserId)).catch(()=>allHistory||[]);
     updateNav();await checkAdminRole();afterAuth();
   }catch(err){
     const msg=err.message||'';
     let friendly='Could not create account. Please try again.';
-    if(msg.toLowerCase().includes('already registered')||msg.toLowerCase().includes('user already exists')){
-      friendly='An account with that username already exists.';
+    if(/taken|isn't allowed|characters|letters, numbers/i.test(msg)){
+      friendly=msg;
+    } else if(msg.toLowerCase().includes('already registered')||msg.toLowerCase().includes('user already exists')||msg.toLowerCase().includes('already been registered')){
+      friendly='That username is already taken. Please choose a different one.';
     } else if(msg.toLowerCase().includes('database error')||msg.toLowerCase().includes('saving new user')){
       friendly='That username is already taken. Please choose a different one.';
     } else if(msg.toLowerCase().includes('password')){
@@ -9784,8 +9816,9 @@ function endQuiz(){
   if(correct===total&&total>0){currentStreak++;perfectGames++;}else currentStreak=0;
   // Add to history
   allHistory.unshift({fmt:fmtLabels[selectedFormat],mode:selectedMode==='race'?'Score Race':selectedMode==='classic'?'Classic':'Survival',score,correct,total,date:'Just now',livesLeft:lives,target:selectedMode==='race'?soloRaceTarget:null});
-  // Save to Supabase if logged in (guests have no profile row, so their games can't be stored)
-  if(currentUserId&&!isGuest){
+  // Save to Supabase for accounts and guests alike (guests have a profile row too),
+  // so a guest's stats survive reloads and carry over when they make an account
+  if(currentUserId){
     sbSaveGame(currentUserId,{
       format:selectedFormat,mode:selectedMode,score,correct,total,livesLeft:lives
     });
@@ -10690,20 +10723,7 @@ async function rtCreateLobby(){
     return; // Lobby still shows locally, just won't sync to other devices
   }
   const token=await rtGetAuthToken();
-  // Only persist a profile row for registered users — guest rows accumulate
-  // as dead data since guests have no persistent state worth storing
-  if(!isGuest){
-    try{
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-        method:'POST',
-        headers:{
-          'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-          'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
-        },
-        body:JSON.stringify({id:uid,username:currentUser,is_guest:false})
-      });
-    }catch(e){}
-  }
+  // (profile rows are created by the database when the user is made)
   let lobbyId=null;
   try{
     const lobbyRes=await fetch(`${SUPABASE_URL}/rest/v1/lobbies`,{
@@ -10741,17 +10761,6 @@ async function rtJoinLobby(code){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){showErr('lobbyJoinErr','lobbyJoinErrMsg','Could not connect. Please try again.');return false;}
   const token=await rtGetAuthToken();
-  // Upsert profile for anon/guest users
-  try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,
-        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'
-      },
-      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
-    });
-  }catch(e){}
   let lobby=null;
   try{
     // Accept 'active' here too, not just 'waiting'. rtSetLobbyStatus('active') fires
@@ -10888,14 +10897,6 @@ async function rtRejoinActiveLobby(code){
   const uid=await rtGetOrCreateAnonSession();
   if(!uid){showLobbyToast('⚠️ Could not connect. Please try again.','danger');return false;}
   const token=await rtGetAuthToken();
-  // Upsert profile (same as rtJoinLobby — needed for anon users)
-  try{
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-      method:'POST',
-      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},
-      body:JSON.stringify({id:uid,username:currentUser,is_guest:isGuest})
-    });
-  }catch(e){}
   // Fetch the lobby — must be active
   let lobby=null;
   try{
