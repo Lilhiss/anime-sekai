@@ -5478,6 +5478,32 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
     </div>
   </div>
 
+  <!-- RECOVERY CODE MODAL: makes a new code (replaces the old one) and shows it once -->
+  <div id="recoveryCodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-key" style="font-size:20px;color:#fbbf24"></i> Recovery Code</div>
+        <button onclick="closeRecoveryCode()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
+      <div id="rcAsk" style="display:flex;flex-direction:column;gap:18px">
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Your recovery code gets you back in if you forget your password. We only keep a scrambled copy, so we can't show your current one. Making a new code <b style="color:var(--text)">replaces</b> the old one.</div>
+        <div class="form-err" id="rcErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="rcErrMsg"></span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="action-btn secondary" onclick="closeRecoveryCode()">Cancel</button>
+          <button class="action-btn primary" id="rcMakeBtn" onclick="makeRecoveryCode()"><i class="ti ti-refresh" style="font-size:15px"></i> Make new code</button>
+        </div>
+      </div>
+      <div id="rcDone" style="display:none;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px 16px">
+          <span id="rcCode" style="font-family:'Lilita One',cursive;font-size:22px;letter-spacing:.08em;color:var(--text)">—</span>
+          <button class="ghost-btn" onclick="auCopyCode(this,'rcCode')" title="Copy"><i class="ti ti-copy" style="font-size:15px"></i></button>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Save it now: we can't show it again. Your old code no longer works.</div>
+        <button class="action-btn primary" onclick="closeRecoveryCode()">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ADMIN PANEL -->
   <div class="page" id="page-admin">
    <div class="adm-shell">
@@ -6555,21 +6581,9 @@ async function sbLoadLeaderboard(){
 }
 
 // ── SESSION RESTORE ───────────────────────────────────────────
-// On page load, check if user is already signed in
-// Clear any stale anonymous session immediately on page load
-// This prevents the anonymous token from blocking real sign-in
-(function(){
-  try{
-    const key='sb-ispagvwuxgbzzycdxdfx-auth-token';
-    const raw=localStorage.getItem(key);
-    if(raw){
-      const parsed=JSON.parse(raw);
-      if(parsed?.user?.is_anonymous===true){
-        localStorage.removeItem(key);
-      }
-    }
-  }catch(e){}
-})();
+// Guest (anonymous) sessions are kept across reloads on purpose: onAuthStateChange
+// below pairs them with the as_guest record so a guest keeps their name and seat.
+// Signing in or creating an account simply replaces the anonymous session.
 
 // ── PRESENCE CLEANUP (replaces old IIFE + pagehide approach) ──
 // Any stale pending_lobby_cleanup key left by a pre-Presence version is safe to
@@ -6590,6 +6604,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
   // ignored them. Repopulate currentUserId so rtGetOrCreateAnonSession
   // returns the correct id and lobby rejoin works correctly.
   if(session.user.is_anonymous){
+    // INITIAL_SESSION can fire while the page is still parsing, before the later
+    // script that declares currentUserId/isGuest (let) and guestLoad. Wait for it.
+    if(document.readyState==='loading')await new Promise(r=>document.addEventListener('DOMContentLoaded',r,{once:true}));
     if(!currentUserId){
       currentUserId = session.user.id;
       try{ sessionStorage.setItem('guest_user_id', currentUserId); }catch(e){}
@@ -7245,6 +7262,32 @@ async function confirmSignOut(){
     const el=document.getElementById(id);if(el)el.value='';
   });
   updateNav();goStep('landing');
+}
+
+// ── RECOVERY CODE (Profile → Account settings) ───────────────
+function openRecoveryCode(){
+  document.getElementById('rcAsk').style.display='flex';
+  document.getElementById('rcDone').style.display='none';
+  clearErr('rcErr');
+  document.getElementById('recoveryCodeModal').style.display='flex';
+  applyTheme();
+}
+function closeRecoveryCode(){
+  document.getElementById('recoveryCodeModal').style.display='none';
+  document.getElementById('rcCode').textContent='—';
+}
+async function makeRecoveryCode(){
+  const btn=document.getElementById('rcMakeBtn');
+  btn.disabled=true;
+  try{
+    const {data,error}=await withTimeout(sb.rpc('new_recovery_code'));
+    if(error||typeof data!=='string')throw new Error('Couldn\'t make a code. Please try again.');
+    document.getElementById('rcCode').textContent=data;
+    document.getElementById('rcAsk').style.display='none';
+    document.getElementById('rcDone').style.display='flex';
+  }catch(e){
+    showErr('rcErr','rcErrMsg',e.message||'Something went wrong.');
+  }finally{btn.disabled=false;}
 }
 
 // ── DELETE ACCOUNT ────────────────────────────────────────────
@@ -8101,16 +8144,16 @@ function auSyncPending(){
   const view=document.getElementById('authRegister');
   const side=(view&&view.style.display!=='none')?'reg':'guest';
   const p=list[auPfpIdx[side]];
-  if(p)window.guestPendingPfp={type:'preset',value:p.id};
+  if(p)guestPendingPfp={type:'preset',value:p.id};
 }
 function auCycle(side,d){
   const list=(typeof PFP_PRESETS!=='undefined'?PFP_PRESETS:[]);
   if(!list.length)return;
-  if(typeof guestPendingPfp!=='undefined'&&guestPendingPfp&&guestPendingPfp.type==='upload')window.guestPendingPfp=null;
+  if(typeof guestPendingPfp!=='undefined'&&guestPendingPfp&&guestPendingPfp.type==='upload')guestPendingPfp=null;
   auPfpIdx[side]=(auPfpIdx[side]+d+list.length)%list.length;
   auRenderPfp();
 }
-function auClearUpload(){window.guestPendingPfp=null;auRenderPfp();}
+function auClearUpload(){guestPendingPfp=null;auRenderPfp();}
 
 /* ── field feedback ── */
 function auEye(id,btn){
@@ -8194,14 +8237,38 @@ function auShowCreated(){
   if(disc&&src){disc.innerHTML=src.innerHTML;disc.style.background=src.style.background;}
   const nm=document.getElementById('auDoneName');
   if(nm)nm.textContent=currentUser||'—';
-  /* carry the chosen preset onto the new profile */
+  /* carry the chosen preset or upload onto the new profile */
   try{
     if(guestPendingPfp&&guestPendingPfp.type==='preset'){
       currentPfp={type:'preset',value:guestPendingPfp.value};
       if(currentUserId&&typeof sb!=='undefined')sb.from('profiles').update({avatar_url:'preset:'+guestPendingPfp.value}).eq('id',currentUserId).then(()=>{},()=>{});
+    } else if(guestPendingPfp&&guestPendingPfp.type==='upload'&&guestPendingPfp.blob){
+      currentPfp={type:'upload',value:guestPendingPfp.dataUrl}; // show instantly; upload swaps in the stored URL
+      auUploadAccountPfp(guestPendingPfp.blob);
     }
+    guestPendingPfp=null;
+    updateNav();
   }catch(e){}
   showAuthMode('created');
+}
+// Same storage path + profile update as savePfp's signed-in upload
+async function auUploadAccountPfp(blob){
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token||!currentUserId)return;
+    const filePath=`${currentUserId}/avatar.jpg`;
+    const upRes=await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${filePath}`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${session.access_token}`,'Content-Type':'image/jpeg','x-upsert':'true'},
+      body:blob
+    });
+    if(!upRes.ok)return;
+    const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(filePath);
+    const bustedUrl=publicUrl+'?t='+Date.now();
+    await sb.from('profiles').update({avatar_url:bustedUrl}).eq('id',currentUserId);
+    currentPfp={type:'upload',value:bustedUrl};
+    updateNav();
+  }catch(e){}
 }
 function auCopyCode(btn,id){
   const txt=document.getElementById(id||'auCode').textContent;
@@ -8295,13 +8362,15 @@ async function submitGuest(){
   const btn=document.getElementById('guestSubmitBtn');
   btn.disabled=true;btn.textContent='Entering…';
   try{
-    // Try anonymous Supabase sign-in for lobby support (5s timeout)
-    const signInPromise=sb.auth.signInAnonymously();
-    const timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
-    const {data,error}=await Promise.race([signInPromise,timeoutPromise]);
-    if(!error&&data?.user){
-      currentUserId=data.user.id;
-      // Don't persist guest rows to profiles — they accumulate as dead rows
+    // Reuse this browser's guest session if it has one; every new anonymous
+    // sign-in leaves another guest user + profile row behind
+    const {data:{session}}=await withTimeout(sb.auth.getSession(),3000);
+    if(session?.user?.is_anonymous){
+      currentUserId=session.user.id;
+    } else {
+      // Try anonymous Supabase sign-in for lobby support (5s timeout)
+      const {data,error}=await withTimeout(sb.auth.signInAnonymously(),5000);
+      if(!error&&data?.user)currentUserId=data.user.id;
     }
   }catch(e){
     // Silent fail — app works without Supabase for solo play
@@ -20809,7 +20878,7 @@ function renderProfile(){
   const since=document.getElementById('pfSince');since.textContent='';
   if(me&&typeof sb!=='undefined'){sb.auth.getSession().then(({data})=>{const c=data?.session?.user?.created_at;if(c)since.textContent='· since '+new Date(c).toLocaleDateString(undefined,{month:'long',year:'numeric'});}).catch(()=>{});}
   document.getElementById('pfActions').innerHTML=!me?'':me
-    ?'<button class="pf-btn pri" onclick="openEditProfile()"><i class="ti ti-pencil"></i> EDIT PROFILE</button><button class="pf-btn" onclick="pfToggleMenu(event)"><i class="ti ti-settings"></i> ACCOUNT SETTINGS</button><div class="pf-menu" id="pfMenu" onclick="event.stopPropagation()"><button onclick="this.parentNode.classList.remove(\'open\');signOut()"><i class="ti ti-logout"></i> Sign out</button><button class="danger" onclick="this.parentNode.classList.remove(\'open\');openDeleteAccount()"><i class="ti ti-trash"></i> Delete account</button></div>'
+    ?'<button class="pf-btn pri" onclick="openEditProfile()"><i class="ti ti-pencil"></i> EDIT PROFILE</button><button class="pf-btn" onclick="pfToggleMenu(event)"><i class="ti ti-settings"></i> ACCOUNT SETTINGS</button><div class="pf-menu" id="pfMenu" onclick="event.stopPropagation()">'+(isGuest?'':'<button onclick="this.parentNode.classList.remove(\'open\');openRecoveryCode()"><i class="ti ti-key"></i> New recovery code</button>')+'<button onclick="this.parentNode.classList.remove(\'open\');signOut()"><i class="ti ti-logout"></i> Sign out</button><button class="danger" onclick="this.parentNode.classList.remove(\'open\');openDeleteAccount()"><i class="ti ti-trash"></i> Delete account</button></div>'
     :'<button class="pf-btn pri" onclick="goStep(\'auth\');showAuthMode(\'register\')"><i class="ti ti-user-plus"></i> CREATE ACCOUNT</button><button class="pf-btn" onclick="goStep(\'auth\');showAuthMode(\'signin\')"><i class="ti ti-login"></i> SIGN IN</button>';
   // perfectGames comes from user_stats (every game); the recent list only holds the last 10
   const perfect=Math.max(perfectGames||0,allHistory.filter(g=>g.total>0&&g.correct===g.total).length);
