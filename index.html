@@ -3073,17 +3073,17 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
 </style>
 <style>
 /* LIBRARY — series browser in the bold card style */
-body.on-library .scene{height:100vh;overflow:hidden}
-body.on-library nav,body.on-library footer{display:none}
-.page#page-library{flex:1 1 0;min-height:0;padding:0;gap:0;align-items:stretch;justify-content:flex-start;overflow:hidden;color:#FFFEF0}
-#page-library .lib{flex:1 1 0;min-height:0;display:flex;flex-direction:column;width:100%}
-#page-library .lib-top{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:20px;padding:22px 44px 0}
-#page-library .lib-back{justify-self:start;display:flex;align-items:center;gap:7px;background:#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:4px 4px 0 #0d1236;color:#1f2657;cursor:pointer;padding:8px 14px;font:900 12px 'Nunito',sans-serif;letter-spacing:.08em;transition:transform .12s,box-shadow .12s}
-#page-library .lib-back:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 #0d1236,0 0 0 3px #F6C98E}
-#page-library .lib-head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-#page-library .lib-eye{font:900 12px 'Nunito',sans-serif;letter-spacing:.28em;color:#F6C98E}
-#page-library .lib-title{margin:0;font:400 clamp(34px,3.6vw,50px)/1.02 'Lilita One',cursive;color:#FFFEF0;text-shadow:4px 4px 0 #0d1236}
-#page-library .lib-sub{font:800 14px 'Nunito',sans-serif;color:#c3caf0}
+body:is(.on-library,.on-credits) .scene{height:100vh;overflow:hidden}
+body:is(.on-library,.on-credits) nav,body:is(.on-library,.on-credits) footer{display:none}
+.page:is(#page-library,#page-credits){flex:1 1 0;min-height:0;padding:0;gap:0;align-items:stretch;justify-content:flex-start;overflow:hidden;color:#FFFEF0}
+:is(#page-library,#page-credits) .lib{flex:1 1 0;min-height:0;display:flex;flex-direction:column;width:100%}
+:is(#page-library,#page-credits) .lib-top{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:20px;padding:22px 44px 0}
+:is(#page-library,#page-credits) .lib-back{justify-self:start;display:flex;align-items:center;gap:7px;background:#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:4px 4px 0 #0d1236;color:#1f2657;cursor:pointer;padding:8px 14px;font:900 12px 'Nunito',sans-serif;letter-spacing:.08em;transition:transform .12s,box-shadow .12s}
+:is(#page-library,#page-credits) .lib-back:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 #0d1236,0 0 0 3px #F6C98E}
+:is(#page-library,#page-credits) .lib-head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+:is(#page-library,#page-credits) .lib-eye{font:900 12px 'Nunito',sans-serif;letter-spacing:.28em;color:#F6C98E}
+:is(#page-library,#page-credits) .lib-title{margin:0;font:400 clamp(34px,3.6vw,50px)/1.02 'Lilita One',cursive;color:#FFFEF0;text-shadow:4px 4px 0 #0d1236}
+:is(#page-library,#page-credits) .lib-sub{font:800 14px 'Nunito',sans-serif;color:#c3caf0}
 #page-library .lib-bar{flex:none;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 44px 16px}
 #page-library .lib-search{display:flex;align-items:center;gap:8px;width:min(380px,42vw);background:#FFFEF0;border:3px solid #1f2657;border-radius:10px;box-shadow:4px 4px 0 #0d1236;padding:0 6px 0 12px;color:#1f2657;cursor:text}
 #page-library .lib-search>i{font-size:18px;color:#3a4180}
@@ -3092,7 +3092,7 @@ body.on-library nav,body.on-library footer{display:none}
 #page-library .lib-search button{display:none;width:28px;height:28px;border:0;border-radius:50%;background:none;color:#3a4180;cursor:pointer;align-items:center;justify-content:center;font-size:15px}
 #page-library .lib-search.has button{display:flex}
 #page-library .lib-search:focus-within{box-shadow:4px 4px 0 #0d1236,0 0 0 3px #F6C98E}
-#page-library .lib-scroll{flex:1 1 0;min-height:0;overflow-y:auto;padding:10px 44px 48px;scrollbar-width:thin;scrollbar-color:#46519a transparent}
+:is(#page-library,#page-credits) .lib-scroll{flex:1 1 0;min-height:0;overflow-y:auto;padding:10px 44px 48px;scrollbar-width:thin;scrollbar-color:#46519a transparent}
 #page-library .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:24px 22px;max-width:1280px;margin:0 auto}
 #page-library .lib-card{box-sizing:border-box;display:flex;flex-direction:column;text-align:left;padding:0;cursor:pointer;background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:5px 5px 0 #0d1236;color:#1f2657;overflow:hidden;font:inherit;transition:transform .15s,box-shadow .15s}
 #page-library .lib-card:hover,#page-library .lib-card:focus-visible{outline:none;transform:translate(-2px,-4px);box-shadow:8px 10px 0 #0d1236,0 0 0 3px #F6C98E}
@@ -3140,6 +3140,26 @@ body.on-library nav,body.on-library footer{display:none}
 #page-library .lib-play{display:flex;align-items:center;gap:10px;padding:13px 24px;border:3px solid #1f2657;border-radius:9px;background:#1f2657;color:#F6C98E;font:400 21px 'Lilita One',cursive;letter-spacing:.04em;box-shadow:5px 5px 0 #0d1236;cursor:pointer;transition:transform .12s,box-shadow .12s}
 #page-library .lib-play:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
 #page-library .lib-play.alt{background:#FFFEF0;color:#1f2657;font-size:17px;padding:11px 18px}
+/* CREDITS — uses the Library page shell above; cards in the bold card style */
+#page-credits .lib-scroll{padding-top:26px}
+#page-credits .crd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px;max-width:980px;margin:6px auto 0}
+#page-credits .crd-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:22px 24px;background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:6px 6px 0 #0d1236;color:#1f2657}
+#page-credits .crd-card.wide{grid-column:1/-1}
+#page-credits .crd-hd{display:flex;align-items:center;gap:12px}
+#page-credits .crd-hd>i{width:42px;height:42px;flex:none;border-radius:50%;background:var(--c);border:3px solid #1f2657;box-shadow:3px 3px 0 #1f2657;display:flex;align-items:center;justify-content:center;font-size:21px}
+#page-credits .crd-hd h2{margin:0;font:400 26px/1 'Lilita One',cursive}
+#page-credits .crd-p{margin:0;font:800 14px/1.55 'Nunito',sans-serif;color:#3a4180}
+#page-credits a{color:#1f2657;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:2px}
+#page-credits a:hover{background:#F6C98E}
+#page-credits .crd-names{display:flex;flex-wrap:wrap;gap:10px}
+#page-credits .crd-name{display:inline-flex;align-items:center;gap:8px;padding:6px 8px 6px 13px;background:#fff;border:2.5px solid #1f2657;border-radius:99px;font:400 16px 'Lilita One',cursive}
+#page-credits .crd-name b{font:900 11px 'Nunito',sans-serif;background:#F6A5B8;border:2px solid #1f2657;border-radius:99px;padding:1px 8px}
+#page-credits .crd-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+#page-credits .crd-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#fff;border:2.5px solid #1f2657;border-radius:7px}
+#page-credits .crd-list li>span{font-size:17px;line-height:1.2}
+#page-credits .crd-list li>small{font:900 10px 'Nunito',sans-serif;letter-spacing:.1em;color:#3a4180;white-space:nowrap}
+#page-credits .crd-btn{align-self:flex-start;display:flex;align-items:center;gap:9px;padding:11px 18px;border:3px solid #1f2657;border-radius:9px;background:#1f2657;color:#F6C98E;font:400 17px 'Lilita One',cursive;letter-spacing:.04em;box-shadow:5px 5px 0 #0d1236;cursor:pointer;transition:transform .12s,box-shadow .12s}
+#page-credits .crd-btn:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
 </style>
 <style>
 /* PROFILE v2 — 58m */
@@ -4747,7 +4767,7 @@ function lzRenderChars(reroll){
             <span class="wt-title" style="display:flex;align-items:center;gap:8px;font-size:22px;text-shadow:none"><i class="ti ti-pin" style="font-size:20px;color:#F6C98E"></i>Notice Board</span>
             <button class="wt-x" onclick="wtBoard(false)"><i class="ti ti-x" style="font-size:16px"></i></button>
           </div>
-          <button onclick="wtGo(0)"><i class="ti ti-book-2"></i>How to Play</button><button onclick="wtBoard(false);openLibrary()"><i class="ti ti-books"></i>Library</button><button onclick="openSubmitQuestion()"><i class="ti ti-message-plus"></i>Submit a question</button><button onclick="lzSuggestTopic()"><i class="ti ti-bulb"></i>Suggest a topic</button><button onclick="openContactModal()"><i class="ti ti-mail"></i>Contact</button><button onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()"><i class="ti ti-info-circle"></i>About</button><button onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()"><i class="ti ti-shield-lock"></i>Privacy</button>
+          <button onclick="wtGo(0)"><i class="ti ti-book-2"></i>How to Play</button><button onclick="wtBoard(false);openLibrary()"><i class="ti ti-books"></i>Library</button><button onclick="wtBoard(false);openCredits()"><i class="ti ti-heart-handshake"></i>Credits</button><button onclick="openSubmitQuestion()"><i class="ti ti-message-plus"></i>Submit a question</button><button onclick="lzSuggestTopic()"><i class="ti ti-bulb"></i>Suggest a topic</button><button onclick="openContactModal()"><i class="ti ti-mail"></i>Contact</button><button onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()"><i class="ti ti-info-circle"></i>About</button><button onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()"><i class="ti ti-shield-lock"></i>Privacy</button>
         </div>
         <button class="wt-pl" onclick="choosePath('solo')" style="left:522px;top:295px;--c:#96C7FF;--d:1.4s"><span class="wt-pl-dot"></span><span class="wt-pl-tag"><i class="ti ti-user"></i>SOLO PLAY</span></button>
         <button class="wt-pl" onclick="choosePath('multiplayer')" style="left:771px;top:343px;--c:#F6C98E;--d:1.52s"><span class="wt-pl-dot"></span><span class="wt-pl-tag"><i class="ti ti-users"></i>MULTIPLAYER</span></button>
@@ -4891,6 +4911,58 @@ function lzRenderChars(reroll){
           <div class="lib-dcounts" id="libDCounts"></div>
           <div class="lib-dnote" id="libDNote"></div>
           <div class="lib-dacts" id="libDActs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREDITS — thanks to question writers, anime sources, fonts and tools. Reached from
+       the globe's Credits island and the Notice Board. -->
+  <div class="page" id="page-credits">
+    <div class="lib">
+      <div class="lib-top">
+        <button class="lib-back" onclick="crdBack()"><i class="ti ti-arrow-left" style="font-size:15px"></i>BACK</button>
+        <div class="lib-head">
+          <span class="lib-eye">ありがとう</span>
+          <h1 class="lib-title">Credits</h1>
+          <span class="lib-sub">The people and work behind Anime Sekai</span>
+        </div>
+      </div>
+      <div class="lib-scroll">
+        <div class="crd-grid">
+          <section class="crd-card wide">
+            <div class="crd-hd"><i class="ti ti-pencil" style="--c:#F6A5B8"></i><h2>Question writers</h2></div>
+            <p class="crd-p">Players whose questions made it into the game. Every one of them shows their name when it comes up.</p>
+            <div id="crdWriters"></div>
+            <button class="crd-btn" onclick="openSubmitQuestion()"><i class="ti ti-pencil-plus" style="font-size:18px"></i>WRITE A QUESTION</button>
+          </section>
+          <section class="crd-card">
+            <div class="crd-hd"><i class="ti ti-device-tv" style="--c:#96C7FF"></i><h2>Anime &amp; art</h2></div>
+            <p class="crd-p">Series posters come from <a href="https://myanimelist.net" target="_blank" rel="noopener">MyAnimeList</a> (through Tenrai) and <a href="https://anilist.co" target="_blank" rel="noopener">AniList</a>.</p>
+            <p class="crd-p">Anime titles, scene stills and characters belong to their creators and studios.</p>
+            <p class="crd-p">Anime Sekai is a fan-made quiz and isn't affiliated with any of them.</p>
+          </section>
+          <section class="crd-card">
+            <div class="crd-hd"><i class="ti ti-typography" style="--c:#F6C98E"></i><h2>Fonts</h2></div>
+            <ul class="crd-list">
+              <li><span style="font-family:'Lilita One',cursive">Lilita One</span><small>TITLES</small></li>
+              <li><span style="font-family:'Nunito',sans-serif;font-weight:900">Nunito</span><small>EVERYTHING ELSE</small></li>
+              <li><span style="font-family:'Dela Gothic One',sans-serif">Dela Gothic One</span><small>KANJI</small></li>
+              <li><span style="font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700">Zen Kaku Gothic New</span><small>JAPANESE TEXT</small></li>
+              <li><span style="font-family:'Yuji Syuku',serif">Yuji Syuku</span><small>BRUSH KANJI</small></li>
+              <li><span style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px">JetBrains Mono</span><small>LOBBY CODES</small></li>
+            </ul>
+            <p class="crd-p">All from <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a>, under the <a href="https://openfontlicense.org" target="_blank" rel="noopener">SIL Open Font License</a>.</p>
+          </section>
+          <section class="crd-card wide">
+            <div class="crd-hd"><i class="ti ti-tools" style="--c:#BCD8FA"></i><h2>Icons &amp; tools</h2></div>
+            <ul class="crd-list">
+              <li><span style="font-family:'Lilita One',cursive"><a href="https://tabler.io/icons" target="_blank" rel="noopener">Tabler Icons</a></span><small>ICONS · MIT LICENSE</small></li>
+              <li><span style="font-family:'Lilita One',cursive"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span><small>GLOBE LANDMARKS · MIT LICENSE</small></li>
+              <li><span style="font-family:'Lilita One',cursive"><a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a></span><small>QUESTIONS, ACCOUNTS &amp; LOBBIES</small></li>
+              <li><span style="font-family:'Lilita One',cursive"><a href="https://vercel.com" target="_blank" rel="noopener">Vercel</a></span><small>HOSTING</small></li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
@@ -22513,13 +22585,60 @@ function libSuggest(){
 })();
 </script>
 <script>
+/* CREDITS — the question writers list is live: approved questions with a submitted_by,
+   counted per name. The owner's account is left out (owner's choice). */
+const CRD_SKIP=['thewind'];
+let crdPrev='landing', crdWriters=null, crdLoading=false;
+function openCredits(){
+  const go=()=>goStep('credits');
+  if(typeof requestLobbyNav==='function')requestLobbyNav(go);else go();
+}
+function crdBack(){goStep(crdPrev&&crdPrev!=='credits'?crdPrev:'landing');}
+async function crdLoadWriters(){
+  if(crdLoading)return;
+  crdLoading=true;crdRenderWriters();
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/questions?select=submitted_by&status=eq.approved&submitted_by=not.is.null`,{headers:{apikey:SUPABASE_ANON,Authorization:'Bearer '+SUPABASE_ANON}});
+    const rows=r.ok?await r.json():null;
+    if(Array.isArray(rows)){
+      const m={};
+      rows.forEach(x=>{const n=String(x.submitted_by||'').trim();if(n&&!CRD_SKIP.includes(n.toLowerCase()))m[n]=(m[n]||0)+1;});
+      crdWriters=Object.entries(m).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+    }
+  }catch(e){}
+  crdLoading=false;crdRenderWriters();
+}
+function crdRenderWriters(){
+  const el=document.getElementById('crdWriters');
+  if(!el)return;
+  if(!crdWriters){
+    el.innerHTML='<p class="crd-p">'+(crdLoading?'Gathering names…':'The list didn\'t load. Try again later.')+'</p>';
+    return;
+  }
+  el.innerHTML=crdWriters.length
+    ? '<div class="crd-names">'+crdWriters.map(([n,c])=>'<span class="crd-name">'+_suEsc(n)+'<b>'+c+'</b></span>').join('')+'</div>'
+    : '<p class="crd-p"><b>No player-written questions yet.</b> Yours could be the first.</p>';
+}
+(function(){
+  const _gs=window.goStep;
+  window.goStep=function(name){
+    const cur=document.querySelector('.page.active'), curName=cur?cur.id.replace('page-',''):null;
+    if(name==='credits'&&curName&&curName!=='credits'&&curName!=='auth')crdPrev=curName;
+    const r=_gs.apply(this,arguments);
+    document.body.classList.toggle('on-credits',name==='credits');
+    if(name==='credits')crdLoadWriters();
+    return r;
+  };
+})();
+</script>
+<script>
 /* SEKAI — which place on the planet each page belongs to. Pages not listed hide the world. */
 (function(){
   const PLACE={setup:'solo',topic:'solo',format:'solo',mode:'solo',quiz:'solo',results:'solo',
     multiplayer:'multiplayer','lobby-room':'multiplayer','mp-quiz':'multiplayer','mp-results':'multiplayer',
-    daily:'daily','daily-result':'daily',leaderboard:'leaderboard',profile:'profile',auth:'signin',library:'library'};
-  const ANGLE={solo:0,multiplayer:60,daily:120,leaderboard:180,profile:240,signin:300,library:330};
-  const DIM={quiz:1,'mp-quiz':1,daily:1,library:1};
+    daily:'daily','daily-result':'daily',leaderboard:'leaderboard',profile:'profile',auth:'signin',library:'library',credits:'credits'};
+  const ANGLE={solo:0,multiplayer:60,daily:120,leaderboard:180,profile:240,signin:300,library:330,credits:30};
+  const DIM={quiz:1,'mp-quiz':1,daily:1,library:1,credits:1};
   const sk=document.getElementById('sekai'),pl=document.getElementById('skPlanet');
   if(!sk||!pl)return;
   let rot=0,cur=null,trips=0,lastStart=0,lastDur=0;

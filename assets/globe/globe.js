@@ -28,6 +28,7 @@
     4: () => window.goStep && goStep('leaderboard'),
     5: () => window.goProfile && goProfile(),
     6: () => window.openLibrary && openLibrary(),
+    7: () => window.openCredits && openCredits(),
   };
 
   function noise(seed, Pd) {
