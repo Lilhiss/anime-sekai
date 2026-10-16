@@ -19416,7 +19416,7 @@ function lzSyncAuth(){
     label.textContent=String(currentUser);
     const guest=typeof isGuest!=='undefined'&&isGuest;
     const ib=window._inbox||{any:false,unread:0};
-    const menu=guest||(typeof isAdmin!=='undefined'&&isAdmin)||ib.any;
+    const menu=true; // accounts always have Sign out in it; guests have Sign in
     btn.setAttribute('onclick',menu?'lzMeMenu(event)':'goProfile()');
     btn.classList.add('is-me');btn.title=menu?'':'Your profile';
     btn.classList.toggle('has-menu',menu);
@@ -21178,7 +21178,7 @@ function aurTheme(){const i=AUR_THEMES.findIndex(t=>t[0]===currentColor);const n
 #lzMeMenu button:hover{background:var(--bg3)}
 </style>
 <script>
-/* guests: the name pill offers View profile / Sign in / Create account (opens upward, like the theme dropdown) */
+/* the name pill's menu: View profile, Sign in (guests) or Sign out (accounts), Inbox, motion, Admin (opens upward, like the theme dropdown) */
 function lzMeClose(){document.getElementById('lzMeMenu').classList.remove('open');}
 function lzMeMenu(e){
   e.stopPropagation();
@@ -21189,7 +21189,9 @@ function lzMeMenu(e){
     +(guest?'<button onclick="lzMeClose();goStep(\'auth\');showAuthMode(\'signin\')"><i class="ti ti-login"></i> Sign in</button>':'')
     +(!guest&&ib.any?'<button onclick="lzMeClose();openInboxModal()"><i class="ti ti-mail"></i> Inbox'+(ib.unread?'<span class="n">'+ib.unread+'</span>':'')+'</button>':'')
     +'<span class="sep"></span><button onclick="skCycleMotion(this)"><i class="ti ti-planet"></i> World motion: <b id="skMotionLbl" style="margin-left:auto">'+({full:'Full',subtle:'Subtle',off:'Off'}[window.skMotion?window.skMotion():'full'])+'</b></button>'
-    +(!guest&&adm?'<span class="sep"></span><button onclick="lzMeClose();goAdmin()"><i class="ti ti-shield-lock"></i> Admin panel</button>':'');
+    +(!guest&&adm?'<span class="sep"></span><button onclick="lzMeClose();goAdmin()"><i class="ti ti-shield-lock"></i> Admin panel</button>':'')
+    // Guests get no Sign out: it would drop their guest progress
+    +(!guest?'<span class="sep"></span><button onclick="lzMeClose();signOut()"><i class="ti ti-logout"></i> Sign out</button>':'');
   m.classList.add('open');
   const r=e.currentTarget.getBoundingClientRect(),w=m.offsetWidth,hh=m.offsetHeight;
   m.style.left=Math.max(12,Math.min(r.left+r.width/2-w/2,innerWidth-w-12))+'px';
