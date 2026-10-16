@@ -2755,6 +2755,16 @@ body.on-landing footer{display:none!important}
 .lz-stage[data-fluid] .lz-pill{padding:calc(9px * var(--u)) calc(17px * var(--u))}
 .lz-stage[data-fluid] .lz-navitem{padding:calc(9px * var(--u)) 4px calc(8px * var(--u))}
 .lz-plane{cursor:pointer}
+/* Landing rejoin pill (under the Daily Quiz): bold card style, shown by lzCheckRejoin */
+.lz-rejoin{margin-top:calc(10px * var(--u));display:flex;align-items:center;gap:calc(10px * var(--u));padding:calc(8px * var(--u)) calc(10px * var(--u)) calc(8px * var(--u)) calc(14px * var(--u));background:#FFFEF0;color:#1f2657;border:3px solid #1f2657;border-radius:14px;box-shadow:4px 4px 0 #0d1236;font-family:'Nunito',sans-serif;cursor:pointer;white-space:nowrap;text-align:left}
+.lz-rejoin:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #0d1236}
+.lz-rejoin:focus-visible{outline:3px solid #F6C98E;outline-offset:3px}
+.lz-rejoin-dot{width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25);flex:none;animation:lzRejoinPulse 1.6s ease-in-out infinite}
+@keyframes lzRejoinPulse{50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
+.lz-rejoin-txt{display:flex;flex-direction:column;line-height:1.15}
+.lz-rejoin-txt b{font-weight:900;font-size:calc(13px * var(--u))}
+.lz-rejoin-txt small{font-weight:700;font-size:calc(11px * var(--u));color:#3b3f86}
+.lz-rejoin-cta{display:flex;align-items:center;gap:4px;background:#F6C98E;border:2px solid #1f2657;border-radius:10px;padding:calc(6px * var(--u)) calc(10px * var(--u));font-weight:900;font-size:calc(12px * var(--u));letter-spacing:.06em}
 /* landing sky spirits — rotating characters drawn into the sky, revealed on hover.
    Look + layout live in LZ_SKY (tuned with the sky editor, opened from the admin panel). Kill switch: LZ_CHARS_ON. */
 .lz-chars{position:absolute;top:0;bottom:0;width:50%;display:none;pointer-events:none;mix-blend-mode:var(--lzblend,normal);opacity:0;transition:opacity .9s cubic-bezier(.4,0,.2,1);--rx:0px;--ry:0px;--rs:1;--px:0px;--py:0px}
@@ -3028,6 +3038,12 @@ html[data-depth] #lzStage>.lz-sky.lz-sky{background:linear-gradient(180deg,#0e12
             <span class="lz-t" style="--s:13px;font-weight:800;color:var(--text)" data-copy-key="landing_daily_desc">8 questions, the same set for everyone. One tap, no setup.</span>
             <div class="lz-t" style="--s:12px;display:flex;align-items:center;gap:8px;margin-top:4px;font-weight:900;font-family:'Zen Kaku Gothic New',sans-serif;letter-spacing:.12em;color:var(--text)"><span data-copy-key="landing_daily_cta">PLAY TODAY'S</span> <i class="ti ti-chevron-right" style="font-size:1.2em"></i></div>
             <div class="lz-t" style="--s:11px;font-weight:400;font-family:ui-monospace,Menlo,monospace;color:var(--muted)" id="lzDailyMeta" data-copy-key="landing_daily_meta">4,812 played today</div>
+            <!-- Shown only when this player still has a seat in a running multiplayer game (lzCheckRejoin) -->
+            <button type="button" id="lzRejoin" class="lz-rejoin" style="display:none" onclick="event.stopPropagation();lzRejoinClick()" aria-label="Rejoin your multiplayer game">
+              <span class="lz-rejoin-dot"></span>
+              <span class="lz-rejoin-txt"><b>Your game is still running</b><small id="lzRejoinSub"></small></span>
+              <span class="lz-rejoin-cta">REJOIN <i class="ti ti-chevron-right"></i></span>
+            </button>
           </div>
         </div>
       </div>
@@ -7016,6 +7032,8 @@ function buildThemeDropHTML(){
     ].map(({k,g})=>`<button class="drop-row${currentColor===k?' active':''}" onclick="setColor('${k}','${accentHex[k]}','${colorNames[k]}',this)"><div class="drop-row-left"><span class="theme-swatch" style="background:linear-gradient(135deg,${g})"></span>${colorNames[k]}</div><i class="ti ti-check drop-check"></i></button>`).join('')}`;
 }
 function updateNav(){
+  // Sign-in state just changed (incl. session restore on load, when no goStep fires): refresh the landing rejoin pill
+  if(typeof lzCheckRejoin==='function'&&document.getElementById('page-landing')?.classList.contains('active'))lzCheckRejoin();
   const nr=document.getElementById('navRight');
   if(currentUser){
     nr.innerHTML=`
@@ -10948,7 +10966,6 @@ async function rtRejoinActiveLobby(code){
   document.getElementById('mpQLoading').style.display='flex';
   renderMPHUD();
   renderMPScoreboard();
-  showLobbyToast('🔄 Reconnected! Waiting for current question…','info');
   // Request a game-state snapshot from the host (Step 4 will handle the response;
   // for now the broadcast is sent so it's ready to be received once Step 4 lands)
   setTimeout(()=>{
@@ -11726,7 +11743,6 @@ function rtSubscribe(lobbyId){
     const p=lobbyPlayers.find(lp=>lp.userId===payload.userId||lp.name===payload.name);
     if(p){p.quit=false;p.connected=true;}
     renderMPScoreboard();
-    showLobbyToast(`🔄 ${payload.name} rejoined the game!`,'info');
   });
   // ── STATE SNAPSHOT (Step 4) ────────────────────────────────────────────────
   // A client that just rejoined mid-game (rtRejoinActiveLobby) or was just
@@ -13378,6 +13394,46 @@ async function joinLobbyById(lobbyId,code){
 // If found, renders a distinct "Rejoin" card above the open-lobbies list.
 // The public open-lobbies list is never modified — strangers cannot browse into
 // someone else's live game; this card is strictly for lobbies the user was in.
+// This player's seat in a game that's still running (their lobby_players row is kept for
+// ~2 minutes after they quit or drop), or null. Shared by the Multiplayer page's rejoin
+// card and the landing page's rejoin pill.
+async function fetchActiveGameSeat(){
+  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
+  const token=await rtGetAuthToken();
+  const res=await fetch(
+    `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id,score,lives,lobbies!inner(id,code,lobby_name,host_username,format,mode,status)&user_id=eq.${encodeURIComponent(currentUserId)}&lobbies.status=eq.active&limit=1`,
+    {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
+  );
+  if(!res.ok)return null;
+  const rows=await res.json();
+  const row=Array.isArray(rows)&&rows[0];
+  return row&&row.lobbies?row:null;
+}
+// Landing page: surface a running game right under the Daily Quiz, so a player who
+// refreshed or left mid-game doesn't have to find the Multiplayer page's rejoin card.
+async function lzCheckRejoin(){
+  const el=document.getElementById('lzRejoin');if(!el)return;
+  if(!currentUserId||lobbyInGame){el.style.display='none';return;}
+  try{
+    const row=await fetchActiveGameSeat();
+    if(!row||lobbyInGame){el.style.display='none';return;}
+    const lobby=row.lobbies;
+    const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[lobby.mode]||'Multiplayer';
+    el.dataset.code=lobby.code;
+    document.getElementById('lzRejoinSub').textContent=modeName+' · '+(lobby.lobby_name||((lobby.host_username||lobby.code)+"'s Lobby"));
+    el.style.display='';
+  }catch(e){el.style.display='none';}
+}
+async function lzRejoinClick(){
+  const el=document.getElementById('lzRejoin');const code=el&&el.dataset.code;if(!code)return;
+  el.style.display='none';
+  const ok=await rtRejoinActiveLobby(code).catch(()=>false);
+  if(!ok)lzCheckRejoin(); // game ended or seat expired meanwhile: re-check rather than leave a dead button
+}
+(function(){
+  const _gs=window.goStep;
+  window.goStep=function(name){const r=_gs.apply(this,arguments);if(name==='landing')lzCheckRejoin();return r;};
+})();
 async function checkForActiveGameRejoin(){
   const banner=document.getElementById('rejoinBanner');
   if(!banner)return;
@@ -13386,18 +13442,9 @@ async function checkForActiveGameRejoin(){
   if(!currentUserId)return; // signed-out / guest not yet initialised
   if(SUPABASE_URL.includes('YOUR_PROJECT'))return;
   try{
-    const token=await rtGetAuthToken();
-    // Find any lobby_players row for this user where the lobby is active
-    const res=await fetch(
-      `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id,score,lives,lobbies!inner(id,code,lobby_name,host_username,format,mode,status)&user_id=eq.${encodeURIComponent(currentUserId)}&lobbies.status=eq.active&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
-    );
-    if(!res.ok)return;
-    const rows=await res.json();
-    if(!Array.isArray(rows)||!rows.length)return;
-    const row=rows[0];
+    const row=await fetchActiveGameSeat();
+    if(!row)return;
     const lobby=row.lobbies;
-    if(!lobby)return;
     const fmt=lobby.format||'mc';
     const mode=lobby.mode||'race';
     const fmtName={mc:'Multiple Choice',type:'Type Answer',scene:'Guess the Scene',char:'Name Character','char-mc':'Name Char (MC)'}[fmt]||fmt;
