@@ -807,9 +807,9 @@ body.on-auth .scene{height:100vh;overflow:hidden}
 #page-auth .au-up{position:absolute;bottom:-2px;right:-2px;width:34px;height:34px;border-radius:50%;background:var(--bg2);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 #page-auth .au-up:hover{box-shadow:0 0 0 2px var(--accent);color:var(--accent)}
 #page-auth .au-pfp-name{font-family:'Lilita One',cursive;font-size:19px;line-height:1.1}
-#page-auth .au-pips{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;max-width:220px}
-#page-auth .au-pips i{display:block;width:16px;height:5px;border-radius:99px;background:var(--border2)}
-#page-auth .au-pips i.on{background:var(--accent)}
+#page-auth .au-pips{display:flex;gap:6px;margin-top:7px;flex-wrap:nowrap}
+#page-auth .au-pips i{display:block;width:8px;height:5px;border-radius:99px;background:var(--border2);transition:width .2s,background .2s}
+#page-auth .au-pips i.on{width:20px;background:var(--accent)}
 #page-auth .au-pfp-sub{font-size:11px;font-weight:800;color:var(--muted);margin-top:9px}
 #page-auth .au-pfp-sub a{color:var(--accent);font-weight:900;text-decoration:none;cursor:pointer}
 /* fields — filled for the guest name, underlined in the account column */
@@ -9140,8 +9140,7 @@ function auRenderPfp(){
   });
   const pips=document.getElementById('auPipsGuest');
   if(pips&&list.length){
-    const n=Math.min(list.length,10);
-    pips.innerHTML=Array.from({length:n},(_,i)=>'<i class="'+(i===auPfpIdx.guest%n?'on':'')+'"></i>').join('');
+    pips.innerHTML=list.map((_,i)=>'<i class="'+(i===auPfpIdx.guest%list.length?'on':'')+'"></i>').join('');
   }
   auSyncPending();
 }
