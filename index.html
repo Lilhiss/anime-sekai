@@ -4338,34 +4338,45 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
               <span id="auCode">—</span>
               <button onclick="auCopyCode(this)" title="Copy"><i class="ti ti-copy" style="font-size:15px"></i></button>
             </div>
-            <div class="au-code-d">There's no email on this account, so this code is how you get back in if you forget your password. It's also in your profile whenever you want it.</div>
+            <div class="au-code-d">There's no email on this account, so this code is how you get back in if you forget your password. Save it now: we can't show it again.</div>
           </div>
           <button class="au-primary" onclick="auEnterArena()">ENTER THE ARENA <i class="ti ti-player-play" style="font-size:19px"></i></button>
         </div>
 
-        <!-- forgot / reset keep their handlers; they only apply to accounts with an email -->
+        <!-- forgot: username + recovery code → new password; the used code is replaced -->
         <div class="au-col" id="authForgot" style="display:none">
           <div style="display:flex;align-items:baseline;gap:11px">
             <span class="au-h">Recover access</span>
             <span class="au-alt">Remembered it? <a onclick="showAuthMode('signin')">Sign in</a></span>
           </div>
-          <div style="margin-top:20px">
-            <div class="au-lbl">USERNAME</div>
-            <div class="au-line"><i class="ti ti-user"></i><input id="forgotUser" type="text" placeholder="Username" oninput="clearErr('forgotErr')"></div>
+          <div id="auForgotForm">
+            <div style="margin-top:20px">
+              <div class="au-lbl">USERNAME</div>
+              <div class="au-line"><i class="ti ti-user"></i><input id="forgotUser" type="text" placeholder="Username" autocomplete="off" oninput="clearErr('forgotErr')"></div>
+            </div>
+            <div style="margin-top:15px">
+              <div class="au-lbl">RECOVERY CODE</div>
+              <div class="au-line"><i class="ti ti-key"></i><input id="forgotCode" type="text" placeholder="XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" style="text-transform:uppercase" oninput="clearErr('forgotErr')"></div>
+            </div>
+            <div style="margin-top:15px">
+              <div class="au-lbl">NEW PASSWORD</div>
+              <div class="au-line"><i class="ti ti-lock"></i><input id="forgotPass" type="password" placeholder="••••••••" autocomplete="new-password" oninput="clearErr('forgotErr')"><button type="button" onclick="auEye('forgotPass',this)" aria-label="Show password"><i class="ti ti-eye" style="font-size:16px"></i></button></div>
+            </div>
+            <div class="au-err" id="forgotErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="forgotErrMsg"></span></div>
+            <button class="au-ghost" id="forgotSubmitBtn" onclick="submitRecovery()"><i class="ti ti-lock" style="font-size:18px"></i> SET NEW PASSWORD</button>
           </div>
-          <div class="au-note"><i class="ti ti-info-circle" style="font-size:16px;color:var(--accent)"></i><span>If this account has an email on it we'll send a reset link. Accounts made with a recovery code can use that instead.</span></div>
-          <div class="au-err" id="forgotErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="forgotErrMsg"></span></div>
-          <button class="au-ghost" id="forgotSubmitBtn" onclick="submitForgotPassword()"><i class="ti ti-mail" style="font-size:18px"></i> SEND RESET LINK</button>
-        </div>
-
-        <div class="au-col" id="authReset" style="display:none">
-          <div class="au-h">Set a new password</div>
-          <div style="margin-top:20px">
-            <div class="au-lbl">NEW PASSWORD</div>
-            <div class="au-line"><i class="ti ti-lock"></i><input id="resetPass" type="password" placeholder="••••••••" autocomplete="new-password" oninput="clearErr('resetErr')"><button type="button" onclick="auEye('resetPass',this)" aria-label="Show password"><i class="ti ti-eye" style="font-size:16px"></i></button></div>
+          <div id="auForgotDone" style="display:none">
+            <div class="au-ok" style="margin-top:20px"><i class="ti ti-check" style="font-size:12px"></i> PASSWORD UPDATED</div>
+            <div class="au-code">
+              <div class="au-code-l"><i class="ti ti-key" style="font-size:13px"></i> YOUR NEW RECOVERY CODE</div>
+              <div class="au-code-v">
+                <span id="auForgotCode">—</span>
+                <button onclick="auCopyCode(this,'auForgotCode')" title="Copy"><i class="ti ti-copy" style="font-size:15px"></i></button>
+              </div>
+              <div class="au-code-d">Your old code is used up. Save this one now: we can't show it again.</div>
+            </div>
+            <button class="au-ghost" onclick="showAuthMode('signin')"><i class="ti ti-lock-open" style="font-size:18px"></i> SIGN IN</button>
           </div>
-          <div class="au-err" id="resetErr"><i class="ti ti-alert-circle" style="font-size:14px"></i> <span id="resetErrMsg"></span></div>
-          <button class="au-ghost" id="resetSubmitBtn" onclick="submitResetPassword()"><i class="ti ti-lock" style="font-size:18px"></i> SET NEW PASSWORD</button>
         </div>
 
         <!-- legacy mode picker: the gate shows both paths at once, so it stays empty -->
@@ -7230,7 +7241,7 @@ async function confirmSignOut(){
   clearInterval(timerInterval);
   // Clear all auth fields immediately on sign out so the next person
   // who opens the sign-in form never sees previous credentials
-  ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser'].forEach(id=>{
+  ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   updateNav();goStep('landing');
@@ -7290,7 +7301,7 @@ async function deleteAccount(){
     allHistory=[];score=0;lives=3;qIndex=0;quizHistory=[];
     prefetchedQuestion=null;currentQData=null;
     clearInterval(timerInterval);
-    ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser'].forEach(id=>{
+    ['siUser','siPass','regUser','regPass','regEmail','guestName','forgotUser','forgotCode','forgotPass'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.value='';
     });
     closeDeleteAccount();
@@ -8017,7 +8028,6 @@ function showAuthMode(mode){
   show('authRegister',m==='register');
   show('authCreated',m==='created');
   show('authForgot',m==='forgot');
-  show('authReset',m==='reset');
   const guest=document.getElementById('authGuest');
   const stepped=m==='created';
   if(guest)guest.classList.toggle('stepped',stepped);
@@ -8038,7 +8048,8 @@ function showAuthMode(mode){
     const mt=document.getElementById('auRegMatch');if(mt)mt.style.visibility='hidden';
     clearErr('regErr');
   } else if(m==='forgot'){
-    const fu=document.getElementById('forgotUser');if(fu){fu.value='';fu.onkeydown=e=>{if(e.key==='Enter')submitForgotPassword();}}
+    ['forgotUser','forgotCode','forgotPass'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.onkeydown=e=>{if(e.key==='Enter')submitRecovery();}}});
+    show('auForgotForm',true);show('auForgotDone',false);
     clearErr('forgotErr');
   }
   const gn=document.getElementById('guestName');
@@ -8153,12 +8164,7 @@ function auRegPass(){
 }
 
 /* ── register → 56f ── */
-let auPendingCreated=false, auRecoveryCode=null;
-function auGenCode(){
-  const abc='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const g=()=>Array.from({length:4},()=>abc[Math.floor(Math.random()*abc.length)]).join('');
-  return g()+'-'+g()+'-'+g();
-}
+let auPendingCreated=false;
 function auSubmitRegister(){
   const p=document.getElementById('regPass').value;
   const p2=document.getElementById('regPass2').value;
@@ -8167,16 +8173,27 @@ function auSubmitRegister(){
   auPendingCreated=true;
   submitRegister();
 }
+// The server makes the code and keeps only a hash, so this screen is the one chance to see it
+async function auFetchCode(){
+  const code=document.getElementById('auCode');
+  if(!code)return;
+  code.onclick=null;code.style.cursor='';code.textContent='…';
+  try{
+    const {data,error}=await withTimeout(sb.rpc('new_recovery_code'),8000);
+    if(error||typeof data!=='string')throw error||new Error('no code');
+    code.textContent=data;
+  }catch(e){
+    code.textContent='Couldn\'t make a code. Click to retry';
+    code.style.cursor='pointer';code.onclick=auFetchCode;
+  }
+}
 function auShowCreated(){
-  auRecoveryCode=auGenCode();
-  try{localStorage.setItem('recovery_code_'+(currentUser||''),auRecoveryCode);}catch(e){}
+  auFetchCode();
   const disc=document.getElementById('auDoneDisc');
   const src=document.getElementById('auDiscReg');
   if(disc&&src){disc.innerHTML=src.innerHTML;disc.style.background=src.style.background;}
   const nm=document.getElementById('auDoneName');
   if(nm)nm.textContent=currentUser||'—';
-  const code=document.getElementById('auCode');
-  if(code)code.textContent=auRecoveryCode;
   /* carry the chosen preset onto the new profile */
   try{
     if(guestPendingPfp&&guestPendingPfp.type==='preset'){
@@ -8186,8 +8203,9 @@ function auShowCreated(){
   }catch(e){}
   showAuthMode('created');
 }
-function auCopyCode(btn){
-  const txt=auRecoveryCode||document.getElementById('auCode').textContent;
+function auCopyCode(btn,id){
+  const txt=document.getElementById(id||'auCode').textContent;
+  if(!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(txt))return;
   const done=()=>{btn.innerHTML='<i class="ti ti-check" style="font-size:15px;color:#4ade80"></i>';setTimeout(()=>{btn.innerHTML='<i class="ti ti-copy" style="font-size:15px"></i>';},1600);};
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(done);
   else done();
@@ -8387,109 +8405,30 @@ async function submitRegister(){
     btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus" style="font-size:18px"></i> CREATE ACCOUNT';
   }
 }
-// ── CUSTOM PASSWORD RECOVERY FLOW ────────────────────────────
-// Bypasses Supabase's built-in reset email (which always sends to the
-// @animesekai.guest auth identity). Instead we:
-//   1. Generate a token, store it in password_resets table (expires 1hr)
-//   2. Call /api/send-reset (Vercel serverless) — RESEND_API_KEY stays in env, never in repo
-//   3. On redirect, read token from URL, call an RPC that validates the
-//      token and updates auth.users — no active recovery session needed.
-
-async function submitForgotPassword(){
+// ── PASSWORD RECOVERY (username + recovery code) ─────────────
+// The code is checked on the server (reset_password_with_recovery_code), which
+// sets the new password, signs the account out everywhere and returns a fresh code.
+async function submitRecovery(){
   const u=document.getElementById('forgotUser').value.trim();
-  if(!u){showErr('forgotErr','forgotErrMsg','Please enter your username.');return}
+  const c=document.getElementById('forgotCode').value.trim();
+  const p=document.getElementById('forgotPass').value;
+  if(!u||!c||!p){showErr('forgotErr','forgotErrMsg','Please fill in all fields.');return}
+  if(p.length<6){showErr('forgotErr','forgotErrMsg','Password must be at least 6 characters.');return}
   const btn=document.getElementById('forgotSubmitBtn');
-  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:16px;animation:spin .8s linear infinite"></i> Sending…';
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="font-size:18px;animation:spin .8s linear infinite"></i> CHECKING…';
   try{
-    // 1. Look up the profile — need the real email and the auth user id
-    const profRes=await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=id,email,username&username=ilike.${encodeURIComponent(u)}&limit=1`,
-      {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}
-    );
-    const profRows=await profRes.json();
-    const profile=Array.isArray(profRows)&&profRows[0]?profRows[0]:null;
-    if(!profile){showErr('forgotErr','forgotErrMsg','No account found with that username.');return}
-    const hasRealEmail=profile.email&&!profile.email.endsWith('@animesekai.guest');
-    if(!hasRealEmail){
-      showErr('forgotErr','forgotErrMsg','No recovery email on this account. Add one in your profile first.');
-      return;
-    }
-
-    // 2. Generate a secure random token and store it (expires in 1 hour)
-    const token=Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
-    const expiresAt=new Date(Date.now()+60*60*1000).toISOString();
-    const storeRes=await fetch(`${SUPABASE_URL}/rest/v1/password_resets`,{
-      method:'POST',
-      headers:{
-        'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,
-        'Content-Type':'application/json','Prefer':'return=minimal'
-      },
-      body:JSON.stringify({user_id:profile.id,token,expires_at:expiresAt})
-    });
-    if(!storeRes.ok){const t=await storeRes.text();throw new Error('Could not create reset token: '+t)}
-
-    // 3. Send the email via our Vercel serverless function (key stays server-side)
-    const resetLink=`https://anime-sekai-quiz.vercel.app?reset_token=${token}`;
-    const emailRes=await fetch('/api/send-reset',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({to:profile.email,username:profile.username,resetLink})
-    });
-    if(!emailRes.ok){const t=await emailRes.json();throw new Error(t?.error||'Email delivery failed.')}
-
-    btn.innerHTML='✅ Reset link sent! Check your email.';
+    const {data,error}=await withTimeout(sb.rpc('reset_password_with_recovery_code',{p_username:u,p_code:c,p_new_password:p}));
+    if(error)throw error;
+    if(!data?.success)throw new Error(data?.error||'Something went wrong.');
+    document.getElementById('auForgotCode').textContent=data.code||'—';
+    document.getElementById('auForgotForm').style.display='none';
+    document.getElementById('auForgotDone').style.display='';
   }catch(e){
     showErr('forgotErr','forgotErrMsg',e.message||'Something went wrong.');
-    btn.disabled=false;
-    btn.innerHTML='<i class="ti ti-mail" style="font-size:16px"></i> Send Reset Link';
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-lock" style="font-size:18px"></i> SET NEW PASSWORD';
   }
 }
-
-
-async function submitResetPassword(){
-  const p=document.getElementById('resetPass').value;
-  if(p.length<6){showErr('resetErr','resetErrMsg','Password must be at least 6 characters.');return}
-  const btn=document.getElementById('resetSubmitBtn');
-  btn.disabled=true;btn.innerHTML='Saving…';
-  try{
-    // Read the token we stored on page load
-    const token=window._resetToken;
-    if(!token){showErr('resetErr','resetErrMsg','Invalid or missing reset token. Please request a new link.');return}
-    // Call the DB function — it validates the token, checks expiry, updates the password
-    const rpcRes=await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_password_with_token`,{
-      method:'POST',
-      headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},
-      body:JSON.stringify({p_token:token,p_new_password:p})
-    });
-    const rpcData=await rpcRes.json();
-    if(!rpcRes.ok||rpcData?.error){throw new Error(rpcData?.message||rpcData?.error||'Reset failed.')}
-    // Clear the token from URL so a refresh doesn't re-trigger
-    window.history.replaceState(null,'',window.location.pathname);
-    window._resetToken=null;
-    btn.innerHTML='✅ Password updated! Please sign in.';
-    setTimeout(()=>{showAuthMode('signin');goStep('auth');},2000);
-  }catch(e){
-    showErr('resetErr','resetErrMsg',e.message||'Something went wrong.');
-    btn.disabled=false;
-    btn.innerHTML='<i class="ti ti-lock" style="font-size:16px"></i> Set New Password';
-  }
-}
-
-// ── DETECT CUSTOM RESET TOKEN IN URL ─────────────────────────
-(function(){
-  const params=new URLSearchParams(window.location.search);
-  const token=params.get('reset_token');
-  if(token){
-    window._resetToken=token;
-    // Show the reset form immediately
-    document.addEventListener('DOMContentLoaded',()=>{
-      goStep('auth');
-      showAuthMode('reset');
-    });
-    // Also try immediately in case DOM is already ready
-    if(document.readyState!=='loading'){goStep('auth');showAuthMode('reset');}
-  }
-})();
 
 // ── DETECT LOBBY INVITE LINK IN URL ──────────────────────────
 let pendingInviteCode=null;
