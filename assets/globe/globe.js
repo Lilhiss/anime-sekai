@@ -295,7 +295,7 @@ void main(){
   }
 
   // Landing globe: this script loads right after the landing markup, so mount it straight away.
-  // #lzGlobeBall is a still of this exact first frame (globe-still.webp): it stays fully visible
+  // #lzGlobeBall is a still of this exact first frame (embedded in index.html's CSS): it stays fully visible
   // while the canvas fades in on top of it, then hides, so the handoff can't be seen.
   const land = document.getElementById('lzGlobeGL');
   if (land) window.sekaiLandGlobe = mount(land, { onReady: () => { const b = document.getElementById('lzGlobeBall'); if (b) { b.style.transition = 'opacity .2s .7s'; b.style.opacity = '0'; } } });
