@@ -29,6 +29,7 @@
     5: () => window.goProfile && goProfile(),
     6: () => window.openLibrary && openLibrary(),
     7: () => window.openCredits && openCredits(),
+    8: () => window.openAbout && openAbout(),
   };
 
   function noise(seed, Pd) {

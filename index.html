@@ -3073,17 +3073,17 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
 </style>
 <style>
 /* LIBRARY — series browser in the bold card style */
-body:is(.on-library,.on-credits) .scene{height:100vh;overflow:hidden}
-body:is(.on-library,.on-credits) nav,body:is(.on-library,.on-credits) footer{display:none}
-.page:is(#page-library,#page-credits){flex:1 1 0;min-height:0;padding:0;gap:0;align-items:stretch;justify-content:flex-start;overflow:hidden;color:#FFFEF0}
-:is(#page-library,#page-credits) .lib{flex:1 1 0;min-height:0;display:flex;flex-direction:column;width:100%}
-:is(#page-library,#page-credits) .lib-top{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:20px;padding:22px 44px 0}
-:is(#page-library,#page-credits) .lib-back{justify-self:start;display:flex;align-items:center;gap:7px;background:#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:4px 4px 0 #0d1236;color:#1f2657;cursor:pointer;padding:8px 14px;font:900 12px 'Nunito',sans-serif;letter-spacing:.08em;transition:transform .12s,box-shadow .12s}
-:is(#page-library,#page-credits) .lib-back:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 #0d1236,0 0 0 3px #F6C98E}
-:is(#page-library,#page-credits) .lib-head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-:is(#page-library,#page-credits) .lib-eye{font:900 12px 'Nunito',sans-serif;letter-spacing:.28em;color:#F6C98E}
-:is(#page-library,#page-credits) .lib-title{margin:0;font:400 clamp(34px,3.6vw,50px)/1.02 'Lilita One',cursive;color:#FFFEF0;text-shadow:4px 4px 0 #0d1236}
-:is(#page-library,#page-credits) .lib-sub{font:800 14px 'Nunito',sans-serif;color:#c3caf0}
+body:is(.on-library,.on-credits,.on-about) .scene{height:100vh;overflow:hidden}
+body:is(.on-library,.on-credits,.on-about) nav,body:is(.on-library,.on-credits,.on-about) footer{display:none}
+.page:is(#page-library,#page-credits,#page-about){flex:1 1 0;min-height:0;padding:0;gap:0;align-items:stretch;justify-content:flex-start;overflow:hidden;color:#FFFEF0}
+:is(#page-library,#page-credits,#page-about) .lib{flex:1 1 0;min-height:0;display:flex;flex-direction:column;width:100%}
+:is(#page-library,#page-credits,#page-about) .lib-top{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:20px;padding:22px 44px 0}
+:is(#page-library,#page-credits,#page-about) .lib-back{justify-self:start;display:flex;align-items:center;gap:7px;background:#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:4px 4px 0 #0d1236;color:#1f2657;cursor:pointer;padding:8px 14px;font:900 12px 'Nunito',sans-serif;letter-spacing:.08em;transition:transform .12s,box-shadow .12s}
+:is(#page-library,#page-credits,#page-about) .lib-back:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 #0d1236,0 0 0 3px #F6C98E}
+:is(#page-library,#page-credits,#page-about) .lib-head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+:is(#page-library,#page-credits,#page-about) .lib-eye{font:900 12px 'Nunito',sans-serif;letter-spacing:.28em;color:#F6C98E}
+:is(#page-library,#page-credits,#page-about) .lib-title{margin:0;font:400 clamp(34px,3.6vw,50px)/1.02 'Lilita One',cursive;color:#FFFEF0;text-shadow:4px 4px 0 #0d1236}
+:is(#page-library,#page-credits,#page-about) .lib-sub{font:800 14px 'Nunito',sans-serif;color:#c3caf0}
 #page-library .lib-bar{flex:none;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 44px 16px}
 #page-library .lib-search{display:flex;align-items:center;gap:8px;width:min(380px,42vw);background:#FFFEF0;border:3px solid #1f2657;border-radius:10px;box-shadow:4px 4px 0 #0d1236;padding:0 6px 0 12px;color:#1f2657;cursor:text}
 #page-library .lib-search>i{font-size:18px;color:#3a4180}
@@ -3092,7 +3092,7 @@ body:is(.on-library,.on-credits) nav,body:is(.on-library,.on-credits) footer{dis
 #page-library .lib-search button{display:none;width:28px;height:28px;border:0;border-radius:50%;background:none;color:#3a4180;cursor:pointer;align-items:center;justify-content:center;font-size:15px}
 #page-library .lib-search.has button{display:flex}
 #page-library .lib-search:focus-within{box-shadow:4px 4px 0 #0d1236,0 0 0 3px #F6C98E}
-:is(#page-library,#page-credits) .lib-scroll{flex:1 1 0;min-height:0;overflow-y:auto;padding:10px 44px 48px;scrollbar-width:thin;scrollbar-color:#46519a transparent}
+:is(#page-library,#page-credits,#page-about) .lib-scroll{flex:1 1 0;min-height:0;overflow-y:auto;padding:10px 44px 48px;scrollbar-width:thin;scrollbar-color:#46519a transparent}
 #page-library .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:24px 22px;max-width:1280px;margin:0 auto}
 #page-library .lib-card{box-sizing:border-box;display:flex;flex-direction:column;text-align:left;padding:0;cursor:pointer;background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:5px 5px 0 #0d1236;color:#1f2657;overflow:hidden;font:inherit;transition:transform .15s,box-shadow .15s}
 #page-library .lib-card:hover,#page-library .lib-card:focus-visible{outline:none;transform:translate(-2px,-4px);box-shadow:8px 10px 0 #0d1236,0 0 0 3px #F6C98E}
@@ -3160,6 +3160,30 @@ body:is(.on-library,.on-credits) nav,body:is(.on-library,.on-credits) footer{dis
 #page-credits .crd-list li>small{font:900 10px 'Nunito',sans-serif;letter-spacing:.1em;color:#3a4180;white-space:nowrap}
 #page-credits .crd-btn{align-self:flex-start;display:flex;align-items:center;gap:9px;padding:11px 18px;border:3px solid #1f2657;border-radius:9px;background:#1f2657;color:#F6C98E;font:400 17px 'Lilita One',cursive;letter-spacing:.04em;box-shadow:5px 5px 0 #0d1236;cursor:pointer;transition:transform .12s,box-shadow .12s}
 #page-credits .crd-btn:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
+/* ABOUT — uses the Library page shell; the owner's note, quick links, get in touch */
+#page-about .lib-scroll{padding-top:26px}
+#page-about .ab-wrap{display:flex;flex-direction:column;gap:30px;max-width:980px;margin:0 auto}
+#page-about .ab-card{background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:8px;box-shadow:6px 6px 0 #0d1236;color:#1f2657}
+#page-about .ab-hero{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:center;gap:34px;padding:26px}
+#page-about .ab-hero img{display:block;width:100%;height:auto;border:3px solid #1f2657;border-radius:6px;box-shadow:5px 5px 0 #1f2657;transform:rotate(-1.5deg)}
+#page-about .ab-note{font:800 18px/1.65 'Nunito',sans-serif;color:#1f2657}
+#page-about .ab-lab{font:900 12px 'Nunito',sans-serif;letter-spacing:.22em;color:#F6C98E;margin-bottom:-14px}
+#page-about .ab-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+#page-about .ab-link{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:18px;text-align:left;cursor:pointer;font:inherit;background:radial-gradient(#1f26571c 1.3px,transparent 1.7px) 0 0/11px 11px,var(--c);border:3px solid #1f2657;border-radius:8px;box-shadow:5px 5px 0 #0d1236;color:#1f2657;transition:transform .15s,box-shadow .15s}
+#page-about .ab-link:hover,#page-about .ab-link:focus-visible{outline:none;transform:translate(-2px,-4px);box-shadow:8px 10px 0 #0d1236,0 0 0 3px #FFFEF0}
+#page-about .ab-link>i{width:40px;height:40px;border-radius:50%;background:#FFFEF0;border:3px solid #1f2657;box-shadow:3px 3px 0 #1f2657;display:flex;align-items:center;justify-content:center;font-size:20px}
+#page-about .ab-link b{font:400 21px/1.05 'Lilita One',cursive}
+#page-about .ab-link span{font:800 13px/1.4 'Nunito',sans-serif}
+#page-about .ab-touch{display:flex;flex-direction:column;gap:14px;padding:22px 24px}
+#page-about .ab-touch h2{margin:0;font:400 26px/1 'Lilita One',cursive}
+#page-about .ab-touch p{margin:0;font:800 14px/1.55 'Nunito',sans-serif;color:#3a4180}
+#page-about .ab-btns{display:flex;flex-wrap:wrap;gap:12px}
+#page-about .ab-btn{display:flex;align-items:center;gap:9px;padding:11px 18px;border:3px solid #1f2657;border-radius:9px;background:#1f2657;color:#F6C98E;font:400 17px 'Lilita One',cursive;letter-spacing:.04em;box-shadow:5px 5px 0 #0d1236;cursor:pointer;transition:transform .12s,box-shadow .12s}
+#page-about .ab-btn.alt{background:#FFFEF0;color:#1f2657}
+#page-about .ab-btn:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
+#page-about .ab-foot{display:flex;justify-content:center;flex-wrap:wrap;gap:10px 26px}
+#page-about .ab-foot button{background:none;border:0;padding:4px 0;color:#c3caf0;font:900 12px 'Nunito',sans-serif;letter-spacing:.14em;cursor:pointer;display:flex;align-items:center;gap:6px}
+#page-about .ab-foot button:hover{color:#FFFEF0}
 </style>
 <style>
 /* PROFILE v2 — 58m */
@@ -4767,7 +4791,7 @@ function lzRenderChars(reroll){
             <span class="wt-title" style="display:flex;align-items:center;gap:8px;font-size:22px;text-shadow:none"><i class="ti ti-pin" style="font-size:20px;color:#F6C98E"></i>Notice Board</span>
             <button class="wt-x" onclick="wtBoard(false)"><i class="ti ti-x" style="font-size:16px"></i></button>
           </div>
-          <button onclick="wtGo(0)"><i class="ti ti-book-2"></i>How to Play</button><button onclick="wtBoard(false);openLibrary()"><i class="ti ti-books"></i>Library</button><button onclick="wtBoard(false);openCredits()"><i class="ti ti-heart-handshake"></i>Credits</button><button onclick="openSubmitQuestion()"><i class="ti ti-message-plus"></i>Submit a question</button><button onclick="lzSuggestTopic()"><i class="ti ti-bulb"></i>Suggest a topic</button><button onclick="openContactModal()"><i class="ti ti-mail"></i>Contact</button><button onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()"><i class="ti ti-info-circle"></i>About</button><button onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()"><i class="ti ti-shield-lock"></i>Privacy</button>
+          <button onclick="wtGo(0)"><i class="ti ti-book-2"></i>How to Play</button><button onclick="wtBoard(false);openLibrary()"><i class="ti ti-books"></i>Library</button><button onclick="wtBoard(false);openCredits()"><i class="ti ti-heart-handshake"></i>Credits</button><button onclick="openSubmitQuestion()"><i class="ti ti-message-plus"></i>Submit a question</button><button onclick="lzSuggestTopic()"><i class="ti ti-bulb"></i>Suggest a topic</button><button onclick="openContactModal()"><i class="ti ti-mail"></i>Contact</button><button onclick="wtBoard(false);openAbout()"><i class="ti ti-info-circle"></i>About</button><button onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()"><i class="ti ti-shield-lock"></i>Privacy</button>
         </div>
         <button class="wt-pl" onclick="choosePath('solo')" style="left:522px;top:295px;--c:#96C7FF;--d:1.4s"><span class="wt-pl-dot"></span><span class="wt-pl-tag"><i class="ti ti-user"></i>SOLO PLAY</span></button>
         <button class="wt-pl" onclick="choosePath('multiplayer')" style="left:771px;top:343px;--c:#F6C98E;--d:1.52s"><span class="wt-pl-dot"></span><span class="wt-pl-tag"><i class="ti ti-users"></i>MULTIPLAYER</span></button>
@@ -4869,7 +4893,7 @@ function lzRenderChars(reroll){
           <span style="font:400 11px ui-monospace,Menlo,monospace;color:var(--muted)" data-copy-key="world_cta_note">everything above is set again on the screen before each game</span>
 
         </div></div><div style="flex:none;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px 26px">
-          <button class="lz-sitelink" style="color:var(--muted)" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()" data-copy-key="world_link_about">ABOUT</button>
+          <button class="lz-sitelink" style="color:var(--muted)" onclick="openAbout()" data-copy-key="world_link_about">ABOUT</button>
           <span style="width:3px;height:3px;border-radius:50%;background:color-mix(in srgb,var(--text) 20%,transparent)"></span>
           <button class="lz-sitelink" style="color:var(--muted)" onclick="openContactModal()" data-copy-key="world_link_contact">CONTACT</button>
           <span style="width:3px;height:3px;border-radius:50%;background:color-mix(in srgb,var(--text) 20%,transparent)"></span>
@@ -4963,6 +4987,50 @@ function lzRenderChars(reroll){
               <li><span style="font-family:'Lilita One',cursive"><a href="https://vercel.com" target="_blank" rel="noopener">Vercel</a></span><small>HOSTING</small></li>
             </ul>
           </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT — the owner's note (keep it word for word), quick links and get in touch.
+       Reached from the globe's About island and the Notice Board. -->
+  <div class="page" id="page-about">
+    <div class="lib">
+      <div class="lib-top">
+        <button class="lib-back" onclick="abBack()"><i class="ti ti-arrow-left" style="font-size:15px"></i>BACK</button>
+        <div class="lib-head">
+          <span class="lib-eye">はじめまして</span>
+          <h1 class="lib-title">About</h1>
+          <span class="lib-sub">Anime Quiz Sekai</span>
+        </div>
+      </div>
+      <div class="lib-scroll">
+        <div class="ab-wrap">
+          <section class="ab-card ab-hero">
+            <img src="assets/about-yo.jpg" alt="Kakashi saying Yo!">
+            <div class="ab-note">I love anime. I love quizzes.<br>*<i>fusion*</i><br>Anime Quiz Sekai!<br><br>Built this website for the love of the game.<br><br>Enjoy :3</div>
+          </section>
+          <span class="ab-lab">JUMP IN</span>
+          <div class="ab-links">
+            <button class="ab-link" style="--c:#96C7FF" onclick="choosePath('solo')"><i class="ti ti-user"></i><b>Solo Play</b><span>Just you and the questions.</span></button>
+            <button class="ab-link" style="--c:#F6C98E" onclick="choosePath('multiplayer')"><i class="ti ti-users"></i><b>Multiplayer</b><span>Make a lobby, share the code.</span></button>
+            <button class="ab-link" style="--c:#F6A5B8" onclick="openDailyQuiz()"><i class="ti ti-calendar-event"></i><b>Daily Quiz</b><span>Eight questions, same for everyone.</span></button>
+            <button class="ab-link" style="--c:#BCD8FA" onclick="openLibrary()"><i class="ti ti-books"></i><b>Library</b><span>Every series you can play.</span></button>
+          </div>
+          <section class="ab-card ab-touch">
+            <h2>Get in touch</h2>
+            <p>Found a bug, have an idea, or want a series added? Send it over.</p>
+            <div class="ab-btns">
+              <button class="ab-btn" onclick="openContactModal()"><i class="ti ti-mail" style="font-size:18px"></i>CONTACT</button>
+              <button class="ab-btn alt" onclick="lzSuggestTopic()"><i class="ti ti-bulb" style="font-size:18px"></i>SUGGEST A TOPIC</button>
+              <button class="ab-btn alt" onclick="openSubmitQuestion()"><i class="ti ti-pencil-plus" style="font-size:18px"></i>SUBMIT A QUESTION</button>
+            </div>
+          </section>
+          <div class="ab-foot">
+            <button onclick="openCredits()"><i class="ti ti-heart-handshake"></i>CREDITS</button>
+            <button onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()"><i class="ti ti-shield-lock"></i>PRIVACY</button>
+            <button onclick="goStep('tour');wtGo(0)"><i class="ti ti-book-2"></i>HOW TO PLAY</button>
+          </div>
         </div>
       </div>
     </div>
@@ -6834,20 +6902,6 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
     </div>
   </div>
 
-  <!-- ABOUT MODAL -->
-  <div id="aboutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--card-border);border-radius:20px;padding:28px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-family:'Lilita One',cursive;font-size:20px;color:var(--text)">About Anime Sekai</div>
-        <button onclick="document.getElementById('aboutModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>
-      </div>
-      <img src="assets/about-yo.jpg" alt="Kakashi saying Yo!" style="display:block;width:100%;max-width:320px;height:auto;margin:0 auto;border-radius:12px">
-      <div style="font-size:14px;color:var(--muted);line-height:1.7;text-align:center">
-        I love anime. I love quizzes.<br>*<i>fusion*</i><br>Anime Quiz Sekai!<br><br>Built this website for the love of the game.<br><br>Enjoy :3
-      </div>
-      <button class="action-btn primary" onclick="document.getElementById('aboutModal').style.display='none'">Got it!</button>
-    </div>
-  </div>
 
   <!-- PRIVACY POLICY MODAL -->
   <div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:998;align-items:center;justify-content:center;padding:20px">
@@ -7191,7 +7245,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
     <div class="foot-left">© <span id="footerYear"></span> <span data-copy-key="footer_brand">Anime Sekai</span></div>
     <div class="foot-links">
       <a class="foot-link" onclick="openSubmitQuestion()">Submit a question</a>
-      <a class="foot-link" onclick="document.getElementById('aboutModal').style.display='flex';applyTheme()">About</a>
+      <a class="foot-link" onclick="openAbout()">About</a>
       <a class="foot-link" onclick="document.getElementById('privacyModal').style.display='flex';applyTheme()">Privacy</a>
       <a class="foot-link" onclick="document.getElementById('termsModal').style.display='flex';applyTheme()">Terms</a>
       <a class="foot-link" onclick="openContactModal()">Contact</a>
@@ -22632,13 +22686,32 @@ function crdRenderWriters(){
 })();
 </script>
 <script>
+/* ABOUT — replaces the old #aboutModal popup. */
+let abPrev='landing';
+function openAbout(){
+  const go=()=>goStep('about');
+  if(typeof requestLobbyNav==='function')requestLobbyNav(go);else go();
+}
+function abBack(){goStep(abPrev&&abPrev!=='about'?abPrev:'landing');}
+(function(){
+  const _gs=window.goStep;
+  window.goStep=function(name){
+    const cur=document.querySelector('.page.active'), curName=cur?cur.id.replace('page-',''):null;
+    if(name==='about'&&curName&&curName!=='about'&&curName!=='auth')abPrev=curName;
+    const r=_gs.apply(this,arguments);
+    document.body.classList.toggle('on-about',name==='about');
+    return r;
+  };
+})();
+</script>
+<script>
 /* SEKAI — which place on the planet each page belongs to. Pages not listed hide the world. */
 (function(){
   const PLACE={setup:'solo',topic:'solo',format:'solo',mode:'solo',quiz:'solo',results:'solo',
     multiplayer:'multiplayer','lobby-room':'multiplayer','mp-quiz':'multiplayer','mp-results':'multiplayer',
-    daily:'daily','daily-result':'daily',leaderboard:'leaderboard',profile:'profile',auth:'signin',library:'library',credits:'credits'};
-  const ANGLE={solo:0,multiplayer:60,daily:120,leaderboard:180,profile:240,signin:300,library:330,credits:30};
-  const DIM={quiz:1,'mp-quiz':1,daily:1,library:1,credits:1};
+    daily:'daily','daily-result':'daily',leaderboard:'leaderboard',profile:'profile',auth:'signin',library:'library',credits:'credits',about:'about'};
+  const ANGLE={solo:0,multiplayer:60,daily:120,leaderboard:180,profile:240,signin:300,library:330,credits:30,about:90};
+  const DIM={quiz:1,'mp-quiz':1,daily:1,library:1,credits:1,about:1};
   const sk=document.getElementById('sekai'),pl=document.getElementById('skPlanet');
   if(!sk||!pl)return;
   let rot=0,cur=null,trips=0,lastStart=0,lastDur=0;
