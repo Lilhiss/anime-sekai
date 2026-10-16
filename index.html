@@ -2868,6 +2868,11 @@ html[data-depth] #lzStage>.lz-sky.lz-sky{background:linear-gradient(180deg,#0e12
 .lz-cap .lz-ico:hover{background:#ffffff14}
 .lz-cap .lz-pill{background:var(--accent);color:#1f2657;border:0;margin-left:4px}
 .lz-cap .lz-pill:hover{background:color-mix(in srgb,var(--accent) 70%,#fff);color:#1f2657}
+/* account still loading: neutral pill with a soft pulse instead of SIGN IN */
+.lz-cap .lz-pill.is-loading{background:color-mix(in srgb,var(--text) 16%,transparent);pointer-events:none;animation:lzPillPulse 1.4s ease-in-out infinite}
+.lz-cap .lz-pill.is-loading>*{visibility:hidden}
+@keyframes lzPillPulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.lz-cap .lz-pill.is-loading{animation:none}}
 @media (prefers-reduced-motion:reduce){.lz-stars *,.lz-cl{animation:none!important}}
 </style>
 <!-- Tour + later page styles, moved up from the end of the file so the first paint already uses them. Order kept: later blocks still win. -->
@@ -4032,6 +4037,22 @@ function lzFit(){
   });
 }
 lzFit();
+
+/* Saved login that will end on a name (an account, or a returning guest with a saved guest name):
+   show a neutral loading pill instead of SIGN IN until the account loads. lzAuthDone() ends it;
+   the 6s fallback covers a session that never resolves. Same storage lookup as anonSafeStorage. */
+function lzAuthDone(){const b=document.getElementById('lzAuthBtn');if(b){b.classList.remove('is-loading');b.removeAttribute('aria-busy');}}
+(function(){
+  try{
+    const key='sb-ispagvwuxgbzzycdxdfx-auth-token';
+    const s=JSON.parse(sessionStorage.getItem(key)||localStorage.getItem(key)||'null');
+    const u=s&&s.user;if(!u)return;
+    if(u.is_anonymous){const g=JSON.parse(localStorage.getItem('as_guest')||'null');if(!g||!g.name||(g.uid&&g.uid!==u.id))return;}
+    const b=document.getElementById('lzAuthBtn');if(!b)return;
+    b.classList.add('is-loading');b.setAttribute('aria-busy','true');
+    setTimeout(lzAuthDone,6000);
+  }catch(e){}
+})();
 </script>
 
 
@@ -7339,7 +7360,7 @@ if(typeof isGuest==='undefined')window.isGuest=false;
 if(typeof currentPfp==='undefined')window.currentPfp=null;
 
 sb.auth.onAuthStateChange(async (event, session) => {
-  if(!session?.user) return;
+  if(!session?.user){ lzAuthDone(); return; }
 
   // ── Anon session restored after refresh ──────────────────────
   // onAuthStateChange fires for anonymous users too, but we previously
@@ -7386,6 +7407,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         }catch(e){}
       }
     }
+    lzAuthDone();
     return;
   }
 
@@ -7419,6 +7441,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       if(typeof pendingInviteCode!=='undefined'&&pendingInviteCode)afterAuth();
     }
   }
+  lzAuthDone();
 });
 
 // ── LANDING ENTRANCE ANIMATION ────────────────────────────────
@@ -20133,6 +20156,7 @@ function lzSyncAuth(){
   if(!label||!btn)return;
   // Signed in or playing as guest: the pill becomes the profile link (avatar + name), so there is no separate PROFILE item.
   if(typeof currentUser!=='undefined'&&currentUser){
+    lzAuthDone();
     label.removeAttribute('data-copy-key');
     label.textContent=String(currentUser);
     const guest=typeof isGuest!=='undefined'&&isGuest;
