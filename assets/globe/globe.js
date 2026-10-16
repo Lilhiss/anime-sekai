@@ -27,6 +27,7 @@
     3: () => window.openDailyQuiz && openDailyQuiz(),
     4: () => window.goStep && goStep('leaderboard'),
     5: () => window.goProfile && goProfile(),
+    6: () => window.openLibrary && openLibrary(),
   };
 
   function noise(seed, Pd) {
