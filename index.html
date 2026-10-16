@@ -4280,7 +4280,7 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
           <div class="au-keeps">
             <div class="au-lbl">AN ACCOUNT KEEPS</div>
             <div class="au-keep"><i class="ti ti-flame" style="font-size:14px;color:#fbbf24"></i> your daily streak, across devices</div>
-            <div class="au-keep"><i class="ti ti-trophy" style="font-size:14px;color:var(--accent)"></i> your rank and badges</div>
+            <div class="au-keep"><i class="ti ti-trophy" style="font-size:14px;color:var(--accent)"></i> your stats and profile picture</div>
             <div class="au-keep"><i class="ti ti-chart-line" style="font-size:14px;color:#4ade80"></i> every run's history</div>
           </div>
         </div>
@@ -8073,14 +8073,16 @@ function showAuthMode(mode){
   show('authForgot',m==='forgot');
   const guest=document.getElementById('authGuest');
   const stepped=m==='created';
+  // Someone already playing as a guest only needs the account side
+  const activeGuest=!stepped&&typeof isGuest!=='undefined'&&isGuest&&!!currentUser;
   if(guest)guest.classList.toggle('stepped',stepped);
+  show('authGuest',!activeGuest);
   show('guestSubmitBtn',!stepped);
   show('auGuestStepDown',stepped);
-  const rule=document.getElementById('authRule');
-  if(rule)rule.style.display='';
+  show('authRule',!activeGuest);
   const eb=document.getElementById('authEyebrow'), tt=document.getElementById('authTitle');
-  if(eb)eb.textContent=m==='created'?'YOU\'RE IN':'BEFORE YOU PLAY';
-  if(tt)tt.textContent=m==='created'?'Welcome':'Jump in';
+  if(eb)eb.textContent=m==='created'?'YOU\'RE IN':activeGuest?'PLAYING AS GUEST':'BEFORE YOU PLAY';
+  if(tt)tt.textContent=m==='created'?'Welcome':activeGuest?'Your account':'Jump in';
   if(m==='signin'){
     ['siUser','siPass'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.onkeydown=e=>{if(e.key==='Enter')submitSignin();}}});
     clearErr('signinErr');
@@ -8361,8 +8363,10 @@ async function guestResolveName(v){
   const tag=()=>base+'#'+String(1000+Math.floor(Math.random()*9000));
   const want=/#\d{4}$/.test(v)?v:tag();
   if(SUPABASE_URL.includes('YOUR_PROJECT'))return want;
-  // Preferred: server-side claim (supabase/guest-setup.sql) — also prevents guest-vs-guest clashes
-  try{const {data,error}=await withTimeout(sb.rpc('claim_guest_name',{p_name:want}),5000);if(!error&&typeof data==='string'&&data)return /#\d{4}$/.test(data)?data:want;}catch(e){}
+  // Preferred: server-side claim — it picks the tag (keeping a returning guest's own) and
+  // prevents guest-vs-guest clashes, so show exactly what it returns. Send the name as typed:
+  // with no tag, the server keeps the guest's existing tag rather than taking our random one.
+  try{const {data,error}=await withTimeout(sb.rpc('claim_guest_name',{p_name:v}),5000);if(!error&&typeof data==='string'&&/#\d{4}$/.test(data))return data;}catch(e){}
   // Fallback: make sure no registered player owns the exact tagged name
   const taken=async n=>{try{const r=await withTimeout(fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id&username=ilike.${encodeURIComponent(n)}&limit=1`,{headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),5000);const rows=await withTimeout(r.json(),3000);return Array.isArray(rows)&&rows.length>0;}catch(e){return false;}};
   if(!(await taken(want)))return want;
@@ -8455,7 +8459,13 @@ async function submitSignin(){
     }
     updateNav();await checkAdminRole();afterAuth();
   }catch(e){
-    showErr('signinErr','signinErrMsg',e.message||'Incorrect username or password.');
+    // Supabase's own wording ("Invalid login credentials") isn't for players
+    const msg=e.message||'';
+    showErr('signinErr','signinErrMsg',
+      /invalid login credentials|invalid.*(email|password)/i.test(msg)?'Wrong username or password.'
+      :/rate limit|too many/i.test(msg)?'Too many tries. Please wait a minute and try again.'
+      :msg===SLOW_SERVER_MSG?msg
+      :'Couldn\'t sign in. Please try again.');
   }finally{
     btn.disabled=false;btn.innerHTML='<i class="ti ti-login" style="font-size:16px"></i> Sign In';
   }
