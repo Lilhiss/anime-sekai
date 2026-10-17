@@ -9006,8 +9006,16 @@ function savePfpFromGuestEntry(){
   if(sel&&sel.type==='remove')guestPendingPfp=null;
   else if(sel&&sel.type==='preset')guestPendingPfp={type:'preset',value:sel.value};
   else if(sel&&sel.type==='upload'&&pfpUploadBlob)guestPendingPfp={type:'upload',blob:pfpUploadBlob,dataUrl:pfpUploadDataUrl};
+  // a preset picked in the picker also moves the sign-in page's carousel to it
+  if(guestPendingPfp&&guestPendingPfp.type==='preset'&&typeof auPfpIdx!=='undefined'){
+    const i=PFP_PRESETS.findIndex(p=>p.id===guestPendingPfp.value);
+    const reg=document.getElementById('authRegister');
+    if(i>=0)auPfpIdx[(reg&&reg.style.display!=='none')?'reg':'guest']=i;
+  }
   renderGuestPfpPreview();
   closePfpPicker();
+  // the sign-in page's avatar disc (56d) is what shows the choice now; the old #guestPfpPreview is gone
+  if(typeof auRenderPfp==='function')auRenderPfp();
 }
 function renderGuestPfpPreview(){
   const el=document.getElementById('guestPfpPreview');if(!el)return;
