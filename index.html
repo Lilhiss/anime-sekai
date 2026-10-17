@@ -3083,9 +3083,7 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
 .lz-greet-bub::before{content:'';position:absolute;left:-11px;top:calc(50% - 9px);width:16px;height:16px;background:#FFFEF0;border-left:3px solid #1f2657;border-bottom:3px solid #1f2657;transform:rotate(45deg)}
 .lz-greet-bub:hover,.lz-greet-bub:focus-visible{outline:none;box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
 @keyframes lzGreetBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-.lz-globe-hit.greet::after{content:'';position:absolute;inset:5.4%;border-radius:50%;border:3px solid #FFFEF0aa;pointer-events:none;animation:lzGreetPulse 2.4s ease-out infinite}
-@keyframes lzGreetPulse{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.14)}}
-@media (prefers-reduced-motion:reduce){.lz-greet{transition:opacity .4s}.lz-greet-bub,.lz-greet .wt-wisp-body,.lz-greet .wt-wisp-glow,.lz-greet .wt-flame{animation:none}.lz-globe-hit.greet::after{animation:none;opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lz-greet{transition:opacity .4s}.lz-greet-bub,.lz-greet .wt-wisp-body,.lz-greet .wt-wisp-glow,.lz-greet .wt-flame{animation:none}}
 /* LIBRARY — series browser in the bold card style */
 body:is(.on-library,.on-credits,.on-about) .scene{height:100vh;overflow:hidden}
 body:is(.on-library,.on-credits,.on-about) nav,body:is(.on-library,.on-credits,.on-about) footer{display:none}
@@ -22732,15 +22730,13 @@ function abBack(){goStep(abPrev&&abPrev!=='about'?abPrev:'landing');}
 (function(){
   const DELAY=5000;let t=null;
   const seen=()=>{try{return !!localStorage.getItem('aqs_world_seen');}catch(e){return true;}};
-  const hit=()=>document.querySelector('#page-landing .lz-globe-hit');
-  function hide(){clearTimeout(t);t=null;const g=document.getElementById('lzGreet');if(g)g.classList.remove('on');const h=hit();if(h)h.classList.remove('greet');}
+  function hide(){clearTimeout(t);t=null;const g=document.getElementById('lzGreet');if(g)g.classList.remove('on');}
   function arm(){
     hide();if(seen())return;
     t=setTimeout(()=>{
       const land=document.getElementById('page-landing');
       if(seen()||!land||!land.classList.contains('active'))return;
       const g=document.getElementById('lzGreet');if(g)g.classList.add('on');
-      const h=hit();if(h)h.classList.add('greet');
     },DELAY);
   }
   window.lzGreetArm=arm;
