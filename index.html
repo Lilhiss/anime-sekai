@@ -9005,7 +9005,7 @@ function savePfpFromGuestEntry(){
   const sel=pfpPendingSelection;
   if(sel&&sel.type==='remove')guestPendingPfp=null;
   else if(sel&&sel.type==='preset')guestPendingPfp={type:'preset',value:sel.value};
-  else if(sel&&sel.type==='upload'&&pfpUploadBlob)guestPendingPfp={type:'upload',blob:pfpUploadBlob,dataUrl:pfpUploadDataUrl};
+  else if(sel&&sel.type==='upload'&&pfpUploadBlob){guestPendingPfp={type:'upload',blob:pfpUploadBlob,dataUrl:pfpUploadDataUrl};if(typeof auUp!=='undefined')auUp={...guestPendingPfp};}
   // a preset picked in the picker also moves the sign-in page's carousel to it
   if(guestPendingPfp&&guestPendingPfp.type==='preset'&&typeof auPfpIdx!=='undefined'){
     const i=PFP_PRESETS.findIndex(p=>p.id===guestPendingPfp.value);
@@ -9200,7 +9200,9 @@ function auRenderPfp(){
   });
   const pips=document.getElementById('auPipsGuest');
   if(pips&&list.length){
-    pips.innerHTML=list.map((_,i)=>'<i class="'+(i===auPfpIdx.guest%list.length?'on':'')+'"></i>').join('');
+    const onUp=auOnUpload();
+    pips.innerHTML=list.map((_,i)=>'<i class="'+(!onUp&&i===auPfpIdx.guest%list.length?'on':'')+'"></i>').join('')
+      +((auUp||onUp)?'<i class="'+(onUp?'on':'')+'" title="Your photo"></i>':'');
   }
   auSyncPending();
 }
@@ -9212,11 +9214,19 @@ function auSyncPending(){
   const p=list[auPfpIdx[side]];
   if(p)guestPendingPfp={type:'preset',value:p.id};
 }
+/* the player's uploaded photo stays in the carousel as one more slot (after the last preset),
+   so the arrows can move away from it and back without losing it */
+let auUp=null;
+function auOnUpload(){return typeof guestPendingPfp!=='undefined'&&!!guestPendingPfp&&guestPendingPfp.type==='upload';}
 function auCycle(side,d){
   const list=(typeof PFP_PRESETS!=='undefined'?PFP_PRESETS:[]);
-  if(!list.length)return;
-  if(typeof guestPendingPfp!=='undefined'&&guestPendingPfp&&guestPendingPfp.type==='upload')guestPendingPfp=null;
-  auPfpIdx[side]=(auPfpIdx[side]+d+list.length)%list.length;
+  const n=list.length;if(!n)return;
+  if(auOnUpload()&&!auUp)auUp={...guestPendingPfp};
+  if(auUp){
+    const pos=((auOnUpload()?n:auPfpIdx[side])+d+n+1)%(n+1);
+    if(pos===n)guestPendingPfp={...auUp};
+    else{auPfpIdx[side]=pos;guestPendingPfp=null;}
+  } else auPfpIdx[side]=(auPfpIdx[side]+d+n)%n;
   auRenderPfp();
 }
 function auClearUpload(){guestPendingPfp=null;auRenderPfp();}
