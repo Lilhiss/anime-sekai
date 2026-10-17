@@ -11946,10 +11946,18 @@ async function rtJoinLobby(code){
             rtChannel.send({type:'broadcast',event:'host_transferred',payload:{newHost:currentUser,reason:'reclaim',remainingSeconds:lobbyTimerSecondsLeft}});
           }
         },1200);
-      } else if(!curHostId){
-        // Nobody holds host (shouldn't happen, but handle gracefully)
+      } else {
+        // Our own seat still holds host (the usual case after a refresh: the rejoin
+        // insert above ignores the existing row), or nobody does (our seat was
+        // cleaned up after 2 min away and re-inserted with is_host:false). Either
+        // way we are the host; make sure our row says so too.
         isHost=true;
+        if(!curHostId){
+          await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lobby.id}&user_id=eq.${uid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
+          await rtRefreshPlayers(lobby.id,true);
+        }
       }
+      if(isHost&&document.getElementById('page-lobby-room')?.classList.contains('active')&&typeof renderLobbyRoom==='function')renderLobbyRoom();
     }catch(e){}
   }
 
