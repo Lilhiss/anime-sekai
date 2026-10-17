@@ -29,12 +29,39 @@
     @font-face{font-family:'Nunito';font-style:normal;font-weight:200 1000;font-display:swap;src:url(assets/fonts/nunito-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-  <!-- Accent fonts (kanji, Japanese text, brush kanji, lobby codes) load after the page so they
-       don't compete with the main two; the print-media swap is the standard non-blocking pattern. -->
+  <!-- Accent fonts (landing titles in Dela Gothic One, Japanese text, brush kanji, lobby codes) load
+       without blocking the page (print-media swap). display=block: text waits for its font instead of
+       flashing a fallback and swapping. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Yuji+Syuku&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Yuji+Syuku&display=swap"></noscript>
+  <link rel="stylesheet" id="accentFonts" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Yuji+Syuku&display=block" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Yuji+Syuku&display=block"></noscript>
+  <style>
+    html.fonts-wait #page-landing .lz-t{opacity:0}
+    html.fonts-fade #page-landing .lz-t{transition:opacity .45s ease}
+  </style>
+  <script>
+    /* Landing text waits for the fonts it is set in (max 1.2 s), then fades in, so it never shows
+       a fallback font and swaps. The sky, clouds and globe show straight away. */
+    (function(){
+      var d=document.documentElement,done=false;
+      d.classList.add('fonts-wait');
+      function go(){if(done)return;done=true;d.classList.add('fonts-fade');d.classList.remove('fonts-wait');setTimeout(function(){d.classList.remove('fonts-fade');},600);}
+      setTimeout(go,1200);
+      function wait(){
+        if(!document.fonts||!document.fonts.load){go();return;}
+        Promise.all([
+          document.fonts.load("400 44px 'Dela Gothic One'","Solo Play"),
+          document.fonts.load("900 12px 'Zen Kaku Gothic New'","ひとりで PLAY"),
+          document.fonts.load("500 12px 'Zen Kaku Gothic New'","ソロプレイ君"),
+          document.fonts.load("800 14px 'Nunito'","Just you"),
+          document.fonts.load("400 16px 'Lilita One'","Sign in")
+        ]).then(go,go);
+      }
+      var link=document.getElementById('accentFonts');
+      if(!link||link.sheet)wait();else{link.addEventListener('load',function(){setTimeout(wait,0);});link.addEventListener('error',go);}
+    })();
+  </script>
 </head>
 <!-- on-landing from the start: the landing is the first page, so the old nav bar and footer never paint -->
 <body class="on-landing">
