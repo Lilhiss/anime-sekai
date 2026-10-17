@@ -8619,6 +8619,7 @@ async function applyRemovePfp(){
       }).catch(()=>{});
     }
     currentPfp=null;
+    if(isGuest){try{localStorage.removeItem('guest_pfp');}catch(e){}guestSave();} // so a refresh doesn't bring it back
     removedAvatarUserIds.add(currentUserId);
     if(rtChannel&&currentUserId){
       rtChannel.send({type:'broadcast',event:'avatar_removed',payload:{userId:currentUserId}});
@@ -8885,6 +8886,8 @@ async function savePfp(){
       }
       const{data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(guestPath);
       currentPfp={type:'upload',value:publicUrl+'?t='+Date.now()};
+      // keep it across refreshes (this browser's guest record + the guest's profile row), like presets
+      try{localStorage.setItem('guest_pfp',JSON.stringify(currentPfp));}catch(e){}guestSave();
     } else {
       // Get the user's live auth token — required for RLS on storage uploads
       const{data:{session}}=await sb.auth.getSession();
