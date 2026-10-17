@@ -11800,7 +11800,7 @@ async function rtCreateLobby(){
     });
   }catch(e){}
   isHost=true;
-  currentLobbyId=lobbyId;
+  currentLobbyId=lobbyId;if(typeof lrChatResetFor==='function')lrChatResetFor(lobbyId);
   try{ sessionStorage.setItem('current_lobby_id', lobbyId); }catch(e){}
   rtSubscribe(lobbyId);
 }
@@ -11893,7 +11893,7 @@ async function rtJoinLobby(code){
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   voidingEnabled=lobby.voiding_enabled===true;
   lobbyTopics=[];lobbyIsGeneral=true;applyLobbySettings(lobby.settings); // the host's saved picks, so a refreshed host gets them back
-  currentLobbyId=lobby.id;
+  currentLobbyId=lobby.id;if(typeof lrChatResetFor==='function')lrChatResetFor(lobby.id);
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   rtSubscribe(lobby.id);
   await rtRefreshPlayers(lobby.id,true); // immediate=true skips debounce so goStep sees populated lobbyPlayers
@@ -12013,7 +12013,7 @@ async function rtRejoinActiveLobby(code){
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   voidingEnabled=lobby.voiding_enabled===true;
   applyLobbySettings(lobby.settings);
-  currentLobbyId=lobby.id;
+  currentLobbyId=lobby.id;if(typeof lrChatResetFor==='function')lrChatResetFor(lobby.id);
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   // Subscribe to realtime channel before refreshing players
   rtSubscribe(lobby.id);
@@ -20832,7 +20832,14 @@ document.addEventListener('keydown',e=>{
    Chat rides the existing lobby realtime channel as a 'chat' broadcast.
    A message that names a catalogue topic gets the host-only + TOPIC chip;
    once picked it reads ADDED, and an unmatched suggestion says so. */
-var lrChatMsgs=[], lrRailView='players', lrChatSeen=0;
+var lrChatMsgs=[], lrRailView='players', lrChatSeen=0, lrChatLobby=null;
+/* chat belongs to one lobby: entering a different lobby starts it empty (rejoining the same one keeps it) */
+function lrChatResetFor(lobbyId){
+  if(lrChatLobby===lobbyId)return;
+  lrChatLobby=lobbyId;lrChatMsgs=[];lrChatSeen=0;
+  const d=document.getElementById('lrChatDot');if(d)d.style.display='none';
+  lrChatRender();
+}
 const LR_AV=['#a78bfa','#38bdf8','#f0abfc','#fbbf24','#4ade80','#fb923c'];
 function lrAvColor(name){let s=0;for(const c of String(name||''))s=(s+c.charCodeAt(0))%997;return LR_AV[s%LR_AV.length];}
 function lrEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
