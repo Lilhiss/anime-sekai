@@ -3078,7 +3078,7 @@ body.sk-on #page-profile .pf-aurora{-webkit-mask-image:linear-gradient(#000 45%,
 .lz-greet-wisp{position:relative;flex:none;width:34px;height:52px;margin-top:14px}
 .lz-greet-wisp .wt-wisp-glow{left:-53px;top:-44px}
 .lz-greet-wisp .wt-wisp-body{left:0;top:0}
-.lz-greet-bub{position:relative;width:230px;padding:11px 16px 13px;text-align:left;cursor:pointer;background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:12px;box-shadow:5px 5px 0 #0d1236;color:#1f2657;font:400 18px/1.2 'Lilita One',cursive;letter-spacing:.01em;animation:lzGreetBob 4s ease-in-out infinite;transition:box-shadow .15s}
+.lz-greet-bub{position:relative;width:max-content;max-width:230px;padding:11px 16px 13px;text-align:left;cursor:pointer;background:radial-gradient(#1f265714 1.3px,transparent 1.7px) 0 0/11px 11px,#FFFEF0;border:3px solid #1f2657;border-radius:12px;box-shadow:5px 5px 0 #0d1236;color:#1f2657;font:400 18px/1.2 'Lilita One',cursive;letter-spacing:.01em;animation:lzGreetBob 4s ease-in-out infinite;transition:box-shadow .15s}
 .lz-greet-bub::before{content:'';position:absolute;left:-11px;top:24px;width:16px;height:16px;background:#FFFEF0;border-left:3px solid #1f2657;border-bottom:3px solid #1f2657;transform:rotate(45deg)}
 .lz-greet-bub:hover,.lz-greet-bub:focus-visible{outline:none;box-shadow:6px 7px 0 #0d1236,0 0 0 3px #F6C98E}
 .lz-greet-jp{display:block;margin-bottom:4px;font:700 11px 'Zen Kaku Gothic New',sans-serif;letter-spacing:.25em;color:#3a4180}
@@ -4120,7 +4120,7 @@ body:has(#page-admin.active) #mainNav{display:none!important}
         <!-- first-visit greeter: the tour's foxfire floats in beside the globe (lzGreet script) -->
         <div class="lz-greet" id="lzGreet" aria-live="polite">
           <div class="lz-greet-wisp" aria-hidden="true"><div class="wt-wisp-glow"></div><div class="wt-wisp-body"><div class="wt-flame"></div></div></div>
-          <button class="lz-greet-bub" onclick="enterWorld()"><span class="lz-greet-jp">ようこそ</span>Hi there! Tap the globe to explore the world.</button>
+          <button class="lz-greet-bub" onclick="enterWorld()"><span class="lz-greet-jp">ようこそ</span>Hi there!<br>Enter the world.</button>
         </div>
       </div>
 
