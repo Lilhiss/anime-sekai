@@ -4107,7 +4107,7 @@ body:has(#page-admin.active) #mainNav{display:none!important}
             <!-- Shown only when this player still has a seat in a running multiplayer game (lzCheckRejoin) -->
             <button type="button" id="lzRejoin" class="lz-rejoin" style="display:none" onclick="event.stopPropagation();lzRejoinClick()" aria-label="Rejoin your multiplayer game">
               <span class="lz-rejoin-dot"></span>
-              <span class="lz-rejoin-txt"><b>Your game is still running</b><small id="lzRejoinSub"></small></span>
+              <span class="lz-rejoin-txt"><b id="lzRejoinTitle">Your game is still running</b><small id="lzRejoinSub"></small></span>
               <span class="lz-rejoin-cta">REJOIN <i class="ti ti-chevron-right"></i></span>
             </button>
           </div>
@@ -7673,29 +7673,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
         try{updateNav();}catch(e){}
         loadMyStats().catch(()=>{});
       }
-      // If the user was in a lobby before the refresh, rejoin it automatically.
-      const savedLobbyId = sessionStorage.getItem('current_lobby_id');
-      if(savedLobbyId && (event==='INITIAL_SESSION'||event==='SIGNED_IN')){
-        try{
-          const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/lobbies?select=code,status&id=eq.${savedLobbyId}&limit=1`,
-            {headers:{apikey:SUPABASE_ANON,Authorization:`Bearer ${SUPABASE_ANON}`}}
-          );
-          const rows = await res.json();
-          if(Array.isArray(rows)&&rows[0]){
-            if(rows[0].status==='waiting'){
-              await rtJoinLobby(rows[0].code);
-            } else if(rows[0].status==='active'){
-              await rtRejoinActiveLobby(rows[0].code);
-            } else {
-              // Lobby gone or finished — clear the stale id
-              try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
-            }
-          } else {
-            try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
-          }
-        }catch(e){}
-      }
+      // A refresh no longer drops the player back into their lobby automatically: the landing
+      // page's Rejoin pill (and the Multiplayer page's rejoin card) offer it while the seat lasts.
+      if(typeof lzCheckRejoin==='function')lzCheckRejoin();
     }
     lzAuthDone();
     return;
@@ -12709,7 +12689,7 @@ function rtSubscribe(lobbyId){
     if(payload.hpFuseMax!=null)hpFuseMax=payload.hpFuseMax;
     if(payload.isGeneral!=null)lobbyIsGeneral=payload.isGeneral;
     if(payload.lobbyLocked!=null){window.lobbyLocked=payload.lobbyLocked;if(typeof lrSyncHeader==='function')lrSyncHeader();}
-    if(payload.topics)lobbyTopics=payload.topics;
+    if(payload.topics){lobbyTopics=payload.topics;if(typeof lrChatRender==='function'&&typeof lrRailView!=='undefined'&&lrRailView==='chat')lrChatRender();} // refresh the chat's ADDED tags
     if(payload.activeTab!==undefined)gsActiveTab=payload.activeTab;
     if(!isHost&&payload.topicScrollTop!=null)gsTopicScrollTarget=payload.topicScrollTop;
     if(payload.topicSub!==undefined&&payload.topicSub!==gsTopicSub){gsTopicSub=payload.topicSub;gsBuildTopicContent();}
@@ -14488,7 +14468,7 @@ async function fetchActiveGameSeat(){
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return null;
   const token=await rtGetAuthToken();
   const res=await fetch(
-    `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id,score,lives,lobbies!inner(id,code,lobby_name,host_username,format,mode,status)&user_id=eq.${encodeURIComponent(currentUserId)}&lobbies.status=eq.active&limit=1`,
+    `${SUPABASE_URL}/rest/v1/lobby_players?select=lobby_id,score,lives,lobbies!inner(id,code,lobby_name,host_username,format,mode,status)&user_id=eq.${encodeURIComponent(currentUserId)}&lobbies.status=in.(waiting,active)&limit=1`,
     {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
   );
   if(!res.ok)return null;
@@ -14506,7 +14486,8 @@ async function lzCheckRejoin(){
     if(!row||lobbyInGame){el.style.display='none';return;}
     const lobby=row.lobbies;
     const modeName={classic:'Classic',race:'Score Race',survival:'Survival',potato:'Hot Potato',slowreveal:'Slow Reveal'}[lobby.mode]||'Multiplayer';
-    el.dataset.code=lobby.code;
+    el.dataset.code=lobby.code;el.dataset.status=lobby.status;
+    const tt=document.getElementById('lzRejoinTitle');if(tt)tt.textContent=lobby.status==='waiting'?'Your lobby is still open':'Your game is still running';
     document.getElementById('lzRejoinSub').textContent=modeName+' · '+(lobby.lobby_name||((lobby.host_username||lobby.code)+"'s Lobby"));
     el.style.display='';
   }catch(e){el.style.display='none';}
@@ -14514,9 +14495,12 @@ async function lzCheckRejoin(){
 async function lzRejoinClick(){
   const el=document.getElementById('lzRejoin');const code=el&&el.dataset.code;if(!code)return;
   el.style.display='none';
-  const ok=await rtRejoinActiveLobby(code).catch(()=>false);
+  const ok=await rejoinSeat(code,el.dataset.status).catch(()=>false);
   if(!ok)lzCheckRejoin(); // game ended or seat expired meanwhile: re-check rather than leave a dead button
 }
+/* Rejoin the lobby this player still has a seat in: a waiting lobby goes through the normal
+   join (which restores host status), a running game through the mid-game rejoin. */
+function rejoinSeat(code,status){return status==='waiting'?rtJoinLobby(code):rtRejoinActiveLobby(code);}
 (function(){
   const _gs=window.goStep;
   window.goStep=function(name){const r=_gs.apply(this,arguments);if(name==='landing')lzCheckRejoin();return r;};
@@ -14539,7 +14523,7 @@ async function checkForActiveGameRejoin(){
     const lobbyLabel=lobby.lobby_name||(lobby.host_username?`${lobby.host_username}'s Lobby`:lobby.code);
     banner.innerHTML=`
       <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        <i class="ti ti-player-play" style="font-size:12px"></i> Game in progress
+        <i class="ti ti-player-play" style="font-size:12px"></i> ${lobby.status==='waiting'?'Your lobby is still open':'Game in progress'}
       </div>
       <div class="rejoin-card">
         <div class="rejoin-card-pulse"></div>
@@ -14548,10 +14532,10 @@ async function checkForActiveGameRejoin(){
           <div class="lobby-list-meta">
             <span class="lobby-list-badge">${fmtEmoji[fmt]||'🎮'} ${fmtName}</span>
             <span class="lobby-list-badge">${modeEmoji[mode]||'🏁'} ${modeName}</span>
-            <span class="lobby-list-badge">⚡ Score ${row.score||0}</span>
+            ${lobby.status==='waiting'?'':`<span class="lobby-list-badge">⚡ Score ${row.score||0}</span>`}
           </div>
         </div>
-        <button class="rejoin-btn" onclick="rtRejoinActiveLobby('${lobby.code}')">
+        <button class="rejoin-btn" onclick="rejoinSeat('${lobby.code}','${lobby.status}')">
           <i class="ti ti-refresh" style="font-size:13px"></i> Rejoin
         </button>
       </div>`;
@@ -20833,14 +20817,19 @@ function lrRailTab(v){
     const i=document.getElementById('lrChatInput');if(i)setTimeout(()=>i.focus(),30);
   }
 }
-/* which catalogue topic, if any, a message is asking for */
-function lrChatMatch(text){
+/* every catalogue series a message names ("bleach and naruto" → both); a shorter name that
+   only appears inside a longer matched one (Naruto inside "Naruto Shippuden") doesn't count */
+function lrChatMatches(text){
   const all=typeof animeTopics!=='undefined'?animeTopics:[];
   const t=String(text||'').toLowerCase();
-  let best=null;
-  all.forEach(x=>{const n=(x.name||'').toLowerCase();if(n&&t.includes(n)&&(!best||n.length>best.name.length))best=x;});
-  return best;
+  const hits=all.filter(x=>{const n=(x.name||'').toLowerCase();return n.length>2&&t.includes(n);})
+    .sort((a,b)=>b.name.length-a.name.length);
+  const kept=[];
+  hits.forEach(x=>{const n=x.name.toLowerCase();if(!kept.some(k=>k.name.toLowerCase().includes(n)))kept.push(x);});
+  return kept.sort((a,b)=>t.indexOf(a.name.toLowerCase())-t.indexOf(b.name.toLowerCase()));
 }
+/* the lobby's own topic list (falls back to the solo one outside a lobby) */
+function lrPicked(t){return (typeof lobbyTopics!=='undefined'?lobbyTopics:(selectedTopics||[])).some(x=>x.key===t.key);}
 function lrLooksLikeSuggestion(text){
   return /\b(can we|what about|how about|lets do|let's do|please|add|do)\b/i.test(String(text||''));
 }
@@ -20854,15 +20843,15 @@ function lrChatRender(){
   const host=(typeof isHost!=='undefined'&&isHost);
   log.innerHTML=lrChatMsgs.map((m,i)=>{
     if(m.sys)return '<div class="lr-msg-sys"><i class="ti ti-crown" style="font-size:13px;color:#fbbf24"></i><span>'+m.text+'</span></div>';
-    const topic=lrChatMatch(m.text);
-    const picked=topic&&(selectedTopics||[]).some(x=>x.key===topic.key);
+    const topics=lrChatMatches(m.text);
+    const missing=topics.filter(t=>!lrPicked(t));
     const isHostMsg=m.host;
     const col=lrAvColor(m.name);
     let tail='';
-    if(topic&&picked)tail='<span class="lr-msg-tag added"><i class="ti ti-check" style="font-size:10px"></i> ADDED</span>';
-    else if(!topic&&lrLooksLikeSuggestion(m.text))tail='<span class="lr-msg-tag miss" onclick="suSuggest(\'\')"><i class="ti ti-alert-triangle" style="font-size:10px"></i> NOT IN CATALOGUE — SUGGEST IT?</span>';
-    const chip=(host&&topic&&!picked)
-      ?'<button class="lr-msg-add" onclick="lrChatAddTopic('+i+')"><i class="ti ti-plus" style="font-size:11px"></i> TOPIC</button>':'';
+    if(topics.length&&!missing.length)tail='<span class="lr-msg-tag added"><i class="ti ti-check" style="font-size:10px"></i> ADDED</span>';
+    else if(!topics.length&&lrLooksLikeSuggestion(m.text))tail='<span class="lr-msg-tag miss" onclick="suSuggest(\'\')"><i class="ti ti-alert-triangle" style="font-size:10px"></i> NOT IN CATALOGUE — SUGGEST IT?</span>';
+    const chip=(host&&missing.length)
+      ?'<button class="lr-msg-add" onclick="lrChatAddTopic('+i+')"><i class="ti ti-plus" style="font-size:11px"></i> '+(missing.length>1?missing.length+' TOPICS':'TOPIC')+'</button>':'';
     return '<div class="lr-msg'+(chip?' sug':'')+'">'
       +'<span class="lr-msg-av'+(isHostMsg?' host':'')+'" style="background:'+lrChatAvBg(m,col)+'">'+lrChatAvInner(m)+'</span>'
       +'<div class="lr-msg-b"><div class="lr-msg-hd"><span class="lr-msg-who" style="color:'+col+'">'+lrEsc(m.name)+'</span>'
@@ -20889,12 +20878,18 @@ function lrChatAvInner(m){
 }
 function lrChatAddTopic(i){
   const m=lrChatMsgs[i];if(!m)return;
-  const t=lrChatMatch(m.text);if(!t)return;
-  if(typeof toggleTopic==='function')toggleTopic(t.key,t.emoji||'',t.name,t.type);
-  lrChatPush({sys:true,text:(currentUser||'The host')+' added <b>'+lrEsc(t.name)+'</b>'},true);
+  const add=lrChatMatches(m.text).filter(t=>!lrPicked(t));if(!add.length)return;
+  // the lobby's picker (gsTopicToggle) — it updates lobbyTopics and broadcasts the change to everyone
+  add.forEach(t=>{if(typeof gsTopicToggle==='function')gsTopicToggle(t.key,t.emoji||'',t.name,t.type||'anime');});
+  const names=add.map(t=>'<b>'+lrEsc(t.name)+'</b>');
+  const list=names.length>1?names.slice(0,-1).join(', ')+' and '+names[names.length-1]:names[0];
+  lrChatPush({sys:true,text:lrEsc(currentUser||'The host')+' added '+list},true);
   lrChatRender();
 }
 function lrChatPush(m,broadcast){
+  // every message carries an id, so our own broadcast echo (or a repeat) is never shown twice
+  if(!m.id)m.id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  if(lrChatMsgs.some(x=>x.id===m.id))return;
   lrChatMsgs.push(m);
   if(lrChatMsgs.length>120)lrChatMsgs.shift();
   if(broadcast){try{if(rtChannel)rtChannel.send({type:'broadcast',event:'chat',payload:m});}catch(e){}}
