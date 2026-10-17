@@ -11892,6 +11892,7 @@ async function rtJoinLobby(code){
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   voidingEnabled=lobby.voiding_enabled===true;
+  lobbyTopics=[];lobbyIsGeneral=true;applyLobbySettings(lobby.settings); // the host's saved picks, so a refreshed host gets them back
   currentLobbyId=lobby.id;
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   rtSubscribe(lobby.id);
@@ -11905,13 +11906,15 @@ async function rtJoinLobby(code){
   // match uid, so we skip entirely and join as a regular player.
   if(uid===lobby.host_id){
     try{
-      // Check who currently holds is_host
+      // Check who currently holds is_host. Look at every flagged seat: while we were away another
+      // player may have promoted themselves while our own row kept its flag, leaving two "hosts".
       const curHostRes=await fetch(
-        `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobby.id}&is_host=eq.true&limit=1`,
+        `${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,username&lobby_id=eq.${lobby.id}&is_host=eq.true`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`}}
       );
       const curHostData=await curHostRes.json();
-      const curHostId=Array.isArray(curHostData)?curHostData[0]?.user_id:null;
+      const flagged=Array.isArray(curHostData)?curHostData.map(r=>r.user_id):[];
+      const curHostId=flagged.find(id=>id!==uid)||(flagged.includes(uid)?uid:null);
       // Only reclaim if nobody else currently holds host
       if(curHostId&&curHostId!==uid){
         // Transfer host: clear all flags, set ours
@@ -12009,6 +12012,7 @@ async function rtRejoinActiveLobby(code){
   if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   voidingEnabled=lobby.voiding_enabled===true;
+  applyLobbySettings(lobby.settings);
   currentLobbyId=lobby.id;
   try{ sessionStorage.setItem('current_lobby_id', lobby.id); }catch(e){}
   // Subscribe to realtime channel before refreshing players
@@ -14687,8 +14691,13 @@ function copyLobbyLink(){
   const lbl=document.getElementById('copyLinkLabel');
   if(lbl){lbl.textContent='Link copied!';setTimeout(()=>{lbl.textContent='Copy invite link'},2000);}
 }
+/* one write at a time: changes made while a write is in flight are merged and sent right after it,
+   so quick clicks can't land out of order (an older write finishing last would undo a newer pick) */
+let _plBusy=false,_plNext=null;
 async function patchLobby(fields){
   if(!lobbyCode||!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  if(_plBusy){_plNext=Object.assign(_plNext||{},fields);return;}
+  _plBusy=true;
   try{
     const token=await rtGetAuthToken();
     await fetch(`${SUPABASE_URL}/rest/v1/lobbies?code=eq.${encodeURIComponent(lobbyCode)}`,{
@@ -14697,6 +14706,8 @@ async function patchLobby(fields){
       body:JSON.stringify(fields)
     });
   }catch(e){}
+  _plBusy=false;
+  if(_plNext){const f=_plNext;_plNext=null;patchLobby(f);}
 }
 function updateLobbyTopicsLabel(){
   const el=document.getElementById('lobbyTopicsLabel');
@@ -14744,13 +14755,35 @@ function openHowToPlay(){
 }
 // ── Inline lobby "Game Settings" panel (accordion sections) ──
 let gsActiveTab='format',gsTopicSub='general',gsTopicScrollTarget=0;
+/* Restore the picker from lobbies.settings (see broadcastLobbySettings) when joining or rejoining. */
+function applyLobbySettings(s){
+  if(!s||typeof s!=='object')return;
+  const n=(v,f)=>{if(typeof v==='number'&&isFinite(v))f(v);};
+  if(Array.isArray(s.topics))lobbyTopics=s.topics.filter(t=>t&&t.key).map(t=>({key:t.key,name:t.name,type:t.type||'anime',emoji:t.emoji||''}));
+  if(typeof s.isGeneral==='boolean')lobbyIsGeneral=s.isGeneral||!lobbyTopics.length;
+  n(s.timeLimit,v=>raceTimeLimit=v);n(s.survivalLives,v=>selectedLives=v);n(s.survivalQuestionLimit,v=>survivalQuestionLimit=v);
+  n(s.hpLives,v=>hpLives=v);n(s.hpFuseMin,v=>hpFuseMin=v);n(s.hpFuseMax,v=>hpFuseMax=v);
+  n(s.srTargetScore,v=>srTargetScore=v);n(s.mpRaceTarget,v=>mpRaceTarget=v);n(s.questionLimit,v=>selectedQuestionLimit=v);
+  n(s.pointsPerCorrect,v=>lobbyPointsPerCorrect=v);n(s.maxPlayers,v=>lobbyMaxPlayers=v);
+  if(typeof s.voidingEnabled==='boolean')voidingEnabled=s.voidingEnabled;
+  if(typeof s.showTyping==='boolean')lobbyShowTyping=s.showTyping;
+  if(typeof s.lateJoin==='boolean')lobbyLateJoin=s.lateJoin;
+  if(typeof s.autoAdvance==='boolean')lobbyAutoAdvance=s.autoAdvance;
+  if(typeof s.locked==='boolean')window.lobbyLocked=s.locked;
+}
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
   const isRace=lobbyMode==='race';
   const isHP=lobbyMode==='potato';
   const isSurvival=lobbyMode==='survival';
   const qc=isSR?srTargetScore:isRace?mpRaceTarget:isHP?hpLives:isSurvival?survivalQuestionLimit:selectedQuestionLimit;
-  patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled,lives:(lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:null)});
+  // settings: everything the lobby's picker holds, saved on the row so a refreshed host or a
+  // new joiner can restore it (applyLobbySettings); before this it lived only in the host's tab
+  const settings={topics:(lobbyTopics||[]).map(t=>({key:t.key,name:t.name,type:t.type||'anime',emoji:t.emoji||''})),isGeneral:!!lobbyIsGeneral,
+    timeLimit:raceTimeLimit,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,
+    srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,questionLimit:selectedQuestionLimit,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping,
+    pointsPerCorrect:lobbyPointsPerCorrect,maxPlayers:lobbyMaxPlayers,lateJoin:lobbyLateJoin,autoAdvance:lobbyAutoAdvance,locked:!!window.lobbyLocked};
+  if(isHost)patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled,lives:(lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:null),settings});
   if(rtChannel){
     const _tsl=document.getElementById('gsTopicList');
     const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,topicScrollTop:_tsl?_tsl.scrollTop:0,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping};
