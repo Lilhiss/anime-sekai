@@ -3255,7 +3255,7 @@ body.on-profile nav,body.on-profile footer{display:none}
 #page-profile .pf-online{display:inline-flex;align-items:center;gap:6px;font:900 9px 'Nunito',sans-serif;color:#4ade80;letter-spacing:.1em}
 #page-profile .pf-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
 #page-profile .pf-since{font-size:12px;font-weight:800;color:var(--muted)}
-#page-profile .pf-name{font-family:'Lilita One',cursive;font-size:clamp(48px,6.4vw,92px);line-height:1;margin-top:8px;text-shadow:6px 6px 0 var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
+#page-profile .pf-name{font-family:'Lilita One',cursive;font-size:clamp(48px,6.4vw,92px);line-height:1;margin-top:8px;text-shadow:.08em .08em 0 var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
 #page-profile .pf-badge{margin-top:16px;display:inline-flex;align-items:center;gap:12px}
 #page-profile .pf-badge-ic{width:34px;height:34px;border-radius:9px;background:#4ade80;color:#0b0a14;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 18px #4ade8066;font-size:19px}
 #page-profile .pf-badge-t{font:900 10px 'Nunito',sans-serif;letter-spacing:.14em;color:#4ade80}
@@ -3341,7 +3341,7 @@ body.on-profile nav,body.on-profile footer{display:none}
   #page-profile .pf-aurora .shade{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 35%,transparent) 0%,color-mix(in srgb,var(--bg) 93%,transparent) 42%)}
 }
 /* PUBLIC CARD — 59a */
-.pc-card{position:fixed;z-index:900;width:340px;max-width:calc(100vw - 24px);display:none;border-radius:18px;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 15%,transparent),0 24px 60px #000c,0 0 0 1px #00000066;animation:pcIn .16s ease-out}
+.pc-card{position:fixed;z-index:900;width:380px;max-width:calc(100vw - 24px);display:none;border-radius:18px;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 15%,transparent),0 24px 60px #000c,0 0 0 1px #00000066;animation:pcIn .16s ease-out}
 .pc-card.open{display:block}
 @keyframes pcIn{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
 .pc-card .pc-aur{position:absolute;inset:0;overflow:hidden;pointer-events:none}
@@ -3358,7 +3358,11 @@ body.on-profile nav,body.on-profile footer{display:none}
 .pc-card .pc-seen{display:inline-flex;align-items:center;gap:6px;font:900 9px 'Nunito',sans-serif;letter-spacing:.1em;color:var(--muted)}
 .pc-card .pc-seen.on{color:#4ade80}
 .pc-card .pc-seen.on:before{content:'';width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
-.pc-card .pc-name{font-family:'Lilita One',cursive;font-size:38px;line-height:1;margin-top:5px;text-shadow:4px 4px 0 var(--bg);overflow-wrap:anywhere}
+.pc-card .pc-name{font-family:'Lilita One',cursive;font-size:38px;line-height:1;margin-top:5px;text-shadow:.1em .1em 0 var(--bg)}
+/* one-line names (fitNameInto): the name part can shrink to "…", the #tag never does */
+.nm-fit{display:flex;align-items:baseline;white-space:nowrap;min-width:0;overflow:hidden;padding-right:8px;padding-bottom:.14em;margin-bottom:-.14em}
+.nm-fit .nm-base{min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0 6px .14em 0;margin:0 -6px -.14em 0}
+.nm-fit .gtag{flex:none;margin-left:6px;font-size:.66em}
 .pc-card .pc-badge{display:inline-flex;align-items:center;gap:10px;margin-top:2px}
 .pc-card .pc-badge-ic{width:28px;height:28px;border-radius:8px;background:#4ade80;color:#0b0a14;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 14px #4ade8066;font-size:16px}
 .pc-card .pc-badge-t{font:900 9px 'Nunito',sans-serif;letter-spacing:.14em;color:#4ade80}
@@ -21721,14 +21725,24 @@ function pfToggleMenu(e){e.stopPropagation();document.getElementById('pfMenu')?.
 document.addEventListener('click',()=>document.getElementById('pfMenu')?.classList.remove('open'));
 
 function pEl0(){return document.getElementById('pfPod');}
-/* Long names stay on one line: step the font down until it fits (ellipsis only below 28px) */
-function pfFitName(){
-  const el=document.getElementById('pfName');if(!el||!el.offsetParent)return;
-  el.style.fontSize='';let fs=parseFloat(getComputedStyle(el).fontSize);
-  // scrollWidth rounds to whole pixels and misses sub-pixel overflow, so measure the text itself
-  const rg=document.createRange();rg.selectNodeContents(el);
+/* Long names stay on one line (profile title, player card): the font steps down until the name
+   fits; below minPx the name part gets "…" but the guest #tag always stays visible. Full name on hover. */
+function fitNameInto(el,name,minPx){
+  if(!el)return;
+  const full=String(name||''),m=full.match(/^(.*?)(#\d{4})?$/);
+  el.classList.add('nm-fit');el.title=full;el.style.fontSize='';
+  el.innerHTML='<span class="nm-base">'+pfEsc(m[1])+'</span>'+(m[2]?'<span class="gtag" style="opacity:.45">'+m[2]+'</span>':'');
+  if(!el.offsetParent)return;
+  const base=el.firstChild,tag=base.nextSibling;let fs=parseFloat(getComputedStyle(el).fontSize);
+  // layout sizes (not getBoundingClientRect) so an opening scale animation can't skew it;
+  // +1 covers the sub-pixel overflow that scrollWidth's rounding would hide
   const room=()=>el.clientWidth-parseFloat(getComputedStyle(el).paddingRight||0);
-  while(rg.getBoundingClientRect().width>room()&&fs>28){fs-=2;el.style.fontSize=fs+'px';}
+  const need=()=>base.scrollWidth-6+(tag?tag.offsetWidth+6:0);
+  while(need()+1>room()&&fs>minPx){fs-=2;el.style.fontSize=fs+'px';}
+}
+function pfFitName(){
+  const el=document.getElementById('pfName');if(!el)return;
+  fitNameInto(el,el.dataset.full||el.textContent,28);
 }
 window.addEventListener('resize',()=>{if(document.getElementById('page-profile')?.classList.contains('active'))pfFitName();});
 function renderProfile(){
@@ -21740,7 +21754,7 @@ function renderProfile(){
   document.getElementById('page-profile').classList.toggle('is-guest',!me);
   if(pfp&&pfp.src){av.style.background=pfp.bg;av.innerHTML='<img src="'+pfEsc(pfp.src)+'" alt="" style="object-fit:'+(pfp.preset?'contain':'cover')+'" onerror="this.remove()">';}
   else{av.style.background=pfp&&pfp.preset?pfp.bg:'';av.textContent=user[0].toUpperCase();}
-  document.getElementById('pfName').textContent=user;pfFitName();
+  document.getElementById('pfName').dataset.full=user;pfFitName();
   document.getElementById('pfOnline').textContent=me?'ONLINE NOW':'GUEST · ON THIS BROWSER';
   document.querySelector('#page-profile .pf-online').style.color=me?'':'#fb923c';
   document.querySelector('#page-profile .pf-dot').style.cssText=me?'':'background:#fb923c;box-shadow:0 0 8px #fb923c';
@@ -21828,7 +21842,7 @@ async function openPlayerCard(name,anchor){
     const cp=isMe?pfPair(profileColorKey):pfPairByLead(p.color);
     c.innerHTML='<div class="pc-aur">'+(cp?pfAuroraHTML(null,cp[2],.45,cp[3]):pfAuroraHTML(img,col,.45))+'</div><div class="pc-body">'
       +(canFriend?(window._pcSent&&window._pcSent.has(name)?'<button class="pc-friend sent" title="Friend request pending"><i class="ti ti-clock"></i></button>':'<button class="pc-friend" title="Send friend request" onclick="pcFriend(this)"><i class="ti ti-user-plus"></i></button>'):'')
-      +'<div class="pc-hd"><div class="pc-av" style="background:'+(img?'var(--bg3)':'linear-gradient(135deg,'+col+',var(--aur2))')+'">'+(img?'<img src="'+pfEsc(img)+'" alt="">':pfEsc(name[0].toUpperCase()))+'</div><div style="min-width:0"><span class="pc-seen'+(online?' on':'')+'">'+(online?'ONLINE NOW':(s&&s.last_seen?'SEEN '+pfAgo({played_at:s.last_seen}).toUpperCase():'AWAY'))+'</span><div class="pc-name">'+pfEsc(name)+'</div></div></div>'
+      +'<div class="pc-hd"><div class="pc-av" style="background:'+(img?'var(--bg3)':'linear-gradient(135deg,'+col+',var(--aur2))')+'">'+(img?'<img src="'+pfEsc(img)+'" alt="">':pfEsc(name[0].toUpperCase()))+'</div><div style="min-width:0;flex:1"><span class="pc-seen'+(online?' on':'')+'">'+(online?'ONLINE NOW':(s&&s.last_seen?'SEEN '+pfAgo({played_at:s.last_seen}).toUpperCase():'AWAY'))+'</span><div class="pc-name">'+pfEsc(name)+'</div></div></div>'
       +(contrib?'<div class="pc-badge"><span class="pc-badge-ic"><i class="ti ti-heart-handshake"></i></span><div><div class="pc-badge-t">CONTRIBUTOR</div><div class="pc-badge-s">'+pfEsc(contrib)+'</div></div></div>':'')
       +'<div class="pc-stats">'
         +'<div class="pc-panel pc-stat"><i class="ti ti-device-gamepad-2" style="color:var(--accent)"></i><div><div class="pc-stat-v">'+(s?(s.total_games||0):'…')+'</div><div class="pc-stat-l">games</div></div></div>'
@@ -21839,6 +21853,7 @@ async function openPlayerCard(name,anchor){
       +(topics.length?'<div class="pc-panel pc-most"><span class="pc-cap">PLAYS MOST</span>'+pfBars(topics.map(t=>typeof t==='string'?{name:t}:t))+'</div>':'')
       +(since?'<div class="pc-foot">Playing since '+since+'</div>':'')
       +'</div>';
+    fitNameInto(c.querySelector('.pc-name'),name,16);
     // anchor beside the row: prefer the left side, fall back to right, clamp vertically
     const r=anchor.getBoundingClientRect(),w=c.offsetWidth,hh=c.offsetHeight;
     let x=r.left-w-14;if(x<12)x=Math.min(r.right+14,innerWidth-w-12);
