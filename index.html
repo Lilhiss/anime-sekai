@@ -10913,6 +10913,14 @@ function toggleRecapReport(i){
   const drop=document.getElementById('recapDrop_'+i);
   if(drop)drop.classList.toggle('open');
 }
+// All question reports go through this one RPC, which logs the report and bumps report_count server-side
+async function submitQuestionReport(id,reason,detail){
+  if(!id||SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{
+    const{error}=await sb.rpc('report_question',{p_question_id:id,p_reason:reason||'other',p_detail:detail||null,p_reported_by:currentUser||null});
+    if(error)console.warn('report_question failed',error);
+  }catch(e){console.warn('report_question failed',e);}
+}
 async function submitRecapReport(i,qid){
   const btn=document.getElementById('rrBtn_'+i);
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
@@ -10920,16 +10928,7 @@ async function submitRecapReport(i,qid){
   const reason=reasonEl?reasonEl.value:'other';
   const detail=document.getElementById('rrDetail_'+i)?.value?.trim()||'';
   const id=qid||quizHistory[i]?.id;
-  if(id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    const{error:rpcErr}=await sb.rpc('increment_report_count',{question_id:id});
-    if(rpcErr){
-      const{data:qRow}=await sb.from('questions').select('report_count').eq('id',id).single();
-      if(qRow)await sb.from('questions').update({report_count:(qRow.report_count||0)+1}).eq('id',id);
-    }
-    await sb.from('question_reports').insert({
-      question_id:id,reason,detail:detail||null,reported_by:currentUser||null
-    });
-  }
+  await submitQuestionReport(id,reason,detail);
   if(id)reportedQuestionIds.add(id);
   document.getElementById('recapDrop_'+i)?.classList.remove('open');
   const flagBtn=document.getElementById('recapReportBtn_'+i);
@@ -11674,16 +11673,7 @@ async function flagQuestion(){
   const btn=document.getElementById('reportFlagBtn');
   if(!btn||btn.disabled)return;
   btn.disabled=true;
-  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    const {error:rpcErr}=await sb.rpc('increment_report_count',{question_id:currentQData.id});
-    if(rpcErr){
-      const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
-      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
-    }
-    await sb.from('question_reports').insert({
-      question_id:currentQData.id,reason:'other',detail:null,reported_by:currentUser||null
-    }).catch(()=>{});
-  }
+  await submitQuestionReport(currentQData?.id,'other',null);
   const _ft=document.createElement('div');
   _ft.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:\'Lilita One\',cursive;font-size:14px;padding:12px 24px;border-radius:99px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toastIn .3s ease;white-space:nowrap';
   _ft.textContent='Thanks for flagging! We’ll review this question. 🚩';
@@ -13709,19 +13699,9 @@ async function flagMpQuestion(){
   btn.disabled=true;
   btn.innerHTML='<i class="ti ti-flag" style="font-size:13px"></i> Flagged 🚩';
   const isCapped=mpPlayerIsCapped(currentUser);
-  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    const {error:rpcErr}=await sb.rpc('increment_report_count',{question_id:currentQData.id});
-    if(rpcErr){
-      const {data}=await sb.from('questions').select('report_count').eq('id',currentQData.id).single().catch(()=>({data:null}));
-      if(data)await sb.from('questions').update({report_count:(data.report_count||0)+1}).eq('id',currentQData.id).catch(()=>{});
-    }
-    await sb.from('question_reports').insert({
-      question_id:currentQData.id,
-      reason:isCapped?'flag_capped':'other',
-      detail:isCapped?'Flagged while over rolling cap — not counted toward void tally':null,
-      reported_by:currentUser||null
-    }).catch(()=>{});
-  }
+  await submitQuestionReport(currentQData?.id,
+    isCapped?'flag_capped':'other',
+    isCapped?'Flagged while over rolling cap — not counted toward void tally':null);
   if(currentQData?.id)reportedQuestionIds.add(currentQData.id);
   if(isCapped){mpRollingWindowRecord(currentUser,'flagged');return;}
   if(rtChannel){
@@ -16540,13 +16520,7 @@ function mpVoidQuestion(){
   const el=document.getElementById('mpAutoNext');
   if(el)el.innerHTML='<span style="color:#f87171">⚠️ Question voided. Flagged by multiple players, no points awarded.</span>';
   // Log to question_reports
-  if(currentQData?.id&&!SUPABASE_URL.includes('YOUR_PROJECT')){
-    sb.from('question_reports').insert({
-      question_id:currentQData.id,reason:'auto_voided_multi_flag',
-      detail:`Voided in lobby — ${mpFlagsThisQuestion.size} flags`,
-      reported_by:currentUser||null
-    }).catch(()=>{});
-  }
+  submitQuestionReport(currentQData?.id,'auto_voided_multi_flag',`Voided in lobby — ${mpFlagsThisQuestion.size} flags`);
 }
 
 // ── SCORE RACE WIN DETECTION ─────────────────────────────────
