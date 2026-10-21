@@ -10503,16 +10503,18 @@ function activeTopicParts(name){
   const ok=new Set((topicPartsByName[name]||[]).filter(p=>p.n>=PART_MIN_QUESTIONS).map(p=>p.id));
   return ids.filter(id=>ok.has(id));
 }
-function partsRowHTML(topics,map,isText,handler){
-  if(!isText)return '';
+// fmtKey: 'mc' or 'type' (the answer style being played), or null to hide the row for non-Text formats.
+// Chips show that style's count, matching the footer; greying out still uses both styles together.
+function partsRowHTML(topics,map,fmtKey,handler){
+  if(fmtKey!=='mc'&&fmtKey!=='type')return '';
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return (topics||[]).filter(t=>t&&topicPartsByName[t.name]).map(t=>{
     const sel=new Set(map[t.name]||[]), nm=esc(t.name);
     const chip=(label,on,part,thin,n)=>'<button class="pt-chip'+(on?' on':'')+'" data-topic="'+nm+'" data-part="'+part+'"'
-      +(thin?' disabled title="Only '+n+' question'+(n===1?'':'s')+' so far"':'')+' onclick="'+handler+'(this)">'+label+'</button>';
+      +(thin?' disabled title="Only '+n+' Text question'+(n===1?'':'s')+' so far, needs '+PART_MIN_QUESTIONS+'"':'')+' onclick="'+handler+'(this)">'+label+'</button>';
     return '<div class="pt-row"><span class="pt-topic">'+nm+'</span>'
       +chip('All parts',!sel.size,'',false)
-      +topicPartsByName[t.name].map(p=>chip(esc(p.name)+' <i>'+p.n+'</i>',sel.has(p.id),p.id,p.n<PART_MIN_QUESTIONS,p.n)).join('')
+      +topicPartsByName[t.name].map(p=>chip(esc(p.name)+' <i>'+(p[fmtKey]||0)+'</i>',sel.has(p.id),p.id,p.n<PART_MIN_QUESTIONS,p.n)).join('')
       +'</div>';
   }).join('');
 }
@@ -15432,7 +15434,7 @@ function gsRenderPicked(){
   }
   gsRenderPickedPop();
   const partsEl=document.getElementById('gsParts');
-  if(partsEl)partsEl.innerHTML=lobbyIsGeneral?'':partsRowHTML(sel,lobbyTopicParts,lobbyFormat==='mc'||lobbyFormat==='type','gsTogglePart');
+  if(partsEl)partsEl.innerHTML=lobbyIsGeneral?'':partsRowHTML(sel,lobbyTopicParts,lobbyFormat,'gsTogglePart');
   lrUpdateStart();
   const total=gsPoolTotal();
   document.getElementById('gsPoolTotal').textContent=total.toLocaleString();
@@ -21380,7 +21382,7 @@ function suFootSync(){
   note.className='su-note'+(blocked?' warn':'');
   note.innerHTML=html;
   const partsEl=document.getElementById('suParts');
-  if(partsEl)partsEl.innerHTML=isGeneralSelected?'':partsRowHTML(sel,soloTopicParts,suFormat==='text','suTogglePart');
+  if(partsEl)partsEl.innerHTML=isGeneralSelected?'':partsRowHTML(sel,soloTopicParts,suFormat==='text'?suCountKey(suFormat):null,'suTogglePart');
   start.disabled=blocked;
   start.innerHTML=blocked?'START':'START <span class="kbd">⏎</span>';
 }
