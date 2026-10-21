@@ -317,6 +317,17 @@ h1 .hi{color:var(--accent)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
 .q-answer-also{font-size:13px;font-weight:800;color:var(--muted);margin-top:4px}
+.pt-wrap{display:flex;flex-direction:column;gap:6px}
+.pt-wrap:empty{display:none}
+.pt-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.pt-topic{font:900 11px 'Nunito',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.pt-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;background:var(--bg3);border:2px solid var(--border);color:var(--text);font:800 12px 'Nunito',sans-serif;cursor:pointer}
+.pt-chip i{font-style:normal;font-weight:900;font-size:11px;color:var(--muted)}
+.pt-chip:hover:not(:disabled){border-color:var(--accent)}
+.pt-chip.on{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.pt-chip.on i{color:var(--bg);opacity:.75}
+.pt-chip:disabled{opacity:.45;cursor:not-allowed}
+#gsParts{padding:8px 14px 0}
 .q-spoiler{display:block;width:fit-content;margin:0 auto 10px;padding:3px 10px;border-radius:6px;background:#fbbf2426;border:1.5px solid #d97706;color:#b45309;font:900 11px 'Nunito',sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .q-answer-sub-name{color:#fff}
 .q-fallback-hint{font-size:11px;color:#fbbf24;font-weight:700;margin-top:8px;display:flex;align-items:center;gap:4px}
@@ -5607,6 +5618,7 @@ function lzRenderChars(reroll){
             <div class="su-chipwrap"><span id="suChips" style="display:contents"></span><span class="su-chipempty">No anime picked yet</span></div>
             <button class="su-spoil" id="suSpoil" onclick="suToggleSpoilers()" aria-pressed="false" title="Skip questions that reveal twists, fates or hidden identities"><span class="su-spoil-sw"></span>HIDE SPOILERS</button>
           </div>
+          <div class="pt-wrap" id="suParts"></div>
           <div class="su-note" id="suNote"></div>
         </div>
         <div class="su-vr"></div>
@@ -5949,6 +5961,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
                     <button class="tp-add" id="gsPvAdd" style="display:none" onclick="gsAddHighlighted()"><i class="ti ti-plus" style="font-size:14px"></i> <span id="gsPvAddLabel">ADD THIS TOPIC</span> <span class="kbd">SPACE</span></button>
                   </div>
                 </div>
+                <div class="pt-wrap" id="gsParts"></div>
                 <div class="tp-foot">
                   <span class="tp-foot-l" id="gsPickedLabel" style="display:none"></span>
                   <span class="tp-chips" id="gsPickedChips" onclick="event.stopPropagation();gsTogglePickedPop()" title="See all picked topics"></span>
@@ -10397,9 +10410,10 @@ function shuffleOptions(qData,rng){
 }
 async function fetchQuestion(){
   const _t=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
-  const bankTopic=_t?{type:_t.type,value:_t.name}:{type:'all',value:''};
   // char-mc fetches char questions but builds MC options from distractors
   const fetchFmt = selectedFormat==='char-mc' ? 'char' : selectedFormat;
+  const parts=_t&&(fetchFmt==='mc'||fetchFmt==='type')?activeTopicParts(_t.name):[];
+  const bankTopic=_t?{type:_t.type,value:_t.name,parts}:{type:'all',value:'',parts:[]};
   const banked=await sbGetQuestion(fetchFmt,bankTopic);
   if(banked){
     /*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/
@@ -10464,6 +10478,61 @@ function suToggleSpoilers(){
   if(currentUserId&&!isGuest&&!SUPABASE_URL.includes('YOUR_PROJECT'))sb.from('profiles').update({hide_spoilers:soloHideSpoilers}).eq('id',currentUserId).then(()=>{},()=>{});
 }
 suSyncSpoilers();
+
+// Parts (Naruto Part 1 / Shippuden, JoJo parts…). Picks are kept per topic name, apart from the
+// topic objects, since those get rebuilt in many places; no entry means "All parts". Parts only
+// narrow Text questions (mc/type) — character and scene questions cover the whole show.
+const PART_MIN_QUESTIONS=20; // a thinner part is greyed out so games don't loop on a few questions
+let topicPartsByName={};     // topic name -> [{id,name,n}] in story order, from topic_part_counts()
+let soloTopicParts={}, lobbyTopicParts={}; // topic name -> [part ids]; the lobby's copy is saved in lobbies.settings.topicParts
+async function loadTopicParts(){
+  if(SUPABASE_URL.includes('YOUR_PROJECT'))return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/topic_part_counts`,{method:'POST',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},body:'{}'});
+    const rows=await r.json();
+    if(!Array.isArray(rows))return;
+    const m={};
+    rows.forEach(p=>{(m[p.topic_value]=m[p.topic_value]||[]).push({id:p.id,name:p.name,n:Number(p.n)||0});});
+    topicPartsByName=m;
+    if(typeof suFootSync==='function')suFootSync();
+    if(typeof gsRenderPicked==='function'&&document.getElementById('gsPickedLabel'))gsRenderPicked();
+  }catch(e){}
+}
+// Part ids in play for a topic right now (thin parts are never sent, even if a stale pick names one)
+function activeTopicParts(name){
+  const ids=(currentLobbyId?lobbyTopicParts:soloTopicParts)[name]||[];
+  const ok=new Set((topicPartsByName[name]||[]).filter(p=>p.n>=PART_MIN_QUESTIONS).map(p=>p.id));
+  return ids.filter(id=>ok.has(id));
+}
+function partsRowHTML(topics,map,isText,handler){
+  if(!isText)return '';
+  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return (topics||[]).filter(t=>t&&topicPartsByName[t.name]).map(t=>{
+    const sel=new Set(map[t.name]||[]), nm=esc(t.name);
+    const chip=(label,on,part,thin,n)=>'<button class="pt-chip'+(on?' on':'')+'" data-topic="'+nm+'" data-part="'+part+'"'
+      +(thin?' disabled title="Only '+n+' question'+(n===1?'':'s')+' so far"':'')+' onclick="'+handler+'(this)">'+label+'</button>';
+    return '<div class="pt-row"><span class="pt-topic">'+nm+'</span>'
+      +chip('All parts',!sel.size,'',false)
+      +topicPartsByName[t.name].map(p=>chip(esc(p.name)+' <i>'+p.n+'</i>',sel.has(p.id),p.id,p.n<PART_MIN_QUESTIONS,p.n)).join('')
+      +'</div>';
+  }).join('');
+}
+function togglePartIn(map,btn){
+  const name=btn.dataset.topic, id=btn.dataset.part;
+  if(!id){delete map[name];return;}
+  const cur=new Set(map[name]||[]);
+  if(cur.has(id))cur.delete(id);else cur.add(id);
+  if(cur.size)map[name]=[...cur];else delete map[name];
+}
+function suTogglePart(btn){togglePartIn(soloTopicParts,btn);prefetchedQuestion=null;suFootSync();}
+function gsTogglePart(btn){if(!isHost)return;togglePartIn(lobbyTopicParts,btn);prefetchedQuestion=null;gsAfterChange();}
+// Only the picked topics' parts are saved, so dropping a topic drops its part picks too
+function lobbyTopicPartsForSave(){
+  const out={};
+  (lobbyTopics||[]).forEach(t=>{if(t&&lobbyTopicParts[t.name]&&lobbyTopicParts[t.name].length)out[t.name]=lobbyTopicParts[t.name].slice();});
+  return out;
+}
+loadTopicParts();
 
 function buildCharMcQuestion(q){
   // q.distractors is an array of 3 wrong character names from the DB
@@ -10625,7 +10694,7 @@ async function sbGetQuestion(format,topic){
     const qRes=await fetch(`${SUPABASE_URL}/rest/v1/rpc/pick_question`,{
       method:'POST',
       headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},
-      body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude,p_hide_spoilers:spoilersHidden()})
+      body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude,p_hide_spoilers:spoilersHidden(),p_part_ids:topic.parts&&topic.parts.length?topic.parts:null})
     });
     const data=await qRes.json();
     if(!Array.isArray(data)||!data.length)return null;
@@ -12203,7 +12272,6 @@ function rtSubscribe(lobbyId){
     }
   });
   rtChannel.on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},async()=>{
-    console.log('lobby_players change detected');
     await rtRefreshPlayers(lobbyId);
     // If the host_transferred broadcast already handled this, lobbyPlayers will have a host — skip.
     if(isHost)return;
@@ -12758,6 +12826,7 @@ function rtSubscribe(lobbyId){
       if(btn){btn.classList.toggle('on',lobbyShowTyping);btn.setAttribute('aria-pressed',lobbyShowTyping);}
     }
     if(payload.hideSpoilers!=null)lobbyHideSpoilers=!!payload.hideSpoilers;
+    if(payload.topicParts&&typeof payload.topicParts==='object')lobbyTopicParts={...payload.topicParts};
     if(typeof gsSyncUI==='function')gsSyncUI();
     const label=document.getElementById('lobbySettingsLabel');
     const hint=document.getElementById('lobbySettingsHint');
@@ -14811,6 +14880,7 @@ function applyLobbySettings(s){
   if(typeof s.autoAdvance==='boolean')lobbyAutoAdvance=s.autoAdvance;
   if(typeof s.locked==='boolean')window.lobbyLocked=s.locked;
   lobbyHideSpoilers=s.hideSpoilers===true;
+  lobbyTopicParts=(s.topicParts&&typeof s.topicParts==='object'&&!Array.isArray(s.topicParts))?{...s.topicParts}:{};
 }
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
@@ -14824,13 +14894,14 @@ function broadcastLobbySettings(changing){
     timeLimit:raceTimeLimit,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,
     srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,questionLimit:selectedQuestionLimit,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping,
     pointsPerCorrect:lobbyPointsPerCorrect,maxPlayers:lobbyMaxPlayers,lateJoin:lobbyLateJoin,autoAdvance:lobbyAutoAdvance,locked:!!window.lobbyLocked,
-    hideSpoilers:!!lobbyHideSpoilers}; // mp_advance_question reads hideSpoilers from this row
+    hideSpoilers:!!lobbyHideSpoilers,topicParts:lobbyTopicPartsForSave()}; // mp_advance_question reads hideSpoilers and topicParts from this row
   if(isHost)patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled,lives:(lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:null),settings});
   if(rtChannel){
     const _tsl=document.getElementById('gsTopicList');
     const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,topicScrollTop:_tsl?_tsl.scrollTop:0,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping};
     payload.pointsPerCorrect=lobbyPointsPerCorrect;payload.maxPlayers=lobbyMaxPlayers;payload.lateJoin=lobbyLateJoin;payload.autoAdvance=lobbyAutoAdvance;
     payload.hideSpoilers=!!lobbyHideSpoilers;
+    payload.topicParts=lobbyTopicPartsForSave();
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -15386,6 +15457,8 @@ function gsRenderPicked(){
     }).join('')+(hidden>0?'<span class="tp-sep">·</span><span class="tp-more-t">+'+hidden+' more</span>':'');
   }
   gsRenderPickedPop();
+  const partsEl=document.getElementById('gsParts');
+  if(partsEl)partsEl.innerHTML=lobbyIsGeneral?'':partsRowHTML(sel,lobbyTopicParts,lobbyFormat==='mc'||lobbyFormat==='type','gsTogglePart');
   lrUpdateStart();
   const total=gsPoolTotal();
   document.getElementById('gsPoolTotal').textContent=total.toLocaleString();
@@ -15692,6 +15765,7 @@ async function leaveLobbyRoom(){
   voidingEnabled=false; // reset so next lobby starts with the safe default
   lobbyShowTyping=true; // reset to default
   lobbyHideSpoilers=false; // next lobby starts with spoilers allowed, the default
+  lobbyTopicParts={};
   currentLobbyId=null;
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
@@ -17844,12 +17918,13 @@ async function sendAdminReply(id){
 }
 async function clearAdminReply(id){
   if(!confirm('Remove this reply? The player will no longer see it.'))return;
-  await sb.from('contact_messages').update({reply:null,replied_at:null,read_at:null}).eq('id',id).catch(()=>{});
+  // Query builders have no .catch(), so it threw before the update ever ran
+  try{await sb.from('contact_messages').update({reply:null,replied_at:null,read_at:null}).eq('id',id);}catch(e){}
   await fetchAdminMessages();
 }
 async function deleteAdminMessage(id){
   if(!confirm('Delete this message?'))return;
-  await sb.from('contact_messages').delete().eq('id',id).catch(()=>{});
+  try{await sb.from('contact_messages').delete().eq('id',id);}catch(e){}
   document.getElementById('msg-row-'+id)?.remove();
   const remaining=document.querySelectorAll('[id^="msg-row-"]').length;
   if(!remaining)document.getElementById('adminMessages').innerHTML='<div class="admin-empty" style="color:var(--muted)">No messages yet.</div>';
@@ -21325,6 +21400,8 @@ function suFootSync(){
   }
   note.className='su-note'+(blocked?' warn':'');
   note.innerHTML=html;
+  const partsEl=document.getElementById('suParts');
+  if(partsEl)partsEl.innerHTML=isGeneralSelected?'':partsRowHTML(sel,soloTopicParts,suFormat==='text','suTogglePart');
   start.disabled=blocked;
   start.innerHTML=blocked?'START':'START <span class="kbd">⏎</span>';
 }
