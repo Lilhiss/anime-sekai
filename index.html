@@ -316,6 +316,7 @@ h1 .hi{color:var(--accent)}
 .q-card.answered{border-color:var(--accent);background:var(--accent-soft)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
+.q-answer-also{font-size:13px;font-weight:800;color:var(--muted);margin-top:4px}
 .q-answer-sub-name{color:#fff}
 .q-fallback-hint{font-size:11px;color:#fbbf24;font-weight:700;margin-top:8px;display:flex;align-items:center;gap:4px}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
@@ -548,6 +549,7 @@ body .quiz-stage .q-panel.wrong{box-shadow:14px 14px 0 #0d1236,0 0 0 3px #f87171
 body .quiz-stage .q-panel .q-text{color:#1f2657;text-shadow:none}
 body .quiz-stage .q-panel .q-series,body .quiz-stage .q-panel .q-fuzzy-note{color:#5561ae}
 body .quiz-stage .q-panel .q-answer-reveal{color:#1f2657}
+body .quiz-stage .q-panel .q-answer-also{color:#1f2657;opacity:.65}
 body .quiz-stage .q-panel .q-nextbar-label{color:#1f2657}
 body .quiz-stage .q-panel .q-nextbar-track{background:#1f265722}
 body .quiz-stage .q-panel .q-panel-tag{background:#1f2657;color:#F6C98E;border-color:#F6C98E}
@@ -673,6 +675,7 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .q-series i{font-size:15px;flex:none}
 .quiz-stage .q-series i{font-size:22px}
 .quiz-stage .q-answer-reveal{font-size:clamp(32px,4.2vw,48px);line-height:1.2}
+.quiz-stage .q-answer-also{font-size:clamp(15px,1.4vw,19px);margin-top:6px}
 .q-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%;padding:0}
 .quiz-stage .q-loading-text{font-family:'Lilita One',cursive;font-size:22px;color:var(--muted);letter-spacing:.04em;font-weight:400}
 
@@ -745,6 +748,7 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .quiz-stage .type-points{flex:none;font-family:'Lilita One',cursive;font-size:34px;color:#4ade80;text-shadow:0 0 24px #4ade8099;animation:qFloat 2.4s ease-in-out infinite}
 .quiz-stage .type-reveal{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:#4ade801a;border:2px solid #4ade8066;padding:5px 18px}
 .quiz-stage .type-reveal-a{font-family:'Lilita One',cursive;font-size:22px;color:#4ade80}
+.quiz-stage .type-reveal-or{font:800 13px 'Nunito',sans-serif;color:#15803d}
 
 /* race target bar */
 .quiz-stage .race-bar{flex:none;background:var(--bg2);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--border);padding:12px 16px 16px;display:flex;flex-direction:column;gap:9px}
@@ -10017,7 +10021,7 @@ async function loadDailyQuestions(){
       const rows=await r.json();
       if(Array.isArray(rows)&&rows.length){
         // Options are still shuffled with the date seed, so everyone sees the same order
-        return rows.slice(0,DAILY_COUNT).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[]},rng));
+        return rows.slice(0,DAILY_COUNT).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[]},rng));
       }
     }catch(e){}
   }
@@ -10595,7 +10599,7 @@ async function sbGetQuestion(format,topic){
     const data=await qRes.json();
     if(!Array.isArray(data)||!data.length)return null;
     const row=data[0];
-    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
+    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
   }catch(e){return null}
 }
 
@@ -10615,18 +10619,38 @@ async function sbMarkSeen(userId,questionId){
     });
   }catch(e){}
 }
-function checkAnswer(userInput,qData){
-  const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
-  const aliases=qData.aliases||[];
-  const normalize=s=>s.toLowerCase().trim().replace(/-/g,' ').replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
+// Mirrors mp_match_answer() in Supabase rule for rule — change both together or solo and
+// multiplayer will disagree. Returns {text,alt} for the answer that matched, or null.
+// The main answer and its aliases are checked first, then each alt_answers entry in order.
+function answerMatch(userInput,qData){
+  const normalize=s=>String(s??'').toLowerCase().trim().replace(/-/g,' ').replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
   // Collapse common romanization long-vowel variants so ou/uu/oo match o/u bidirectionally
   const deRomanize=s=>normalize(s).replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u');
   // For two-word names, sort the words alphabetically so "first last" and "last first" compare equal
   const nameOrderKey=s=>{const w=normalize(s).split(' ').filter(Boolean);return w.length===2?[...w].sort().join(' '):normalize(s);};
   const userN=normalize(userInput);
+  if(!userN)return null;
   const userR=deRomanize(userInput);
   const userO=nameOrderKey(userInput);
-  return [canonical,...aliases].some(a=>normalize(a)===userN||deRomanize(a)===userR||nameOrderKey(a)===userO);
+  const hits=list=>list.some(a=>a&&(normalize(a)===userN||deRomanize(a)===userR||nameOrderKey(a)===userO));
+  const canonical=qData.options?qData.options[qData.answer]:(qData.answer||'');
+  if(hits([...(Array.isArray(qData.aliases)?qData.aliases:[]),canonical]))return{text:canonical,alt:false};
+  if(qData.options)return null; // alt answers only apply to typed questions
+  for(const e of (Array.isArray(qData.alt_answers)?qData.alt_answers:[])){
+    const text=typeof e==='string'?e:e&&e.text;
+    if(!text)continue;
+    if(hits([...(e&&Array.isArray(e.aliases)?e.aliases:[]),text]))return{text,alt:true};
+  }
+  return null;
+}
+function checkAnswer(userInput,qData){return !!answerMatch(userInput,qData);}
+// Answer block for the revealed question card. A player who typed an alt answer sees it
+// first with the main answer under "Also correct"; anyone else sees the main answer plus every alt.
+function answerRevealHTML(correctAns,qData,match){
+  const alts=(!qData||qData.options||!Array.isArray(qData.alt_answers))?[]:qData.alt_answers.map(e=>typeof e==='string'?e:e&&e.text).filter(Boolean);
+  if(match&&match.alt)return`<div class="q-answer-reveal">${match.text}</div><div class="q-answer-also">Also correct: ${correctAns}</div>`;
+  const also=match?'':(alts.length?`<div class="q-answer-also">Also correct: ${alts.join(', ')}</div>`:'');
+  return`<div class="q-answer-reveal">${correctAns}</div>${also}`;
 }
 async function loadQuestion(){
   answered=false;
@@ -10727,7 +10751,9 @@ function checkTypeAnswer(){
   const input=document.getElementById('typeInput');
   if(!input||!input.value.trim())return;
   const userAns=input.value.trim();
-  const correct=checkAnswer(userAns,currentQData);
+  const match=answerMatch(userAns,currentQData);
+  const correct=!!match;
+  if(match)currentQData._match=match;
   const canonicalAns=currentQData.answer||'';
   if(!correct){
     sfxWrongAttempt();
@@ -10756,6 +10782,7 @@ function checkTypeAnswer(){
   score+=taPts;lastPtsEarned=taPts;
   quizHistory[quizHistory.length-1].userAns=userAns;
   quizHistory[quizHistory.length-1].correct=true;
+  if(match.alt)quizHistory[quizHistory.length-1].correctAns=match.text;
   showFeedback(true,canonicalAns,userAns);
   renderHUD();
 }
@@ -10833,7 +10860,7 @@ function showFeedback(correct,correctAns,userAns,override){
   const qCard=document.querySelector('#page-quiz .q-card');
   const qText=document.getElementById('questionText');
   const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-  qText.innerHTML=`${seriesTagHTML(currentQData)}${sceneLogoHTML(currentQData)}<div class="q-answer-reveal">${correctAns}</div>${subBy}${fallbackHintHTML(currentQData)}`;
+  qText.innerHTML=`${seriesTagHTML(currentQData)}${sceneLogoHTML(currentQData)}${answerRevealHTML(correctAns,currentQData,currentQData&&currentQData._match)}${subBy}${fallbackHintHTML(currentQData)}`;
   if(qCard)qCard.classList.add('answered');
   document.getElementById('fbSubmittedBy').style.display='none';
   applyTheme();
@@ -16144,7 +16171,9 @@ async function mpCheckTypeAnswer(){
   // accept and lock in an answer, since question_answers allows exactly one
   // submission per player per question — calling it on every wrong keystroke
   // would permanently record the first wrong guess and break retries.
-  const correct=checkAnswer(userAns,currentQData);
+  const match=answerMatch(userAns,currentQData);
+  const correct=!!match;
+  if(match)currentQData._match=match;
   const isHP=lobbyMode==='potato';
   if(!correct){
     sfxWrongAttempt();
@@ -16194,6 +16223,7 @@ async function mpCheckTypeAnswer(){
     const useRpc=(lobbyMode==='race'||lobbyMode==='classic'||lobbyMode==='survival')&&selectedFormat!=='char-mc';
     input.classList.add('correct-input');
     quizHistory[quizHistory.length-1].userAns=userAns;quizHistory[quizHistory.length-1].correct=true;
+    if(match.alt)quizHistory[quizHistory.length-1].correctAns=match.text;
     mpShowFeedback(true,currentQData.answer,userAns,null,null,false,null,true);
     renderMPHUD();
     let mpTaPts;
@@ -16209,6 +16239,7 @@ async function mpCheckTypeAnswer(){
         // the server is the one that actually pays out points, so its verdict
         // decides the score even though the reveal already fired.
         if(!data.correct)console.error('mp_submit_answer disagreed with local checkAnswer() — normalizer drift?',data);
+        else if(data.matched!=null&&data.matched!==match.text)console.error('mp_match_answer matched a different answer than local answerMatch() — matcher drift?',data,match);
       } else {
         // Couldn't reach the server — fall back to local scoring rather than
         // stalling the score sync on a network blip. The reveal already fired.
@@ -16378,7 +16409,7 @@ function mpShowFeedback(correct,correctAns,userAns,override,playerName,remote,ne
   const mpQCard=document.querySelector('#page-mp-quiz .q-card');
   const mpQText=document.getElementById('mpQuestionText');
   const mpSubBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-  mpQText.innerHTML=`${sceneLogoHTML(currentQData)}<div class="q-answer-reveal">${correctAns}</div>${mpSubBy}${fallbackHintHTML(currentQData)}`;
+  mpQText.innerHTML=`${sceneLogoHTML(currentQData)}${answerRevealHTML(correctAns,currentQData,currentQData&&currentQData._match)}${mpSubBy}${fallbackHintHTML(currentQData)}`;
   if(mpQCard)mpQCard.classList.add('answered');
   if(mpSubEl)mpSubEl.style.display='none';
   applyTheme();
@@ -16930,6 +16961,9 @@ function srApplyBuzzResult(name,correct,timedOut,userAns,buzzRatio){
   const correctAns=currentQData.options?currentQData.options[currentQData.answer]:currentQData.answer;
   if(correct){
     srRoundActive=false;
+    // Every client works out what the winner matched, so all reveals show the same answer
+    const srMatch=userAns?answerMatch(userAns,currentQData):null;
+    if(srMatch)currentQData._match=srMatch;
     const p=lobbyPlayers.find(lp=>lp.name===name);
     if(p)p.score++;
     if(name===currentUser)score++;
@@ -17059,7 +17093,7 @@ function srShowFeedback(correct,name,correctAns,userAns,timedOut,buzzRatio){
     srChars.forEach((_,i)=>{const el=document.getElementById('src'+i);if(el)el.classList.add('visible');});
     const mpQText=document.getElementById('mpQuestionText');
     const subBy=currentQData?.submitted_by?`<div class="q-answer-sub">Question submitted by <span class="q-answer-sub-name">${currentQData.submitted_by}</span></div>`:'';
-    mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div><div class="q-answer-reveal">${correctAns}</div>${subBy}${fallbackHintHTML(currentQData)}`;
+    mpQText.innerHTML=`<div class="sr-full-question">${currentQData.question}</div><div class="sr-answer-divider"></div>${answerRevealHTML(correctAns,currentQData,currentQData&&currentQData._match)}${subBy}${fallbackHintHTML(currentQData)}`;
     applyTheme();
   }
 }
@@ -20640,6 +20674,10 @@ function resolveTypeField(correct,canonical,typed){
   if(!field)return;
   field.classList.add(correct?'correct':'wrong');
   const pts=(typeof lastPtsEarned!=='undefined'&&lastPtsEarned)||0;
+  // A typed alt answer shows as itself; a miss lists the alt answers next to the main one
+  const qd=typeof currentQData!=='undefined'?currentQData:null;
+  if(correct&&qd&&qd._match&&qd._match.alt)canonical=qd._match.text;
+  const alts=(!correct&&qd&&!qd.options&&Array.isArray(qd.alt_answers))?qd.alt_answers.map(e=>typeof e==='string'?e:e&&e.text).filter(Boolean):[];
   field.innerHTML=correct
     ? '<i class="ti ti-check" style="font-size:28px;color:#4ade80"></i>'
       +'<div style="flex:1;min-width:0;text-align:left"><div class="type-canon">'+canonical+'</div>'
@@ -20650,7 +20688,8 @@ function resolveTypeField(correct,canonical,typed){
   const second=document.getElementById('typeSecond');
   if(second){
     second.innerHTML=correct?'':'<span class="type-second-label">THE ANSWER</span>'
-      +'<div class="type-reveal"><span class="type-reveal-a">'+canonical+'</span></div>';
+      +'<div class="type-reveal"><span class="type-reveal-a">'+canonical+'</span>'
+      +(alts.length?'<span class="type-reveal-or">also correct: '+alts.join(', ')+'</span>':'')+'</div>';
   }
   const submit=document.getElementById('typeSubmitBtn');
   if(submit){submit.innerHTML='NEXT <i class="ti ti-chevron-right" style="font-size:18px"></i>';submit.onclick=()=>nextQuestion();submit.disabled=false;}
