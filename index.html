@@ -317,6 +317,7 @@ h1 .hi{color:var(--accent)}
 .q-answer-reveal{font-family:"Lilita One",cursive;font-size:clamp(22px,3.2vw,32px);color:var(--accent);line-height:1.35}
 .q-answer-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
 .q-answer-also{font-size:13px;font-weight:800;color:var(--muted);margin-top:4px}
+.q-spoiler{display:block;width:fit-content;margin:0 auto 10px;padding:3px 10px;border-radius:6px;background:#fbbf2426;border:1.5px solid #d97706;color:#b45309;font:900 11px 'Nunito',sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .q-answer-sub-name{color:#fff}
 .q-fallback-hint{font-size:11px;color:#fbbf24;font-weight:700;margin-top:8px;display:flex;align-items:center;gap:4px}
 .q-card.type-mode{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
@@ -1728,6 +1729,13 @@ body.on-setup nav,body.on-setup footer{display:none}
 #page-setup .su-chipwrap{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;align-content:center}
 #page-setup .su-chipempty{font-size:13px;font-weight:800;color:var(--muted)}
 #page-setup .su-tagrow.has-topics .su-chipempty{display:none}
+#page-setup .su-spoil{flex:none;align-self:center;margin-left:auto;display:inline-flex;align-items:center;gap:9px;background:none;border:0;padding:6px 2px;color:var(--muted);font:900 12px 'Nunito',sans-serif;letter-spacing:.06em;cursor:pointer;white-space:nowrap}
+#page-setup .su-spoil-sw{width:34px;height:19px;border-radius:99px;background:var(--border);position:relative;flex:none;transition:background .25s ease}
+#page-setup .su-spoil-sw::after{content:'';position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--muted);transition:left .25s ease,background .25s ease}
+#page-setup .su-spoil.on{color:var(--text)}
+#page-setup .su-spoil.on .su-spoil-sw{background:var(--accent)}
+#page-setup .su-spoil.on .su-spoil-sw::after{left:18px;background:var(--bg)}
+#page-setup .su-spoil:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
 #page-setup .su-note{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--muted);line-height:1.5}
 #page-setup .su-note.warn{color:#f0a0a0}
 #page-setup .su-note.warn b{color:#f8b4b4}
@@ -5597,6 +5605,7 @@ function lzRenderChars(reroll){
           <div class="su-tagrow">
             <button class="su-addtopic" id="suAddTopic" onclick="suOpenPicker()"><i class="ti ti-plus" style="font-size:22px"></i><span id="suAddTopicL">CHOOSE TOPICS</span></button>
             <div class="su-chipwrap"><span id="suChips" style="display:contents"></span><span class="su-chipempty">No anime picked yet</span></div>
+            <button class="su-spoil" id="suSpoil" onclick="suToggleSpoilers()" aria-pressed="false" title="Skip questions that reveal twists, fates or hidden identities"><span class="su-spoil-sw"></span>HIDE SPOILERS</button>
           </div>
           <div class="su-note" id="suNote"></div>
         </div>
@@ -7581,7 +7590,7 @@ async function sbLoadProfile(userId){
     const [statsRes, profileRes]=await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/user_stats?select=*&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}}),
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,theme_color&id=eq.${userId}&limit=1`,
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=avatar_url,theme_color,hide_spoilers&id=eq.${userId}&limit=1`,
         {headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}})
     ]);
     const [statsRows, profileRows]=await Promise.all([statsRes.json(), profileRes.json()]);
@@ -7591,6 +7600,12 @@ async function sbLoadProfile(userId){
     const email=null; // emails are no longer kept on profiles
     const theme_color=(Array.isArray(profileRows)&&profileRows[0]?.theme_color)||null;
     if(userId===currentUserId||!currentUserId){profileColorKey=pfPair(theme_color)?theme_color:'auto';try{localStorage.setItem('as_pf_color',profileColorKey);}catch(e){}}
+    // A signed-in player's spoiler choice follows them across devices
+    if(userId===currentUserId&&!isGuest&&Array.isArray(profileRows)&&typeof profileRows[0]?.hide_spoilers==='boolean'){
+      soloHideSpoilers=profileRows[0].hide_spoilers;
+      try{localStorage.setItem('as_hide_spoilers',soloHideSpoilers?'1':'0');}catch(e){}
+      suSyncSpoilers();
+    }
     return {...stats, avatar_url, email, theme_color};
   }catch(e){return null;}
 }
@@ -10021,7 +10036,7 @@ async function loadDailyQuestions(){
       const rows=await r.json();
       if(Array.isArray(rows)&&rows.length){
         // Options are still shuffled with the date seed, so everyone sees the same order
-        return rows.slice(0,DAILY_COUNT).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[]},rng));
+        return rows.slice(0,DAILY_COUNT).map(row=>shuffleOptions({id:row.id,question:row.question,options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],spoiler:!!row.spoiler},rng));
       }
     }catch(e){}
   }
@@ -10433,6 +10448,22 @@ function seriesTagHTML(qData){
 function fallbackHintHTML(qData){
   return qData?.is_fallback?'<div class="q-fallback-hint"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Couldn\'t load a question from the database. Showing a fallback question.</div>':'';
 }
+// Spoilers: solo follows the player's own switch (localStorage, plus profiles.hide_spoilers when
+// signed in); a lobby follows the host's setting, which mp_advance_question also reads server-side.
+let soloHideSpoilers=false;try{soloHideSpoilers=localStorage.getItem('as_hide_spoilers')==='1';}catch(e){}
+let lobbyHideSpoilers=false;
+function spoilersHidden(){return currentLobbyId?lobbyHideSpoilers:soloHideSpoilers;}
+// Only ever shows when spoilers are allowed, since hidden ones are never drawn
+function spoilerTagHTML(qData){return qData&&qData.spoiler?'<div class="q-spoiler">⚠ Spoiler</div>':'';}
+function suSyncSpoilers(){const b=document.getElementById('suSpoil');if(b){b.classList.toggle('on',soloHideSpoilers);b.setAttribute('aria-pressed',String(soloHideSpoilers));}}
+function suToggleSpoilers(){
+  soloHideSpoilers=!soloHideSpoilers;
+  try{localStorage.setItem('as_hide_spoilers',soloHideSpoilers?'1':'0');}catch(e){}
+  suSyncSpoilers();
+  prefetchedQuestion=null;
+  if(currentUserId&&!isGuest&&!SUPABASE_URL.includes('YOUR_PROJECT'))sb.from('profiles').update({hide_spoilers:soloHideSpoilers}).eq('id',currentUserId).then(()=>{},()=>{});
+}
+suSyncSpoilers();
 
 function buildCharMcQuestion(q){
   // q.distractors is an array of 3 wrong character names from the DB
@@ -10594,12 +10625,12 @@ async function sbGetQuestion(format,topic){
     const qRes=await fetch(`${SUPABASE_URL}/rest/v1/rpc/pick_question`,{
       method:'POST',
       headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`,'Content-Type':'application/json'},
-      body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude})
+      body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude,p_hide_spoilers:spoilersHidden()})
     });
     const data=await qRes.json();
     if(!Array.isArray(data)||!data.length)return null;
     const row=data[0];
-    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
+    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],spoiler:!!row.spoiler,submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
   }catch(e){return null}
 }
 
@@ -10686,7 +10717,7 @@ function qStageFormat(fmt,qData){
 }
 function showQuestion(qData){
   qStageFormat(selectedFormat,qData);
-  document.getElementById('questionText').innerHTML=seriesTagHTML(qData)+(qData.question||'Question unavailable')+fallbackHintHTML(qData);
+  document.getElementById('questionText').innerHTML=seriesTagHTML(qData)+spoilerTagHTML(qData)+(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   setTopicMark('questionArea',qData);
   const imgWrap=document.getElementById('qImageWrap');
   const imgEl=document.getElementById('qImage');
@@ -12289,6 +12320,7 @@ function rtSubscribe(lobbyId){
     if(payload.maxPlayers!=null)lobbyMaxPlayers=payload.maxPlayers;
     if(payload.lateJoin!=null)lobbyLateJoin=payload.lateJoin;
     if(payload.autoAdvance!=null)lobbyAutoAdvance=payload.autoAdvance;
+    if(payload.hideSpoilers!=null)lobbyHideSpoilers=!!payload.hideSpoilers;
     lives=payload.mode==='survival'?selectedLives:payload.mode==='potato'?hpLives:3;
     document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
     document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
@@ -12725,6 +12757,7 @@ function rtSubscribe(lobbyId){
       const btn=document.getElementById('gsShowTypingToggle');
       if(btn){btn.classList.toggle('on',lobbyShowTyping);btn.setAttribute('aria-pressed',lobbyShowTyping);}
     }
+    if(payload.hideSpoilers!=null)lobbyHideSpoilers=!!payload.hideSpoilers;
     if(typeof gsSyncUI==='function')gsSyncUI();
     const label=document.getElementById('lobbySettingsLabel');
     const hint=document.getElementById('lobbySettingsHint');
@@ -14777,6 +14810,7 @@ function applyLobbySettings(s){
   if(typeof s.lateJoin==='boolean')lobbyLateJoin=s.lateJoin;
   if(typeof s.autoAdvance==='boolean')lobbyAutoAdvance=s.autoAdvance;
   if(typeof s.locked==='boolean')window.lobbyLocked=s.locked;
+  lobbyHideSpoilers=s.hideSpoilers===true;
 }
 function broadcastLobbySettings(changing){
   const isSR=lobbyMode==='slowreveal';
@@ -14789,12 +14823,14 @@ function broadcastLobbySettings(changing){
   const settings={topics:(lobbyTopics||[]).map(t=>({key:t.key,name:t.name,type:t.type||'anime',emoji:t.emoji||''})),isGeneral:!!lobbyIsGeneral,
     timeLimit:raceTimeLimit,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,
     srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,questionLimit:selectedQuestionLimit,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping,
-    pointsPerCorrect:lobbyPointsPerCorrect,maxPlayers:lobbyMaxPlayers,lateJoin:lobbyLateJoin,autoAdvance:lobbyAutoAdvance,locked:!!window.lobbyLocked};
+    pointsPerCorrect:lobbyPointsPerCorrect,maxPlayers:lobbyMaxPlayers,lateJoin:lobbyLateJoin,autoAdvance:lobbyAutoAdvance,locked:!!window.lobbyLocked,
+    hideSpoilers:!!lobbyHideSpoilers}; // mp_advance_question reads hideSpoilers from this row
   if(isHost)patchLobby({format:lobbyFormat,mode:lobbyMode,question_count:qc,voiding_enabled:voidingEnabled,lives:(lobbyMode==='survival'?selectedLives:lobbyMode==='potato'?hpLives:null),settings});
   if(rtChannel){
     const _tsl=document.getElementById('gsTopicList');
     const payload={format:lobbyFormat,mode:lobbyMode,timeLimit:raceTimeLimit,questionCount:qc,topics:lobbyTopics,isGeneral:lobbyIsGeneral,changing:changing,activeTab:gsActiveTab,topicSub:gsTopicSub,topicScrollTop:_tsl?_tsl.scrollTop:0,survivalLives:selectedLives,survivalQuestionLimit:survivalQuestionLimit,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,voidingEnabled:voidingEnabled,showTyping:lobbyShowTyping};
     payload.pointsPerCorrect=lobbyPointsPerCorrect;payload.maxPlayers=lobbyMaxPlayers;payload.lateJoin=lobbyLateJoin;payload.autoAdvance=lobbyAutoAdvance;
+    payload.hideSpoilers=!!lobbyHideSpoilers;
     if(isSR)payload.srTargetScore=srTargetScore;
     if(isRace)payload.mpRaceTarget=mpRaceTarget;
     rtChannel.send({type:'broadcast',event:'settings_changed',payload:payload});
@@ -15134,7 +15170,7 @@ function gsRenderTopic(){gsRenderTopicList();}
    rules right, runtime in the corner. Per-mode numbers live in 35a's 6th cell. */
 var lobbyPointsPerCorrect=100, lobbyMaxPlayers=12, lobbyLateJoin=true, lobbyAutoAdvance=true;
 var gsSavedAt=0;
-const GS_DEF={points:100,time:15,questions:10,max:12,late:true,voiding:false,typing:true,auto:true};
+const GS_DEF={points:100,time:15,questions:10,max:12,late:true,voiding:false,typing:true,auto:true,spoilers:false};
 function gsStep(label,sub,val,unit,fn,min,max){
   return '<div class="st-row"><div class="st-row-t"><b>'+label+'</b><span>'+sub+'</span></div>'
     +'<div class="st-step">'
@@ -15168,7 +15204,8 @@ function gsRenderSettings(){
   rows.push(
     gsStep('Lobby size','Including you',lobbyMaxPlayers,'max','gsNudgeMax',2,12),
     gsTog('Question voiding','Players can void a bad question by majority',voidingEnabled,'gsToggleVoiding'),
-    gsTog('Show answer attempts','Reveal what others typed after the answer',lobbyShowTyping,'gsToggleShowTyping')
+    gsTog('Show answer attempts','Reveal what others typed after the answer',lobbyShowTyping,'gsToggleShowTyping'),
+    gsTog('Hide spoilers','Skip questions that reveal twists, fates or hidden identities',lobbyHideSpoilers,'gsToggleHideSpoilers')
   );
   grid.innerHTML=rows.map((r,i)=>r.replace('<div class="st-row">','<div class="st-row"><span class="st-n">0'+(i+1)+'</span>')).join('');
   gsRenderEstimate();
@@ -15193,10 +15230,11 @@ function gsNudgeTime(d){raceTimeLimit=Math.max(5,Math.min(60,raceTimeLimit+d*5))
 function gsNudgeQuestions(d){selectedQuestionLimit=Math.max(5,Math.min(50,selectedQuestionLimit+d*5));gsAfterChange();}
 function gsNudgeMax(d){lobbyMaxPlayers=Math.max(2,Math.min(12,lobbyMaxPlayers+d));gsAfterChange();}
 function gsToggleLateJoin(){lobbyLateJoin=!lobbyLateJoin;gsAfterChange();}
+function gsToggleHideSpoilers(){lobbyHideSpoilers=!lobbyHideSpoilers;prefetchedQuestion=null;gsAfterChange();}
 function gsResetDefaults(){
   lobbyPointsPerCorrect=GS_DEF.points;raceTimeLimit=GS_DEF.time;selectedQuestionLimit=GS_DEF.questions;
   lobbyMaxPlayers=GS_DEF.max;lobbyLateJoin=GS_DEF.late;voidingEnabled=GS_DEF.voiding;
-  lobbyShowTyping=GS_DEF.typing;lobbyAutoAdvance=GS_DEF.auto;
+  lobbyShowTyping=GS_DEF.typing;lobbyAutoAdvance=GS_DEF.auto;lobbyHideSpoilers=GS_DEF.spoilers;
   const v=document.getElementById('gsVoidingToggle');if(v){v.classList.toggle('on',voidingEnabled);v.setAttribute('aria-pressed',voidingEnabled);}
   const t=document.getElementById('gsShowTypingToggle');if(t){t.classList.toggle('on',lobbyShowTyping);t.setAttribute('aria-pressed',lobbyShowTyping);}
   gsAfterChange();
@@ -15653,6 +15691,7 @@ async function leaveLobbyRoom(){
   intentionalLeave=true;
   voidingEnabled=false; // reset so next lobby starts with the safe default
   lobbyShowTyping=true; // reset to default
+  lobbyHideSpoilers=false; // next lobby starts with spoilers allowed, the default
   currentLobbyId=null;
   try{ sessionStorage.removeItem('current_lobby_id'); }catch(e){}
   if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){
@@ -15970,7 +16009,7 @@ function mpShowQuestion(qData,hpFuse){
   answered=false;
   document.getElementById('mpQCardFeedback').style.display='none';
   const mpRwSQ=document.getElementById('mpReportWrap');if(mpRwSQ)mpRwSQ.style.display='none';
-  document.getElementById('mpQuestionText').innerHTML=seriesTagHTML(qData)+(qData.question||'Question unavailable')+fallbackHintHTML(qData);
+  document.getElementById('mpQuestionText').innerHTML=seriesTagHTML(qData)+spoilerTagHTML(qData)+(qData.question||'Question unavailable')+fallbackHintHTML(qData);
   setTopicMark('mpQPanel',qData);
   const mpImgWrap=document.getElementById('mpQImageWrap');
   const mpImgEl=document.getElementById('mpQImage');
@@ -16747,7 +16786,7 @@ function srStartReveal(qData,startTime){
   // charIdx counts only span-backed characters so it stays in sync with srChars.
   let charIdx=0;
   const words=qData.question.split(' ');
-  textEl.innerHTML=words.map(word=>{
+  textEl.innerHTML=spoilerTagHTML(qData)+words.map(word=>{
     const chars=word.split('').map(ch=>{
       srChars.push(ch); // only non-space chars go into the array
       const span=`<span class="sr-char" id="src${charIdx}">${ch}</span>`;
