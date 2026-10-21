@@ -9885,7 +9885,6 @@ async function loadTopicsFromSupabase(){
       animeSet.set(key,{key,emoji:'',name,type:'anime',counts:countMap[name]||{},posters:posterList(row)});
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    console.log('loadTopicsFromSupabase: anime=',animeTopics.length);
     renderTopicList();
   }catch(e){
     console.error('loadTopicsFromSupabase exception:',e);
@@ -10492,7 +10491,7 @@ async function loadTopicParts(){
     const rows=await r.json();
     if(!Array.isArray(rows))return;
     const m={};
-    rows.forEach(p=>{(m[p.topic_value]=m[p.topic_value]||[]).push({id:p.id,name:p.name,n:Number(p.n)||0});});
+    rows.forEach(p=>{(m[p.topic_value]=m[p.topic_value]||[]).push({id:p.id,name:p.name,n:Number(p.n)||0,mc:Number(p.n_mc)||0,type:Number(p.n_type)||0});});
     topicPartsByName=m;
     if(typeof suFootSync==='function')suFootSync();
     if(typeof gsRenderPicked==='function'&&document.getElementById('gsPickedLabel'))gsRenderPicked();
@@ -12358,8 +12357,6 @@ function rtSubscribe(lobbyId){
     if(p){p.avatar=null;p.hasPfp=false;renderLobbyRoom();}
   });
   rtChannel.on('broadcast',{event:'game_started'},({payload})=>{
-    window._dbgGameStartedRecv=(window._dbgGameStartedRecv||0)+1;
-    console.log('[DBG] game_started RECV #'+window._dbgGameStartedRecv+' at',new Date().toISOString(),'isHost=',isHost,'lobbyInGame(before)=',lobbyInGame);
     // Host already ran this setup in startLobbyGame() and self:true would echo it back
     // with an empty onDone, clobbering the real mpHostFetchAndBroadcast callback
     if(isHost)return;
@@ -12420,9 +12417,6 @@ function rtSubscribe(lobbyId){
       if(mpOwnQuestionBroadcastPending){mpOwnQuestionBroadcastPending=false;return;}
       if(isHost)return; // Hot Potato/char-mc legacy path: host already called mpShowQuestion directly in mpHostFetchAndBroadcast
     }
-    window._dbgQuestionRecv=(window._dbgQuestionRecv||0)+1;
-    console.log('[DEBUG] non-host received question broadcast, qIndex='+payload.qIndex+' q='+(payload.qData&&payload.qData.question));
-    console.log('[DBG] question RECV #'+window._dbgQuestionRecv+' at',new Date().toISOString());
     currentQData=payload.qData;qIndex=payload.qIndex;
     // mpDbQIndex was previously never updated on non-host clients at all — it stayed
     // at its initial 0 for the entire game, so every non-host mp_submit_answer call
@@ -12564,8 +12558,6 @@ function rtSubscribe(lobbyId){
     }
   });
   rtChannel.on('broadcast',{event:'next_question'},({payload})=>{
-    window._dbgNextQRecv=(window._dbgNextQRecv||0)+1;
-    console.log('[DEBUG] next_question received, isHost='+isHost+' qIndex='+payload.qIndex);
     // Our own echo (RPC winner) — already reset and rendered at the send site.
     if(mpOwnNextQPending){mpOwnNextQPending=false;return;}
     mpResetRoundState(payload);
@@ -12947,8 +12939,6 @@ function rtSubscribe(lobbyId){
   // host-gated request. Gating on "do I actually have the data" instead fixes
   // that deadlock while still working for the ordinary non-host rejoin case.
   rtChannel.on('broadcast',{event:'request_game_state'},({payload})=>{
-    window._dbgReqGameStateRecv=(window._dbgReqGameStateRecv||0)+1;
-    console.log('[DBG] request_game_state RECV #'+window._dbgReqGameStateRecv+' at',new Date().toISOString(),'haveCurrentQData=',!!currentQData);
     if(!currentQData)return; // we don't have a live question ourselves — can't help
     // Compute how much time is left on the current question so the rejoining
     // client's timer bar reflects reality rather than resetting to 100 %.
@@ -12989,8 +12979,6 @@ function rtSubscribe(lobbyId){
   // In that case, drop the client into a visible spectator state rather than
   // half-rendering a broken question.
   rtChannel.on('broadcast',{event:'game_state_snapshot'},({payload})=>{
-    window._dbgSnapshotRecv=(window._dbgSnapshotRecv||0)+1;
-    console.log('[DBG] game_state_snapshot RECV #'+window._dbgSnapshotRecv+' at',new Date().toISOString(),'isHost=',isHost,'haveCurrentQData=',!!currentQData,'willIgnore=',(isHost&&!!currentQData));
     // Ignore only if we're host AND already have a live question (we sent this
     // ourselves, or became host between sending the request and receiving the
     // echo). A rejoining original host can still be isHost=true with no
@@ -13140,21 +13128,19 @@ function rtSubscribe(lobbyId){
   });
 
   rtChannel.on('presence',{event:'leave'},async({leftPresences})=>{
-    console.log('[presence:leave] fired. intentionalLeave='+intentionalLeave+' lobbyCode='+lobbyCode+' leftPresences=',leftPresences);
-    if(intentionalLeave){console.log('[presence:leave] skipped — intentionalLeave');return;}
-    if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){console.log('[presence:leave] skipped — no lobbyCode or placeholder URL');return;}
+    if(intentionalLeave){return;}
+    if(SUPABASE_URL.includes('YOUR_PROJECT')||!lobbyCode){return;}
 
     for(const presence of leftPresences){
       const goneUserId=presence.userId;
       const goneUsername=presence.username;
-      console.log('[presence:leave] processing gone user:',goneUserId,goneUsername);
-      if(!goneUserId){console.log('[presence:leave] skipped — no userId in presence');continue;}
+      if(!goneUserId){continue;}
 
-      if(goneUserId===currentUserId){console.log('[presence:leave] skipped — own presence echo');continue;}
+      if(goneUserId===currentUserId){continue;}
 
       // If the user is still in presenceState they just re-tracked (e.g. avatar change) not a real disconnect
       const stillPresent=Object.values(rtChannel.presenceState()||{}).flat().some(p=>p.userId===goneUserId);
-      if(stillPresent){console.log('[presence:leave] skipped — user still present (re-track)');continue;}
+      if(stillPresent){continue;}
 
       const token=await rtGetAuthToken();
       const headers={'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'};
@@ -13180,8 +13166,8 @@ function rtSubscribe(lobbyId){
         try{
           const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=user_id,connected&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
           const chkData=await chkRes.json();
-          if(!Array.isArray(chkData)||!chkData.length){console.log('[presence:leave] active — row already gone (explicit quit/leave), skipping');continue;}
-          if(chkData[0].connected===false){console.log('[presence:leave] active — row exists but connected=false (player quit), skipping');continue;}
+          if(!Array.isArray(chkData)||!chkData.length){continue;}
+          if(chkData[0].connected===false){continue;}
         }catch(e){console.error('[presence:leave] active — error checking row',e);continue;}
 
         try{
@@ -13226,16 +13212,13 @@ function rtSubscribe(lobbyId){
       try{
         const chkRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?select=is_host&user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}&limit=1`,{headers});
         const chkData=await chkRes.json();
-        console.log('[presence:leave] chkData for gone user:',chkData);
-        if(!Array.isArray(chkData)||!chkData.length){console.log('[presence:leave] row already gone — skipping');continue;}
+        if(!Array.isArray(chkData)||!chkData.length){continue;}
         wasThisPlayerHost=chkData[0]?.is_host||false;
-        console.log('[presence:leave] wasThisPlayerHost='+wasThisPlayerHost);
       }catch(e){console.error('[presence:leave] error checking row',e);continue;}
 
       // 3. Delete their player row
       try{
         const delRes=await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?user_id=eq.${encodeURIComponent(goneUserId)}&lobby_id=eq.${lid}`,{method:'DELETE',headers});
-        console.log('[presence:leave] delete row status:',delRes.status);
       }catch(e){console.error('[presence:leave] error deleting row',e);}
 
       // 4. Update local player list immediately so the UI is responsive
@@ -13267,12 +13250,9 @@ function rtSubscribe(lobbyId){
       // 6. If the disconnected player was the host, elect the first remaining player as host.
       //    Use the same stable-order self-election as the existing postgres_changes path —
       //    only the client whose userId matches the first remaining row claims host.
-      console.log('[presence:leave] wasThisPlayerHost='+wasThisPlayerHost+' remaining=',remaining);
       if(wasThisPlayerHost){
         const next=remaining[0];
-        console.log('[presence:leave] next in line:',next,'currentUserId='+currentUserId);
         if(next.user_id===currentUserId){
-          console.log('[presence:leave] claiming host for ourselves');
           try{
             await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({is_host:false})});
             await fetch(`${SUPABASE_URL}/rest/v1/lobby_players?lobby_id=eq.${lid}&user_id=eq.${currentUserId}`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({is_host:true})});
@@ -13285,7 +13265,6 @@ function rtSubscribe(lobbyId){
           clearLobbyTimer();
           startLobbyTimer(lobbyTimerSecondsLeft||null);
         } else {
-          console.log('[presence:leave] not our turn — another client will claim host');
           if(rtChannel)rtChannel.send({type:'broadcast',event:'player_left',payload:{name:goneUsername}});
         }
       } else {
@@ -13438,7 +13417,6 @@ async function rtRefreshPlayers(lobbyId,immediate=false){
 }
 
 function mpResetQuestionCard(){
-  console.log('[DBG] mpResetQuestionCard called at',new Date().toISOString(),'timerInterval(before)=',timerInterval,'qIndex=',qIndex,'mpDbQIndex=',mpDbQIndex);
   document.getElementById('mpQuestionText').style.display='none';
   document.getElementById('mpQuestionText').innerHTML='';
   document.getElementById('mpAnswersGrid').innerHTML='';
@@ -13512,7 +13490,6 @@ async function mpHostFetchAndBroadcast(){
   }
   prefetchedQuestion=null;
   currentQData=qData;
-  console.log('[DEBUG] host broadcasting question, qIndex='+qIndex+' mpDbQIndex='+mpDbQIndex+' q='+(qData&&qData.question));
   rtChannel.send({type:'broadcast',event:'question',payload:{qData,qIndex,hpFuse,mpDbQIndex}});
   // Supabase does not echo broadcasts to the sender — host must show the question itself
   document.getElementById('mpQLoading').style.display='none';
@@ -13745,7 +13722,6 @@ async function mpEnsureFirstQuestion(){
   mpShowQuestion(currentQData,null);renderMPHUD();
 }
 function mpPrefetchNextQuestion(excludeIds){
-  console.log('[DEBUG] prefetch firing, mpDbQIndex='+mpDbQIndex);
   const topic=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
   const p=sb.rpc('mp_advance_question',{
     p_lobby_id:currentLobbyId,
@@ -13759,7 +13735,6 @@ function mpPrefetchNextQuestion(excludeIds){
   prefetchedRpcPromise=p;
   prefetchedRpcResult=null;
   p.then(result=>{
-    console.log('[DEBUG] prefetch resolved, stale='+(prefetchedRpcPromise!==p)+' result=',result);
     // Guard against a stale/superseded prefetch overwriting a newer one —
     // only apply this if it's still the one currently in flight.
     if(prefetchedRpcPromise===p)prefetchedRpcResult=result;
@@ -14476,7 +14451,6 @@ async function loadPublicLobbies(silent=false){
       return;
     }
     const lobbies=await res.json();
-    console.log('Lobbies fetched:',lobbies);
     if(!Array.isArray(lobbies)||!lobbies.length){
       list.innerHTML='<div class="lobby-list-empty"><span class="mp-empty-t">'+_htmlEsc(getSiteText('lobby_browse_empty_title'))+'</span><span class="mp-empty-s">'+_htmlEsc(getSiteText('lobby_browse_empty_sub'))+'</span><button class="lobby-refresh-btn" onclick="refreshLobbyList()"><i class="ti ti-refresh" style="font-size:13px" id="lobbyRefreshIcon"></i> Refresh</button></div>';
       countLabel.textContent='0 open';
@@ -15575,8 +15549,6 @@ async function startLobbyGame(){
   document.getElementById('mpHudLabel').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   document.getElementById('mpQBadge').textContent=fmtLabels[selectedFormat]+' · '+lobbyModeLabel(selectedMode);
   if(rtChannel){
-    window._dbgGameStartedSent=(window._dbgGameStartedSent||0)+1;
-    console.log('[DBG] game_started SEND #'+window._dbgGameStartedSent+' at',new Date().toISOString(),'lobby',currentLobbyId);
     rtChannel.send({type:'broadcast',event:'game_started',payload:{format:lobbyFormat,mode:lobbyMode,players:lobbyPlayers,topics:lobbyTopics,isGeneral:lobbyIsGeneral,srTargetScore:srTargetScore,mpRaceTarget:mpRaceTarget,survivalLives:selectedLives,hpLives:hpLives,hpFuseMin:hpFuseMin,hpFuseMax:hpFuseMax,hpActiveIdx,hpTurnOrder,showTyping:lobbyShowTyping}});
     // No first-question prefetch here: mp_advance_question starts the server clock
     // when it runs, so calling it during the countdown cost the first question's
@@ -15861,7 +15833,6 @@ async function confirmTransferHost(){
           // 3. Update lobbies.host_id LAST — isHost is still true here so RLS (auth.uid()=host_id) passes
           const d3=await fetch(`${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`,{method:'PATCH',headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({host_id:newHostUid,host_username:_transferTarget})});
           if(!d3.ok)console.error('[Transfer] lobbies host_id update failed:',d3.status,await d3.text());
-          else console.log('[Transfer] lobbies.host_id updated to',newHostUid,'(',_transferTarget,')');
         } else {
           console.error('[Transfer] newHostUid not found in lobbyPlayers for',_transferTarget,lobbyPlayers);
         }
@@ -21294,7 +21265,15 @@ function suMode(){return SU_MODES[suModeI];}
 function suTopics(){return (typeof animeTopics!=='undefined'?animeTopics:[])||[];}
 function suAppFormat(f){const m=SU_FMT[f||suFormat];return (suAnswerBy==='choose'&&m.choose)?m.choose:m.type;}
 function suCountKey(f){const a=suAppFormat(f);return typeof cntFmtFor==='function'?cntFmtFor(a):a;}
-function suCountOf(t,f){const k=suCountKey(f);return t&&t.counts?(t.counts[k]||0):0;}
+function suCountOf(t,f){
+  const k=suCountKey(f);
+  // With specific parts picked, Text counts cover only those parts (what will actually be drawn)
+  if(t&&(k==='mc'||k==='type')){
+    const ids=activeTopicParts(t.name);
+    if(ids.length)return (topicPartsByName[t.name]||[]).filter(p=>ids.includes(p.id)).reduce((a,p)=>a+(p[k]||0),0);
+  }
+  return t&&t.counts?(t.counts[k]||0):0;
+}
 /* counts are scoped to what will actually be drawn from (24a) */
 function suScope(){
   const all=suTopics();
