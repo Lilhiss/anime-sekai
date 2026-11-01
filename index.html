@@ -561,6 +561,8 @@ body .quiz-stage .q-panel.wrong{box-shadow:14px 14px 0 #0d1236,0 0 0 3px #f87171
 body .quiz-stage .q-panel .q-text{color:#1f2657;text-shadow:none}
 body .quiz-stage .q-panel .q-series,body .quiz-stage .q-panel .q-fuzzy-note{color:#5561ae}
 body .quiz-stage .q-panel .q-answer-reveal{color:#1f2657}
+body .quiz-stage .q-panel .q-answer-sub{color:#1f2657b3;font:900 11px 'Nunito',sans-serif;letter-spacing:.06em;text-transform:uppercase}
+body .quiz-stage .q-panel .q-answer-sub-name{color:#1f2657;text-transform:none}
 body .quiz-stage .q-panel .q-answer-also{color:#1f2657;opacity:.65}
 body .quiz-stage .q-panel .q-nextbar-label{color:#1f2657}
 body .quiz-stage .q-panel .q-nextbar-track{background:#1f265722}
@@ -607,8 +609,8 @@ body .quiz-stage .ans.correct .ans-flag{color:#0f2a1a}
 :is(#page-quiz,#page-daily,#page-mp-quiz) .q-burst b{font:400 18px/1.15 'Dela Gothic One','Lilita One',cursive}
 :is(#page-quiz,#page-daily,#page-mp-quiz) .q-burst small{font:900 10px 'Nunito',sans-serif;letter-spacing:.08em;white-space:nowrap}
 :is(#page-quiz,#page-daily,#page-mp-quiz) .q-burst img{height:34px}
-/* mp card holds more (head, question, grid, next bar): next bar only after the reveal, tighter tiles, and scroll rather than clip */
-#page-mp-quiz .q-panel:not(:has(#mpQCardFeedback[style*="block"])) #mpNextBar{display:none}
+/* mp card holds more (head, question, grid, next bar): next bar's slot is reserved so the tiles don't jump, and scroll rather than clip */
+#page-mp-quiz .q-panel:not(:has(#mpQCardFeedback[style*="block"])) #mpNextBar{visibility:hidden}
 #page-mp-quiz .q-panel{overflow-x:hidden;overflow-y:auto;gap:14px}
 #page-mp-quiz .q-panel .q-text{font-size:clamp(22px,2.6vw,40px)}
 #page-mp-quiz #mpQImageWrap{overflow:hidden}
@@ -620,12 +622,8 @@ body .quiz-stage .ans.correct .ans-flag{color:#0f2a1a}
 :is(#page-quiz,#page-daily,#page-mp-quiz) .q-main{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
 /* the halftone art draws its frame line ~25px inside the image edge (1712×872 source) — keep tiles + their 4px shadow clear of it */
 :is(#page-quiz,#page-daily,#page-mp-quiz) .q-panel{padding-top:clamp(22px,3.2%,34px)!important;padding-bottom:clamp(40px,5.5%,56px)!important;padding-left:clamp(36px,3.4%,52px)!important;padding-right:clamp(36px,3.4%,52px)!important}
-#page-mp-quiz .q-panel:has(#mpQCardFeedback[style*="block"]){gap:10px}
-#page-mp-quiz .q-panel:has(#mpQCardFeedback[style*="block"]) .answers{gap:10px}
-#page-mp-quiz .q-panel:has(#mpQCardFeedback[style*="block"]) .q-text{font-size:clamp(20px,2.2vw,34px)}
-#page-mp-quiz .q-panel:has(#mpQCardFeedback[style*="block"]) .fb-title{font-size:26px}
 #page-mp-quiz .q-panel .answers{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-#page-mp-quiz .q-panel #mpNextBar{padding:6px 12px!important}
+#page-mp-quiz .q-panel #mpNextBar{padding:6px 12px!important;min-height:42px;box-sizing:border-box}
 @keyframes qStamp{0%{transform:scale(1.8) rotate(-14deg);opacity:0}60%{transform:scale(.92) rotate(4deg);opacity:1}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){:is(#page-quiz,#page-daily,#page-mp-quiz) .q-burst.show,:is(#page-quiz,#page-daily,#page-mp-quiz) .q-panel .ans::after{animation:none}}
 body .quiz-stage .ans.wrong .ans-flag{color:#2a0f0f}
@@ -657,12 +655,15 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .quiz-stage .ans.correct .ans-flag{color:#4ade80}
 .quiz-stage .ans.wrong .ans-flag{color:#f87171}
 
-/* inline feedback under the panel */
-.quiz-stage .q-feedback{display:flex;align-items:center;justify-content:center;gap:8px 14px;flex-wrap:wrap;align-self:stretch;width:100%;box-sizing:border-box;margin-top:10px}
-.quiz-stage .fb-title{font-family:'Lilita One',cursive;font-size:26px}
+/* the panel colours and burst already say right or wrong, so the written row stays hidden.
+   Hot Potato and Slow Reveal say who got it and what happens next: those float in the card's footer, taking no space */
+.quiz-stage .q-feedback{display:none!important}
+#mpQCardFeedback[data-info="1"][style*="block"]{display:flex!important;position:absolute;left:50%;bottom:clamp(46px,7%,62px);transform:translateX(-50%);z-index:3;width:auto;max-width:56%;align-items:center;justify-content:center;gap:4px 10px;flex-wrap:wrap;text-align:center;pointer-events:none}
+#mpFbIcon{display:none}
+.quiz-stage .fb-title{font-family:'Lilita One',cursive;font-size:18px}
 .quiz-stage .q-feedback.correct-fb .fb-title{color:#4ade80}
 .quiz-stage .q-feedback.wrong-fb .fb-title{color:#f87171}
-.quiz-stage .fb-pts{font-family:'Lilita One',cursive;font-size:18px;color:var(--text)}
+.quiz-stage .fb-pts{font-family:'Lilita One',cursive;font-size:15px;color:#1f2657}
 .quiz-stage .fb-your-ans{font-size:14px;font-weight:800;color:var(--text)}
 
 /* auto-advance strip */
@@ -674,7 +675,8 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .quiz-stage .q-panel{padding-bottom:64px}
 .quiz-stage .q-panel .q-nextbar{position:absolute;left:0;right:0;bottom:0;z-index:2;background:transparent;border:0;border-radius:0;padding:12px 20px 18px;gap:14px}
 .quiz-stage .q-panel .q-nextbar-track{position:absolute;left:0;right:0;bottom:0;max-width:none;height:6px;border-radius:0}
-.quiz-stage .q-panel .q-nextbar-label{font-size:14px;color:var(--text)}
+.quiz-stage .q-panel .q-nextbar-label{font-size:14px;color:var(--text);visibility:hidden}
+.quiz-stage .q-panel .q-nextbar-label span{visibility:visible}
 /* Keep the next-bar's slot reserved so the card and answers don't jump when it appears */
 .quiz-stage .q-nextbar{transition:opacity .25s ease}
 #qNextBar[style*="none"]{display:flex!important;visibility:hidden;opacity:0}
@@ -1078,7 +1080,6 @@ body.on-mp-quiz .scene,body.on-mp-results .scene{height:100vh;overflow:hidden}
 #mpQuizStage.fmt-char #mpQImageWrap{flex:0 1 auto;min-height:0;height:clamp(240px,44vh,420px);aspect-ratio:2/3;align-self:center;width:auto;max-width:100%;background:#242236;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent),0 8px 0 var(--bg)}
 #mpQuizStage.fmt-char #mpQImage{display:block;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover;object-position:50% 20%}
 #mpQuizStage.fmt-char .type-wrap{width:100%;max-width:620px;margin:0 auto}
-#mpQCardFeedback[style*="block"]{display:flex!important}
 #mpNextBar:not(:has(#mpAutoNext:not(:empty))):not(:has(#mpReportWrap[style*="block"])){visibility:hidden;opacity:0}
 #mpNextBar:not(:has(#mpAutoNext:not(:empty))) .q-nextbar-track{visibility:hidden}
 #mpReportWrap[style*="block"]{display:flex!important;align-items:center}
@@ -12029,7 +12030,7 @@ async function rtJoinLobby(code){
   }catch(e){}
   isHost=false;lobbyCode=code;lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;lobbyFormat=lobby.format;lobbyMode=lobby.mode;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
-  if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
+  if(lobby.question_count&&lobby.mode==='classic')selectedQuestionLimit=lobby.question_count;
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   selectedFormat=lobby.format;selectedMode=lobby.mode;
   voidingEnabled=lobby.voiding_enabled===true;
@@ -12150,7 +12151,7 @@ async function rtRejoinActiveLobby(code){
   lobbyName=lobby.lobby_name||`${lobby.host_username||code}'s Lobby`;
   lobbyFormat=lobby.format; selectedFormat=lobby.format;
   lobbyMode=lobby.mode;     selectedMode=lobby.mode;
-  if(lobby.question_count)selectedQuestionLimit=lobby.question_count;
+  if(lobby.question_count&&lobby.mode==='classic')selectedQuestionLimit=lobby.question_count;
   if(lobby.time_limit)raceTimeLimit=lobby.time_limit;
   voidingEnabled=lobby.voiding_enabled===true;
   applyLobbySettings(lobby.settings);
@@ -12822,7 +12823,7 @@ function rtSubscribe(lobbyId){
     // Keep local settings in sync so the read-only options panel reflects the host's live picks
     if(payload.format)lobbyFormat=payload.format;
     if(payload.mode)lobbyMode=payload.mode;
-    if(payload.mode!=='slowreveal'&&payload.questionCount!=null)selectedQuestionLimit=payload.questionCount;
+    if(payload.mode==='classic'&&payload.questionCount!=null)selectedQuestionLimit=payload.questionCount;
     if(payload.timeLimit!=null)raceTimeLimit=payload.timeLimit;
     if(payload.srTargetScore!=null)srTargetScore=payload.srTargetScore;
     if(payload.mpRaceTarget!=null)mpRaceTarget=payload.mpRaceTarget;
@@ -12909,7 +12910,7 @@ function rtSubscribe(lobbyId){
       if(payload.hpLives!=null)hpLives=payload.hpLives;
       if(payload.hpFuseMin!=null)hpFuseMin=payload.hpFuseMin;
       if(payload.hpFuseMax!=null)hpFuseMax=payload.hpFuseMax;
-      if(payload.questionCount&&payload.mode!=='slowreveal')selectedQuestionLimit=payload.questionCount;
+      if(payload.questionCount&&payload.mode==='classic')selectedQuestionLimit=payload.questionCount;
       lobbyTopics=payload.topics||[];lobbyIsGeneral=payload.isGeneral??true;
       selectedTopics=lobbyTopics;isGeneralSelected=lobbyIsGeneral;
       if(spinner)spinner.style.display='none';
@@ -15270,6 +15271,7 @@ function gsTog(label,sub,on,fn){
 function gsRenderSettings(){
   const grid=document.getElementById('gsSettingsGrid');
   if(!grid)return;
+  if(selectedQuestionLimit>50)selectedQuestionLimit=GS_DEF.questions; // solo Score Race leaves 99999 here
   const m=lobbyMode;
   const rows=[];
   const modeRow=(t,s,ctl)=>'<div class="st-row"><div class="st-row-t"><b>'+t+'</b><span>'+s+'</span></div>'+ctl+'</div>';
@@ -16557,6 +16559,7 @@ function mpFeedbackPtsLabel(correct,isHP,nextPlayerName){
 function mpSyncFeedbackScore(correct,userAns,nextPlayerName){
   const isHP=lobbyMode==='potato';
   document.getElementById('mpFbPts').textContent=mpFeedbackPtsLabel(correct,isHP,nextPlayerName);
+  if(correct&&lobbyMode==='race'&&lastPtsEarned)qBurstShow('gold','<b>'+lastPtsEarned+'</b><small>CORRECT</small>','mp');
   // Sync local score/lives into lobbyPlayers, then broadcast
   const me=lobbyPlayers.find(p=>p.name===currentUser);
   // In HP the authoritative lives count is on the lobbyPlayers entry (active.lives was
@@ -21710,13 +21713,13 @@ function mpRestyleTypeWell(){
     return r;
   };
   function mark(correct){
-    const fb=document.getElementById('mpQCardFeedback');if(fb)fb.className='q-feedback '+(correct?'correct-fb':'wrong-fb');
+    const fb=document.getElementById('mpQCardFeedback');if(fb){fb.className='q-feedback '+(correct?'correct-fb':'wrong-fb');fb.dataset.info=(lobbyMode==='potato'||lobbyMode==='slowreveal')?'1':'';}
     const p=panel();if(p){p.classList.remove('correct','wrong');p.classList.add(correct?'correct':'wrong');}
     const tf=document.getElementById('mpTypeField');if(tf){tf.classList.remove('waiting');tf.classList.add(correct?'correct':'wrong');}
     document.querySelectorAll('#mpAnswersGrid .ans').forEach(el=>{if(!el.classList.contains('correct')&&!el.classList.contains('wrong'))el.classList.add('dim');});
   }
   const _fb=window.mpShowFeedback;
-  window.mpShowFeedback=function(correct){const r=_fb.apply(this,arguments);mark(!!correct);const t=document.getElementById('mpFbTitle');if(t)t.style.display=(!correct&&!document.getElementById('mpTypeField')&&t.textContent==='Wrong!')?'none':'';const ya=document.getElementById('mpFbYourAns');if(ya&&!document.getElementById('mpTypeField'))ya.style.display='none';return r;};
+  window.mpShowFeedback=function(correct){const r=_fb.apply(this,arguments);mark(!!correct);const t=document.getElementById('mpFbTitle');if(t)t.style.display=(t.textContent==='Wrong!'||t.textContent==='Correct!')?'none':'';const ya=document.getElementById('mpFbYourAns');if(ya&&!document.getElementById('mpTypeField'))ya.style.display='none';return r;};
   if(window.srShowFeedback){const _s=window.srShowFeedback;window.srShowFeedback=function(correct){const r=_s.apply(this,arguments);mark(!!correct);return r;};}
   if(window.srStartReveal){const _r=window.srStartReveal;window.srStartReveal=function(){const st=document.getElementById('mpQuizStage');if(st)st.classList.remove('fmt-scene','fmt-char','fmt-img');const p=panel();if(p)p.classList.remove('correct','wrong');const r=_r.apply(this,arguments);mpApplyStage();return r;};}
   if(window.srRoundEnd){const _e=window.srRoundEnd;window.srRoundEnd=function(){const r=_e.apply(this,arguments);mark(false);return r;};}
@@ -21724,7 +21727,7 @@ function mpRestyleTypeWell(){
   // auto-next fill follows the existing "Next in Ns" label
   const lab=document.getElementById('mpAutoNext'),fill=document.getElementById('mpNextFill');
   if(lab&&fill)new MutationObserver(()=>{
-    const m=/Next in (\d+)s/.exec(lab.textContent||'');
+    const m=/Next in (\d+)s/.exec(lab.textContent||'')||(/Wrapping/.test(lab.textContent||'')?[0,5]:null);
     if(m&&!fill.dataset.run){
       fill.dataset.run='1';fill.style.transition='none';fill.style.width='0';void fill.offsetWidth;
       fill.style.transition='width '+m[1]+'s linear';fill.style.width='100%';
