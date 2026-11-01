@@ -8493,20 +8493,20 @@ async function saveEditProfile(){
 // ── PROFILE PICTURE ───────────────────────────────────────────
 const PFP_PRESETS = [
   // Shonen staples
-  {id:'naruto',    name:'Naruto',    series:'Naruto',          src:null /*'img/pfp/naruto.png'*/,    bg:'#e8630a'},
-  {id:'goku',      name:'Goku',      series:'Dragon Ball Z',   src:null /*'img/pfp/goku.png'*/,      bg:'#1a6fb5'},
-  {id:'luffy',     name:'Luffy',     series:'One Piece',       src:null /*'img/pfp/luffy.png'*/,     bg:'#d42b2b'},
-  {id:'ichigo',    name:'Ichigo',    series:'Bleach',          src:null /*'img/pfp/ichigo.png'*/,    bg:'#1c1c2e'},
-  {id:'deku',      name:'Deku',      series:'My Hero Academia',src:null /*'img/pfp/deku.png'*/,      bg:'#1a5c2a'},
+  {id:'naruto',    name:'Naruto',    series:'Naruto',          src:'assets/pfp/naruto.png',    bg:'#ec8c44'},
+  {id:'goku',      name:'Goku',      series:'Dragon Ball Z',   src:'assets/pfp/goku.png',      bg:'#1a5a8f'},
+  {id:'luffy',     name:'Luffy',     series:'One Piece',       src:'assets/pfp/luffy.png',     bg:'#d42b2b'},
+  {id:'ichigo',    name:'Ichigo',    series:'Bleach',          src:'assets/pfp/ichigo.png',    bg:'#a1a1a1'},
+  {id:'deku',      name:'Deku',      series:'My Hero Academia',src:'assets/pfp/deku.png',      bg:'#1c4a36'},
   // Modern hits
-  {id:'tanjiro',   name:'Tanjiro',   series:'Demon Slayer',    src:null /*'img/pfp/tanjiro.png'*/,   bg:'#1a3a5c'},
-  {id:'gojo',      name:'Gojo',      series:'Jujutsu Kaisen',  src:null /*'img/pfp/gojo.png'*/,      bg:'#5b2d8e'},
-  {id:'eren',      name:'Eren',      series:'Attack on Titan', src:null /*'img/pfp/eren.png'*/,      bg:'#3a2a1a'},
-  {id:'momo',      name:'Momo',      series:'Dandadan',        src:null /*'img/pfp/momo.png'*/,      bg:'#d9478a'},
-  {id:'power',     name:'Power',     series:'Chainsaw Man',    src:null /*'img/pfp/power.png'*/,     bg:'#b8322a'},
+  {id:'tanjiro',   name:'Tanjiro',   series:'Demon Slayer',    src:'assets/pfp/tanjiro.png',   bg:'#893745'},
+  {id:'gojo',      name:'Gojo',      series:'Jujutsu Kaisen',  src:'assets/pfp/gojo.png',      bg:'#4e0886'},
+  {id:'nezuko',    name:'Nezuko',    series:'Demon Slayer',    src:'assets/pfp/nezuko.png',    bg:'#f3abb3'},
+  {id:'momo',      name:'Momo',      series:'Dandadan',        src:'assets/pfp/momo.png',      bg:'#d9478a'},
+  {id:'power',     name:'Power',     series:'Chainsaw Man',    src:'assets/pfp/power.png',     bg:'#ec6064'},
   // Female leads / classics
-  {id:'yor',       name:'Yor',       series:'Spy x Family',    src:null /*'img/pfp/yor.png'*/,       bg:'#2a1a2e'},
-  {id:'frieren',   name:'Frieren',   series:'Frieren: Beyond Journey\'s End', src:null /*'img/pfp/frieren.png'*/, bg:'#3a5c52'},
+  {id:'yor',       name:'Yor',       series:'Spy x Family',    src:'assets/pfp/yor.png',       bg:'#8ea99b'},
+  {id:'frieren',   name:'Frieren',   series:'Frieren: Beyond Journey\'s End', src:'assets/pfp/frieren.png', bg:'#03ac95'},
 ];
 
 let currentPfp = null;        // {type:'preset'|'upload', value: presetId | dataURL}
