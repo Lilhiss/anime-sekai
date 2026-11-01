@@ -918,6 +918,11 @@ body.on-auth .scene{height:100vh;overflow:hidden}
   box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent),0 8px 0 var(--bg),0 0 44px color-mix(in srgb,var(--accent) 18%,transparent)}
 .quiz-stage.fmt-scene #qImageWrap{order:1;flex:1;min-height:0;background:#242236}
 .quiz-stage.fmt-scene #qImage{object-fit:cover}
+/* Text question with a picture: a modest, fixed-height image so the question and answers stay on screen */
+.quiz-stage.fmt-img #qImageWrap,#mpQuizStage.fmt-img #mpQImageWrap{flex:0 0 auto;height:clamp(140px,28vh,260px);background:transparent}
+/* no tinted band behind a Text question's picture; outranks the panel tint rule above */
+body .quiz-stage.fmt-img .q-panel #qImageWrap,body #mpQuizStage.fmt-img .q-panel #mpQImageWrap{background:transparent}
+.quiz-stage.fmt-img #qImage,#mpQuizStage.fmt-img #mpQImage{width:100%;height:100%;object-fit:contain}
 .quiz-stage.fmt-scene .q-text{order:2;flex:none;width:100%;max-width:none;background:var(--bg);border-top:3px solid var(--accent);padding:14px 28px;font-size:34px;line-height:1.1;text-shadow:none}
 .quiz-stage.fmt-scene .q-fuzzy-note,.quiz-stage.fmt-scene .used-chips{order:3;flex:none;width:100%;background:var(--bg);padding:0 28px 12px;text-align:center}
 .quiz-stage.fmt-scene .answers{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -10780,10 +10785,11 @@ async function loadQuestion(){
 function qStageFormat(fmt,qData){
   const stage=document.querySelector('#page-quiz .quiz-stage')||document.querySelector('#page-daily .quiz-stage');
   if(!stage)return;
-  stage.classList.remove('fmt-scene','fmt-char');
+  stage.classList.remove('fmt-scene','fmt-char','fmt-img');
   if(!qData||!qData.media_url)return;
   if(fmt==='scene')stage.classList.add('fmt-scene');
   else if(fmt==='char'||fmt==='char-mc')stage.classList.add('fmt-char');
+  else stage.classList.add('fmt-img'); // a Text question with a picture (a crest, a jutsu still)
 }
 function showQuestion(qData){
   qStageFormat(selectedFormat,qData);
@@ -20695,7 +20701,7 @@ function applyQuizMode(){
   if(!stage)return;
   const mode=(typeof selectedMode!=='undefined'&&selectedMode)||'classic';
   /* §7's format classes are set per question — preserve them across mode renders */
-  const fmt=['fmt-scene','fmt-char'].filter(c=>stage.classList.contains(c));
+  const fmt=['fmt-scene','fmt-char','fmt-img'].filter(c=>stage.classList.contains(c));
   stage.className=['quiz-stage','mode-'+mode].concat(fmt).join(' ');
   const surv=mode==='survival';
   const sl=document.getElementById('survLives'), rw=document.getElementById('survRunWrap');
@@ -21668,9 +21674,9 @@ function mpRestyleTypeWell(){
     const fb=document.getElementById('mpQCardFeedback');if(fb)fb.className='q-feedback';
     const r=_sq.apply(this,arguments);
     const st=document.getElementById('mpQuizStage');
-    if(st){st.classList.remove('fmt-scene','fmt-char');
+    if(st){st.classList.remove('fmt-scene','fmt-char','fmt-img');
       if(qData&&qData.media_url){const f=selectedFormat||lobbyFormat;
-        if(f==='scene')st.classList.add('fmt-scene');else if(f==='char'||f==='char-mc')st.classList.add('fmt-char');}}
+        if(f==='scene')st.classList.add('fmt-scene');else if(f==='char'||f==='char-mc')st.classList.add('fmt-char');else st.classList.add('fmt-img');}}
     mpApplyStage();mpRestyleTypeWell();
     document.getElementById('mpQuestionText')?.classList.toggle('under-image',!!(qData&&qData.media_url));
     return r;
@@ -21684,7 +21690,7 @@ function mpRestyleTypeWell(){
   const _fb=window.mpShowFeedback;
   window.mpShowFeedback=function(correct){const r=_fb.apply(this,arguments);mark(!!correct);const t=document.getElementById('mpFbTitle');if(t)t.style.display=(!correct&&!document.getElementById('mpTypeField')&&t.textContent==='Wrong!')?'none':'';const ya=document.getElementById('mpFbYourAns');if(ya&&!document.getElementById('mpTypeField'))ya.style.display='none';return r;};
   if(window.srShowFeedback){const _s=window.srShowFeedback;window.srShowFeedback=function(correct){const r=_s.apply(this,arguments);mark(!!correct);return r;};}
-  if(window.srStartReveal){const _r=window.srStartReveal;window.srStartReveal=function(){const st=document.getElementById('mpQuizStage');if(st)st.classList.remove('fmt-scene','fmt-char');const p=panel();if(p)p.classList.remove('correct','wrong');const r=_r.apply(this,arguments);mpApplyStage();return r;};}
+  if(window.srStartReveal){const _r=window.srStartReveal;window.srStartReveal=function(){const st=document.getElementById('mpQuizStage');if(st)st.classList.remove('fmt-scene','fmt-char','fmt-img');const p=panel();if(p)p.classList.remove('correct','wrong');const r=_r.apply(this,arguments);mpApplyStage();return r;};}
   if(window.srRoundEnd){const _e=window.srRoundEnd;window.srRoundEnd=function(){const r=_e.apply(this,arguments);mark(false);return r;};}
 
   // auto-next fill follows the existing "Next in Ns" label
