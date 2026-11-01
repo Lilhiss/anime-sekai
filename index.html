@@ -700,7 +700,7 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .quiz-stage .qp-top{display:flex;align-items:center;gap:9px}
 .quiz-stage .qp-rank{font-family:'Lilita One',cursive;font-size:14px;color:var(--muted);width:18px}
 .quiz-stage .qp-row:first-child .qp-rank{color:#fbbf24}
-.quiz-stage .qp-avatar{width:30px;height:30px;flex:none;border-radius:5px;background:var(--bg3);box-shadow:0 0 0 2px var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:14px;color:var(--text)}
+.quiz-stage .qp-avatar{width:30px;height:30px;flex:none;border-radius:50%;background:var(--bg3);box-shadow:0 0 0 2px var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:14px;color:var(--text)}
 .quiz-stage .qp-row.me .qp-avatar{background:var(--accent);color:#fff}
 .quiz-stage .qp-name{flex:1;min-width:0;font-size:14px;font-weight:900;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .quiz-stage .qp-row.me .qp-name{color:var(--accent)}
@@ -723,7 +723,8 @@ body:not(.qzg-visible) .qzg-switch{display:none}
 .quiz-stage .qp-vlabel{font-size:9px;font-weight:900;color:var(--muted);letter-spacing:.14em;writing-mode:vertical-rl;text-orientation:mixed}
 .quiz-stage .qp-strip{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;gap:11px}
 .quiz-stage .qp-chip{position:relative;flex:none}
-.quiz-stage .qp-chip-av{width:34px;height:34px;border-radius:6px;background:var(--bg3);box-shadow:0 0 0 2px var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;color:var(--muted)}
+.quiz-stage .qp-chip-pic{width:100%;height:100%;border-radius:50%;overflow:hidden}
+.quiz-stage .qp-chip-av{width:34px;height:34px;border-radius:50%;background:var(--bg3);box-shadow:0 0 0 2px var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',cursive;font-size:15px;color:var(--muted)}
 .quiz-stage .qp-chip.lead .qp-chip-av{box-shadow:0 0 0 2px #fbbf24;color:#fbbf24}
 .quiz-stage .qp-chip.me .qp-chip-av{background:var(--accent);color:#fff;box-shadow:0 0 0 2px var(--bg),0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
 .quiz-stage .qp-dot{position:absolute;right:-3px;bottom:-3px;width:11px;height:11px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px var(--bg2)}
@@ -1096,7 +1097,7 @@ body.on-mp-quiz .scene,body.on-mp-results .scene{height:100vh;overflow:hidden}
 #mpScoreboard .mp-score-name{flex:1;min-width:0;font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mpScoreboard .mp-score-pts{font-family:'Lilita One',cursive;font-size:17px;color:var(--text)}
 #mpScoreboard .mp-score-row.me .mp-score-pts{color:var(--accent)}
-#mpScoreboard .mp-score-avatar{border-radius:5px!important}
+#mpScoreboard .mp-score-avatar{border-radius:50%!important}
 .quiz-stage .q-players:not(.collapsed) .qp-vlabel,.quiz-stage .q-players:not(.collapsed) .qp-strip,.quiz-stage .q-players:not(.collapsed) .qp-tally{display:none}
 .quiz-stage .q-players.collapsed #mpScoreboard{display:none!important}
 .quiz-stage .q-players.collapsed > div:first-child{justify-content:center}
@@ -8586,14 +8587,30 @@ function closePfpPicker(){
   pfpGuestEntryMode=false;
   document.getElementById('pfpModal').style.display='none';
 }
+// Supabase closes the channel of a client that re-tracks presence too often
+// (ClientPresenceRateLimitReached), so several avatar changes share one delayed track.
+const PFP_TRACK_GAP_MS=15000;
+let _pfpLastTrackAt=0,_pfpTrackTimer=null;
+function rtTrackPfpThrottled(){
+  if(_pfpTrackTimer)return;
+  _pfpTrackTimer=setTimeout(()=>{
+    _pfpTrackTimer=null;
+    if(!rtChannel||!currentUserId||rtChannel.state!=='joined')return;
+    let presenceAvatar=null;
+    if(currentPfp){presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;}
+    _pfpLastTrackAt=Date.now();
+    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp}).catch(()=>{});
+  },Math.max(0,_pfpLastTrackAt+PFP_TRACK_GAP_MS-Date.now()));
+}
 function afterPfpSave(){
   removedAvatarUserIds.delete(currentUserId);
   closePfpPicker();renderProfile();updateNav();
-  // Re-track presence with new avatar so lobby players see it instantlytly
+  // Broadcast so lobby players see the new avatar instantly; presence catches up on a throttle
   if(rtChannel&&currentUserId){
     let presenceAvatar=null;
     if(currentPfp){presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;}
-    rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp}).catch(()=>{});
+    rtChannel.send({type:'broadcast',event:'avatar_changed',payload:{userId:currentUserId,avatar:presenceAvatar}});
+    rtTrackPfpThrottled();
     const me=lobbyPlayers.find(p=>p.userId===currentUserId);
     if(me){me.avatar=presenceAvatar;me.hasPfp=!!currentPfp;}
     const inLobby=document.getElementById('page-lobby-room')?.classList.contains('active');
@@ -12360,6 +12377,12 @@ function rtSubscribe(lobbyId){
     goStep('multiplayer');
     setTimeout(()=>showLobbyExpiredModal(),300);
   });
+  rtChannel.on('broadcast',{event:'avatar_changed'},({payload})=>{
+    const p=lobbyPlayers.find(lp=>lp.userId===payload.userId);
+    if(!p)return;
+    p.avatar=payload.avatar;p.hasPfp=!!payload.avatar;renderLobbyRoom();
+    if(document.getElementById('page-mp-quiz').classList.contains('active'))renderMPScoreboard();
+  });
   rtChannel.on('broadcast',{event:'avatar_removed'},({payload})=>{
     const p=lobbyPlayers.find(lp=>lp.userId===payload.userId);
     if(p){p.avatar=null;p.hasPfp=false;renderLobbyRoom();}
@@ -13293,6 +13316,7 @@ function rtSubscribe(lobbyId){
         if(currentPfp){
           presenceAvatar=currentPfp.type==='preset'?'preset:'+currentPfp.value:currentPfp.value;
         }
+        _pfpLastTrackAt=Date.now();
         await rtChannel.track({userId:currentUserId,username:currentUser,avatar:presenceAvatar,hasPfp:!!currentPfp});
       }
       startHeartbeat();
@@ -13506,13 +13530,17 @@ async function mpHostFetchAndBroadcast(){
 
 let _countdownTick=null;
 let _cdGoTimer=null;window._cdReady=window._cdReady||new Set();
+function mpCdAvatarHTML(p,col,nm){
+  if(!p.avatar)return '<div class="mp-cd-av" style="background:'+col+'">'+pfEsc(nm.slice(0,2).toUpperCase())+'</div>';
+  return getLobbyAvatarHTML(p.avatar,col,pfEsc(nm[0].toUpperCase()),42).replace('class="lobby-player-avatar"','class="mp-cd-av"');
+}
 function mpCdRenderReady(){
   const wrap=document.getElementById('mpCdReady'),lbl=document.getElementById('mpCdReadyLbl');if(!wrap)return;
   const ps=(lobbyPlayers||[]).filter(p=>!p.quit);
   const isOk=p=>p.isHost||p.name===currentUser||window._cdReady.has(p.name);
   if(wrap.dataset.built!=='1'){
     const cols=['#F6C98E','#96C7FF','#F6A5B8','#7ae0a3','#c3caf0','#b8a9ff'];
-    wrap.innerHTML=ps.map((p,i)=>{const nm=String(p.name||'?');return '<div class="mp-cd-p'+(isOk(p)?' ok':'')+'" data-n="'+pfEsc(nm)+'"><div class="mp-cd-av" style="background:'+cols[i%cols.length]+'">'+pfEsc(nm.slice(0,2).toUpperCase())+'</div><img class="ok-mark" src="assets/ok/maru.png" alt=""><span>'+pfEsc(nm)+'</span></div>';}).join('');
+    wrap.innerHTML=ps.map((p,i)=>{const nm=String(p.name||'?');return '<div class="mp-cd-p'+(isOk(p)?' ok':'')+'" data-n="'+pfEsc(nm)+'">'+mpCdAvatarHTML(p,cols[i%cols.length],nm)+'<img class="ok-mark" src="assets/ok/maru.png" alt=""><span>'+pfEsc(nm)+'</span></div>';}).join('');
     wrap.dataset.built='1';
   } else {
     wrap.querySelectorAll('.mp-cd-p').forEach(el=>{const p=ps.find(x=>String(x.name)===el.dataset.n);el.classList.toggle('ok',!!p&&isOk(p));});
@@ -16008,7 +16036,7 @@ function renderMPScoreboard(){
       ?`<div style="display:flex;gap:3px">${Array.from({length:isHP?hpLives:selectedLives},(_,j)=>{const lost=j>=p.lives;const justLost=isHP&&lifeLost&&j===p.lives;return `<i class="ti ti-heart${justLost?' hp-life-lost':''}" style="font-size:11px;color:${lost?'var(--border2)':'#f87171'};${p.eliminated?'opacity:.3':''}"></i>`}).join('')}</div>`
       :`<div style="text-align:right"><div class="mp-score-pts">${p.score}</div>${roundMeta}</div>`;
     const scoreboardAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),28);
-    const scoreboardAvatarStyled=scoreboardAvatarEl.replace('class="lobby-player-avatar"',`class="mp-score-avatar" style="${p.eliminated||hasQuit?'opacity:.4':''}"`);
+    const scoreboardAvatarStyled=scoreboardAvatarEl.replace('class="lobby-player-avatar" style="',`class="mp-score-avatar" style="${p.eliminated||hasQuit?'opacity:.4;':''}`);
     row.innerHTML=`${isActive?'<div style="font-size:15px"><span class="hp-pt" aria-label="Hot potato"><span class="hp-pt-p">🥔</span><span class="hp-pt-tag"><b>爆</b></span></span></div>':'<div style="font-size:13px;width:18px;text-align:center;font-weight:800;color:var(--muted)">'+(isHP?(p.eliminated?'💀':'·'):isSurvival?(p.eliminated?'💀':'·'):('#'+(i+1)))+'</div>'}${scoreboardAvatarStyled}<div class="mp-score-name" style="${p.eliminated||hasQuit?'text-decoration:line-through;opacity:.4':''}"><div>${ansIcon}${p.name}${isMe?' (you)':''}${quitLabel}${offlineLabel}</div>${wrongAttempt}</div>${rightCol}`;
     sb.appendChild(row);
   });
@@ -16763,7 +16791,7 @@ async function mpEndGame(){
       :`<div class="lb-score">${p.score} ${isClassic?'correct':'pts'}</div>`;
     const meta=isSurvival?(p.eliminated?'Eliminated':'Survived'):isHP?(p.eliminated?'Eliminated':'Survived'):isSR?(p.score+' pt'+(p.score===1?'':'s')):'';
     const recapAvatarEl=getLobbyAvatarHTML(p.avatar||null,p.color,p.name[0].toUpperCase(),36);
-    const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar"','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':'')+'"');
+    const recapAvatarStyled=recapAvatarEl.replace('class="lobby-player-avatar" style="','class="lb-avatar" style="width:36px;height:36px;'+(p.eliminated?'opacity:.5;':''));
     const leftTag=hasLeft(p)&&!isMe?' <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:900;letter-spacing:.08em;vertical-align:middle;background:color-mix(in srgb,var(--text) 12%,transparent);color:var(--muted)">LEFT</span>':'';
     row.innerHTML=`<div class="standing-pos">${pos}</div>${recapAvatarStyled}<div style="flex:1"><div class="lb-name">${p.name}${isMe?' (you)':''}${leftTag}</div><div class="lb-meta">${meta}</div></div>${rightCol}`;
     standings.appendChild(row);
@@ -21635,7 +21663,7 @@ function mpRenderStrip(){
   strip.innerHTML=list.map(p=>{
     const c='qp-chip'+(p===lead?' lead':'')+(p.name===currentUser?' me':'');
     const holding=isHP&&!p.eliminated&&hpActivePlayer().name===p.name;
-    return '<div class="'+c+'" title="'+p.name+'" style="'+(p.quit||p.eliminated?'opacity:.4':'')+'"><div class="qp-chip-av">'+(holding?'<span class="hp-pt" aria-label="Hot potato"><span class="hp-pt-p">🥔</span><span class="hp-pt-tag"><b>爆</b></span></span>':p.name[0].toUpperCase())+'</div><div class="qp-dot'+(p.roundAnswered?'':' thinking')+'"></div></div>';
+    return '<div class="'+c+'" title="'+p.name+'" style="'+(p.quit||p.eliminated?'opacity:.4':'')+'"><div class="qp-chip-av">'+(holding?'<span class="hp-pt" aria-label="Hot potato"><span class="hp-pt-p">🥔</span><span class="hp-pt-tag"><b>爆</b></span></span>':(p.avatar?getLobbyAvatarHTML(p.avatar,'var(--bg3)',p.name[0].toUpperCase(),34).replace('class="lobby-player-avatar"','class="qp-chip-pic"'):p.name[0].toUpperCase()))+'</div><div class="qp-dot'+(p.roundAnswered?'':' thinking')+'"></div></div>';
   }).join('');
   const v=document.getElementById('mpPlayersV');if(v)v.textContent='LIVE · '+live.length;
   const ty=document.getElementById('mpPlayersTally');
