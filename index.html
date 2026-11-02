@@ -9113,7 +9113,7 @@ function goStep(name){
     if(floats){floats.style.opacity='1';floats.classList.remove('landing-fadein');}
     if(logo)logo.style.opacity='1';
   }
-  if(name==='profile')renderProfile(true);
+  if(name==='profile')renderProfile();
   if(name==='topic'){
     selectedTopics=[];isGeneralSelected=false;selectedDifficulty='easy';
     updateGeneralUI();renderSelectedTags();updateProceedBtn();
@@ -11531,18 +11531,6 @@ function sqImagePreview(){
   else{wrap.style.display='none';img.src='';}
 }
 
-function animateCount(id,target,suffix){
-  const el=document.getElementById(id);if(!el)return;
-  target=parseInt(target)||0;suffix=suffix||'';
-  if(target<=0){el.textContent='0'+suffix;return;}
-  const dur=700,start=performance.now();
-  const step=now=>{
-    const t=Math.min(1,(now-start)/dur);
-    el.textContent=Math.round(target*(1-Math.pow(1-t,3)))+suffix; // easeOutCubic
-    if(t<1)requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
 function switchGameSettingsTab(tab){
   const isQ=tab==='questions';
   document.getElementById('gsQuestionPanel').style.display=isQ?'block':'none';
@@ -21935,7 +21923,7 @@ function pfFitName(){
   fitNameInto(el,el.dataset.full||el.textContent,28);
 }
 window.addEventListener('resize',()=>{if(document.getElementById('page-profile')?.classList.contains('active'))pfFitName();});
-function renderProfile(opening){
+function renderProfile(){
   const user=currentUser||'Guest';
   const me=!isGuest&&!!currentUser;
   const pfp=pfPfpSrc();
@@ -21958,12 +21946,10 @@ function renderProfile(opening){
   // Pull this account's saved Daily days once, so the streak and week row match other devices
   if(me&&window._pfDailySyncedFor!==currentUserId){window._pfDailySyncedFor=currentUserId;
     dailySyncFromServer().then(n=>{if(n&&document.getElementById('page-profile')?.classList.contains('active'))renderProfile();});}
-  // Count up when the page opens or a number changes, not on every redraw (a new picture, a theme)
-  const pfCount=(id,val,sfx)=>{const el=document.getElementById(id);if(!el)return;if(!opening&&el.dataset.target===String(val))return;el.dataset.target=val;animateCount(id,val,sfx);};
-  pfCount('pfGames',totalGames,'');
+  document.getElementById('pfGames').textContent=parseInt(totalGames)||0;
   document.getElementById('pfPerfect').textContent='⭐ '+perfect;
   document.getElementById('pfAnswered').textContent=(totalAnswered||0).toLocaleString();
-  pfCount('pfAcc',totalAnswered?Math.round(totalCorrect/totalAnswered*100):0,'%');
+  document.getElementById('pfAcc').textContent=(totalAnswered?Math.round(totalCorrect/totalAnswered*100):0)+'%';
   const st=dailyStreakInfo();
   document.getElementById('pfDailyCur').textContent='🔥 '+st.streak;
   document.getElementById('pfDailyBest').textContent=Math.max(pfDailyBest(),st.streak);
