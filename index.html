@@ -9113,7 +9113,7 @@ function goStep(name){
     if(floats){floats.style.opacity='1';floats.classList.remove('landing-fadein');}
     if(logo)logo.style.opacity='1';
   }
-  if(name==='profile')renderProfile();
+  if(name==='profile')renderProfile(true);
   if(name==='topic'){
     selectedTopics=[];isGeneralSelected=false;selectedDifficulty='easy';
     updateGeneralUI();renderSelectedTags();updateProceedBtn();
@@ -21935,7 +21935,7 @@ function pfFitName(){
   fitNameInto(el,el.dataset.full||el.textContent,28);
 }
 window.addEventListener('resize',()=>{if(document.getElementById('page-profile')?.classList.contains('active'))pfFitName();});
-function renderProfile(){
+function renderProfile(opening){
   const user=currentUser||'Guest';
   const me=!isGuest&&!!currentUser;
   const pfp=pfPfpSrc();
@@ -21948,7 +21948,7 @@ function renderProfile(){
   document.getElementById('pfOnline').textContent=me?'ONLINE NOW':'GUEST · ON THIS BROWSER';
   document.querySelector('#page-profile .pf-online').style.color=me?'':'#fb923c';
   document.querySelector('#page-profile .pf-dot').style.cssText=me?'':'background:#fb923c;box-shadow:0 0 8px #fb923c';
-  const since=document.getElementById('pfSince');since.textContent='';
+  const since=document.getElementById('pfSince');if(!me)since.textContent='';
   if(me&&typeof sb!=='undefined'){sb.auth.getSession().then(({data})=>{const c=data?.session?.user?.created_at;if(c)since.textContent='· since '+new Date(c).toLocaleDateString(undefined,{month:'long',year:'numeric'});}).catch(()=>{});}
   document.getElementById('pfActions').innerHTML=!me?'':me
     ?'<button class="pf-btn pri" onclick="openEditProfile()"><i class="ti ti-pencil"></i> EDIT PROFILE</button><button class="pf-btn" onclick="pfToggleMenu(event)"><i class="ti ti-settings"></i> ACCOUNT SETTINGS</button><div class="pf-menu" id="pfMenu" onclick="event.stopPropagation()">'+(isGuest?'':'<button onclick="this.parentNode.classList.remove(\'open\');openRecoveryCode()"><i class="ti ti-key"></i> New recovery code</button>')+'<button onclick="this.parentNode.classList.remove(\'open\');signOut()"><i class="ti ti-logout"></i> Sign out</button><button class="danger" onclick="this.parentNode.classList.remove(\'open\');openDeleteAccount()"><i class="ti ti-trash"></i> Delete account</button></div>'
@@ -21958,10 +21958,12 @@ function renderProfile(){
   // Pull this account's saved Daily days once, so the streak and week row match other devices
   if(me&&window._pfDailySyncedFor!==currentUserId){window._pfDailySyncedFor=currentUserId;
     dailySyncFromServer().then(n=>{if(n&&document.getElementById('page-profile')?.classList.contains('active'))renderProfile();});}
-  animateCount('pfGames',totalGames,'');
+  // Count up when the page opens or a number changes, not on every redraw (a new picture, a theme)
+  const pfCount=(id,val,sfx)=>{const el=document.getElementById(id);if(!el)return;if(!opening&&el.dataset.target===String(val))return;el.dataset.target=val;animateCount(id,val,sfx);};
+  pfCount('pfGames',totalGames,'');
   document.getElementById('pfPerfect').textContent='⭐ '+perfect;
   document.getElementById('pfAnswered').textContent=(totalAnswered||0).toLocaleString();
-  animateCount('pfAcc',totalAnswered?Math.round(totalCorrect/totalAnswered*100):0,'%');
+  pfCount('pfAcc',totalAnswered?Math.round(totalCorrect/totalAnswered*100):0,'%');
   const st=dailyStreakInfo();
   document.getElementById('pfDailyCur').textContent='🔥 '+st.streak;
   document.getElementById('pfDailyBest').textContent=Math.max(pfDailyBest(),st.streak);
@@ -21999,7 +22001,8 @@ function renderProfile(){
     const gold=win?' style="color:#fbbf24"':'';
     return '<div class="pf-game"><span class="pf-game-ic">'+ic+'</span><div style="flex:1;min-width:0"><div class="pf-game-t">'+label+'</div><div class="pf-game-s">'+pfEsc(sub)+'</div></div><div class="pf-game-r"><div'+gold+'>'+main+'</div>'+(under?'<div'+gold+'>'+under+'</div>':'')+'</div><span class="pf-game-w">'+pfEsc(pfAgo(g))+'</span></div>';
   }).join(''):(me?'<div class="pf-empty">No games yet. <a onclick="choosePath(\'solo\')">Start playing</a></div>':'');
-  const badge=document.getElementById('pfBadge');badge.style.display='none';
+  const badge=document.getElementById('pfBadge');
+  if(window._pfBadgeFor!==user){window._pfBadgeFor=user;badge.style.display='none';}
   if(me)pfContrib(currentUser,txt=>{document.getElementById('pfBadgeSub').textContent=txt;badge.style.display='inline-flex';});
   applyTheme();
 }
