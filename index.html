@@ -10434,7 +10434,7 @@ async function fetchQuestion(){
   const _t=selectedTopics.length>0?selectedTopics[Math.floor(Math.random()*selectedTopics.length)]:null;
   // char-mc fetches char questions but builds MC options from distractors
   const fetchFmt = selectedFormat==='char-mc' ? 'char' : selectedFormat;
-  const parts=_t&&(fetchFmt==='mc'||fetchFmt==='type')?activeTopicParts(_t.name):[];
+  const parts=_t&&(fetchFmt==='mc'||fetchFmt==='type'||fetchFmt==='char')?activeTopicParts(_t.name):[];
   const bankTopic=_t?{type:_t.type,value:_t.name,parts}:{type:'all',value:'',parts:[]};
   const banked=await sbGetQuestion(fetchFmt,bankTopic);
   if(banked){
@@ -10514,7 +10514,7 @@ async function loadTopicParts(){
     const rows=await r.json();
     if(!Array.isArray(rows))return;
     const m={};
-    rows.forEach(p=>{(m[p.topic_value]=m[p.topic_value]||[]).push({id:p.id,name:p.name,n:Number(p.n)||0,mc:Number(p.n_mc)||0,type:Number(p.n_type)||0});});
+    rows.forEach(p=>{(m[p.topic_value]=m[p.topic_value]||[]).push({id:p.id,name:p.name,n:Number(p.n)||0,mc:Number(p.n_mc)||0,type:Number(p.n_type)||0,char:Number(p.n_char)||0});});
     topicPartsByName=m;
     if(typeof suFootSync==='function')suFootSync();
     if(typeof gsRenderPicked==='function'&&document.getElementById('gsPickedLabel'))gsRenderPicked();
@@ -10526,10 +10526,12 @@ function activeTopicParts(name){
   const ok=new Set((topicPartsByName[name]||[]).filter(p=>p.n>=PART_MIN_QUESTIONS).map(p=>p.id));
   return ids.filter(id=>ok.has(id));
 }
-// fmtKey: 'mc' or 'type' (the answer style being played), or null to hide the row for non-Text formats.
-// Chips show that style's count, matching the footer; greying out still uses both styles together.
+// fmtKey: 'mc' or 'type' (the answer style being played), 'char' for Characters (rows tagged with
+// part_ids; untagged ones play in every part), or null to hide the row for other formats.
+// Chips show that style's count, matching the footer; greying out still uses both Text styles together.
 function partsRowHTML(topics,map,fmtKey,handler){
-  if(fmtKey!=='mc'&&fmtKey!=='type')return '';
+  if(fmtKey==='char-mc')fmtKey='char';
+  if(fmtKey!=='mc'&&fmtKey!=='type'&&fmtKey!=='char')return '';
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return (topics||[]).filter(t=>t&&topicPartsByName[t.name]).map(t=>{
     const sel=new Set(map[t.name]||[]), nm=esc(t.name);
@@ -21407,7 +21409,7 @@ function suFootSync(){
   note.className='su-note'+(blocked?' warn':'');
   note.innerHTML=html;
   const partsEl=document.getElementById('suParts');
-  if(partsEl)partsEl.innerHTML=isGeneralSelected?'':partsRowHTML(sel,soloTopicParts,suFormat==='text'?suCountKey(suFormat):null,'suTogglePart');
+  if(partsEl)partsEl.innerHTML=isGeneralSelected?'':partsRowHTML(sel,soloTopicParts,suFormat==='text'?suCountKey(suFormat):suFormat==='char'?'char':null,'suTogglePart');
   start.disabled=blocked;
   start.innerHTML=blocked?'START':'START <span class="kbd">⏎</span>';
 }
