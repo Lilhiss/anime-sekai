@@ -10725,7 +10725,7 @@ async function sbGetQuestion(format,topic){
     const data=await qRes.json();
     if(!Array.isArray(data)||!data.length)return null;
     const row=data[0];
-    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],spoiler:!!row.spoiler,submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null};
+    return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],spoiler:!!row.spoiler,submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null,format:row.format||format};
   }catch(e){return null}
 }
 
@@ -10748,10 +10748,20 @@ async function sbMarkSeen(userId,questionId){
 // Mirrors mp_match_answer() in Supabase rule for rule — change both together or solo and
 // multiplayer will disagree. Returns {text,alt} for the answer that matched, or null.
 // The main answer and its aliases are checked first, then each alt_answers entry in order.
+// Long-vowel folding (ou/oo/uu -> o/u) runs only for Name the Character questions, where
+// answers are Japanese names ("Bakugou" = "Bakugo"). Everywhere else it would let English
+// misspellings through ("For" for "Four", "God" for "Good"), so other questions list their
+// spelling variants as aliases instead.
+function answerFoldsVowels(qData){
+  if(qData&&qData.format)return qData.format==='char';
+  return typeof selectedFormat!=='undefined'&&(selectedFormat==='char'||selectedFormat==='char-mc');
+}
 function answerMatch(userInput,qData){
   const normalize=s=>String(s??'').toLowerCase().trim().replace(/-/g,' ').replace(/[^a-z0-9\s]/gi,'').replace(/\s+/g,' ').trim();
   // Collapse common romanization long-vowel variants so ou/uu/oo match o/u bidirectionally
-  const deRomanize=s=>normalize(s).replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u');
+  // (character questions only; elsewhere this is plain normalize so the check below is a no-op)
+  const fold=answerFoldsVowels(qData);
+  const deRomanize=s=>fold?normalize(s).replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u'):normalize(s);
   // For two-word names, sort the words alphabetically so "first last" and "last first" compare equal
   const nameOrderKey=s=>{const w=normalize(s).split(' ').filter(Boolean);return w.length===2?[...w].sort().join(' '):normalize(s);};
   const userN=normalize(userInput);
@@ -10770,6 +10780,29 @@ function answerMatch(userInput,qData){
   return null;
 }
 function checkAnswer(userInput,qData){return !!answerMatch(userInput,qData);}
+// Name the Character nudge: a wrong typed answer that is one word of the character's own
+// name (usually a surname, e.g. "Namikaze" for Minato, "Hatake" for Kakashi) isn't accepted
+// on its own, but the player clearly knows who it is, so the wrong-answer hint says so.
+// Wrong guesses never reach the server, so this is display-only and works the same in
+// solo and multiplayer.
+function answerNameNudge(userInput,qData){
+  if(!qData||qData.options||!answerFoldsVowels(qData))return false;
+  const fold=s=>String(s??'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/ou/g,'o').replace(/oo/g,'o').replace(/uu/g,'u').trim();
+  const typed=fold(userInput);
+  if(typed.length<2||/\s/.test(typed))return false;
+  const skip=['no','of','the','de','von','van','d','san','kun','chan'];
+  const words=String(qData.answer||'').split(/\s+/).map(fold).filter(w=>w.length>=2&&!skip.includes(w));
+  return words.length>1&&words.includes(typed);
+}
+// Points at the first name only, so players learn to answer with first names.
+const NAME_NUDGE_HTML='<i class="ti ti-bulb" style="font-size:12px"></i> Almost! Try their first name.';
+function setWrongHint(hint,nudge){
+  if(!hint)return;
+  if(hint.dataset.defaultHtml==null){hint.dataset.defaultHtml=hint.innerHTML;hint.dataset.defaultColor=hint.style.color||'';}
+  hint.innerHTML=nudge?NAME_NUDGE_HTML:hint.dataset.defaultHtml;
+  hint.style.color=nudge?'#fbbf24':hint.dataset.defaultColor;
+  hint.style.display='block';
+}
 // Answer block for the revealed question card. A player who typed an alt answer sees it
 // first with the main answer under "Also correct"; anyone else sees the main answer plus every alt.
 function answerRevealHTML(correctAns,qData,match){
@@ -10889,7 +10922,7 @@ function checkTypeAnswer(){
     input.classList.add('wrong-attempt');
     card.classList.add('shake');
     const hint=document.getElementById('typeWrongHint');
-    if(hint)hint.style.display='block';
+    setWrongHint(hint,answerNameNudge(userAns,currentQData));
     setTimeout(()=>{
       input.classList.remove('wrong-attempt');
       card.classList.remove('shake');
@@ -16302,7 +16335,7 @@ async function mpCheckTypeAnswer(){
     input.classList.add('wrong-attempt');
     if(card)card.classList.add('shake');
     const hint=document.getElementById('mpTypeWrongHint');
-    if(hint)hint.style.display='block';
+    setWrongHint(hint,answerNameNudge(userAns,currentQData));
     setTimeout(()=>{
       input.classList.remove('wrong-attempt');
       if(card)card.classList.remove('shake');
