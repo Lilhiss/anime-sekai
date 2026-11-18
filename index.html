@@ -21575,12 +21575,14 @@ function suAddHighlighted(){if(suHl)suToggle(suHl);}
 /* ── genre quick pick: tags come from topics.genres ── */
 // A chip adds every topic with that genre that has questions in the current format
 // (and picked parts) to the set; clicking it again when they're all in removes them.
-const SU_GENRE_ORDER=['Action','Adventure','Comedy','Drama','Fantasy','Romance','Sci-Fi','Supernatural','Mystery','Psychological','Horror','School','Slice of Life','Sports','Isekai','Mecha','Games'];
+const SU_GENRE_ORDER=['Adventure','Comedy','Drama','Fantasy','Romance','Sci-Fi','Supernatural','Superpowers','Mystery','Psychological','Horror','Historical','Military','School','Slice of Life','Sports','Isekai','Mecha','Games'];
+// Tags kept in topics.genres but not shown as chips (Action covers ~60 of 103 series, owner 2026-11-18)
+const SU_GENRE_HIDDEN=new Set(['Action']);
 function suGenreTopics(g){return suTopics().filter(t=>(t.genres||[]).includes(g)&&suCountOf(t)>0);}
 function suRenderGenres(){
   const box=document.getElementById('suGenres');
   if(!box)return;
-  const used=new Set();suTopics().forEach(t=>(t.genres||[]).forEach(g=>used.add(g)));
+  const used=new Set();suTopics().forEach(t=>(t.genres||[]).forEach(g=>{if(!SU_GENRE_HIDDEN.has(g))used.add(g);}));
   const genres=[...SU_GENRE_ORDER.filter(g=>used.has(g)),...[...used].filter(g=>!SU_GENRE_ORDER.includes(g)).sort()];
   const sel=new Set((selectedTopics||[]).map(t=>t.key));
   const chips=genres.map(g=>({g,list:suGenreTopics(g)})).filter(c=>c.list.length);
