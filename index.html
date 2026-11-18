@@ -1774,6 +1774,8 @@ body.on-setup nav,body.on-setup footer{display:none}
 .su-chip.zero{background:none;border-style:dashed;border-color:var(--border2);color:var(--muted)}
 .su-chip .n{font:400 10px ui-monospace,Menlo,monospace}
 .su-chip button{background:none;border:0;padding:0;color:inherit;cursor:pointer;display:flex}
+button.su-chip-clear{font-family:'Nunito',sans-serif;cursor:pointer;background:none;border-style:dashed;color:var(--muted);border-color:var(--border2)}
+button.su-chip-clear:hover{color:#f87171;border-color:#f87171}
 #page-setup .su-addtopic{cursor:pointer;flex:none}
 /* solo setup: topics are the first thing to pick, so the button says so */
 #page-setup .su-addtopic{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:99px;background:var(--accent);border:0;color:#1f2657;font:400 17px 'Lilita One','Nunito',sans-serif;letter-spacing:.05em;box-shadow:0 4px 0 #1f2657;transition:transform .12s,box-shadow .12s,background .15s}
@@ -1807,6 +1809,14 @@ body.on-setup nav,body.on-setup footer{display:none}
 #suPicker .pk-gen-t{flex:none;font-size:13px;font-weight:900}
 #suPicker .pk-gen-d{flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #suPicker .pk-gen-c{flex:none;font:400 12px ui-monospace,Menlo,monospace;color:var(--text)}
+#suPicker .pk-genres{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#suPicker .pk-genres:empty{display:none}
+#suPicker .pk-genres-l{font:900 10px 'Nunito',sans-serif;color:var(--muted);letter-spacing:.12em;margin-right:2px}
+#suPicker .pk-genre{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;background:var(--bg2);border:2px solid var(--border);border-radius:99px;font:800 12px 'Nunito',sans-serif;color:var(--text);cursor:pointer}
+#suPicker .pk-genre:hover{border-color:var(--accent)}
+#suPicker .pk-genre .n{font:400 11px ui-monospace,Menlo,monospace;color:var(--muted)}
+#suPicker .pk-genre.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+#suPicker .pk-genre.on .n{color:var(--accent)}
 #suPicker .pk-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;align-content:start;padding-right:4px}
 #suPicker .pk-div{grid-column:1/-1;display:flex;align-items:baseline;gap:9px;padding:10px 6px 4px}
 #suPicker .pk-div b{font-family:'Lilita One',cursive;font-weight:400;font-size:12px;color:var(--accent)}
@@ -2185,8 +2195,7 @@ body.on-setup nav,body.on-setup footer{display:none}
 .topic-chips-row{display:flex;flex-direction:row;gap:14px;align-items:stretch}
 .topic-left{display:flex;flex-direction:column;gap:10px}
 .topic-right{display:flex;flex-direction:column;gap:10px;align-items:stretch}
-.topic-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
-.topic-results{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.topic-section-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}.topic-results{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
 @media(max-width:700px){.topic-page-grid{grid-template-columns:1fr}}
 .lb-tab{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border-radius:9px;border:none;background:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .lb-tab.active{background:var(--accent);color:#fff}
@@ -5677,6 +5686,7 @@ new MutationObserver(sync).observe(chips,{childList:true});sync();})();
             <span class="pk-gen-d">a mixed pool drawn from every series — no topic picking needed</span>
             <span class="pk-gen-c" id="suGeneralC"></span>
           </div>
+          <div class="pk-genres" id="suGenres"></div>
           <div class="pk-list" id="suList"></div>
         </div>
 
@@ -9883,7 +9893,8 @@ async function loadTopicsFromSupabase(){
     // Fetch approved topics from the topics table
     const _th={headers:{'apikey':SUPABASE_ANON,'Authorization':`Bearer ${SUPABASE_ANON}`}};
     const [topicsRes,questionsRes]=await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url,poster_urls&status=eq.approved`,_th)
+      fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url,poster_urls,genres&status=eq.approved`,_th)
+        .then(r=>r.ok?r:fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url,poster_urls&status=eq.approved`,_th))
         .then(r=>r.ok?r:fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type,poster_url&status=eq.approved`,_th))
         .then(r=>r.ok?r:fetch(`${SUPABASE_URL}/rest/v1/topics?select=name,type&status=eq.approved`,_th)),
       // Counts are grouped server-side; fetching every question row here hit the API's 5,000-row cap
@@ -9911,7 +9922,7 @@ async function loadTopicsFromSupabase(){
       if(row.type!=='anime')return;
       const name=row.name;
       const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      animeSet.set(key,{key,emoji:'',name,type:'anime',counts:countMap[name]||{},posters:posterList(row)});
+      animeSet.set(key,{key,emoji:'',name,type:'anime',counts:countMap[name]||{},posters:posterList(row),genres:Array.isArray(row.genres)?row.genres:[]});
     });
     animeTopics=[...animeSet.values()].sort((a,b)=>a.name.localeCompare(b.name));
     renderTopicList();
@@ -21392,6 +21403,26 @@ function suSetTarget(v){soloRaceTarget=v;suSync();}
 function suSetLives(v){selectedLives=v;suSync();}
 function suSetTimer(v){raceTimeLimit=v;suSync();}
 
+/* Selected-topic chips. Big sets (a genre pick can add 60) show the first few,
+   a "+N more" count and a Clear button so the footer doesn't swallow the screen. */
+const SU_CHIP_CAP=8;
+function suSelChipsHTML(sel,all){
+  const chip=t=>{
+    const full=all.find(x=>x.key===t.key), n=full?suCountOf(full):0;
+    return '<span class="su-chip'+(n===0?' zero':'')+'">'+_suEsc(t.name)+' <span class="n">· '+n+'</span>'
+      +'<button onclick="suToggle(\''+t.key+'\')" aria-label="Remove"><i class="ti ti-x" style="font-size:11px"></i></button></span>';
+  };
+  if(sel.length<=SU_CHIP_CAP)return sel.map(chip).join('');
+  const shown=SU_CHIP_CAP-2;
+  return sel.slice(0,shown).map(chip).join('')
+    +'<span class="su-chip" title="'+_suEsc(sel.slice(shown).map(t=>t.name).join(', '))+'">+'+(sel.length-shown)+' more</span>'
+    +'<button class="su-chip su-chip-clear" onclick="suClearTopics()"><i class="ti ti-trash" style="font-size:11px"></i> Clear all</button>';
+}
+function suClearTopics(){
+  selectedTopics=[];
+  renderSelectedTags();updateProceedBtn();suSync();
+}
+
 /* ── footer topics + the three-state count rule (section 12.3) ── */
 function suFootSync(){
   const chips=document.getElementById('suChips'), note=document.getElementById('suNote'), start=document.getElementById('suStart');
@@ -21399,11 +21430,7 @@ function suFootSync(){
   const all=suTopics(), sel=selectedTopics||[];
   chips.innerHTML=isGeneralSelected
     ? '<span class="su-chip">🌐 General Anime</span>'
-    : sel.map(t=>{
-        const full=all.find(x=>x.key===t.key), n=full?suCountOf(full):0;
-        return '<span class="su-chip'+(n===0?' zero':'')+'">'+_suEsc(t.name)+' <span class="n">· '+n+'</span>'
-          +'<button onclick="suToggle(\''+t.key+'\')" aria-label="Remove"><i class="ti ti-x" style="font-size:11px"></i></button></span>';
-      }).join('');
+    : suSelChipsHTML(sel,all);
 
   const total=suTotal();
   const counts=isGeneralSelected?[total]:sel.map(t=>{const f=all.find(x=>x.key===t.key);return f?suCountOf(f):0;});
@@ -21475,6 +21502,7 @@ function suRenderTopics(){
   document.getElementById('pkSub').textContent=all.length+' ANIME · COUNTS FOLLOW THE FORMAT';
 
   if(!all.length){list.innerHTML='<div class="pk-pv-s">Loading topics…</div>';suPkFoot();return;}
+  suRenderGenres();
 
   const items=all.filter(t=>t.name.toLowerCase().includes(q.toLowerCase()));
   /* 21a — the zero-result state IS the suggestion form */
@@ -21544,17 +21572,45 @@ function suToggle(key){
 }
 function suAddHighlighted(){if(suHl)suToggle(suHl);}
 
+/* ── genre quick pick: tags come from topics.genres ── */
+// A chip adds every topic with that genre that has questions in the current format
+// (and picked parts) to the set; clicking it again when they're all in removes them.
+const SU_GENRE_ORDER=['Action','Adventure','Comedy','Drama','Fantasy','Romance','Sci-Fi','Supernatural','Mystery','Psychological','Horror','School','Slice of Life','Sports','Isekai','Mecha','Games'];
+function suGenreTopics(g){return suTopics().filter(t=>(t.genres||[]).includes(g)&&suCountOf(t)>0);}
+function suRenderGenres(){
+  const box=document.getElementById('suGenres');
+  if(!box)return;
+  const used=new Set();suTopics().forEach(t=>(t.genres||[]).forEach(g=>used.add(g)));
+  const genres=[...SU_GENRE_ORDER.filter(g=>used.has(g)),...[...used].filter(g=>!SU_GENRE_ORDER.includes(g)).sort()];
+  const sel=new Set((selectedTopics||[]).map(t=>t.key));
+  const chips=genres.map(g=>({g,list:suGenreTopics(g)})).filter(c=>c.list.length);
+  box.innerHTML=chips.length?'<span class="pk-genres-l">GENRES</span>'+chips.map(({g,list})=>{
+    const on=!isGeneralSelected&&list.every(t=>sel.has(t.key));
+    return '<button type="button" class="pk-genre'+(on?' on':'')+'" onclick="suToggleGenre(\''+_suEsc(g).replace(/'/g,"\\'")+'\')"'
+      +' title="'+(on?'Remove':'Add')+' every '+_suEsc(g)+' series">'+_suEsc(g)+'<span class="n">'+list.length+'</span></button>';
+  }).join(''):'';
+}
+function suToggleGenre(g){
+  const list=suGenreTopics(g);
+  if(!list.length)return;
+  if(isGeneralSelected){isGeneralSelected=false;updateGeneralUI();}
+  const sel=new Set(selectedTopics.map(t=>t.key));
+  if(list.every(t=>sel.has(t.key))){
+    const drop=new Set(list.map(t=>t.key));
+    selectedTopics=selectedTopics.filter(t=>!drop.has(t.key));
+  }else{
+    list.forEach(t=>{if(!sel.has(t.key))selectedTopics.push({key:t.key,emoji:t.emoji||'',name:t.name,type:t.type});});
+  }
+  renderSelectedTags();updateProceedBtn();suSync();
+}
+
 function suPkFoot(){
   const all=suTopics(), sel=selectedTopics||[];
   const chips=document.getElementById('pkChips');
   document.getElementById('pkSelN').textContent='SELECTED · '+(isGeneralSelected?'ALL':sel.length);
   chips.innerHTML=isGeneralSelected
     ? '<span class="su-chip">🌐 General Anime</span>'
-    : sel.map(t=>{
-        const full=all.find(x=>x.key===t.key), n=full?suCountOf(full):0;
-        return '<span class="su-chip'+(n===0?' zero':'')+'">'+_suEsc(t.name)+' <span class="n">· '+n+'</span>'
-          +'<button onclick="suToggle(\''+t.key+'\')" aria-label="Remove"><i class="ti ti-x" style="font-size:11px"></i></button></span>';
-      }).join('');
+    : suSelChipsHTML(sel,all);
   document.getElementById('pkTotal').textContent=suTotal().toLocaleString();
 }
 
