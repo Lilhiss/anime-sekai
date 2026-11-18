@@ -10075,9 +10075,9 @@ async function loadDailyQuestions(){
       }
     }catch(e){}
   }
-  // Fallback: deterministic pick from the local multiple-choice fallback set
-  const fb=getFallback().filter(q=>Array.isArray(q.options));
-  return _dailyShuffle(fb.slice(),rng).slice(0,DAILY_COUNT).map(q=>shuffleOptions(q,rng));
+  // Fallback: deterministic pick (same date seed for everyone) from the backup MC questions
+  const fb=(await loadFallbackPool()).map(r=>fallbackRowToQ(r,false));
+  return _dailyShuffle(fb,rng).slice(0,DAILY_COUNT).map(q=>shuffleOptions(q,rng));
 }
 /* in-progress daily run, saved after every question so quitting can't reset it */
 const dailyProgKey=()=>'dailyprog_'+dailyDateKey();
@@ -10436,18 +10436,19 @@ async function fetchQuestion(){
   const fetchFmt = selectedFormat==='char-mc' ? 'char' : selectedFormat;
   const parts=_t&&(fetchFmt==='mc'||fetchFmt==='type'||fetchFmt==='char')?activeTopicParts(_t.name):[];
   const bankTopic=_t?{type:_t.type,value:_t.name,parts}:{type:'all',value:'',parts:[]};
+  loadFallbackPool(); // background: have the backup questions in memory before they're needed
   const banked=await sbGetQuestion(fetchFmt,bankTopic);
   if(banked){
     /*if(currentUserId)sbMarkSeen(currentUserId,banked.id);*/
     if(selectedFormat==='char-mc') return buildCharMcQuestion(banked);
     return shuffleOptions(banked);
   }
-  // sbGetQuestion returned null — either this topic's pool is genuinely
-  // exhausted, or the fetch itself failed (network/Supabase error); it
-  // doesn't currently distinguish the two. Tag the fallback question so the
-  // UI can tell the player their question may not match their chosen topic,
-  // without guessing at a specific cause.
-  return {...shuffleOptions(getFallback()),is_fallback:true};
+  // sbGetQuestion returned null: the request failed (sbQuestionFailed) or this pick
+  // simply has no questions it can serve. Either way show a backup question from the
+  // same topic and say which case it was. char-mc falls back to a Text MC question.
+  const fbFmt=selectedFormat==='char-mc'?'mc':fetchFmt;
+  const fb=await getFallback(fbFmt,_t?_t.name:null,parts);
+  return {...shuffleOptions(fb),is_fallback:sbQuestionFailed?'db':'empty'};
 }
 // Small hint shown near a question that came from the local fallback pool
 // instead of matching the player's selected topic — see fetchQuestion() above.
@@ -10482,7 +10483,9 @@ function seriesTagHTML(qData){
   return '<div class="q-series"><i class="ti ti-movie"></i><span>'+esc+'</span></div>';
 }
 function fallbackHintHTML(qData){
-  return qData?.is_fallback?'<div class="q-fallback-hint"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Couldn\'t load a question from the database. Showing a fallback question.</div>':'';
+  if(!qData?.is_fallback)return '';
+  const msg=qData.is_fallback==='empty'?'No more questions for this pick. Showing a backup question.':'Couldn\'t reach the database. Showing a backup question.';
+  return '<div class="q-fallback-hint"><i class="ti ti-alert-triangle" style="font-size:12px"></i> '+msg+'</div>';
 }
 // Spoilers: solo follows the player's own switch (localStorage, plus profiles.hide_spoilers when
 // signed in); a lobby follows the host's setting, which mp_advance_question also reads server-side.
@@ -10573,106 +10576,39 @@ function buildCharMcQuestion(q){
 }
 
 
-function getFallback(){
-  const fb=[
-    // MULTIPLE CHOICE — General
-    {question:"Which anime features the character Goku?",options:["Dragon Ball Z","Naruto","One Piece","Bleach"],answer:0,aliases:["DBZ","Dragon Ball","DBS"]},
-    {question:"Who is the main character of Death Note?",options:["L","Light Yagami","Misa Amane","Near"],answer:1,aliases:[]},
-    {question:"In Demon Slayer, what is Tanjiro's sister's name?",options:["Kanao","Nezuko","Shinobu","Aoi"],answer:1,aliases:["Kimetsu no Yaiba","KnY"]},
-    {question:"Which studio produced My Hero Academia?",options:["Madhouse","Bones","Wit Studio","Ufotable"],answer:1,aliases:["MHA","Boku no Hero","BNHA"]},
-    {question:"What is the name of the main character in Naruto?",options:["Sasuke","Sakura","Naruto Uzumaki","Kakashi"],answer:2,aliases:[]},
-    {question:"In One Piece, what is the name of Luffy's pirate crew?",options:["Heart Pirates","Straw Hat Pirates","Whitebeard Pirates","Red Hair Pirates"],answer:1,aliases:[]},
-    {question:"Which anime is set in the world of Titans?",options:["Fullmetal Alchemist","Tokyo Ghoul","Attack on Titan","Vinland Saga"],answer:2,aliases:["AOT","SNK","Shingeki no Kyojin"]},
-    {question:"What fruit did Monkey D. Luffy eat to gain his powers?",options:["Mera Mera no Mi","Gura Gura no Mi","Gomu Gomu no Mi","Ope Ope no Mi"],answer:2,aliases:[]},
-    {question:"In Fullmetal Alchemist Brotherhood, what do Edward and Alphonse Elric seek?",options:["The Holy Grail","The Philosopher's Stone","The Death Note","The One Ring"],answer:1,aliases:["FMAB","FMA"]},
-    {question:"Which anime features the Chunin Exams?",options:["Bleach","Dragon Ball Z","Naruto","Hunter x Hunter"],answer:2,aliases:[]},
-    {question:"What is the name of the soul-cutting sword used in Bleach?",options:["Zanpakuto","Katana","Nodachi","Wakizashi"],answer:0,aliases:[]},
-    {question:"In Hunter x Hunter, what is the name of the special ability system?",options:["Chakra","Nen","Haki","Alchemy"],answer:1,aliases:["HxH"]},
-    {question:"Which anime follows Shinichi Izumi and a parasitic alien?",options:["Tokyo Ghoul","Parasyte","Ajin","Devilman Crybaby"],answer:1,aliases:["Parasyte the Maxim","Kiseijuu"]},
-    {question:"What is the name of the organization L works for in Death Note?",options:["Interpol","The Task Force","The SPK","Wammy's House"],answer:1,aliases:[]},
-    {question:"In Sword Art Online, what is the name of the first virtual reality game?",options:["ALfheim Online","Gun Gale Online","Sword Art Online","Ordinal Scale"],answer:2,aliases:["SAO"]},
-    {question:"Which anime features the Phantom Troupe?",options:["Naruto","One Piece","Hunter x Hunter","Fairy Tail"],answer:2,aliases:["HxH"]},
-    {question:"In Fairy Tail, who is the most powerful dragon slayer?",options:["Natsu","Gajeel","Wendy","Sting"],answer:0,aliases:[]},
-    {question:"Which anime takes place in Ouran High School?",options:["Clannad","Ouran High School Host Club","Toradora","Fruits Basket"],answer:1,aliases:["OHSHC"]},
-    {question:"What is the name of the main antagonist in My Hero Academia?",options:["Stain","Shigaraki","All For One","Overhaul"],answer:2,aliases:["MHA","BNHA"]},
-    // MULTIPLE CHOICE — Specific series
-    {question:"In Attack on Titan, which Wall do the main characters live behind at the start?",options:["Wall Sina","Wall Rose","Wall Maria","Wall Paradis"],answer:2,aliases:["AOT","SNK"]},
-    {question:"What is the name of Sasuke's signature lightning technique in Naruto?",options:["Rasengan","Amaterasu","Chidori","Susanoo"],answer:2,aliases:[]},
-    {question:"In One Piece, what is the name of the sea monster that Luffy befriends early on?",options:["Laboon","Moby Dick","Zunisha","Caribou"],answer:0,aliases:[]},
-    {question:"What is the Devil Fruit ability of Portgas D. Ace in One Piece?",options:["Ice","Fire","Light","Darkness"],answer:1,aliases:[]},
-    {question:"In Demon Slayer, what Breathing Style does Tanjiro primarily use?",options:["Flame Breathing","Thunder Breathing","Wind Breathing","Water Breathing"],answer:3,aliases:["Kimetsu no Yaiba"]},
-    {question:"In Jujutsu Kaisen, what is Yuji Itadori's cursed energy technique?",options:["Infinity","Black Flash","Divergent Fist","Cursed Speech"],answer:2,aliases:["JJK"]},
-    {question:"What is the name of the island where Gol D. Roger was executed in One Piece?",options:["Marineford","Loguetown","Raftel","Dawn Island"],answer:1,aliases:[]},
-    {question:"In My Hero Academia, what is Izuku Midoriya's hero name?",options:["Shoto","Deku","Kacchan","Froppy"],answer:1,aliases:["MHA","BNHA"]},
-    {question:"Which Hashira in Demon Slayer uses the Insect Breathing style?",options:["Mitsuri Kanroji","Shinobu Kocho","Muichiro Tokito","Gyomei Himejima"],answer:1,aliases:["Kimetsu no Yaiba"]},
-    {question:"In Dragon Ball Z, on which planet does Goku fight Frieza?",options:["Earth","Namek","Vegeta","King Kai's Planet"],answer:1,aliases:["DBZ"]},
-    {question:"What is the name of the notebook in Death Note?",options:["Soul Book","Death Note","Kira's Journal","Shinigami Diary"],answer:1,aliases:[]},
-    {question:"In Fullmetal Alchemist Brotherhood, who is the Flame Alchemist?",options:["Edward Elric","Roy Mustang","Alex Armstrong","Olivier Armstrong"],answer:1,aliases:["FMAB"]},
-    {question:"In Bleach, what is the name of Ichigo Kurosaki's zanpakuto?",options:["Senbonzakura","Zangetsu","Ryujin Jakka","Wabisuke"],answer:1,aliases:[]},
-    {question:"What is the name of Gon's best friend in Hunter x Hunter?",options:["Kurapika","Leorio","Killua","Bisky"],answer:2,aliases:["HxH"]},
-    {question:"In Re:Zero, what happens to Subaru when he dies?",options:["He goes to another world","He returns to a save point","He becomes a spirit","He loses his memory"],answer:1,aliases:[]},
-    // TYPE THE ANSWER
-    {question:"What is the name of the pirate who ate the Gomu Gomu no Mi in One Piece?",answer:"Monkey D. Luffy",aliases:["Luffy","Monkey D Luffy","Mugiwara no Luffy"]},
-    {question:"In Attack on Titan, what is Eren Yeager's Titan called?",answer:"Attack Titan",aliases:["Shingeki no Kyojin","Eren Titan"]},
-    {question:"What anime features the phrase 'Plus Ultra'?",answer:"My Hero Academia",aliases:["MHA","BNHA","Boku no Hero Academia"]},
-    {question:"Name the anime where characters use 'Nen' as their special ability.",answer:"Hunter x Hunter",aliases:["HxH","Hunter Hunter"]},
-    {question:"What is the name of the Death God in Death Note?",answer:"Ryuk",aliases:["Ryūk"]},
-    {question:"In Naruto, what is the name of the nine-tailed fox sealed inside Naruto?",answer:"Kurama",aliases:["Nine Tails","Kyuubi","Kyubi","Nine-Tailed Fox"]},
-    {question:"What anime follows Tanjiro Kamado as he tries to cure his sister?",answer:"Demon Slayer",aliases:["Kimetsu no Yaiba","Demon Slayer Kimetsu no Yaiba"]},
-    {question:"Name the anime where Izuku Midoriya is born without a Quirk.",answer:"My Hero Academia",aliases:["MHA","BNHA","Boku no Hero Academia"]},
-    {question:"What is the name of Sasuke Uchiha's older brother in Naruto?",answer:"Itachi",aliases:["Itachi Uchiha"]},
-    {question:"In Fullmetal Alchemist, what does Edward Elric lose in the failed transmutation?",answer:"Right arm",aliases:["arm","his arm","right arm and left leg","his right arm"]},
-    {question:"What is the name of the main character in Bleach?",answer:"Ichigo Kurosaki",aliases:["Ichigo"]},
-    {question:"In Dragon Ball Z, what is the name of Goku's home planet?",answer:"Vegeta",aliases:["Planet Vegeta"]},
-    {question:"Name the villain organization in My Hero Academia led by Shigaraki.",answer:"League of Villains",aliases:["Villains League","Paranormal Liberation Front"]},
-    {question:"What is the name of the spirit world ruler in Yu Yu Hakusho?",answer:"Koenma",aliases:[]},
-    {question:"In Sword Art Online, what is the name of the main character?",answer:"Kirito",aliases:["Kazuto Kirigaya","Kazuto","The Black Swordsman"]},
-    {question:"What anime is set in Kamurocho and follows delinquent Takemichi Hanagaki?",answer:"Tokyo Revengers",aliases:["Tokyo Revengers"]},
-    {question:"Name the anime where Gintoki Sakata works as a freelancer in feudal Japan.",answer:"Gintama",aliases:["Gin Tama"]},
-    {question:"In Jujutsu Kaisen, who is Yuji Itadori's mentor?",answer:"Satoru Gojo",aliases:["Gojo","Gojo Satoru"]},
-    {question:"What is the name of the cursed spirit Yuji Itadori hosts in Jujutsu Kaisen?",answer:"Ryomen Sukuna",aliases:["Sukuna","The King of Curses"]},
-    {question:"In Re:Zero, what is the name of the silver-haired girl Subaru tries to save?",answer:"Emilia",aliases:[]},
-    {question:"What is the name of the hidden village where Naruto grew up?",answer:"Konohagakure",aliases:["Konoha","Hidden Leaf Village","Leaf Village"]},
-    {question:"In One Piece, what is the name of the final island where the One Piece treasure is?",answer:"Laugh Tale",aliases:["Raftel","Laugh Tale"]},
-    {question:"Name the Survey Corps commander in Attack on Titan.",answer:"Erwin Smith",aliases:["Erwin","Commander Erwin"]},
-    {question:"In Spy x Family, what is the code name of the spy protagonist?",answer:"Loid Forger",aliases:["Loid","Twilight","Agent Twilight"]},
-    {question:"What anime follows Denji who merges with a chainsaw devil?",answer:"Chainsaw Man",aliases:[]},
-    // NAME THE CHARACTER
-    {question:"This character has spiky blonde hair, wears an orange jumpsuit, and dreams of becoming Hokage. Who are they?",answer:"Naruto Uzumaki",aliases:["Naruto"]},
-    {question:"This character has a scar on his left eye, wears a straw hat, and can stretch his body like rubber. Who are they?",answer:"Monkey D. Luffy",aliases:["Luffy"]},
-    {question:"This character writes names in a supernatural notebook to kill people, believing he is a god. Who are they?",answer:"Light Yagami",aliases:["Kira","Light"]},
-    {question:"This character is a half-demon with white hair and dog ears who wields the Tessaiga. Who are they?",answer:"Inuyasha",aliases:[]},
-    {question:"This pro hero has a muscular form, uses One For All, and was Izuku's greatest inspiration. Who are they?",answer:"All Might",aliases:["Toshinori Yagi"]},
-    {question:"This character has heterochromia, uses both fire and ice powers, and is the son of a villainous hero. Who are they?",answer:"Shoto Todoroki",aliases:["Todoroki","Shoto"]},
-    {question:"This character is a royal guard in the Chimera Ant arc and is considered one of the strongest in Hunter x Hunter. Who are they?",answer:"Neferpitou",aliases:["Pitou"]},
-    {question:"This character has a scar on the left side of his face, wears glasses, and uses alchemy involving fire. Who are they?",answer:"Roy Mustang",aliases:["Flame Alchemist","Mustang"]},
-    {question:"This character is a spirit detective with slicked-back hair who uses his spirit gun attack. Who are they?",answer:"Yusuke Urameshi",aliases:["Yusuke"]},
-    {question:"This character is a shinigami who can only be seen by those with spiritual powers and carries a massive sword. Who are they?",answer:"Ichigo Kurosaki",aliases:["Ichigo"]},
-    {question:"This character is an assassin with short silver hair, immense speed, and is Gon's best friend. Who are they?",answer:"Killua Zoldyck",aliases:["Killua"]},
-    {question:"This character has no memories, is made entirely of armor, and is the younger of two alchemist brothers. Who are they?",answer:"Alphonse Elric",aliases:["Al","Alphonse"]},
-    {question:"This character is a demon king reincarnated as a slime who befriends many monster races. Who are they?",answer:"Rimuru Tempest",aliases:["Rimuru","Satoru Mikami"]},
-    {question:"This character is a spy who adopts a child and marries a woman, all for a secret mission. Who are they?",answer:"Loid Forger",aliases:["Twilight","Loid"]},
-    {question:"This silver-haired character serves as a half-elf candidate for the Witch of Envy and is kind but powerful. Who are they?",answer:"Emilia",aliases:[]},
-    {question:"This villain has a hand covering his face, leads a group of villains, and craves chaos. Who are they?",answer:"Tomura Shigaraki",aliases:["Shigaraki","Tenko Shimura"]},
-    {question:"This survey corps soldier has short black hair, a cold demeanor, and is humanity's strongest soldier. Who are they?",answer:"Levi Ackerman",aliases:["Levi","Captain Levi"]},
-    {question:"This demon slayer has yellow hair, uses thunder breathing, and calls Tanjiro his best friend. Who are they?",answer:"Zenitsu Agatsuma",aliases:["Zenitsu"]},
-    {question:"This character is a chainsaw devil hybrid who just wants to eat good food and be with women. Who are they?",answer:"Denji",aliases:["Chainsaw Man"]},
-  ];
-  // Filter to match current format where possible
-  const typeFormats=['type','char','scene']; // char-mc uses MC path, handled separately
-  const mcFormats=['mc'];
-  let pool;
-  if(selectedFormat==='type'||selectedFormat==='char'||selectedFormat==='scene'){
-    pool=fb.filter(q=>!q.options);
-  } else {
-    pool=fb.filter(q=>q.options);
-  }
-  if(!pool.length)pool=fb;
-  // Avoid questions already seen this session
-  const seen=quizHistory.map(h=>h.q);
-  const unseen=pool.filter(q=>!seen.includes(q.question));
-  const source=unseen.length?unseen:pool;
-  return source[Math.floor(Math.random()*source.length)];
+// Backup questions for when Supabase can't be reached (or a pick has nothing left):
+// assets/fallback-questions.json holds 10 non-spoiler MC questions per topic (10 per part on
+// parted topics), each with its linked typed copy. Rows: t topic, p part id, q question,
+// o options, a correct option index, ta typed answer, tq typed wording (only if different),
+// al aliases, alt alt_answers. Loaded once per page, in the background when a game starts,
+// so it is already in memory if the connection drops later.
+let fallbackPool=null,fallbackPoolLoading=null;
+function loadFallbackPool(){
+  if(fallbackPool)return Promise.resolve(fallbackPool);
+  if(!fallbackPoolLoading)fallbackPoolLoading=fetch('assets/fallback-questions.json')
+    .then(r=>r.json()).then(d=>(fallbackPool=Array.isArray(d)?d:[]))
+    .catch(()=>{fallbackPoolLoading=null;return [];});
+  return fallbackPoolLoading;
+}
+function fallbackRowToQ(r,typed){
+  const base={id:null,spoiler:false,submitted_by:null,topic_value:r.t,topic_type:'anime',media_url:null,distractors:null};
+  return typed
+    ?{...base,question:r.tq||r.q,answer:r.ta,aliases:r.al||[],alt_answers:r.alt||[],format:'type'}
+    :{...base,question:r.q,options:r.o,answer:r.a,aliases:[],alt_answers:[],format:'mc'};
+}
+// Picks one backup question for the format being played, from the picked topic (and its
+// parts) when it has any, else from the whole pool. Typed formats get the typed copy.
+async function getFallback(format,topicName,parts){
+  const pool=await loadFallbackPool();
+  const typed=format==='type'||format==='char'||format==='scene';
+  if(!pool.length)return {id:null,question:"Couldn't load a question. Check your connection and try again.",answer:'',aliases:[],alt_answers:[],format:'type'};
+  let rows=topicName?pool.filter(r=>r.t===topicName):[];
+  if(rows.length&&parts&&parts.length){const inPart=rows.filter(r=>parts.includes(r.p));if(inPart.length)rows=inPart;}
+  if(!rows.length)rows=pool;
+  const seen=new Set(quizHistory.map(h=>h.q));
+  const unseen=rows.filter(r=>!seen.has(typed?(r.tq||r.q):r.q));
+  const src=unseen.length?unseen:rows;
+  return fallbackRowToQ(src[Math.floor(Math.random()*src.length)],typed);
 }
 
 // ── QUESTION BANK ─────────────────────────────────────────────
@@ -10685,8 +10621,12 @@ function guestAddSeen(id){
   try{const ids=guestSeenIds();if(!ids.includes(id)){ids.push(id);localStorage.setItem('guest_seen_ids',JSON.stringify(ids));}}catch(e){}
 }
 
+// true when the last sbGetQuestion request itself failed (network/server error or a non-list
+// reply), false when it got a list back, even an empty one. Picks the fallback hint's wording.
+let sbQuestionFailed=false;
 async function sbGetQuestion(format,topic){
-  if(SUPABASE_URL.includes('YOUR_PROJECT'))return null;
+  if(SUPABASE_URL.includes('YOUR_PROJECT')){sbQuestionFailed=true;return null;}
+  sbQuestionFailed=false;
   try{
     // topic.type is 'anime' for a picked topic, or 'all' for General Anime (full pool)
     // Collect ids of questions already shown this session (by id, not text —
@@ -10723,10 +10663,11 @@ async function sbGetQuestion(format,topic){
       body:JSON.stringify({p_format:format,p_topic_type:topic.type==='all'?null:topic.type,p_topic_value:topic.type==='all'?null:topic.value,p_exclude:exclude,p_hide_spoilers:spoilersHidden(),p_part_ids:topic.parts&&topic.parts.length?topic.parts:null})
     });
     const data=await qRes.json();
-    if(!Array.isArray(data)||!data.length)return null;
+    if(!qRes.ok||!Array.isArray(data)){sbQuestionFailed=true;return null;}
+    if(!data.length)return null;
     const row=data[0];
     return {id:row.id,question:row.question||(format==='scene'?SCENE_DEFAULT_QUESTION:row.question),options:row.options,answer:row.options?parseInt(row.answer):row.answer,aliases:row.aliases||[],alt_answers:row.alt_answers||[],spoiler:!!row.spoiler,submitted_by:row.submitted_by||null,topic_value:row.topic_value||null,topic_type:row.topic_type||null,media_url:row.media_url||null,distractors:row.distractors||null,format:row.format||format};
-  }catch(e){return null}
+  }catch(e){sbQuestionFailed=true;return null}
 }
 
 async function sbMarkSeen(userId,questionId){
