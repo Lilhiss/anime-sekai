@@ -2531,6 +2531,12 @@ footer{background:var(--card-bg);border-top:1px solid var(--card-border);padding
 .admin-badge.submitted{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.1)}
 .admin-badge.linked{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);text-transform:none;letter-spacing:0;cursor:pointer;transition:opacity .15s}
 .admin-badge.linked:hover{opacity:.8}
+.admin-linked-box{margin-top:8px;padding:8px 10px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg3);display:flex;flex-direction:column;gap:3px}
+.admin-linked-head{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:5px}
+.admin-linked-head a{margin-left:auto;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0}
+.admin-linked-head:not(:first-child){margin-top:6px}
+.admin-linked-q{font-size:12.5px;font-weight:700;color:var(--text)}
+.admin-linked-sub{font-size:12px;color:var(--muted)}
 .admin-report-counter{display:inline-flex;align-items:center;gap:5px;font-family:'Lilita One',cursive;font-size:13px;color:#f87171;background:rgba(248,113,113,.1);border:1.5px solid #f87171;border-radius:99px;padding:3px 10px}
 .admin-report-details{display:none;flex-direction:column;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-top:2px}
 .admin-report-details.open{display:flex}
@@ -17368,7 +17374,7 @@ async function loadAdminData(force){
   }catch(e){}
 }
 
-const ADMIN_FULL_COLS='id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at,source_id';
+const ADMIN_FULL_COLS='id,question,options,answer,aliases,format,topic_type,topic_value,difficulty,status,report_count,answer_count,correct_count,submitted_by,media_url,created_at,source_id,distractors';
 
 function toggleReviewDateSort(){
   adminReviewDateAsc=!adminReviewDateAsc;
@@ -17730,6 +17736,7 @@ function renderAdminBrowseFromCache(){
     card.classList.add('bulk-mode');
     list.appendChild(card);
   });
+  fillAdminLinkedBoxes(rows);
   if(pager){
     if(totalPages<=1){pager.style.display='none';}
     else{
@@ -19284,7 +19291,47 @@ function renderAdminList(rows,emptyMsg){
     list.appendChild(card);
   });
   applyTheme();
+  fillAdminLinkedBoxes(rows);
 }
+
+// For MC/typed linked pairs, show the other half under each card: a typed copy shows
+// its MC original's options, an MC original shows its typed copy's answer + aliases.
+async function fillAdminLinkedBoxes(rows){
+  const typedSrcIds=[...new Set(rows.filter(q=>q.source_id).map(q=>q.source_id))];
+  const mcIds=rows.filter(q=>q.format==='mc').map(q=>q.id);
+  if(!typedSrcIds.length&&!mcIds.length)return;
+  const cols='id,question,options,answer,aliases,format,source_id,status';
+  let parents=[],children=[];
+  try{
+    const reqs=[];
+    reqs.push(typedSrcIds.length?sb.from('questions').select(cols).in('id',typedSrcIds):Promise.resolve({data:[]}));
+    reqs.push(mcIds.length?sb.from('questions').select(cols).in('source_id',mcIds):Promise.resolve({data:[]}));
+    const [p,c]=await Promise.all(reqs);
+    parents=p.data||[];children=c.data||[];
+  }catch(e){return;}
+  const esc=s=>String(s??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const head=(label,id)=>`<div class="admin-linked-head"><i class="ti ti-link" style="font-size:11px"></i> ${label}<a onclick="jumpToLinkedQuestion('${id}')">Open</a></div>`;
+  rows.forEach(q=>{
+    const box=document.getElementById('adminLinked_'+q.id);
+    if(!box)return;
+    let html='';
+    if(q.source_id){
+      const mc=parents.find(x=>String(x.id)===String(q.source_id));
+      if(mc){
+        const opts=(mc.options||[]).map((o,i)=>`<span style="${String(i)===String(mc.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${esc(o)}</span>`).join(' · ');
+        html+=head('MC version',mc.id)+`<div class="admin-linked-q">${esc(mc.question)}</div><div class="admin-linked-sub">${opts}</div>`;
+      }else{
+        html+=`<div class="admin-linked-head"><i class="ti ti-link-off" style="font-size:11px"></i> MC version not found (deleted?)</div>`;
+      }
+    }
+    children.filter(x=>String(x.source_id)===String(q.id)).forEach(t=>{
+      html+=head('Typed version',t.id)+`<div class="admin-linked-q">${esc(t.question)}</div><div class="admin-linked-sub"><b style="color:var(--accent)">Answer: ${esc(t.answer)}</b>${t.aliases?.length?' · Also accepts: '+esc(t.aliases.join(', ')):''}</div>`;
+    });
+    if(html){box.innerHTML=html;box.style.display='block';}
+  });
+}
+// Open the other half of a linked pair in Browse (works for both directions)
+function jumpToLinkedQuestion(id){return jumpToSourceQuestion(id);}
 
 function _adminHL(text){
   if(text==null)return text;
@@ -19304,6 +19351,9 @@ function buildAdminCard(q){
 
   const optionsHtml=q.options?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${q.options.map((o,i)=>`<span style="${String(i)===String(q.answer)?'color:var(--accent);font-weight:800':''}">${String.fromCharCode(65+i)}. ${_adminHL(o)}</span>`).join(' · ')}</div>`:'';
   const answerHtml=!q.options?`<div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:800">Answer: ${_adminHL(q.answer)}</div>`:'';
+  // Character rows play as MC in-game: the answer plus these three look-alikes
+  const charOptsHtml=(q.format==='char'&&Array.isArray(q.distractors)&&q.distractors.length)
+    ?`<div style="font-size:12px;color:var(--muted);margin-top:2px">MC wrong options: ${q.distractors.map(d=>_adminHL(d)).join(' · ')}</div>`:'';
   const aliasHtml=q.aliases?.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Also accepts: ${q.aliases.join(', ')}</div>`:'';
   const dateStr=q.created_at?new Date(q.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
   const reportBadge=q.report_count>0
@@ -19339,7 +19389,8 @@ function buildAdminCard(q){
     <input type="checkbox" class="admin-card-cb" data-id="${q.id}" ${cbChecked?'checked':''} onchange="_bulkToggle('${q.id}',this)" title="Select for bulk action">
     <div>
       <div class="admin-q-text">${_adminHL(q.question)}</div>
-      ${optionsHtml}${answerHtml}${aliasHtml}${mediaHtml}
+      ${optionsHtml}${answerHtml}${charOptsHtml}${aliasHtml}${mediaHtml}
+      <div class="admin-linked-box" id="adminLinked_${q.id}" style="display:none"></div>
     </div>
     <div class="admin-q-meta">
       <span class="admin-badge format">${fmtLabel[q.format]||q.format}</span>
