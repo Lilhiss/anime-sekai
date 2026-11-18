@@ -21628,8 +21628,32 @@ function suSuggest(name){
   suRenderTopics();
 }
 
+/* ── remember last topics: saved when a solo game starts, pre-selected on the next visit ── */
+const SU_LAST_KEY='as_last_topics';
+let suLastRestored=false; // only once per page load, so Clear all / General stick for the session
+function suSaveLastTopics(){
+  try{
+    const v=isGeneralSelected||!selectedTopics.length?{general:true}:{topics:selectedTopics.map(t=>({key:t.key,name:t.name,type:t.type}))};
+    localStorage.setItem(SU_LAST_KEY,JSON.stringify(v));
+  }catch(e){}
+}
+function suRestoreLastTopics(){
+  if(suLastRestored)return;
+  suLastRestored=true;
+  if(selectedTopics.length)return; // something already picked (e.g. Play from the library)
+  let v=null;
+  try{v=JSON.parse(localStorage.getItem(SU_LAST_KEY)||'null');}catch(e){}
+  if(!v||!Array.isArray(v.topics)||!v.topics.length)return;
+  const all=suTopics();
+  const list=all.length?v.topics.filter(t=>all.some(x=>x.key===t.key)):v.topics;
+  if(!list.length)return;
+  selectedTopics=list.map(t=>({key:t.key,emoji:'',name:t.name,type:t.type||'anime'}));
+  isGeneralSelected=false;
+}
+
 /* ── enter / leave / start ── */
 function suEnter(){
+  suRestoreLastTopics();
   if(!selectedTopics.length)isGeneralSelected=true;
   suSyncAnswerBy();
   const st=(typeof dailyStreakInfo==='function')?dailyStreakInfo().streak:0;
@@ -21647,6 +21671,7 @@ function suExit(){
 function suStart(){
   if(document.getElementById('suStart').disabled)return;
   const m=suMode().id;
+  suSaveLastTopics();
   pendingMode=m;pendingLobbyAfterTimeLimit=false;
   selectedFormat=SU_FMT[suFormat][suAnswerBy]||SU_FMT[suFormat].type;
   const badge=document.getElementById('selectedTopicBadge');
