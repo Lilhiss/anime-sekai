@@ -420,10 +420,6 @@ function openPfpPicker(){
   document.getElementById('pfpModal').style.display='flex';
   applyTheme();
 }
-function closePfpPicker(){
-  pfpGuestEntryMode=false;
-  document.getElementById('pfpModal').style.display='none';
-}
 // Supabase closes the channel of a client that re-tracks presence too often
 // (ClientPresenceRateLimitReached), so several avatar changes share one delayed track.
 const PFP_TRACK_GAP_MS=15000;
