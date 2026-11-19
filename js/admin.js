@@ -1,6 +1,6 @@
-// Admin panel (moved out of index.html 2026-11-19; loads in its original place, order matters)
+// Admin panel. NOT loaded for players: js/admin-stub.js loads it (then admin-shell.js) the first time an admin opens the panel.
+// isAdmin, checkAdminRole and _htmlEsc live in admin-stub.js because the rest of the site uses them.
 // ── ADMIN PANEL ───────────────────────────────────────────────
-let isAdmin=false;try{isAdmin=localStorage.getItem('as_admin')==='1';}catch(e){}
 let adminTab='submitted';
 const ADMIN_SECTION_INFO={
   review:{icon:'📬',title:'Review',desc:'Approve, reject, and resolve submitted, reported, and flagged questions.'},
@@ -36,15 +36,6 @@ let ADMIN_POSTERS={};let covFilter='all';let covView=(()=>{try{return localStora
 function covSetView(v){covView=v;try{localStorage.setItem('as_cov_view',v)}catch(e){}renderAdminCoverage();}
 const ADMIN_COV_THIN=10;
 
-async function checkAdminRole(){
-  if(!currentUserId||SUPABASE_URL.includes('YOUR_PROJECT'))return;
-  let isAdminResult=false;
-  try{const{data}=await sb.rpc('is_admin');isAdminResult=data===true;}catch(e){}
-  isAdmin=isAdminResult;
-  try{localStorage.setItem('as_admin',isAdmin?'1':'0');}catch(e){}
-  const adminLink=document.getElementById('adminNavLink');
-  if(adminLink){adminLink.style.display=isAdmin?'flex':'none';adminLink.style.opacity=isAdmin?'1':'0';adminLink.style.pointerEvents=isAdmin?'':'none';}
-}
 
 function goAdmin(){
   if(!isAdmin){goStep('landing');return}
@@ -2404,7 +2395,6 @@ async function saveAdminEdit(){
 }
 
 // ── SITE CONTENT ADMIN EDITOR ──────────────────────────────────
-function _htmlEsc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Holds only the fields the admin has actively changed but not yet saved —
 // {cards:{key:{title,desc,locked}}, copy:{key:string}}. Cleared on Save All,
 // Discard, or once a Reset commits that specific key to the DB.

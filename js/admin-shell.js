@@ -1,4 +1,4 @@
-// Admin panel v2 shell (moved out of index.html 2026-11-19; loads in its original place, order matters)
+// Admin panel v2 shell. NOT loaded for players: js/admin-stub.js loads it right after admin.js. The banned-player check moved to js/ban-check.js.
 /* Admin panel v2 — sidebar shell, Home, Players, Live lobbies, Activity log.
    New server pieces live in supabase/admin-setup.sql. Existing sections are reused as-is. */
 (function(){
@@ -312,18 +312,6 @@ Object.entries(WRAP).forEach(([fn,mk])=>{
   window[fn]=function(...a){pending=mk(...a);const r=f.apply(this,a);if(pending){const p=pending;pending=null;Promise.resolve(r).then(()=>log(p.e));}return r;};
 });
 
-/* ── Banned players can't sign in ───── */
-const _lp=window.sbLoadProfile;
-if(typeof _lp==='function')window.sbLoadProfile=async function(uid){
-  const p=await _lp(uid);
-  try{const {data}=await sb.from('profiles').select('banned_until,ban_reason').eq('id',uid).maybeSingle();
-    if(data&&data.banned_until&&new Date(data.banned_until)>new Date()){
-      try{await sbSignOut();}catch(e){}
-      const until=new Date(data.banned_until),forever=until.getFullYear()-new Date().getFullYear()>50;
-      throw new Error('This account is banned'+(forever?'':' until '+until.toLocaleDateString(undefined,{day:'numeric',month:'long'}))+(data.ban_reason?' ('+data.ban_reason+')':'')+'.');
-    }}catch(e){if(/banned/.test(e.message))throw e;}
-  return p;
-};
 
 /* ── keep sidebar in sync ───────────── */
 function boot(){
